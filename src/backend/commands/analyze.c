@@ -1055,6 +1055,19 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 								false /* isVacuum */);
 		}
 	}
+	else if (onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+	{
+		/*
+		 * Partitioned tables don't have storage, so we don't set any fields in
+		 * their pg_class entries except for relpages, which is necessary for
+		 * auto-analyze to work properly.
+		 */
+		vac_update_relstats(onerel, -1, totalrows,
+							0, false, InvalidTransactionId,
+							InvalidMultiXactId,
+							in_outer_xact,
+							false /* isVacuum */);
+	}
 
 	/*
 	 * Now report ANALYZE to the stats collector.  For regular tables, we do
