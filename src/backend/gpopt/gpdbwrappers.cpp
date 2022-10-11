@@ -1729,17 +1729,6 @@ gpdb::HasSubclassSlow(Oid rel_oid)
 	return false;
 }
 
-bool
-gpdb::RelIsExternalTable(Oid relid)
-{
-	GP_WRAP_START;
-	{
-		return rel_is_external_table(relid);
-	}
-	GP_WRAP_END;
-	return false;
-}
-
 GpPolicy *
 gpdb::GetDistributionPolicy(Relation rel)
 {
@@ -1823,19 +1812,6 @@ gpdb::GetRelation(Oid rel_oid)
 		return RelationWrapper{RelationIdGetRelation(rel_oid)};
 	}
 	GP_WRAP_END;
-}
-
-ForeignScan *
-gpdb::CreateForeignScanForExternalTable(Oid rel_oid, Index scanrelid,
-										List *qual, List *targetlist)
-{
-	GP_WRAP_START;
-	{
-		return BuildForeignScanForExternalTable(rel_oid, scanrelid, qual,
-												targetlist);
-	}
-	GP_WRAP_END;
-	return nullptr;
 }
 
 ForeignScan *
