@@ -4875,7 +4875,8 @@ binary_upgrade_set_pg_class_oids(Archive *fout,
 		 */
 		if ((OidIsValid(tblinfo->toast_oid) && !tblinfo->aotbl) ||
 					(OidIsValid(tblinfo->toast_oid) &&
-					tblinfo->aotbl && !tblinfo->aotbl->columnstore))
+					tblinfo->aotbl &&
+					strncmp(tblinfo->amname, "ao_row", 6) == 0))
 			binary_upgrade_set_toast_oids_by_rel(fout, upgrade_buffer, tblinfo);
 
 		/* Set up any AO auxiliary tables with preallocated OIDs as well. */
@@ -4949,7 +4950,7 @@ binary_upgrade_set_bitmap_index_oids(Archive *fout, PQExpBuffer upgrade_buffer, 
 static void
 binary_upgrade_set_rel_ao_oids(Archive *fout, PQExpBuffer upgrade_buffer, const TableInfo *tblinfo)
 {
-	const char *aoseg_prefix = tblinfo->aotbl->columnstore ? "pg_aocsseg" : "pg_aoseg";
+	const char *aoseg_prefix = strncmp(tblinfo->amname, "ao_row", 6) == 0 ? "pg_aoseg" : "pg_aocsseg";
 
 	/* pg_aoseg heap table */
 	simple_oid_list_append(&preassigned_oids, tblinfo->aotbl->segrelid);
@@ -7053,7 +7054,6 @@ getAOTableInfo(Archive *fout)
 	int			ntups;
 	AOTableInfo *aotblinfo;
 	int     i_oid;
-	int			i_columnstore;
 	int			i_segrelid;
 	int			i_segreltype;
 	int			i_blkdirrelid;
@@ -7068,7 +7068,6 @@ getAOTableInfo(Archive *fout)
 	appendPQExpBufferStr(query,
 					  "SELECT "
 						"ao.relid,"
-						"ao.columnstore,"
 						"ao.segrelid, t1.reltype as segreltype, "
 						"ao.blkdirrelid, t3.reltype as blkdirreltype, "
 						"ao.blkdiridxid, "
@@ -7079,6 +7078,7 @@ getAOTableInfo(Archive *fout)
 						"LEFT JOIN pg_class t1 ON (t1.oid=ao.segrelid)\n"
 						"LEFT JOIN pg_class t2 ON (t2.oid=ao.visimaprelid)\n"
 						"LEFT JOIN pg_class t3 ON (t3.oid=ao.blkdirrelid and ao.blkdirrelid <> 0)\n"
+						"LEFT JOIN pg_am am ON (am.oid=c.relam)\n"
 						"ORDER BY 1");
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
@@ -7086,7 +7086,6 @@ getAOTableInfo(Archive *fout)
 	ntups = PQntuples(res);
 
 	i_oid = PQfnumber(res, "relid");
-	i_columnstore =  PQfnumber(res, "columnstore");
 	i_segrelid = PQfnumber(res, "segrelid");
 	i_segreltype = PQfnumber(res, "segreltype");
 	i_blkdirrelid = PQfnumber(res, "blkdirrelid");
@@ -7102,7 +7101,6 @@ getAOTableInfo(Archive *fout)
 		if (tbinfo)
 		{
 			aotblinfo = (AOTableInfo *) pg_malloc(sizeof(AOTableInfo));
-			aotblinfo->columnstore = (strcmp(PQgetvalue(res, i, i_columnstore), "t") == 0);
 			aotblinfo->segrelid = atooid(PQgetvalue(res, i, i_segrelid));
 			aotblinfo->segreltype = atooid(PQgetvalue(res, i, i_segreltype));
 			aotblinfo->blkdirrelid = atooid(PQgetvalue(res, i, i_blkdirrelid));
