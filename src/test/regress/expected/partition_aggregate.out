@@ -1121,45 +1121,33 @@ SELECT a, sum(b), array_agg(distinct c), count(*) FROM pagg_tab_ml GROUP BY a HA
                                          QUERY PLAN                                         
 --------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Merge Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (array_agg(DISTINCT pagg_tab_ml.c))
+   Merge Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (array_agg(pagg_tab_ml.c))
    ->  Sort
-         Sort Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (array_agg(DISTINCT pagg_tab_ml.c))
-         ->  Append
-               ->  GroupAggregate
-                     Group Key: pagg_tab_ml.a
-                     Filter: (avg(pagg_tab_ml.b) < '3'::numeric)
-                     ->  Sort
-                           Sort Key: pagg_tab_ml.a
-                           ->  Seq Scan on pagg_tab_ml_p1 pagg_tab_ml
-               ->  GroupAggregate
-                     Group Key: pagg_tab_ml_2.a
-                     Filter: (avg(pagg_tab_ml_2.b) < '3'::numeric)
-                     ->  Sort
-                           Sort Key: pagg_tab_ml_2.a
-                           ->  Append
-                                 ->  Seq Scan on pagg_tab_ml_p2_s1 pagg_tab_ml_2
-                                 ->  Seq Scan on pagg_tab_ml_p2_s2 pagg_tab_ml_3
-               ->  GroupAggregate
-                     Group Key: pagg_tab_ml_5.a
-                     Filter: (avg(pagg_tab_ml_5.b) < '3'::numeric)
-                     ->  Sort
-                           Sort Key: pagg_tab_ml_5.a
-                           ->  Append
-                                 ->  Seq Scan on pagg_tab_ml_p3_s1 pagg_tab_ml_5
-                                 ->  Seq Scan on pagg_tab_ml_p3_s2 pagg_tab_ml_6
+         Sort Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (array_agg(pagg_tab_ml.c))
+         ->  Finalize HashAggregate
+               Group Key: pagg_tab_ml.a
+               Filter: (avg(pagg_tab_ml.b) < '3'::numeric)
+               ->  Partial HashAggregate
+                     Group Key: pagg_tab_ml.a, pagg_tab_ml.c
+                     ->  Append
+                           ->  Seq Scan on pagg_tab_ml_p1 pagg_tab_ml_1
+                           ->  Seq Scan on pagg_tab_ml_p2_s1 pagg_tab_ml_2
+                           ->  Seq Scan on pagg_tab_ml_p2_s2 pagg_tab_ml_3
+                           ->  Seq Scan on pagg_tab_ml_p3_s1 pagg_tab_ml_4
+                           ->  Seq Scan on pagg_tab_ml_p3_s2 pagg_tab_ml_5
  Optimizer: Postgres query optimizer
-(28 rows)
+(16 rows)
 
 SELECT a, sum(b), array_agg(distinct c), count(*) FROM pagg_tab_ml GROUP BY a HAVING avg(b) < 3 ORDER BY 1, 2, 3;
  a  | sum  |  array_agg  | count 
 ----+------+-------------+-------
   0 |    0 | {0000,0002} |  1000
-  1 | 1000 | {0001,0003} |  1000
+  1 | 1000 | {0003,0001} |  1000
   2 | 2000 | {0000,0002} |  1000
- 10 |    0 | {0000,0002} |  1000
- 11 | 1000 | {0001,0003} |  1000
- 12 | 2000 | {0000,0002} |  1000
- 20 |    0 | {0000,0002} |  1000
+ 10 |    0 | {0002,0000} |  1000
+ 11 | 1000 | {0003,0001} |  1000
+ 12 | 2000 | {0002,0000} |  1000
+ 20 |    0 | {0002,0000} |  1000
  21 | 1000 | {0001,0003} |  1000
  22 | 2000 | {0000,0002} |  1000
 (9 rows)
@@ -1167,34 +1155,22 @@ SELECT a, sum(b), array_agg(distinct c), count(*) FROM pagg_tab_ml GROUP BY a HA
 -- Without ORDER BY clause, to test Gather at top-most path
 EXPLAIN (COSTS OFF)
 SELECT a, sum(b), array_agg(distinct c), count(*) FROM pagg_tab_ml GROUP BY a HAVING avg(b) < 3;
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
+                              QUERY PLAN
+-----------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Append
-         ->  GroupAggregate
-               Group Key: pagg_tab_ml.a
-               Filter: (avg(pagg_tab_ml.b) < '3'::numeric)
-               ->  Sort
-                     Sort Key: pagg_tab_ml.a
-                     ->  Seq Scan on pagg_tab_ml_p1 pagg_tab_ml
-         ->  GroupAggregate
-               Group Key: pagg_tab_ml_2.a
-               Filter: (avg(pagg_tab_ml_2.b) < '3'::numeric)
-               ->  Sort
-                     Sort Key: pagg_tab_ml_2.a
-                     ->  Append
-                           ->  Seq Scan on pagg_tab_ml_p2_s1 pagg_tab_ml_2
-                           ->  Seq Scan on pagg_tab_ml_p2_s2 pagg_tab_ml_3
-         ->  GroupAggregate
-               Group Key: pagg_tab_ml_5.a
-               Filter: (avg(pagg_tab_ml_5.b) < '3'::numeric)
-               ->  Sort
-                     Sort Key: pagg_tab_ml_5.a
-                     ->  Append
-                           ->  Seq Scan on pagg_tab_ml_p3_s1 pagg_tab_ml_5
-                           ->  Seq Scan on pagg_tab_ml_p3_s2 pagg_tab_ml_6
+   ->  Finalize HashAggregate
+         Group Key: pagg_tab_ml.a
+         Filter: (avg(pagg_tab_ml.b) < '3'::numeric)
+         ->  Partial HashAggregate
+               Group Key: pagg_tab_ml.a, pagg_tab_ml.c
+               ->  Append
+                     ->  Seq Scan on pagg_tab_ml_p1 pagg_tab_ml_1
+                     ->  Seq Scan on pagg_tab_ml_p2_s1 pagg_tab_ml_2
+                     ->  Seq Scan on pagg_tab_ml_p2_s2 pagg_tab_ml_3
+                     ->  Seq Scan on pagg_tab_ml_p3_s1 pagg_tab_ml_4
+                     ->  Seq Scan on pagg_tab_ml_p3_s2 pagg_tab_ml_5
  Optimizer: Postgres query optimizer
-(25 rows)
+(13 rows)
 
 -- Full aggregation at level 1 as GROUP BY clause matches with PARTITION KEY
 -- for level 1 only. For subpartitions, GROUP BY clause does not match with
