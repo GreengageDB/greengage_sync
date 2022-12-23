@@ -2504,9 +2504,6 @@ _readPlannedStmt(void)
 
 	READ_UINT64_FIELD(query_mem);
 
-	READ_INT_FIELD(total_memory_coordinator);
-	READ_INT_FIELD(nsegments_coordinator);
-
 	READ_NODE_FIELD(intoClause);
 	READ_NODE_FIELD(copyIntoClause);
 	READ_NODE_FIELD(refreshClause);

@@ -757,7 +757,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
 
-	MAPPING MATCH MATERIALIZED MAXVALUE MEMORY_LIMIT MEMORY_SHARED_QUOTA MEMORY_SPILL_RATIO
+	MAPPING MATCH MATERIALIZED MAXVALUE MEMORY_LIMIT
 	METHOD MINUTE_P MINVALUE MODE MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
@@ -811,7 +811,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 %token <keyword>
 	ACTIVE
 
-	CONTAINS COORDINATOR CPUSET CPU_RATE_LIMIT
+	CONTAINS COORDINATOR CPUSET CPU_HARD_QUOTA_LIMIT CPU_SOFT_PRIORITY
 
 	CREATEEXTTABLE
 
@@ -964,7 +964,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc COPY
 			%nonassoc COST
 			%nonassoc CPUSET
-			%nonassoc CPU_RATE_LIMIT
+			%nonassoc CPU_HARD_QUOTA_LIMIT
+			%nonassoc CPU_SOFT_PRIORITY
 			%nonassoc CREATEEXTTABLE
 			%nonassoc CSV
 			%nonassoc CURRENT_P
@@ -1048,8 +1049,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc MATCH
 			%nonassoc MAXVALUE
 			%nonassoc MEMORY_LIMIT
-			%nonassoc MEMORY_SHARED_QUOTA
-			%nonassoc MEMORY_SPILL_RATIO
 			%nonassoc MINUTE_P
 			%nonassoc MINVALUE
 			%nonassoc MISSING
@@ -1655,25 +1654,17 @@ OptResourceGroupElem:
 					/* was "concurrency" */
 					$$ = makeDefElem("concurrency", (Node *) makeInteger($2), @1);
 				}
-			| CPU_RATE_LIMIT SignedIconst
+			| CPU_HARD_QUOTA_LIMIT SignedIconst
 				{
-					$$ = makeDefElem("cpu_rate_limit", (Node *) makeInteger($2), @1);
+					$$ = makeDefElem("cpu_hard_quota_limit", (Node *) makeInteger($2), @1);
 				}
+            | CPU_SOFT_PRIORITY SignedIconst
+                {
+                    $$ = makeDefElem("cpu_soft_priority", (Node *) makeInteger($2), @1);
+                }
 			| CPUSET Sconst
 				{
 					$$ = makeDefElem("cpuset", (Node *) makeString($2), @1);
-				}
-			| MEMORY_SHARED_QUOTA SignedIconst
-				{
-					$$ = makeDefElem("memory_shared_quota", (Node *) makeInteger($2), @1);
-				}
-			| MEMORY_LIMIT SignedIconst
-				{
-					$$ = makeDefElem("memory_limit", (Node *) makeInteger($2), @1);
-				}
-			| MEMORY_SPILL_RATIO SignedIconst
-				{
-					$$ = makeDefElem("memory_spill_ratio", (Node *) makeInteger($2), @1);
 				}
 		;
 
@@ -18189,7 +18180,8 @@ unreserved_keyword:
 			| COPY
 			| COST
 			| CPUSET
-			| CPU_RATE_LIMIT
+			| CPU_HARD_QUOTA_LIMIT
+			| CPU_SOFT_PRIORITY
 			| CREATEEXTTABLE
 			| CSV
 			| CUBE
@@ -18302,8 +18294,6 @@ unreserved_keyword:
 			| MATERIALIZED
 			| MAXVALUE
 			| MEMORY_LIMIT
-			| MEMORY_SHARED_QUOTA
-			| MEMORY_SPILL_RATIO
 			| METHOD
 			| MINUTE_P
 			| MINVALUE
@@ -18546,7 +18536,8 @@ PartitionIdentKeyword: ABORT_P
 			| COPY
 			| COST
 			| CPUSET
-			| CPU_RATE_LIMIT
+			| CPU_HARD_QUOTA_LIMIT
+			| CPU_SOFT_PRIORITY
 			| CREATEEXTTABLE
 			| CSV
 			| CUBE
@@ -18626,8 +18617,6 @@ PartitionIdentKeyword: ABORT_P
 			| MATCH
 			| MAXVALUE
 			| MEMORY_LIMIT
-			| MEMORY_SHARED_QUOTA
-			| MEMORY_SPILL_RATIO
 			| MINVALUE
 			| MISSING
 			| MODE
@@ -19066,7 +19055,8 @@ bare_label_keyword:
 			| COPY
 			| COST
 			| CPUSET
-			| CPU_RATE_LIMIT
+			| CPU_HARD_QUOTA_LIMIT
+			| CPU_SOFT_PRIORITY
 			| CREATEEXTTABLE
 			| CROSS
 			| CSV
@@ -19216,8 +19206,6 @@ bare_label_keyword:
 			| MAXVALUE
 			| MEDIAN
 			| MEMORY_LIMIT
-			| MEMORY_SHARED_QUOTA
-			| MEMORY_SPILL_RATIO
 			| METHOD
 			| MINVALUE
 			| MISSING
