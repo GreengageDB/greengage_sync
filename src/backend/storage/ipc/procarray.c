@@ -4930,6 +4930,32 @@ FindProcByGpSessionId(long gp_session_id)
 }
 
 /*
+ * Get a list of session IDs that belong to each running process.
+ *
+ * Note that for quick grab-and-go we do not validate or deduplicate the result
+ * here (e.g. the invalid session ID "-1" could appear multiple times).
+ */
+List *
+GetRunningProcSessionIds(void)
+{
+	ProcArrayStruct *arrayP = procArray;
+	int			index;
+	List 			*list = NIL;
+
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+
+	for (index = 0; index < arrayP->numProcs; index++)
+	{
+		PGPROC	   *proc = &allProcs[arrayP->pgprocnos[index]];
+			
+		list = lappend_oid(list, proc->mppSessionId);
+	}
+		
+	LWLockRelease(ProcArrayLock);
+	return list;
+}
+
+/*
  * If rel != NULL, return test state appropriate for relation, otherwise
  * return state usable for all relations.  The latter may consider XIDs as
  * not-yet-visible-to-everyone that a state for a specific relation would

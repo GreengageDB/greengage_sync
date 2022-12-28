@@ -140,6 +140,7 @@
 #include "storage/lmgr.h"
 #include "storage/pmsignal.h"
 #include "storage/proc.h"
+#include "storage/procarray.h"
 #include "storage/procsignal.h"
 #include "storage/sinvaladt.h"
 #include "storage/smgr.h"
@@ -2057,6 +2058,10 @@ do_autovacuum(void)
 	bool		did_vacuum = false;
 	bool		found_concurrent_worker = false;
 	int			i;
+	/* GPDB: to collect session IDs for the purpose of checking idle temp namespace. */
+	HTAB		*sessionhash;
+	List 		*sessionlist;
+	ListCell 	*lc;
 
 	/*
 	 * StartTransactionCommand and CommitTransactionCommand will automatically
@@ -2138,6 +2143,22 @@ do_autovacuum(void)
 								  &ctl,
 								  HASH_ELEM | HASH_BLOBS);
 
+	/* collect running session IDs for the purpose of checking idle temp namespace */
+	MemSet(&ctl, 0, sizeof(ctl));
+	ctl.keysize = sizeof(int);
+	ctl.entrysize = sizeof(int);
+	sessionhash = hash_create("Running session IDs", 8, &ctl,
+							  HASH_ELEM | HASH_BLOBS);
+
+	sessionlist = GetRunningProcSessionIds();
+	foreach(lc, sessionlist)
+	{
+		Oid sid = lfirst_oid(lc);
+		hash_search(sessionhash,
+						&sid,
+						HASH_ENTER, NULL);
+	}
+
 	/*
 	 * Scan pg_class to determine which tables to vacuum.
 	 *
@@ -2184,18 +2205,11 @@ do_autovacuum(void)
 		if (classForm->relpersistence == RELPERSISTENCE_TEMP)
 		{
 			/*
-			 * GPDB: Skip process temp tables since the temp namespace for QD and QE
-			 * is using gp_session_id as suffix instead of backendID.
-			 * And performDeletion() only execute delete on current node.
-			 */
-			continue;
-
-			/*
 			 * We just ignore it if the owning backend is still active and
 			 * using the temporary schema.  Also, for safety, ignore it if the
 			 * namespace doesn't exist or isn't a temp namespace after all.
 			 */
-			if (checkTempNamespaceStatus(classForm->relnamespace) == TEMP_NAMESPACE_IDLE)
+			if (isTempNamespaceMustBeIdle(classForm->relnamespace, sessionhash))
 			{
 				/*
 				 * The table seems to be orphaned -- although it might be that
@@ -2356,16 +2370,21 @@ do_autovacuum(void)
 		 * Make all the same tests made in the loop above.  In event of OID
 		 * counter wraparound, the pg_class entry we have now might be
 		 * completely unrelated to the one we saw before.
+		 * Notice, that we are not checking for 
+		 *	classForm->relkind != RELKIND_AOSEGMENTS &&
+		 *	classForm->relkind != RELKIND_AOBLOCKDIR &&
+		 *	classForm->relkind != RELKIND_AOVISIMAP here, because we cannot drop
+		 * AO aux files without dropping AO relaton itself, so do not attempt to.
 		 */
 		if (!((classForm->relkind == RELKIND_RELATION ||
-			   classForm->relkind == RELKIND_MATVIEW) &&
+			classForm->relkind == RELKIND_MATVIEW) &&
 			  classForm->relpersistence == RELPERSISTENCE_TEMP))
 		{
 			UnlockRelationOid(relid, AccessExclusiveLock);
 			continue;
 		}
 
-		if (checkTempNamespaceStatus(classForm->relnamespace) != TEMP_NAMESPACE_IDLE)
+		if (!isTempNamespaceMustBeIdle(classForm->relnamespace, sessionhash))
 		{
 			UnlockRelationOid(relid, AccessExclusiveLock);
 			continue;
@@ -2411,6 +2430,8 @@ do_autovacuum(void)
 	PortalContext = AllocSetContextCreate(AutovacMemCxt,
 										  "Autovacuum Portal",
 										  ALLOCSET_DEFAULT_SIZES);
+
+	hash_destroy(sessionhash);
 
 	/*
 	 * Perform operations on collected tables.
