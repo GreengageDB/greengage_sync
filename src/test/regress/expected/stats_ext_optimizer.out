@@ -690,13 +690,13 @@ SELECT dependencies FROM pg_stats_ext WHERE statistics_name = 'func_deps_stat';
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a = 1 AND b = ''1''');
  estimated | actual 
 -----------+--------
-         2 |     50
+        50 |     50
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a = 1 AND b = ''1'' AND c = 1');
  estimated | actual 
 -----------+--------
-         1 |     50
+        50 |     50
 (1 row)
 
 -- IN
@@ -858,14 +858,14 @@ NOTICE:  One or more columns in the following table(s) do not have statistics: f
 HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
  estimated | actual 
 -----------+--------
-         2 |     50
+        50 |     50
 (1 row)
 
 ANALYZE functional_dependencies;
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a = 1 AND b = ''1'' AND c = 1');
  estimated | actual 
 -----------+--------
-         1 |     50
+        50 |     50
 (1 row)
 
 -- check the ability to use multiple functional dependencies
@@ -922,31 +922,31 @@ ANALYZE functional_dependencies_multi;
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE a = 0 AND b = 0');
  estimated | actual 
 -----------+--------
-       182 |    714
+       714 |    714
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE 0 = a AND 0 = b');
  estimated | actual 
 -----------+--------
-       182 |    714
+       714 |    714
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE c = 0 AND d = 0');
  estimated | actual 
 -----------+--------
-        74 |    454
+       455 |    454
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE a = 0 AND b = 0 AND c = 0 AND d = 0');
  estimated | actual 
 -----------+--------
-        12 |     64
+        25 |     64
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies_multi WHERE 0 = a AND b = 0 AND 0 = c AND d = 0');
  estimated | actual 
 -----------+--------
-        12 |     64
+        25 |     64
 (1 row)
 
 DROP TABLE functional_dependencies_multi;

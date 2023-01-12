@@ -20,6 +20,7 @@ extern "C" {
 
 #include "access/attnum.h"
 #include "parser/parse_coerce.h"
+#include "statistics/statistics.h"
 #include "utils/faultinjector.h"
 #include "utils/lsyscache.h"
 }
@@ -203,6 +204,10 @@ void FreeAttrStatsSlot(AttStatsSlot *sslot);
 
 // attribute statistics
 HeapTuple GetAttStats(Oid relid, AttrNumber attnum);
+
+List *GetExtStats(Relation rel);
+
+char *GetExtStatsName(Oid statOid);
 
 // does a function exist with the given oid
 bool FunctionExists(Oid oid);
@@ -512,6 +517,8 @@ List *GetRelationIndexes(Relation relation);
 
 // build an array of triggers for this relation
 void BuildRelationTriggers(Relation rel);
+
+MVDependencies *GetMVDependencies(Oid stat_oid);
 
 // get relation with given oid
 RelationWrapper GetRelation(Oid rel_oid);
