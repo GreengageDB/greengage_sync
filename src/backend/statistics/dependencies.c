@@ -88,7 +88,7 @@ static Selectivity clauselist_apply_dependencies(PlannerInfo *root, List *clause
 												 AttrNumber *list_attnums,
 												 Bitmapset **estimatedclauses);
 
-extern void statistics_scanner_init(const char *query_string);
+extern void statistic_scanner_init(const char *query_string);
 
 static void
 generate_dependencies_recurse(DependencyGenerator state, int index,
@@ -668,7 +668,7 @@ pg_dependencies_in(PG_FUNCTION_ARGS)
 	MVDependencies	   *mvdependencies;
 	int				parse_rc;
 
-	statistics_scanner_init(str);
+	statistic_scanner_init(str);
 	parse_rc = statistic_yyparse();
 	if (parse_rc != 0)
 		ereport(ERROR,
