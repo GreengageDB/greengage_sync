@@ -14487,6 +14487,7 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 	const char *aggmtransspace;
 	const char *agginitval;
 	const char *aggminitval;
+	bool		aggrepsafeexec;
 	const char *proparallel;
 	char		defaultfinalmodify;
 
@@ -14562,6 +14563,13 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 								 "'-' AS aggdeserialfn,\n"
 								 "'u' AS proparallel,\n");
 
+		if (fout->remoteVersion >= GPDB7_MAJOR_PGVERSION)
+			appendPQExpBufferStr(query,
+								 "aggrepsafeexec,\n");
+		else
+			appendPQExpBufferStr(query,
+								 "false AS aggrepsafeexec,\n");
+
 		if (fout->remoteVersion >= 110000)
 			appendPQExpBufferStr(query,
 								 "aggfinalmodify,\n"
@@ -14610,6 +14618,7 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 	aggmtransspace = PQgetvalue(res, 0, PQfnumber(res, "aggmtransspace"));
 	agginitval = PQgetvalue(res, 0, i_agginitval);
 	aggminitval = PQgetvalue(res, 0, i_aggminitval);
+	aggrepsafeexec = (PQgetvalue(res, 0, PQfnumber(res, "aggrepsafeexec"))[0] == 't');
 	proparallel = PQgetvalue(res, 0, PQfnumber(res, "proparallel"));
 
 	if (fout->remoteVersion >= 80400)
@@ -14735,6 +14744,9 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 			}
 		}
 	}
+
+	if (aggrepsafeexec)
+		appendPQExpBuffer(details, ",\n    REPSAFE = true");
 
 	aggsortconvop = getFormattedOperatorName(aggsortop);
 	if (aggsortconvop)
