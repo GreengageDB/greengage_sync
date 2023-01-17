@@ -264,6 +264,10 @@ external_beginscan(Relation relation, uint32 scancounter,
 	 * don't append to entry->options directly, we only store the encoding in
 	 * entry->encoding (and ftoptions)
 	 */
+	if (fmttype_is_custom(fmtType))
+	{
+		extOptions = NIL;
+	}
 	extOptions = appendCopyEncodingOption(list_copy(extOptions), encoding);
 
 	/*
@@ -274,7 +278,7 @@ external_beginscan(Relation relation, uint32 scancounter,
 									external_getdata_callback,
 									(void *) scan,
 									NIL,
-									(fmttype_is_custom(fmtType) ? NIL : extOptions));
+									extOptions);
 
 	if (scan->fs_pstate->opts.header_line && Gp_role == GP_ROLE_DISPATCH)
 	{
