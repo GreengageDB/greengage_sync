@@ -478,7 +478,7 @@ static void ATPrepSetTableSpace(AlteredTableInfo *tab, Relation rel,
 								const char *tablespacename, LOCKMODE lockmode);
 static void ATExecSetTableSpace(Oid tableOid, Oid newTableSpace, LOCKMODE lockmode);
 static void ATExecSetTableSpaceNoStorage(Relation rel, Oid newTableSpace);
-static void ATExecSetRelOptions(Relation rel, List *defList,
+static Datum ATExecSetRelOptions(Relation rel, List *defList,
 								AlterTableType operation,
 								bool *aoopt_changed,
 								Oid newam,
@@ -547,7 +547,6 @@ static void prepare_AlterTableStmt_for_dispatch(AlterTableStmt *stmt);
 static List *strip_gpdb_part_commands(List *cmds);
 static void populate_rel_col_encodings(Relation rel, List *stenc, List *withOptions);
 static Datum get_rel_opts(Relation rel);
-static void clear_rel_opts(Relation rel);
 
 
 /* ----------------------------------------------------------------
@@ -875,7 +874,8 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 									 stdRdOptions->checksum,
 									 (accessMethodId == AO_COLUMN_TABLE_AM_OID));
 
-		reloptions = transformAOStdRdOptions(stdRdOptions, reloptions);
+		reloptions = transformAOStdRdOptions(stdRdOptions, reloptions,
+											 RELKIND_HAS_STORAGE(relkind));
 	}
 	else switch (relkind)
 	{
@@ -5623,12 +5623,9 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab, Relation rel,
 			/* Set reloptions if specified any. Otherwise handled specially in Phase 3. */
 			{
 				bool aoopt_changed = false;
+				Datum newOptions;
 
-				/* If we are changing access method, simply remove all the existing ones. */
-				if (OidIsValid(tab->newAccessMethod))
-					clear_rel_opts(rel);
-
-				ATExecSetRelOptions(rel, (List *) cmd->def, cmd->subtype, &aoopt_changed, tab->newAccessMethod, lockmode);
+				newOptions = ATExecSetRelOptions(rel, (List *) cmd->def, cmd->subtype, &aoopt_changed, tab->newAccessMethod, lockmode);
 				CommandCounterIncrement(); /* make reloptions change visiable */
 
 				/* 
@@ -5637,7 +5634,10 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab, Relation rel,
 				 * option changed, in which case we'll still have to rewrite.
 				 */
 				if (aoopt_changed)
+				{
 					tab->rewrite |= AT_REWRITE_ALTER_RELOPTS;
+					tab->newOptions = newOptions;
+				}
 			}
 
 			/* If we are changing AM to AOCO, add pg_attribute_encoding entries for each column. */
@@ -5669,12 +5669,16 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		case AT_ReplaceRelOptions:	/* replace entire option list */
 			{
 				bool 		aoopt_changed = false;
+				Datum 		newOptions;
 
-				ATExecSetRelOptions(rel, (List *) cmd->def, cmd->subtype, &aoopt_changed, InvalidOid, lockmode);
+				newOptions = ATExecSetRelOptions(rel, (List *) cmd->def, cmd->subtype, &aoopt_changed, InvalidOid, lockmode);
 
 				/* Will rewrite table if there's a change to the AO reloptions. */
 				if (aoopt_changed)
+				{
 					tab->rewrite |= AT_REWRITE_ALTER_RELOPTS;
+					tab->newOptions = newOptions;
+				}
 			}
 			break;
 		case AT_EnableTrig:		/* ENABLE TRIGGER name */
@@ -6250,7 +6254,7 @@ ATRewriteTables(AlterTableStmt *parsetree, List **wqueue, LOCKMODE lockmode,
 			 * unlogged anyway.
 			 */
 			OIDNewHeap = make_new_heap(tab->relid, NewTableSpace, NewAccessMethod,
-									   tab->new_crsds, persistence, lockmode,
+									   tab->new_crsds, tab->newOptions, persistence, lockmode,
 									   hasIndexes, false);
 
 			/*
@@ -15163,11 +15167,13 @@ ATPrepSetTableSpace(AlteredTableInfo *tab, Relation rel, const char *tablespacen
 /*
  * Set, reset, or replace reloptions.
  *
+ * Return the new options.
+ *
  * GPDB specific arguments: 
  * 	aoopt_changed: whether any AO storage options have been changed in this function.
  * 	newam: the new AM if we will change the table AM. It's InvalidOid if no change is needed.
  */
-static void
+static Datum
 ATExecSetRelOptions(Relation rel, List *defList, AlterTableType operation,
 					bool *aoopt_changed, Oid newam, LOCKMODE lockmode)
 {
@@ -15187,8 +15193,9 @@ ATExecSetRelOptions(Relation rel, List *defList, AlterTableType operation,
 	/* Get the new table AM if applicable. Otherwise get the one from the reltion. */
 	tableam = (newam != InvalidOid) ? newam : rel->rd_rel->relam;
 
-	if (defList == NIL && operation != AT_ReplaceRelOptions)
-		return;					/* nothing to do */
+	/* AO reloptions are still written when no defList is provided */
+	if (defList == NIL && operation != AT_ReplaceRelOptions && !IsAccessMethodAO(tableam))
+		return (Datum)0;					/* nothing to do */
 
 	pgclass = table_open(RelationRelationId, RowExclusiveLock);
 
@@ -15236,11 +15243,24 @@ ATExecSetRelOptions(Relation rel, List *defList, AlterTableType operation,
 		}
 	}
 
-	/* Generate new proposed reloptions (text array) */
-	newOptions = transformRelOptions(isnull ? (Datum) 0 : datum,
-									 defList, NULL, validnsps, false,
-									 operation == AT_ResetRelOptions);
-
+	/*
+	 * Generate new proposed reloptions (text array)
+	 * If table AM has changed do not retain the old reloptions
+	 * since they may not be valid for the new AM.
+	 */
+	if (newam)
+	{
+		*aoopt_changed = true;
+		newOptions =  transformRelOptions((Datum) 0,
+										defList, NULL, validnsps, false,
+										false);
+	}
+	else
+	{
+		newOptions = transformRelOptions(isnull ? (Datum) 0 : datum,
+										defList, NULL, validnsps, false,
+										operation == AT_ResetRelOptions);
+	}
 	/* Validate */
 	switch (rel->rd_rel->relkind)
 	{
@@ -15261,15 +15281,33 @@ ATExecSetRelOptions(Relation rel, List *defList, AlterTableType operation,
 											 stdRdOptions->compresstype,
 											 stdRdOptions->checksum,
 											 tableam == AO_COLUMN_TABLE_AM_OID);
-				/* If reloptions will be changed, indicate so. */
-				if (aoopt_changed != NULL)
-					*aoopt_changed = !relOptionsEquals(datum, newOptions);
 
+				newOptions = transformAOStdRdOptions(stdRdOptions, newOptions, RELKIND_HAS_STORAGE(rel->rd_rel->relkind));
+
+				/* If reloptions will be changed, indicate so. */
+				if (!relOptionsEquals(datum, newOptions))
+					*aoopt_changed = true;
 			}
 			else if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
 				(void) partitioned_table_reloptions(newOptions, true);
 			else
 				(void) heap_reloptions(rel->rd_rel->relkind, newOptions, true);
+
+			/*
+			* AM options changed means we will perform a table rewrite, which involves copying
+			* data from the existing table to a new table. In that case, we should not
+			* update pg_class.reloptions of the existing table which might cause problem
+			* because it doesn't match with the table's storage format. We will pass the new
+			* options over through the AlteredTableInfo struct.
+			*
+			* The exception is partitioned table which won't be rewritten.
+			*/
+			if (*aoopt_changed && rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE)
+			{
+				ReleaseSysCache(tuple);
+				table_close(pgclass, RowExclusiveLock);
+				return newOptions;
+			}
 			break;
 		case RELKIND_VIEW:
 			(void) view_reloptions(newOptions, true);
@@ -15418,6 +15456,7 @@ ATExecSetRelOptions(Relation rel, List *defList, AlterTableType operation,
 						   "ALTER",
 						   operation == AT_ResetRelOptions ? "RESET" : "SET"
 				);
+	return newOptions;
 }
 
 /*
@@ -17062,39 +17101,6 @@ get_rel_opts(Relation rel)
 	ReleaseSysCache(optsTuple);
 
 	return newOptions;
-}
-
-/*
- * GPDB: Convenience function to clear the pg_class.reloptions field for a given relation.
- */
-static void
-clear_rel_opts(Relation rel)
-{
-	Datum           val[Natts_pg_class] = {0};
-	bool            null[Natts_pg_class] = {0};
-	bool            repl[Natts_pg_class] = {0};
-	Relation 	classrel;
-	HeapTuple 	tup;
-
-	classrel = table_open(RelationRelationId, RowExclusiveLock);
-
-	tup = SearchSysCacheCopy1(RELOID, RelationGetRelid(rel));
-	if (!HeapTupleIsValid(tup))
-		elog(ERROR, "cache lookup failed for relation %u", RelationGetRelid(rel));
-
-	val[Anum_pg_class_reloptions - 1] = (Datum) 0;
-	null[Anum_pg_class_reloptions - 1] = true;
-	repl[Anum_pg_class_reloptions - 1] = true;
-
-	tup = heap_modify_tuple(tup, RelationGetDescr(classrel),
-								val, null, repl);
-	CatalogTupleUpdate(classrel, &tup->t_self, tup);
-
-	heap_freetuple(tup);
-
-	table_close(classrel, RowExclusiveLock);
-
-	CommandCounterIncrement(); 
 }
 
 static RangeVar *

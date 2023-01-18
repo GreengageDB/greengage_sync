@@ -1253,7 +1253,7 @@ aocs_fetch_init(Relation relation,
 
 	Assert(proj);
 
-    bool checksum;
+    bool checksum = true;
     Oid visimaprelid;
     Oid visimapidxid;
     GetAppendOnlyEntryAuxOids(relation->rd_id,
