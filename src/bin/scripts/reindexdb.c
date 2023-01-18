@@ -193,6 +193,17 @@ main(int argc, char *argv[])
 	cparams.prompt_password = prompt_password;
 	cparams.override_dbname = NULL;
 
+	if (concurrently)
+	{
+		/*
+		 * GPDB_12_MERGE_FEATURE_NOT_SUPPORTED: When we do support this feature,
+		 * a version guard against GP_VERSION_NUM should be introduced here to
+		 * ensure we don't run it against an unsupported version.
+		 */
+		pg_log_error("reindexing a database concurrently is not supported");
+		exit(1);
+	}
+
 	setup_cancel_handler(NULL);
 
 	if (alldb)
@@ -337,14 +348,6 @@ reindex_one_database(const ConnParams *cparams, ReindexType type,
 	int			items_count = 0;
 
 	conn = connectDatabase(cparams, progname, echo, false, false);
-
-	if (concurrently && PQserverVersion(conn) < 120000)
-	{
-		PQfinish(conn);
-		pg_log_error("cannot use the \"%s\" option on server versions older than PostgreSQL %s",
-					 "concurrently", "12");
-		exit(1);
-	}
 
 	if (!parallel)
 	{
