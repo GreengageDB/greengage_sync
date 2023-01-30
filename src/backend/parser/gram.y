@@ -508,7 +508,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 %type <boolean> opt_instead
 %type <boolean> opt_unique opt_concurrently opt_verbose opt_full
-%type <boolean> opt_freeze opt_analyze opt_default opt_recheck
+%type <boolean> opt_freeze opt_analyze opt_ao_aux_only opt_default opt_recheck
 %type <boolean> opt_dxl
 %type <defelt>	opt_binary copy_delimiter
 
@@ -809,7 +809,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 /* GPDB-added keywords, in alphabetical order */
 %token <keyword>
-	ACTIVE
+	ACTIVE AO_AUX_ONLY
 
 	CONTAINS COORDINATOR CPUSET CPU_HARD_QUOTA_LIMIT CPU_SOFT_PRIORITY
 
@@ -934,6 +934,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc AGGREGATE
 			%nonassoc ALSO
 			%nonassoc ALTER
+            %nonassoc AO_AUX_ONLY
 			%nonassoc ASSERTION
 			%nonassoc ASSIGNMENT
 			%nonassoc BACKWARD
@@ -13136,7 +13137,7 @@ cluster_index_specification:
  *
  *****************************************************************************/
 
-VacuumStmt: VACUUM opt_full opt_freeze opt_verbose opt_analyze opt_vacuum_relation_list
+VacuumStmt: VACUUM opt_full opt_freeze opt_verbose opt_analyze opt_ao_aux_only opt_vacuum_relation_list
 				{
 					VacuumStmt *n = makeNode(VacuumStmt);
 					n->options = NIL;
@@ -13152,7 +13153,10 @@ VacuumStmt: VACUUM opt_full opt_freeze opt_verbose opt_analyze opt_vacuum_relati
 					if ($5)
 						n->options = lappend(n->options,
 											 makeDefElem("analyze", NULL, @5));
-					n->rels = $6;
+					if ($6)
+						n->options = lappend(n->options,
+											 makeDefElem("ao_aux_only", NULL, @6));
+					n->rels = $7;
 					n->is_vacuumcmd = true;
 					$$ = (Node *)n;
 				}
@@ -13316,6 +13320,10 @@ opt_vacuum_relation_list:
 			| /*EMPTY*/								{ $$ = NIL; }
 		;
 
+/*GPDB: only vacuum supporting heap tables of given AO table*/
+opt_ao_aux_only:    AO_AUX_ONLY						{ $$ = true; }
+                    | /*EMPTY*/                     { $$ = false; }
+		;
 
 /*****************************************************************************
  *
@@ -18858,7 +18866,8 @@ col_name_keyword:
  * - thomas 2000-11-28
  */
 type_func_name_keyword:
-			  AUTHORIZATION
+            AO_AUX_ONLY
+			| AUTHORIZATION
 			| BINARY
 			| COLLATION
 			| CONCURRENTLY
