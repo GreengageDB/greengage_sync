@@ -4234,12 +4234,14 @@ AlterTypeSetDefaultEnc(AlterTypeStmtSetDefaultEnc *stmt)
 {
 	TypeName   *typname;
 	Oid			typid;
+	Oid			arrtypid;
 	Datum		typoptions;
 	List	   *encoding;
 
 	/* Make a TypeName so we can use standard type lookup machinery */
 	typname = makeTypeNameFromNameList(stmt->typeName);
 	typid = typenameTypeId(NULL, typname);
+	arrtypid = get_array_type(typid);
 
 	if (type_is_rowtype(typid))
 		ereport(ERROR,
@@ -4260,7 +4262,15 @@ AlterTypeSetDefaultEnc(AlterTypeStmtSetDefaultEnc *stmt)
 									 encoding, NULL, NULL,
 									 false,
 									 false);
+
+	if (arrtypid == InvalidOid)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("failed to get the array type of type \"%s\"",
+						TypeNameToString(typname))));
+
 	update_type_encoding(typid, typoptions);
+	update_type_encoding(arrtypid, typoptions);
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 		CdbDispatchUtilityStatement((Node *) stmt,
