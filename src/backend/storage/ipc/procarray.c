@@ -697,8 +697,11 @@ ProcArrayEndTransaction(PGPROC *proc, TransactionId latestXid)
 		 */
 		if (LWLockConditionalAcquire(ProcArrayLock, LW_EXCLUSIVE))
 		{
-			if (TransactionIdIsValid(latestXid))
-				ProcArrayEndTransactionInternal(proc, latestXid);
+			/*
+			 * Greenplum needs to clear things of proc too in the case that
+			 * the distributed XID is valid but XID is not.
+			 */
+			ProcArrayEndTransactionInternal(proc, latestXid);
 
 			if (TransactionIdIsValid(tmGxact->gxid))
 				ProcArrayEndGxact(tmGxact);
@@ -708,38 +711,43 @@ ProcArrayEndTransaction(PGPROC *proc, TransactionId latestXid)
 		else
 			ProcArrayGroupClearXid(proc, latestXid);
 	}
-
-	/*
-	 * If we have no XID, we don't need to lock, since we won't affect
-	 * anyone else's calculation of a snapshot.  We might change their
-	 * estimate of global xmin, but that's OK.
-	 *
-	 * NB: this may reset the pgproc and tmGxact twice (not including the xid
-	 * and gxid), it should be no harm to the correctness, just an easy way to
-	 * handle the cases like: there's a valid distributed XID but no local XID.
-	 */
-	Assert(!TransactionIdIsValid(proc->xid));
-	Assert(!TransactionIdIsValid(allTmGxact[proc->pgprocno].gxid));
-	Assert(proc->subxidStatus.count == 0);
-	Assert(!proc->subxidStatus.overflowed);
-
-	proc->lxid = InvalidLocalTransactionId;
-	proc->xmin = InvalidTransactionId;
-	proc->delayChkpt = false;		/* be sure this is cleared in abort */
-	proc->recoveryConflictPending = false;
-
-	/* must be cleared with xid/xmin: */
-	/* avoid unnecessarily dirtying shared cachelines */
-	if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
+	else
 	{
-		Assert(!LWLockHeldByMe(ProcArrayLock));
-		LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-		Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
-		proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
-		ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
-		LWLockRelease(ProcArrayLock);
+		/*
+		 * If we have no XID, we don't need to lock, since we won't affect
+		 * anyone else's calculation of a snapshot.  We might change their
+		 * estimate of global xmin, but that's OK.
+		 */
+		Assert(!TransactionIdIsValid(proc->xid));
+		Assert(!TransactionIdIsValid(allTmGxact[proc->pgprocno].gxid));
+		Assert(proc->subxidStatus.count == 0);
+		Assert(!proc->subxidStatus.overflowed);
+
+		proc->lxid = InvalidLocalTransactionId;
+		proc->xmin = InvalidTransactionId;
+		proc->delayChkpt = false;		/* be sure this is cleared in abort */
+		proc->recoveryConflictPending = false;
+
+		/* must be cleared with xid/xmin: */
+		/* avoid unnecessarily dirtying shared cachelines */
+		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
+		{
+			Assert(!LWLockHeldByMe(ProcArrayLock));
+			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
+			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
+			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
+			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
+			LWLockRelease(ProcArrayLock);
+		}
 	}
 
+	/*
+	 * reset global transaction context
+	 *
+	 * proc is currently always MyProc, and we reset MyTmGxact without question,
+	 * assert it.
+	 */
+	Assert(proc == MyProc);
 	resetTmGxact();
 }
 
@@ -752,13 +760,14 @@ static inline void
 ProcArrayEndTransactionInternal(PGPROC *proc, TransactionId latestXid)
 {
 	size_t		pgxactoff = proc->pgxactoff;
+	bool		onlyClear = !TransactionIdIsValid(proc->xid);
 
 	/*
 	 * Note: we need exclusive lock here because we're going to change other
 	 * processes' PGPROC entries.
 	 */
 	Assert(LWLockHeldByMeInMode(ProcArrayLock, LW_EXCLUSIVE));
-	Assert(TransactionIdIsValid(ProcGlobal->xids[pgxactoff]));
+	Assert(onlyClear || TransactionIdIsValid(ProcGlobal->xids[pgxactoff]));
 	Assert(ProcGlobal->xids[pgxactoff] == proc->xid);
 
 	ProcGlobal->xids[pgxactoff] = InvalidTransactionId;
@@ -786,6 +795,9 @@ ProcArrayEndTransactionInternal(PGPROC *proc, TransactionId latestXid)
 		proc->subxidStatus.count = 0;
 		proc->subxidStatus.overflowed = false;
 	}
+
+	if (onlyClear)
+		return;
 
 	/* Also advance global latestCompletedXid while holding the lock */
 	MaintainLatestCompletedXid(latestXid);
@@ -881,8 +893,11 @@ ProcArrayGroupClearXid(PGPROC *proc, TransactionId latestXid)
 		PGPROC	   *proc = &allProcs[nextidx];
 		TMGXACT	   *tmGxact = &allTmGxact[nextidx];
 
-		if (TransactionIdIsValid(proc->procArrayGroupMemberXid))
-			ProcArrayEndTransactionInternal(proc, proc->procArrayGroupMemberXid);
+		/*
+		 * Greenplum needs to clear things of proc too in the case that the
+		 * distributed XID is valid but XID is not.
+		 */
+		ProcArrayEndTransactionInternal(proc, proc->procArrayGroupMemberXid);
 
 		if (TransactionIdIsValid(tmGxact->gxid))
 			ProcArrayEndGxact(tmGxact);
