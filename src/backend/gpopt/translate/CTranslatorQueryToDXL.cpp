@@ -3321,6 +3321,7 @@ CTranslatorQueryToDXL::UnsupportedRTEKind(RTEKind rtekind)
 					   GPOS_WSZ_LIT("RangeTableEntry of type Void"));
 		}
 		case RTE_TABLEFUNCTION:
+		case RTE_TABLEFUNC:
 		{
 			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
 					   GPOS_WSZ_LIT("RangeTableEntry of type Table Function"));
