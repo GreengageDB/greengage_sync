@@ -6311,8 +6311,7 @@ genericcostestimate(PlannerInfo *root,
 	indexSelectivity = clauselist_selectivity(root, selectivityQuals,
 											  index->rel->relid,
 											  JOIN_INNER,
-											  NULL,
-											  false /* use_damping */);
+											  NULL);
 
 	/*
 	 * If caller didn't give us an estimate, estimate the number of index
@@ -6645,8 +6644,7 @@ btcostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 		btreeSelectivity = clauselist_selectivity(root, selectivityQuals,
 												  index->rel->relid,
 												  JOIN_INNER,
-												  NULL,
-												  false /* use_damping */);
+												  NULL);
 		numIndexTuples = btreeSelectivity * index->rel->tuples;
 
 		/*
@@ -7380,8 +7378,7 @@ gincostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 	*indexSelectivity = clauselist_selectivity(root, selectivityQuals,
 											   index->rel->relid,
 											   JOIN_INNER,
-											   NULL,
-											   false);
+											   NULL);
 
 	/* fetch estimated page cost for tablespace containing index */
 	get_tablespace_page_costs(index->reltablespace,
@@ -7818,8 +7815,7 @@ brincostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 
 	qualSelectivity = clauselist_selectivity(root, indexQuals,
 											 baserel->relid,
-											 JOIN_INNER, NULL,
-											 false /* use_damping */);
+											 JOIN_INNER, NULL);
 
 	/*
 	 * Now calculate the minimum possible ranges we could match with if all of
