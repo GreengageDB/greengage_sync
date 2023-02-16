@@ -4104,6 +4104,16 @@ reindex_relation(Oid relid, int flags, int options)
 		i++;
 	}
 
+	/* 
+	 * While we have the relation opened, obtain the aoseg_relid and 
+	 * aoblkdir_relid if it is an AO table.
+	 */
+	if ((flags & REINDEX_REL_PROCESS_TOAST) && relIsAO)
+		GetAppendOnlyEntryAuxOids(rel,
+								  &aoseg_relid,
+								  &aoblkdir_relid, NULL,
+								  &aovisimap_relid, NULL);
+
 	/*
 	 * Close rel, but continue to hold the lock.
 	 */
@@ -4126,13 +4136,6 @@ reindex_relation(Oid relid, int flags, int options)
 		result |= reindex_relation(toast_relid, flags,
 								   options & ~(REINDEXOPT_MISSING_OK));
 	}
-
-	/* Obtain the aoseg_relid and aoblkdir_relid if the relation is an AO table. */
-	if ((flags & REINDEX_REL_PROCESS_TOAST) && relIsAO)
-		GetAppendOnlyEntryAuxOids(relid, NULL,
-								  &aoseg_relid,
-								  &aoblkdir_relid, NULL,
-								  &aovisimap_relid, NULL);
 
 	/*
 	 * If an AO rel has a secondary segment list rel, reindex that too while we
