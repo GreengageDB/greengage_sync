@@ -142,6 +142,7 @@ static int	compresslevel = 0;
 static IncludeWal includewal = STREAM_WAL;
 static bool fastcheckpoint = false;
 static bool writerecoveryconf = false;
+static bool writeconffilesonly = false;
 static bool do_sync = true;
 static int	standby_message_timeout = 10 * 1000;	/* 10 sec = default */
 static pg_time_t last_progress_report = 0;
@@ -399,6 +400,8 @@ usage(void)
 			 "                         (in kB/s, or use suffix \"k\" or \"M\")\n"));
 	printf(_("  -R, --write-recovery-conf\n"
 			 "                         write configuration for replication\n"));
+	printf(_("  -o, --write-conf-files-only\n"
+			 "                         write configuration files only\n"));
 	printf(_("  -T, --tablespace-mapping=OLDDIR=NEWDIR\n"
 			 "                         relocate tablespace in OLDDIR to NEWDIR\n"));
 	printf(_("      --waldir=WALDIR    location for the write-ahead log directory\n"));
@@ -2448,6 +2451,7 @@ main(int argc, char **argv)
 		{"create-slot", no_argument, NULL, 'C'},
 		{"max-rate", required_argument, NULL, 'r'},
 		{"write-recovery-conf", no_argument, NULL, 'R'},
+		{"write-conf-files-only", no_argument, NULL, 'o'},
 		{"slot", required_argument, NULL, 'S'},
 		{"tablespace-mapping", required_argument, NULL, 'T'},
 		{"wal-method", required_argument, NULL, 'X'},
@@ -2505,7 +2509,7 @@ main(int argc, char **argv)
 	num_exclude_from = 0;
 	atexit(cleanup_directories_atexit);
 
-	while ((c = getopt_long(argc, argv, "CD:F:r:RT:xX:l:zZ:d:c:h:p:U:s:S:wWvPE:",
+	while ((c = getopt_long(argc, argv, "CD:F:o:r:RT:xX:l:zZ:d:c:h:p:U:s:S:wWvPE:",
 							long_options, &option_index)) != -1)
 	{
 		switch (c)
@@ -2527,6 +2531,9 @@ main(int argc, char **argv)
 								 optarg);
 					exit(1);
 				}
+				break;
+			case 'o':
+				writeconffilesonly = true;
 				break;
 			case 'r':
 				maxrate = parse_max_rate(optarg);
@@ -2808,6 +2815,25 @@ main(int argc, char **argv)
 		}
 	}
 
+	if (writeconffilesonly)
+	{
+		if(create_slot)
+		{
+			pg_log_error("--create_slot cannot be used with --write-conf-files-only");
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+					progname);
+			exit(1);
+		}
+
+		if(writerecoveryconf)
+		{
+			pg_log_error("--write-recovery-conf cannot be used with --write-conf-files-only");
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+					progname);
+			exit(1);
+		}
+	}
+
 #ifndef HAVE_LIBZ
 	if (compresslevel != 0)
 	{
@@ -2851,6 +2877,17 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	atexit(disconnect_atexit);
+
+	/* To only write recovery.conf and internal.auto.conf files,
+	   one of the usecase is gprecoverseg differential recovery (there can be others in future)
+	*/
+	if (writeconffilesonly)
+	{
+		WriteInternalConfFile();
+		WriteRecoveryConfig(conn, basedir, GenerateRecoveryConfig(conn, replication_slot));
+		success = true;
+		return 0;
+	}
 
 	/*
 	 * Set umask so that directories/files are created with the same
