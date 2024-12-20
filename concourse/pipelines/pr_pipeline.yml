@@ -21,7 +21,6 @@ resources:
     base_branch: "main"
     access_token: ((gpdb-git-access-token))
     ignore_paths:
-    - gpdb-doc/*
     - README*
 
 - name: gpdb7-rhel8-build
