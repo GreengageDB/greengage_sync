@@ -4712,6 +4712,10 @@ _outAExpr(StringInfo str, const A_Expr *node)
 			appendStringInfoString(str, " NULLIF ");
 			WRITE_NODE_FIELD(name);
 			break;
+		case AEXPR_OF:
+			appendStringInfoString(str, " OF ");
+			WRITE_NODE_FIELD(name);
+			break;
 		case AEXPR_IN:
 			appendStringInfoString(str, " IN ");
 			WRITE_NODE_FIELD(name);
