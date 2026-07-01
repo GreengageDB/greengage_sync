@@ -48,6 +48,9 @@ FOREIGN_KEY(relid REFERENCES pg_class(oid));
  */
 typedef FormData_gp_partition_template *Form_gp_partition_template;
 
+DECLARE_UNIQUE_INDEX(gp_partition_template_relid_level_index, 8023, on gp_partition_template using btree(relid oid_ops, level int2_ops));
+#define GpPartitionTemplateRelidLevelIndexId  8023
+
 extern void StoreGpPartitionTemplate(Oid relid, int32 level,
 									 GpPartitionDefinition *gpPartDef);
 extern GpPartitionDefinition *GetGpPartitionTemplate(Oid relid, int32 level);
