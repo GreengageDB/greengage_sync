@@ -416,14 +416,12 @@ extern char *makeArrayTypeName(const char *typeName, Oid typeNamespace);
 extern bool moveArrayTypeName(Oid typeOid, const char *typeName,
 							  Oid typeNamespace);
 
-<<<<<<< HEAD
 extern void add_type_encoding(Oid typid, Datum typoptions);
 extern void remove_type_encoding(Oid typid);
 extern void update_type_encoding(Oid typid, Datum typoptions);
 extern List *get_type_encoding(TypeName *typname);
-=======
+
 extern char *makeMultirangeTypeName(const char *rangeTypeName,
 									Oid typeNamespace);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 #endif							/* PG_TYPE_H */
