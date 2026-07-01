@@ -530,7 +530,6 @@
 { castsource => 'jsonb', casttarget => 'float8', castfunc => 'float8(jsonb)',
   castcontext => 'e', castmethod => 'f' },
 
-<<<<<<< HEAD
 # complex type
 { castsource => 'float8', casttarget => 'complex', castfunc => 'float82complex(float8)',
   castcontext => 'i', castmethod => 'f' },
@@ -549,7 +548,6 @@
 { castsource => 'numeric', casttarget => 'complex', castfunc => 'numeric2complex(numeric)',
   castcontext => 'i', castmethod => 'f' },
 
-=======
 # range to multirange
 { castsource => 'int4range', casttarget => 'int4multirange', castfunc => 'int4multirange(int4range)',
   castcontext => 'e', castmethod => 'f' },
@@ -563,5 +561,4 @@
   castcontext => 'e', castmethod => 'f' },
 { castsource => 'tstzrange', casttarget => 'tstzmultirange', castfunc => 'tstzmultirange(tstzrange)',
   castcontext => 'e', castmethod => 'f' },
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 ]
