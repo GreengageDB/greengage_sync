@@ -3010,6 +3010,31 @@ ReindexTable(ReindexStmt *stmt, int options, bool isTopLevel)
 									   0,
 									   RangeVarCallbackOwnsTable, NULL);
 
+	/*
+	 * GPDB: REINDEX CONCURRENTLY is not supported on the coordinator --
+	 * ReindexRelationConcurrently() rebuilds each index under a new OID on the
+	 * QD while the segments keep the original OID, corrupting the catalog (and
+	 * the transient OIDs aren't dispatched).  Fall back to a normal reindex with
+	 * a NOTICE; a partitioned table then reindexes each child non-concurrently
+	 * via ReindexPartitions.  Single-node utility mode keeps the working
+	 * concurrent path.
+	 */
+	if ((options & REINDEXOPT_CONCURRENTLY) != 0 &&
+		Gp_role == GP_ROLE_DISPATCH &&
+		get_rel_persistence(heapOid) != RELPERSISTENCE_TEMP)
+	{
+		/* keep upstream's refusal for system catalogs */
+		if (IsCatalogRelationOid(heapOid))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot reindex system catalogs concurrently")));
+
+		ereport(NOTICE,
+				(errmsg("concurrent reindex of \"%s\" is not supported in Greenplum, reindexing non-concurrently instead",
+						relation->relname)));
+		options &= ~REINDEXOPT_CONCURRENTLY;
+	}
+
 	if (get_rel_relkind(heapOid) == RELKIND_PARTITIONED_TABLE)
 		ReindexPartitions(heapOid, options, isTopLevel);
 	else if ((options & REINDEXOPT_CONCURRENTLY) != 0 &&
