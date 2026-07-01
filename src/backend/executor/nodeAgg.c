@@ -1406,7 +1406,7 @@ finalize_aggregates(AggState *aggstate,
 
 		pergroupstate = &pergroup[transno];
 
-		if (DO_AGGSPLIT_SKIPFINAL(aggstate->aggsplit))
+		if (DO_AGGSPLIT_SKIPFINAL(peragg->aggref->aggsplit))
 			finalize_partialaggregate(aggstate, peragg, pergroupstate,
 									  &aggvalues[aggno], &aggnulls[aggno]);
 		else
@@ -4122,7 +4122,7 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 			 * of using the transition function, we'll use the combine
 			 * function
 			 */
-			if (DO_AGGSPLIT_COMBINE(aggstate->aggsplit))
+			if (DO_AGGSPLIT_COMBINE(aggref->aggsplit))
 			{
 				transfn_oid = aggform->aggcombinefn;
 
