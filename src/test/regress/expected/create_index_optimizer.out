@@ -186,7 +186,7 @@ SELECT count(*) FROM point_tbl p WHERE p.f1 ~= '(-5, -12)';
 -- In gpdb, we intentional filter out point (1e-300, -1e-300) every order by related queries
 -- in this test case file. It is an underflow point, rank it cause randomly results( (0,0),
 -- (1e-300, -1e-300) are equal).
-SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' ORDER BY f1 <-> '0,1';
+SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' ORDER BY f1 <-> '0,1';  -- order none
         f1         
 -------------------
  (-3,4)
@@ -205,7 +205,7 @@ SELECT * FROM point_tbl WHERE f1 IS NULL;
  
 (1 row)
 
-SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' AND f1 IS NOT NULL ORDER BY f1 <-> '0,1';
+SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' AND f1 IS NOT NULL ORDER BY f1 <-> '0,1';  -- order none
         f1         
 -------------------
  (-3,4)
@@ -584,7 +584,7 @@ SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' ORDER BY f1 <-> '0,1
  Optimizer: Postgres query optimizer
 (6 rows)
 
-SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' ORDER BY f1 <-> '0,1';
+SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' ORDER BY f1 <-> '0,1';  -- order none
         f1         
 -------------------
  (-3,4)
@@ -626,7 +626,7 @@ SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' AND f1 IS NOT NULL O
  Optimizer: Postgres query optimizer
 (7 rows)
 
-SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' AND f1 IS NOT NULL ORDER BY f1 <-> '0,1';
+SELECT * FROM point_tbl WHERE NOT f1 ~= '(1e-300, -1e-300)' AND f1 IS NOT NULL ORDER BY f1 <-> '0,1';  -- order none
         f1         
 -------------------
  (-3,4)

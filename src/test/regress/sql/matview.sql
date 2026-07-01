@@ -276,6 +276,12 @@ GRANT ALL ON SCHEMA matview_schema TO public;
 SET SESSION AUTHORIZATION regress_matview_user;
 CREATE MATERIALIZED VIEW matview_schema.mv_withdata1 (a) AS
   SELECT generate_series(1, 10) WITH DATA;
+-- Mask out the actual row counts in EXPLAIN ANALYZE: rows arriving at a slice
+-- depend on the random distribution of generate_series() output across segments.
+-- start_matchsubs
+-- m/\(actual rows=\d+ loops=\d+\)/
+-- s/\(actual rows=\d+ loops=\d+\)/(actual rows=## loops=##)/
+-- end_matchsubs
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE MATERIALIZED VIEW matview_schema.mv_withdata2 (a) AS
   SELECT generate_series(1, 10) WITH DATA;

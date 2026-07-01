@@ -30,6 +30,12 @@ SET SESSION AUTHORIZATION regress_selinto_user;
 CREATE TABLE selinto_schema.tbl_withdata1 (a)
   AS SELECT generate_series(1,3) WITH DATA;
 INSERT INTO selinto_schema.tbl_withdata1 VALUES (4);
+-- Mask out the actual row counts in EXPLAIN ANALYZE: rows arriving at a slice
+-- depend on the random distribution of generate_series() output across segments.
+-- start_matchsubs
+-- m/\(actual rows=\d+ loops=\d+\)/
+-- s/\(actual rows=\d+ loops=\d+\)/(actual rows=## loops=##)/
+-- end_matchsubs
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE TABLE selinto_schema.tbl_withdata2 (a) AS
   SELECT generate_series(1,3) WITH DATA;
