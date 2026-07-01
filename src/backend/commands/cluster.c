@@ -6,9 +6,13 @@
  * There is hardly anything left of Paul Brown's original implementation...
  *
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994-5, Regents of the University of California
  *
  *
@@ -43,6 +47,7 @@
 #include "catalog/pg_type.h"
 #include "catalog/toasting.h"
 #include "commands/cluster.h"
+#include "commands/defrem.h"
 #include "commands/progress.h"
 #include "commands/tablecmds.h"
 #include "commands/vacuum.h"
@@ -116,8 +121,29 @@ static List *get_tables_to_cluster(MemoryContext cluster_context);
  *---------------------------------------------------------------------------
  */
 void
-cluster(ClusterStmt *stmt, bool isTopLevel)
+cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 {
+	ListCell   *lc;
+	int			options = 0;
+	bool		verbose = false;
+
+	/* Parse option list */
+	foreach(lc, stmt->params)
+	{
+		DefElem    *opt = (DefElem *) lfirst(lc);
+
+		if (strcmp(opt->defname, "verbose") == 0)
+			verbose = defGetBoolean(opt);
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("unrecognized CLUSTER option \"%s\"",
+							opt->defname),
+					 parser_errposition(pstate, opt->location)));
+	}
+
+	options = (verbose ? CLUOPT_VERBOSE : 0);
+
 	if (stmt->relation != NULL)
 	{
 		/* This is the single-relation case. */
@@ -187,6 +213,7 @@ cluster(ClusterStmt *stmt, bool isTopLevel)
 		table_close(rel, NoLock);
 
 		/* Do the job. */
+<<<<<<< HEAD
 		cluster_rel(tableOid, indexOid, stmt->options, true /* printError */);
 
 		if (Gp_role == GP_ROLE_DISPATCH)
@@ -198,6 +225,9 @@ cluster(ClusterStmt *stmt, bool isTopLevel)
 										GetAssignedOidsForDispatch(),
 										NULL);
 		}
+=======
+		cluster_rel(tableOid, indexOid, options);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	}
 	else
 	{
@@ -246,6 +276,7 @@ cluster(ClusterStmt *stmt, bool isTopLevel)
 			/* functions in indexes may want a snapshot set */
 			PushActiveSnapshot(GetTransactionSnapshot());
 			/* Do the job. */
+<<<<<<< HEAD
 			dispatch = cluster_rel(rvtc->tableOid, rvtc->indexOid,
 								   stmt->options | CLUOPT_RECHECK,
 								   false /* printError */);
@@ -262,6 +293,10 @@ cluster(ClusterStmt *stmt, bool isTopLevel)
 											NULL);
 			}
 
+=======
+			cluster_rel(rvtc->tableOid, rvtc->indexOid,
+						options | CLUOPT_RECHECK);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 			PopActiveSnapshot();
 			CommitTransactionCommand();
 		}

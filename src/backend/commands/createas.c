@@ -13,7 +13,7 @@
  * we must return a tuples-processed count in the QueryCompletion.  (We no
  * longer do that for CTAS ... WITH NO DATA, however.)
  *
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -310,6 +310,7 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 
 	Assert(Gp_role != GP_ROLE_EXECUTE);
 
+<<<<<<< HEAD
 	if (stmt->if_not_exists)
 	{
 		Oid			nspid;
@@ -337,6 +338,12 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 			return InvalidObjectAddress;
 		}
 	}
+=======
+	/* Check if the relation exists or not */
+	if (CreateTableAsRelExists(stmt))
+		return InvalidObjectAddress;
+
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	/*
 	 * Create the tuple receiver object and insert info it will need
 	 */
@@ -520,6 +527,41 @@ GetIntoRelEFlags(IntoClause *intoClause)
 }
 
 /*
+ * CreateTableAsRelExists --- check existence of relation for CreateTableAsStmt
+ *
+ * Utility wrapper checking if the relation pending for creation in this
+ * CreateTableAsStmt query already exists or not.  Returns true if the
+ * relation exists, otherwise false.
+ */
+bool
+CreateTableAsRelExists(CreateTableAsStmt *ctas)
+{
+	Oid			nspid;
+	IntoClause *into = ctas->into;
+
+	nspid = RangeVarGetCreationNamespace(into->rel);
+
+	if (get_relname_relid(into->rel->relname, nspid))
+	{
+		if (!ctas->if_not_exists)
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_TABLE),
+					 errmsg("relation \"%s\" already exists",
+							into->rel->relname)));
+
+		/* The relation exists and IF NOT EXISTS has been specified */
+		ereport(NOTICE,
+				(errcode(ERRCODE_DUPLICATE_TABLE),
+				 errmsg("relation \"%s\" already exists, skipping",
+						into->rel->relname)));
+		return true;
+	}
+
+	/* Relation does not exist, it can be created */
+	return false;
+}
+
+/*
  * CreateIntoRelDestReceiver -- create a suitable DestReceiver object
  *
  * intoClause will be NULL if called from CreateDestReceiver(), in which
@@ -569,11 +611,9 @@ intorel_initplan(struct QueryDesc *queryDesc, int eflags)
 	/* Get 'into' from the dispatched plan */
 	IntoClause *into = queryDesc->plannedstmt->intoClause;
 	bool		is_matview;
-	char		relkind;
 	List	   *attrList;
 	ObjectAddress intoRelationAddr;
 	Relation	intoRelationDesc;
-	RangeTblEntry *rte;
 	ListCell   *lc;
 	int			attnum;
 	TupleDesc   typeinfo = queryDesc->tupDesc;
@@ -585,7 +625,6 @@ intorel_initplan(struct QueryDesc *queryDesc, int eflags)
 
 	/* This code supports both CREATE TABLE AS and CREATE MATERIALIZED VIEW */
 	is_matview = (into->viewQuery != NULL);
-	relkind = is_matview ? RELKIND_MATVIEW : RELKIND_RELATION;
 
 	/*
 	 * Build column definitions using "pre-cooked" type and collation info. If
@@ -653,25 +692,6 @@ intorel_initplan(struct QueryDesc *queryDesc, int eflags)
 	intoRelationDesc = table_open(intoRelationAddr.objectId, AccessExclusiveLock);
 
 	/*
-	 * Check INSERT permission on the constructed table.
-	 *
-	 * XXX: It would arguably make sense to skip this check if into->skipData
-	 * is true.
-	 */
-	rte = makeNode(RangeTblEntry);
-	rte->rtekind = RTE_RELATION;
-	rte->relid = intoRelationAddr.objectId;
-	rte->relkind = relkind;
-	rte->rellockmode = RowExclusiveLock;
-	rte->requiredPerms = ACL_INSERT;
-
-	for (attnum = 1; attnum <= intoRelationDesc->rd_att->natts; attnum++)
-		rte->insertedCols = bms_add_member(rte->insertedCols,
-										   attnum - FirstLowInvalidHeapAttributeNumber);
-
-	ExecCheckRTPerms(list_make1(rte), true);
-
-	/*
 	 * Make sure the constructed table does not have RLS enabled.
 	 *
 	 * check_enable_rls() will ereport(ERROR) itself if the user has requested
@@ -702,7 +722,15 @@ intorel_initplan(struct QueryDesc *queryDesc, int eflags)
 	myState->reladdr = intoRelationAddr;
 	myState->output_cid = GetCurrentCommandId(true);
 	myState->ti_options = TABLE_INSERT_SKIP_FSM;
-	myState->bistate = GetBulkInsertState();
+
+	/*
+	 * If WITH NO DATA is specified, there is no need to set up the state for
+	 * bulk inserts as there are no tuples to insert.
+	 */
+	if (!into->skipData)
+		myState->bistate = GetBulkInsertState();
+	else
+		myState->bistate = NULL;
 
 	/*
 	 * Valid smgr_targblock implies something already wrote to the relation.
@@ -719,20 +747,23 @@ intorel_receive(TupleTableSlot *slot, DestReceiver *self)
 {
 	DR_intorel *myState = (DR_intorel *) self;
 
-	/*
-	 * Note that the input slot might not be of the type of the target
-	 * relation. That's supported by table_tuple_insert(), but slightly less
-	 * efficient than inserting with the right slot - but the alternative
-	 * would be to copy into a slot of the right type, which would not be
-	 * cheap either. This also doesn't allow accessing per-AM data (say a
-	 * tuple's xmin), but since we don't do that here...
-	 */
-
-	table_tuple_insert(myState->rel,
-					   slot,
-					   myState->output_cid,
-					   myState->ti_options,
-					   myState->bistate);
+	/* Nothing to insert if WITH NO DATA is specified. */
+	if (!myState->into->skipData)
+	{
+		/*
+		 * Note that the input slot might not be of the type of the target
+		 * relation. That's supported by table_tuple_insert(), but slightly
+		 * less efficient than inserting with the right slot - but the
+		 * alternative would be to copy into a slot of the right type, which
+		 * would not be cheap either. This also doesn't allow accessing per-AM
+		 * data (say a tuple's xmin), but since we don't do that here...
+		 */
+		table_tuple_insert(myState->rel,
+						   slot,
+						   myState->output_cid,
+						   myState->ti_options,
+						   myState->bistate);
+	}
 
 	/* We know this is a newly created relation, so there are no indexes */
 
@@ -746,14 +777,20 @@ static void
 intorel_shutdown(DestReceiver *self)
 {
 	DR_intorel *myState = (DR_intorel *) self;
+<<<<<<< HEAD
 	Relation	into_rel = myState->rel;
 
 	if (into_rel == NULL)
 		return;
+=======
+	IntoClause *into = myState->into;
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
-	FreeBulkInsertState(myState->bistate);
-
-	table_finish_bulk_insert(myState->rel, myState->ti_options);
+	if (!into->skipData)
+	{
+		FreeBulkInsertState(myState->bistate);
+		table_finish_bulk_insert(myState->rel, myState->ti_options);
+	}
 
 	if (myState->rel->rd_tableam)
 		table_dml_finish(myState->rel);

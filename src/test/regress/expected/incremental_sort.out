@@ -1601,6 +1601,19 @@ select a, b from t where t.a = (select b from cte where cte.b >= t.b order by a,
  0 | 0
 (1 row)
 
+-- Full sort, not just incremental sort can be pushed below a gather merge path
+-- by generate_useful_gather_paths.
+explain (costs off) select distinct a,b from t;
+                QUERY PLAN                
+------------------------------------------
+ Unique
+   ->  Gather Merge
+         Workers Planned: 2
+         ->  Sort
+               Sort Key: a, b
+               ->  Parallel Seq Scan on t
+(6 rows)
+
 drop table t;
 -- Sort pushdown can't go below where expressions are part of the rel target.
 -- In particular this is interesting for volatile expressions which have to
@@ -1677,6 +1690,46 @@ order by 1, 2;
  Optimizer: Postgres query optimizer
 (8 rows)
 
+-- Parallel sort but with expression (correlated subquery) that
+-- is prohibited in parallel plans.
+explain (costs off) select distinct
+  unique1,
+  (select t.unique1 from tenk1 where tenk1.unique1 = t.unique1)
+from tenk1 t, generate_series(1, 1000);
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
+ Unique
+   ->  Sort
+         Sort Key: t.unique1, ((SubPlan 1))
+         ->  Gather
+               Workers Planned: 2
+               ->  Nested Loop
+                     ->  Parallel Index Only Scan using tenk1_unique1 on tenk1 t
+                     ->  Function Scan on generate_series
+               SubPlan 1
+                 ->  Index Only Scan using tenk1_unique1 on tenk1
+                       Index Cond: (unique1 = t.unique1)
+(11 rows)
+
+explain (costs off) select
+  unique1,
+  (select t.unique1 from tenk1 where tenk1.unique1 = t.unique1)
+from tenk1 t, generate_series(1, 1000)
+order by 1, 2;
+                                QUERY PLAN                                 
+---------------------------------------------------------------------------
+ Sort
+   Sort Key: t.unique1, ((SubPlan 1))
+   ->  Gather
+         Workers Planned: 2
+         ->  Nested Loop
+               ->  Parallel Index Only Scan using tenk1_unique1 on tenk1 t
+               ->  Function Scan on generate_series
+         SubPlan 1
+           ->  Index Only Scan using tenk1_unique1 on tenk1
+                 Index Cond: (unique1 = t.unique1)
+(10 rows)
+
 -- Parallel sort but with expression not available until the upper rel.
 explain (costs off) select distinct sub.unique1, stringu1 || random()::text
 from tenk1, lateral (select tenk1.unique1 from generate_series(1, 1000)) as sub;
@@ -1708,4 +1761,16 @@ order by 1, 2;
                ->  Function Scan on generate_series
  Optimizer: Postgres query optimizer
 (8 rows)
+
+-- Disallow pushing down sort when pathkey is an SRF.
+explain (costs off) select unique1 from tenk1 order by unnest('{1,2}'::int[]);
+                               QUERY PLAN                                
+-------------------------------------------------------------------------
+ Sort
+   Sort Key: (unnest('{1,2}'::integer[]))
+   ->  Gather
+         Workers Planned: 2
+         ->  ProjectSet
+               ->  Parallel Index Only Scan using tenk1_unique1 on tenk1
+(6 rows)
 

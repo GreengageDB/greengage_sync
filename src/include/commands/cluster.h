@@ -3,7 +3,7 @@
  * cluster.h
  *	  header file for postgres cluster command stuff
  *
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994-5, Regents of the University of California
  *
  * src/include/commands/cluster.h
@@ -14,13 +14,26 @@
 #define CLUSTER_H
 
 #include "nodes/parsenodes.h"
+#include "parser/parse_node.h"
 #include "storage/lock.h"
 #include "utils/relcache.h"
 
 
+<<<<<<< HEAD
 extern void cluster(ClusterStmt *stmt, bool isTopLevel);
 extern bool cluster_rel(Oid tableOid, Oid indexOid, int options,
 						bool printError);
+=======
+/* options for CLUSTER */
+typedef enum ClusterOption
+{
+	CLUOPT_RECHECK = 1 << 0,	/* recheck relation state */
+	CLUOPT_VERBOSE = 1 << 1		/* print progress info */
+} ClusterOption;
+
+extern void cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel);
+extern void cluster_rel(Oid tableOid, Oid indexOid, int options);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 extern void check_index_is_clusterable(Relation OldHeap, Oid indexOid,
 									   bool recheck, LOCKMODE lockmode);
 extern void mark_index_clustered(Relation rel, Oid indexOid, bool is_internal);

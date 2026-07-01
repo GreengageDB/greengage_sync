@@ -3,7 +3,7 @@
  *
  *	server checks and output routines
  *
- *	Copyright (c) 2010-2020, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/check.c
  */
 
@@ -269,13 +269,22 @@ issue_warnings_and_set_wal_level(char *sequence_script_file_name)
 
 
 void
-output_completion_banner(char *analyze_script_file_name,
-						 char *deletion_script_file_name)
+output_completion_banner(char *deletion_script_file_name)
 {
+	PQExpBufferData user_specification;
+
+	initPQExpBuffer(&user_specification);
+	if (os_info.user_specified)
+	{
+		appendPQExpBufferStr(&user_specification, "-U ");
+		appendShellString(&user_specification, os_info.user);
+		appendPQExpBufferChar(&user_specification, ' ');
+	}
+
 	pg_log(PG_REPORT,
-		   "Optimizer statistics are not transferred by pg_upgrade so,\n"
-		   "once you start the new server, consider running:\n"
-		   "    %s\n\n", analyze_script_file_name);
+		   "Optimizer statistics are not transferred by pg_upgrade.\n"
+		   "Once you start the new server, consider running:\n"
+		   "    %s/vacuumdb %s--all --analyze-in-stages\n\n", new_cluster.bindir, user_specification.data);
 
 	if (deletion_script_file_name)
 		pg_log(PG_REPORT,
@@ -288,6 +297,8 @@ output_completion_banner(char *analyze_script_file_name,
 			   "because user-defined tablespaces or the new cluster's data directory\n"
 			   "exist in the old cluster directory.  The old cluster's contents must\n"
 			   "be deleted manually.\n");
+
+	termPQExpBuffer(&user_specification);
 }
 
 
@@ -510,6 +521,7 @@ check_databases_are_compatible(void)
 	}
 }
 
+<<<<<<< HEAD
 
 /*
  * create_script_for_cluster_analyze()
@@ -593,6 +605,8 @@ create_script_for_cluster_analyze(char **analyze_script_file_name)
 	check_ok();
 }
 
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 /*
  * A previous run of pg_upgrade might have failed and the new cluster
  * directory recreated, but they might have forgotten to remove

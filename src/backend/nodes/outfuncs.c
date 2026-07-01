@@ -3,9 +3,13 @@
  * outfuncs.c
  *	  Output functions for Postgres tree nodes.
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1562,6 +1566,8 @@ _outAggref(StringInfo str, const Aggref *node)
 	WRITE_CHAR_FIELD(aggkind);
 	WRITE_UINT_FIELD(agglevelsup);
 	WRITE_ENUM_FIELD(aggsplit, AggSplit);
+	WRITE_INT_FIELD(aggno);
+	WRITE_INT_FIELD(aggtransno);
 	WRITE_LOCATION_FIELD(location);
     WRITE_INT_FIELD(agg_expr_id);
 }
@@ -1620,6 +1626,7 @@ _outSubscriptingRef(StringInfo str, const SubscriptingRef *node)
 
 	WRITE_OID_FIELD(refcontainertype);
 	WRITE_OID_FIELD(refelemtype);
+	WRITE_OID_FIELD(refrestype);
 	WRITE_INT_FIELD(reftypmod);
 	WRITE_OID_FIELD(refcollid);
 	WRITE_NODE_FIELD(refupperindexpr);
@@ -2463,13 +2470,29 @@ _outProjectSetPath(StringInfo str, const ProjectSetPath *node)
 }
 
 static void
+_outSortPathInfo(StringInfo str, const SortPath *node)
+{
+	_outPathInfo(str, (const Path *) node);
+
+	WRITE_NODE_FIELD(subpath);
+}
+
+static void
 _outSortPath(StringInfo str, const SortPath *node)
 {
 	WRITE_NODE_TYPE("SORTPATH");
 
-	_outPathInfo(str, (const Path *) node);
+	_outSortPathInfo(str, node);
+}
 
-	WRITE_NODE_FIELD(subpath);
+static void
+_outIncrementalSortPath(StringInfo str, const IncrementalSortPath *node)
+{
+	WRITE_NODE_TYPE("INCREMENTALSORTPATH");
+
+	_outSortPathInfo(str, (const SortPath *) node);
+
+	WRITE_INT_FIELD(nPresortedCols);
 }
 
 static void
@@ -4136,6 +4159,18 @@ _outUpdateStmt(StringInfo str, const UpdateStmt *node)
 }
 
 static void
+_outPLAssignStmt(StringInfo str, const PLAssignStmt *node)
+{
+	WRITE_NODE_TYPE("PLASSIGN");
+
+	WRITE_STRING_FIELD(name);
+	WRITE_NODE_FIELD(indirection);
+	WRITE_INT_FIELD(nnames);
+	WRITE_NODE_FIELD(val);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
 _outFuncCall(StringInfo str, const FuncCall *node)
 {
 	WRITE_NODE_TYPE("FUNCCALL");
@@ -4144,11 +4179,12 @@ _outFuncCall(StringInfo str, const FuncCall *node)
 	WRITE_NODE_FIELD(args);
 	WRITE_NODE_FIELD(agg_order);
 	WRITE_NODE_FIELD(agg_filter);
+	WRITE_NODE_FIELD(over);
 	WRITE_BOOL_FIELD(agg_within_group);
 	WRITE_BOOL_FIELD(agg_star);
 	WRITE_BOOL_FIELD(agg_distinct);
 	WRITE_BOOL_FIELD(func_variadic);
-	WRITE_NODE_FIELD(over);
+	WRITE_ENUM_FIELD(funcformat, CoercionForm);
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -4171,6 +4207,7 @@ _outTableLikeClause(StringInfo str, const TableLikeClause *node)
 
 	WRITE_NODE_FIELD(relation);
 	WRITE_UINT_FIELD(options);
+	WRITE_OID_FIELD(relationOid);
 }
 
 static void
@@ -4690,10 +4727,6 @@ _outAExpr(StringInfo str, const A_Expr *node)
 			appendStringInfoString(str, " NULLIF ");
 			WRITE_NODE_FIELD(name);
 			break;
-		case AEXPR_OF:
-			appendStringInfoString(str, " OF ");
-			WRITE_NODE_FIELD(name);
-			break;
 		case AEXPR_IN:
 			appendStringInfoString(str, " IN ");
 			WRITE_NODE_FIELD(name);
@@ -4725,9 +4758,6 @@ _outAExpr(StringInfo str, const A_Expr *node)
 		case AEXPR_NOT_BETWEEN_SYM:
 			appendStringInfoString(str, " NOT_BETWEEN_SYM ");
 			WRITE_NODE_FIELD(name);
-			break;
-		case AEXPR_PAREN:
-			appendStringInfoString(str, " PAREN");
 			break;
 		default:
 			appendStringInfoString(str, " ??");
@@ -6305,6 +6335,7 @@ outNode(StringInfo str, const void *obj)
 			case T_SelectStmt:
 				_outSelectStmt(str, obj);
 				break;
+<<<<<<< HEAD
 			case T_InsertStmt:
 				_outInsertStmt(str, obj);
 				break;
@@ -6316,6 +6347,10 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_Null:
 				_outNull(str, obj);
+=======
+			case T_PLAssignStmt:
+				_outPLAssignStmt(str, obj);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 				break;
 			case T_ColumnDef:
 				_outColumnDef(str, obj);

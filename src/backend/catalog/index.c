@@ -3,9 +3,13 @@
  * index.c
  *	  code to create and destroy POSTGRES index relations
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2006-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -2168,9 +2172,10 @@ index_constraint_create(Relation heapRelation,
 	 */
 	if (deferrable)
 	{
-		CreateTrigStmt *trigger;
+		CreateTrigStmt *trigger = makeNode(CreateTrigStmt);
 
-		trigger = makeNode(CreateTrigStmt);
+		trigger->replace = false;
+		trigger->isconstraint = true;
 		trigger->trigname = (constraintType == CONSTRAINT_PRIMARY) ?
 			"PK_ConstraintTrigger" :
 			"Unique_ConstraintTrigger";
@@ -2182,7 +2187,7 @@ index_constraint_create(Relation heapRelation,
 		trigger->events = TRIGGER_TYPE_INSERT | TRIGGER_TYPE_UPDATE;
 		trigger->columns = NIL;
 		trigger->whenClause = NULL;
-		trigger->isconstraint = true;
+		trigger->transitionRels = NIL;
 		trigger->deferrable = true;
 		trigger->initdeferred = initdeferred;
 		trigger->constrrel = NULL;

@@ -2,7 +2,7 @@
  * tablesync.c
  *	  PostgreSQL logical replication: initial table data synchronization
  *
- * Copyright (c) 2012-2020, PostgreSQL Global Development Group
+ * Copyright (c) 2012-2021, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
  *	  src/backend/replication/logical/tablesync.c
@@ -372,7 +372,6 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 	{
 		HASHCTL		ctl;
 
-		memset(&ctl, 0, sizeof(ctl));
 		ctl.keysize = sizeof(Oid);
 		ctl.entrysize = sizeof(struct tablesync_start_time_mapping);
 		last_start_times = hash_create("Logical replication table sync worker start times",
@@ -749,7 +748,7 @@ copy_table(Relation rel)
 	LogicalRepRelation lrel;
 	WalRcvExecResult *res;
 	StringInfoData cmd;
-	CopyState	cstate;
+	CopyFromState cstate;
 	List	   *attnamelist;
 	ParseState *pstate;
 
@@ -800,9 +799,13 @@ copy_table(Relation rel)
 										 NULL, false, false);
 
 	attnamelist = make_copy_attnamelist(relmapentry);
+<<<<<<< HEAD
 	cstate = BeginCopyFrom(pstate, rel, NULL, false, copy_read_data,
 						   NULL /* callback extra data */,
 						   attnamelist, NIL);
+=======
+	cstate = BeginCopyFrom(pstate, rel, NULL, NULL, false, copy_read_data, attnamelist, NIL);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	/* Do the copy */
 	(void) CopyFrom(cstate);

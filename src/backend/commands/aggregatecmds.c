@@ -4,7 +4,7 @@
  *
  *	  Routines for aggregate-manipulation commands
  *
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -24,8 +24,11 @@
 
 #include "access/htup_details.h"
 #include "catalog/dependency.h"
+<<<<<<< HEAD
 #include "catalog/indexing.h"
 #include "catalog/oid_dispatch.h"
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 #include "catalog/pg_aggregate.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"

@@ -3,9 +3,13 @@
  * fd.c
  *	  Virtual file descriptor code.
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2007-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -639,6 +643,7 @@ pg_flush_data(int fd, off_t offset, off_t nbytes)
 }
 
 /*
+<<<<<<< HEAD
  * Retrying close in case it gets interrupted. If that happens, it will cause
  * unlink to fail later.
  */
@@ -652,6 +657,34 @@ gp_retry_close(int fd) {
 	return err;
 }
 
+=======
+ * Truncate a file to a given length by name.
+ */
+int
+pg_truncate(const char *path, off_t length)
+{
+#ifdef WIN32
+	int			save_errno;
+	int			ret;
+	int			fd;
+
+	fd = OpenTransientFile(path, O_RDWR | PG_BINARY);
+	if (fd >= 0)
+	{
+		ret = ftruncate(fd, 0);
+		save_errno = errno;
+		CloseTransientFile(fd);
+		errno = save_errno;
+	}
+	else
+		ret = -1;
+
+	return ret;
+#else
+	return truncate(path, length);
+#endif
+}
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 /*
  * fsync_fname -- fsync a file or directory, handling errors properly
@@ -1516,8 +1549,6 @@ PathNameOpenFilePerm(const char *fileName, int fileFlags, mode_t fileMode)
 	DO_DB(elog(LOG, "PathNameOpenFile: success %d",
 			   vfdP->fd));
 
-	Insert(file);
-
 	vfdP->fileName = fnamecopy;
 	/* Saved flags are adjusted to be OK for re-opening file */
 	vfdP->fileFlags = fileFlags & ~(O_CREAT | O_TRUNC | O_EXCL);
@@ -1525,6 +1556,8 @@ PathNameOpenFilePerm(const char *fileName, int fileFlags, mode_t fileMode)
 	vfdP->fileSize = 0;
 	vfdP->fdstate = 0x0;
 	vfdP->resowner = NULL;
+
+	Insert(file);
 
 	return file;
 }
@@ -1950,7 +1983,13 @@ FileClose(File file)
 
 		/* in any case do the unlink */
 		if (unlink(vfdP->fileName))
+<<<<<<< HEAD
 			elog(DEBUG1, "could not unlink file \"%s\": %m", vfdP->fileName);
+=======
+			ereport(LOG,
+					(errcode_for_file_access(),
+					 errmsg("could not delete file \"%s\": %m", vfdP->fileName)));
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 		/* and last report the stat results */
 		if (stat_errno == 0)
@@ -1958,7 +1997,13 @@ FileClose(File file)
 		else
 		{
 			errno = stat_errno;
+<<<<<<< HEAD
 			elog(DEBUG1, "could not stat file \"%s\": %m", vfdP->fileName);
+=======
+			ereport(LOG,
+					(errcode_for_file_access(),
+					 errmsg("could not stat file \"%s\": %m", vfdP->fileName)));
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		}
 	}
 

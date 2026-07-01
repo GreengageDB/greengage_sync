@@ -10,7 +10,7 @@
  * It doesn't matter whether the bits are on spinning rust or some other
  * storage technology.
  *
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -345,6 +345,7 @@ do_truncate(const char *path)
 {
 	int			save_errno;
 	int			ret;
+<<<<<<< HEAD
 	int			fd;
 
 	/* truncate(2) would be easier here, but Windows hasn't got it */
@@ -358,6 +359,10 @@ do_truncate(const char *path)
 	}
 	else
 		ret = -1;
+=======
+
+	ret = pg_truncate(path, 0);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	/* Log a warning here to avoid repetition in callers. */
 	if (ret < 0 && errno != ENOENT)

@@ -4,9 +4,13 @@
  *	  Definitions for planner's internal data structures, especially Paths.
  *
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/nodes/pathnodes.h
@@ -67,12 +71,15 @@ typedef struct QualCost
  */
 typedef struct AggClauseCosts
 {
+<<<<<<< HEAD
 	int			numAggs;		/* total number of aggregate functions */
 	int			numOrderedAggs; /* number w/ DISTINCT/ORDER BY/WITHIN GROUP */
 	int			numPureOrderedAggs; /* CDB: number that use ORDER BY/WITHIN GROUP, not counting DISTINCT */
 	bool		hasNonCombine;	/* CDB: any agg func w/o a combine func? */
 	bool		hasNonPartial;	/* does any agg not support partial mode? */
 	bool		hasNonSerial;	/* is any partial agg non-serializable? */
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	QualCost	transCost;		/* total per-input-row execution costs */
 	QualCost	finalCost;		/* total per-aggregated-row costs */
 	Size		transitionSpace;	/* space for pass-by-ref transition data */
@@ -429,6 +436,15 @@ struct PlannerInfo
 										 * pseudoconstant = true */
 	bool		hasAlternativeSubPlans; /* true if we've made any of those */
 	bool		hasRecursion;	/* true if planning a recursive WITH item */
+
+	/*
+	 * Information about aggregates. Filled by preprocess_aggrefs().
+	 */
+	List	   *agginfos;		/* AggInfo structs */
+	List	   *aggtransinfos;	/* AggTransInfo structs */
+	int			numOrderedAggs; /* number w/ DISTINCT/ORDER BY/WITHIN GROUP */
+	bool		hasNonPartialAggs;	/* does any agg not support partial mode? */
+	bool		hasNonSerialAggs;	/* is any partial agg non-serializable? */
 
 	/* These fields are used only when hasRecursion is true: */
 	int			wt_param_id;	/* PARAM_EXEC ID for the work table */
@@ -1053,7 +1069,11 @@ struct IndexOptInfo
 	bool		amhasgettuple;	/* does AM have amgettuple interface? */
 	bool		amhasgetbitmap; /* does AM have amgetbitmap interface? */
 	bool		amcanparallel;	/* does AM support parallel scan? */
+<<<<<<< HEAD
 
+=======
+	bool		amcanmarkpos;	/* does AM support mark/restore? */
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	/* Rather than include amapi.h here, we declare amcostestimate like this */
 	void		(*amcostestimate) ();	/* AM's cost estimator */
 };
@@ -2019,7 +2039,10 @@ typedef struct SortPath
 } SortPath;
 
 /*
- * IncrementalSortPath
+ * IncrementalSortPath represents an incremental sort step
+ *
+ * This is like a regular sort, except some leading key columns are assumed
+ * to be ordered already.
  */
 typedef struct IncrementalSortPath
 {
@@ -2988,5 +3011,72 @@ typedef struct JoinCostWorkspace
 	int			numbatches;
 	double		inner_rows_total;
 } JoinCostWorkspace;
+
+/*
+ * AggInfo holds information about an aggregate that needs to be computed.
+ * Multiple Aggrefs in a query can refer to the same AggInfo by having the
+ * same 'aggno' value, so that the aggregate is computed only once.
+ */
+typedef struct AggInfo
+{
+	/*
+	 * Link to an Aggref expr this state value is for.
+	 *
+	 * There can be multiple identical Aggref's sharing the same per-agg. This
+	 * points to the first one of them.
+	 */
+	Aggref	   *representative_aggref;
+
+	int			transno;
+
+	/*
+	 * "shareable" is false if this agg cannot share state values with other
+	 * aggregates because the final function is read-write.
+	 */
+	bool		shareable;
+
+	/* Oid of the final function or InvalidOid */
+	Oid			finalfn_oid;
+
+} AggInfo;
+
+/*
+ * AggTransInfo holds information about transition state that is used by one
+ * or more aggregates in the query.  Multiple aggregates can share the same
+ * transition state, if they have the same inputs and the same transition
+ * function.  Aggrefs that share the same transition info have the same
+ * 'aggtransno' value.
+ */
+typedef struct AggTransInfo
+{
+	List	   *args;
+	Expr	   *aggfilter;
+
+	/* Oid of the state transition function */
+	Oid			transfn_oid;
+
+	/* Oid of the serialization function or InvalidOid */
+	Oid			serialfn_oid;
+
+	/* Oid of the deserialization function or InvalidOid */
+	Oid			deserialfn_oid;
+
+	/* Oid of the combine function or InvalidOid */
+	Oid			combinefn_oid;
+
+	/* Oid of state value's datatype */
+	Oid			aggtranstype;
+	int32		aggtranstypmod;
+	int			transtypeLen;
+	bool		transtypeByVal;
+	int32		aggtransspace;
+
+	/*
+	 * initial value from pg_aggregate entry
+	 */
+	Datum		initValue;
+	bool		initValueIsNull;
+
+} AggTransInfo;
 
 #endif							/* PATHNODES_H */

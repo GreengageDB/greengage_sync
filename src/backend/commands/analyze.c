@@ -3,6 +3,7 @@
  * analyze.c
  *	  the Postgres statistics generator
  *
+<<<<<<< HEAD
  *
  * There are a few things in Greenplum that make this more complicated
  * than in upstream:
@@ -54,6 +55,9 @@
  * TODO: explain how this works.
  *
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *

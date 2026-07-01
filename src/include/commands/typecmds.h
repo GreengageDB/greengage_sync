@@ -4,7 +4,7 @@
  *	  prototypes for typecmds.c.
  *
  *
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/commands/typecmds.h
@@ -29,7 +29,13 @@ extern ObjectAddress DefineEnum(CreateEnumStmt *stmt);
 extern ObjectAddress DefineRange(CreateRangeStmt *stmt);
 extern ObjectAddress AlterEnum(AlterEnumStmt *stmt);
 extern ObjectAddress DefineCompositeType(RangeVar *typevar, List *coldeflist);
+<<<<<<< HEAD
 extern Oid AssignTypeArrayOid(char *arrayTypeName, Oid typeNamespace);
+=======
+extern Oid	AssignTypeArrayOid(void);
+extern Oid	AssignTypeMultirangeOid(void);
+extern Oid	AssignTypeMultirangeArrayOid(void);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 extern ObjectAddress AlterDomainDefault(List *names, Node *defaultRaw);
 extern ObjectAddress AlterDomainNotNull(List *names, bool notNull);

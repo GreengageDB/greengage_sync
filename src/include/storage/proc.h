@@ -4,9 +4,13 @@
  *	  per-process shared memory data structures
  *
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/storage/proc.h
@@ -56,17 +60,24 @@ struct XidCache
 };
 
 /*
- * Flags for ProcGlobal->vacuumFlags[]
+ * Flags for PGPROC->statusFlags and PROC_HDR->statusFlags[]
  */
 #define		PROC_IS_AUTOVACUUM	0x01	/* is it an autovac worker? */
 #define		PROC_IN_VACUUM		0x02	/* currently running lazy vacuum */
+#define		PROC_IN_SAFE_IC		0x04	/* currently running CREATE INDEX
+										 * CONCURRENTLY on non-expressional,
+										 * non-partial index */
 #define		PROC_VACUUM_FOR_WRAPAROUND	0x08	/* set by autovac only */
 #define		PROC_IN_LOGICAL_DECODING	0x10	/* currently doing logical
 												 * decoding outside xact */
 
 /* flags reset at EOXact */
 #define		PROC_VACUUM_STATE_MASK \
+<<<<<<< HEAD
 	(/* PROC_IN_VACUUM | */ PROC_VACUUM_FOR_WRAPAROUND)
+=======
+	(PROC_IN_VACUUM | PROC_IN_SAFE_IC | PROC_VACUUM_FOR_WRAPAROUND)
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 /*
  * We allow a small number of "weak" relation locks (AccessShareLock,
@@ -104,6 +115,11 @@ typedef enum
  * distinguished from a real one at need by the fact that it has pid == 0.
  * The semaphore and lock-activity fields in a prepared-xact PGPROC are unused,
  * but its myProcLocks[] lists are valid.
+ *
+ * We allow many fields of this struct to be accessed without locks, such as
+ * delayChkpt and isBackgroundWorker. However, keep in mind that writing
+ * mirrored ones (see below) requires holding ProcArrayLock or XidGenLock in
+ * at least shared mode, so that pgxactoff does not change concurrently.
  *
  * Mirrored fields:
  *
@@ -196,9 +212,10 @@ struct PGPROC
 
 	bool		delayChkpt;		/* true if this proc delays checkpoint start */
 
-	uint8		vacuumFlags;    /* this backend's vacuum flags, see PROC_*
+	uint8		statusFlags;	/* this backend's status flags, see PROC_*
 								 * above. mirrored in
-								 * ProcGlobal->vacuumFlags[pgxactoff] */
+								 * ProcGlobal->statusFlags[pgxactoff] */
+
 	/*
 	 * Info to allow us to wait for synchronous replication, if needed.
 	 * waitLSN is InvalidXLogRecPtr if not waiting; set only by user backend.
@@ -331,7 +348,7 @@ extern PGDLLIMPORT PGPROC *lockHolderProcPtr;
  * allow for as tight loops accessing the data as possible. Second, to prevent
  * updates of frequently changing data (e.g. xmin) from invalidating
  * cachelines also containing less frequently changing data (e.g. xid,
- * vacuumFlags). Third to condense frequently accessed data into as few
+ * statusFlags). Third to condense frequently accessed data into as few
  * cachelines as possible.
  *
  * There are two main reasons to have the data mirrored between these dense
@@ -375,10 +392,10 @@ typedef struct PROC_HDR
 	XidCacheStatus *subxidStates;
 
 	/*
-	 * Array mirroring PGPROC.vacuumFlags for each PGPROC currently in the
+	 * Array mirroring PGPROC.statusFlags for each PGPROC currently in the
 	 * procarray.
 	 */
-	uint8	   *vacuumFlags;
+	uint8	   *statusFlags;
 
 	/* Length of allProcs array */
 	uint32		allProcCount;
@@ -432,7 +449,11 @@ extern PGDLLIMPORT int DeadlockTimeout;
 extern PGDLLIMPORT int StatementTimeout;
 extern PGDLLIMPORT int LockTimeout;
 extern PGDLLIMPORT int IdleInTransactionSessionTimeout;
+<<<<<<< HEAD
 extern PGDLLIMPORT int IdleSessionGangTimeout;
+=======
+extern PGDLLIMPORT int IdleSessionTimeout;
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 extern bool log_lock_waits;
 
 

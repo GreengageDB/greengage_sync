@@ -3,9 +3,13 @@
  * parse_clause.c
  *	  handle clauses in parser
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -753,10 +757,11 @@ transformRangeFunction(ParseState *pstate, RangeFunction *r)
 				list_length(fc->args) > 1 &&
 				fc->agg_order == NIL &&
 				fc->agg_filter == NULL &&
+				fc->over == NULL &&
 				!fc->agg_star &&
 				!fc->agg_distinct &&
 				!fc->func_variadic &&
-				fc->over == NULL &&
+				fc->funcformat == COERCE_EXPLICIT_CALL &&
 				coldeflist == NIL)
 			{
 				ListCell   *lc;
@@ -770,6 +775,7 @@ transformRangeFunction(ParseState *pstate, RangeFunction *r)
 
 					newfc = makeFuncCall(SystemFuncName("unnest"),
 										 list_make1(arg),
+										 COERCE_EXPLICIT_CALL,
 										 fc->location);
 
 					newfexpr = transformExpr(pstate, (Node *) newfc,

@@ -3,8 +3,12 @@
  *
  *	main source file
  *
+<<<<<<< HEAD
  *	Portions Copyright (c) 2016-Present, VMware, Inc. or its affiliates
  *	Copyright (c) 2010-2020, PostgreSQL Global Development Group
+=======
+ *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  *	src/bin/pg_upgrade/pg_upgrade.c
  */
 
@@ -94,8 +98,11 @@ OSInfo		os_info;
 int
 main(int argc, char **argv)
 {
+<<<<<<< HEAD
 	char       *sequence_script_file_name = NULL;
 	char	   *analyze_script_file_name = NULL;
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	char	   *deletion_script_file_name = NULL;
 	bool		live_check = false;
 
@@ -240,7 +247,6 @@ main(int argc, char **argv)
 			  new_cluster.pgdata);
 	check_ok();
 
-	create_script_for_cluster_analyze(&analyze_script_file_name);
 	create_script_for_old_cluster_deletion(&deletion_script_file_name);
 
 	issue_warnings_and_set_wal_level(sequence_script_file_name);
@@ -250,13 +256,16 @@ main(int argc, char **argv)
 		   "Upgrade Complete\n"
 		   "----------------\n");
 
+<<<<<<< HEAD
 	report_progress(NULL, DONE, "Upgrade complete");
 	close_progress();
 
 	output_completion_banner(analyze_script_file_name,
 							 deletion_script_file_name);
+=======
+	output_completion_banner(deletion_script_file_name);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
-	pg_free(analyze_script_file_name);
 	pg_free(deletion_script_file_name);
 
 	cleanup();

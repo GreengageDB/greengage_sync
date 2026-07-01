@@ -3,11 +3,8 @@
  * toasting.h
  *	  This file provides some definitions to support creation of toast tables
  *
- * Caution: all #define's with numeric values in this file had better be
- * object OIDs, else renumber_oids.pl might change them inappropriately.
  *
- *
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/catalog/toasting.h
@@ -30,6 +27,7 @@ extern void AlterTableCreateToastTable(Oid relOid, Datum reloptions,
 extern void BootstrapToastTable(char *relName,
 								Oid toastOid, Oid toastIndexOid);
 
+<<<<<<< HEAD
 /*
  * This macro is just to keep the C compiler from spitting up on the
  * upcoming commands for Catalog.pm.
@@ -112,4 +110,6 @@ DECLARE_TOAST(gp_segment_configuration, 6092, 6093);
 #define GpSegmentConfigToastTable	6092
 #define GpSegmentConfigToastIndex	6093
 
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 #endif							/* TOASTING_H */

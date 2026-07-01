@@ -3,9 +3,13 @@
  * heap.c
  *	  code to create and destroy POSTGRES heap relations
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1421,6 +1425,7 @@ AddNewRelationType(const char *typeName,
 				   InvalidOid,	/* typmodin procedure - none */
 				   InvalidOid,	/* typmodout procedure - none */
 				   InvalidOid,	/* analyze procedure - default */
+				   InvalidOid,	/* subscript procedure - none */
 				   InvalidOid,	/* array element type - irrelevant */
 				   false,		/* this is not an array type */
 				   new_array_type,	/* array type if any */
@@ -1720,8 +1725,45 @@ heap_create_with_catalog(const char *relname,
 					   false,		/* Type NOT NULL */
 					   InvalidOid); /* rowtypes never have a collation */
 
+<<<<<<< HEAD
 			pfree(relarrayname);
 		}
+=======
+		TypeCreate(new_array_oid,	/* force the type's OID to this */
+				   relarrayname,	/* Array type name */
+				   relnamespace,	/* Same namespace as parent */
+				   InvalidOid,	/* Not composite, no relationOid */
+				   0,			/* relkind, also N/A here */
+				   ownerid,		/* owner's ID */
+				   -1,			/* Internal size (varlena) */
+				   TYPTYPE_BASE,	/* Not composite - typelem is */
+				   TYPCATEGORY_ARRAY,	/* type-category (array) */
+				   false,		/* array types are never preferred */
+				   DEFAULT_TYPDELIM,	/* default array delimiter */
+				   F_ARRAY_IN,	/* array input proc */
+				   F_ARRAY_OUT, /* array output proc */
+				   F_ARRAY_RECV,	/* array recv (bin) proc */
+				   F_ARRAY_SEND,	/* array send (bin) proc */
+				   InvalidOid,	/* typmodin procedure - none */
+				   InvalidOid,	/* typmodout procedure - none */
+				   F_ARRAY_TYPANALYZE,	/* array analyze procedure */
+				   F_ARRAY_SUBSCRIPT_HANDLER,	/* array subscript procedure */
+				   new_type_oid,	/* array element type - the rowtype */
+				   true,		/* yes, this is an array type */
+				   InvalidOid,	/* this has no array type */
+				   InvalidOid,	/* domain base type - irrelevant */
+				   NULL,		/* default value - none */
+				   NULL,		/* default binary representation */
+				   false,		/* passed by reference */
+				   TYPALIGN_DOUBLE, /* alignment - must be the largest! */
+				   TYPSTORAGE_EXTENDED, /* fully TOASTable */
+				   -1,			/* typmod */
+				   0,			/* array dimensions for typBaseType */
+				   false,		/* Type NOT NULL */
+				   InvalidOid); /* rowtypes never have a collation */
+
+		pfree(relarrayname);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	}
 	else
 	{

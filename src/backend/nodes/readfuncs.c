@@ -3,9 +3,13 @@
  * readfuncs.c
  *	  Reader functions for Postgres tree nodes.
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1381,7 +1385,12 @@ _readAggref(void)
 	READ_CHAR_FIELD(aggkind);
 	READ_UINT_FIELD(agglevelsup);
 	READ_ENUM_FIELD(aggsplit, AggSplit);
+<<<<<<< HEAD
 
+=======
+	READ_INT_FIELD(aggno);
+	READ_INT_FIELD(aggtransno);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	READ_LOCATION_FIELD(location);
 	READ_INT_FIELD(agg_expr_id);
 
@@ -1465,6 +1474,7 @@ _readSubscriptingRef(void)
 
 	READ_OID_FIELD(refcontainertype);
 	READ_OID_FIELD(refelemtype);
+	READ_OID_FIELD(refrestype);
 	READ_INT_FIELD(reftypmod);
 	READ_OID_FIELD(refcollid);
 	READ_NODE_FIELD(refupperindexpr);

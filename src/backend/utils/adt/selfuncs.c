@@ -10,9 +10,13 @@
  *	  Index cost functions are located via the index AM's API struct,
  *	  which is obtained from the handler function registered in pg_am.
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2006-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -3877,12 +3881,14 @@ estimate_hash_bucket_stats(PlannerInfo *root, Node *hashkey, double nbuckets,
  * won't store them.  Is this a problem?
  */
 double
-estimate_hashagg_tablesize(Path *path, const AggClauseCosts *agg_costs,
-						   double dNumGroups)
+estimate_hashagg_tablesize(PlannerInfo *root, Path *path,
+						   const AggClauseCosts *agg_costs, double dNumGroups)
 {
-	Size		hashentrysize = hash_agg_entry_size(agg_costs->numAggs,
-													path->pathtarget->width,
-													agg_costs->transitionSpace);
+	Size		hashentrysize;
+
+	hashentrysize = hash_agg_entry_size(list_length(root->aggtransinfos),
+										path->pathtarget->width,
+										agg_costs->transitionSpace);
 
 	/*
 	 * Note that this disregards the effect of fill-factor and growth policy

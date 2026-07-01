@@ -3,7 +3,7 @@
  * pg_aggregate.c
  *	  routines to support manipulation of the pg_aggregate relation
  *
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -621,8 +621,12 @@ AggregateCreate(const char *aggName,
 							 GetUserId(),	/* proowner */
 							 INTERNALlanguageId,	/* languageObjectId */
 							 InvalidOid,	/* no validator */
+<<<<<<< HEAD
 							 InvalidOid,		/* no describe function */
 							 "aggregate_dummy", /* placeholder proc */
+=======
+							 "aggregate_dummy", /* placeholder (no such proc) */
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 							 NULL,	/* probin */
 							 PROKIND_AGGREGATE,
 							 false, /* security invoker (currently not

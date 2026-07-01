@@ -3,7 +3,7 @@
  * postgres.c
  *	  POSTGRES C Backend Interface
  *
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -73,6 +73,7 @@
 #include "rewrite/rewriteHandler.h"
 #include "storage/bufmgr.h"
 #include "storage/ipc.h"
+#include "storage/pmsignal.h"
 #include "storage/proc.h"
 #include "storage/procsignal.h"
 #include "storage/sinval.h"
@@ -772,7 +773,7 @@ pg_parse_query(const char *query_string)
 	if (log_parser_stats)
 		ResetUsage();
 
-	raw_parsetree_list = raw_parser(query_string);
+	raw_parsetree_list = raw_parser(query_string, RAW_PARSE_DEFAULT);
 
 	if (log_parser_stats)
 		ShowUsage("PARSER STATISTICS");
@@ -3529,6 +3530,7 @@ drop_unnamed_stmt(void)
 /*
  * quickdie() occurs when signaled SIGQUIT by the postmaster.
  *
+<<<<<<< HEAD
  * Some backend has bought the farm,
  * so we need to stop what we're doing and exit.
  *
@@ -3540,6 +3542,10 @@ drop_unnamed_stmt(void)
  *
  *
  * @param SIGNAL_ARGS -- so the signature matches a signal handler.  Nore that
+=======
+ * Either some backend has bought the farm, or we've been told to shut down
+ * "immediately"; so we need to stop what we're doing and exit.
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  */
 void
 quickdie(SIGNAL_ARGS)
@@ -3576,18 +3582,48 @@ quickdie(SIGNAL_ARGS)
 	 * wrong, so there's not much to lose.  Assuming the postmaster is still
 	 * running, it will SIGKILL us soon if we get stuck for some reason.
 	 *
-	 * Ideally this should be ereport(FATAL), but then we'd not get control
-	 * back...
+	 * One thing we can do to make this a tad safer is to clear the error
+	 * context stack, so that context callbacks are not called.  That's a lot
+	 * less code that could be reached here, and the context info is unlikely
+	 * to be very relevant to a SIGQUIT report anyway.
 	 */
-	ereport(WARNING,
-			(errcode(ERRCODE_CRASH_SHUTDOWN),
-			 errmsg("terminating connection because of crash of another server process"),
-			 errdetail("The postmaster has commanded this server process to roll back"
-					   " the current transaction and exit, because another"
-					   " server process exited abnormally and possibly corrupted"
-					   " shared memory."),
-			 errhint("In a moment you should be able to reconnect to the"
-					 " database and repeat your command.")));
+	error_context_stack = NULL;
+
+	/*
+	 * When responding to a postmaster-issued signal, we send the message only
+	 * to the client; sending to the server log just creates log spam, plus
+	 * it's more code that we need to hope will work in a signal handler.
+	 *
+	 * Ideally these should be ereport(FATAL), but then we'd not get control
+	 * back to force the correct type of process exit.
+	 */
+	switch (GetQuitSignalReason())
+	{
+		case PMQUIT_NOT_SENT:
+			/* Hmm, SIGQUIT arrived out of the blue */
+			ereport(WARNING,
+					(errcode(ERRCODE_ADMIN_SHUTDOWN),
+					 errmsg("terminating connection because of unexpected SIGQUIT signal")));
+			break;
+		case PMQUIT_FOR_CRASH:
+			/* A crash-and-restart cycle is in progress */
+			ereport(WARNING_CLIENT_ONLY,
+					(errcode(ERRCODE_CRASH_SHUTDOWN),
+					 errmsg("terminating connection because of crash of another server process"),
+					 errdetail("The postmaster has commanded this server process to roll back"
+							   " the current transaction and exit, because another"
+							   " server process exited abnormally and possibly corrupted"
+							   " shared memory."),
+					 errhint("In a moment you should be able to reconnect to the"
+							 " database and repeat your command.")));
+			break;
+		case PMQUIT_FOR_STOP:
+			/* Immediate-mode stop */
+			ereport(WARNING_CLIENT_ONLY,
+					(errcode(ERRCODE_ADMIN_SHUTDOWN),
+					 errmsg("terminating connection due to immediate shutdown command")));
+			break;
+	}
 
 	/*
 	 * We DO NOT want to run proc_exit() or atexit() callbacks -- we're here
@@ -3761,11 +3797,23 @@ RecoveryConflictInterrupt(ProcSignalReason reason)
 			case PROCSIG_RECOVERY_CONFLICT_BUFFERPIN:
 
 				/*
-				 * If we aren't blocking the Startup process there is nothing
-				 * more to do.
+				 * If PROCSIG_RECOVERY_CONFLICT_BUFFERPIN is requested but we
+				 * aren't blocking the Startup process there is nothing more
+				 * to do.
+				 *
+				 * When PROCSIG_RECOVERY_CONFLICT_STARTUP_DEADLOCK is
+				 * requested, if we're waiting for locks and the startup
+				 * process is not waiting for buffer pin (i.e., also waiting
+				 * for locks), we set the flag so that ProcSleep() will check
+				 * for deadlocks.
 				 */
 				if (!HoldingBufferPinThatDelaysRecovery())
+				{
+					if (reason == PROCSIG_RECOVERY_CONFLICT_STARTUP_DEADLOCK &&
+						GetStartupBufferPinWaitBufId() < 0)
+						CheckDeadLockAlert();
 					return;
+				}
 
 				MyProc->recoveryConflictPending = true;
 
@@ -3917,6 +3965,11 @@ ProcessInterrupts(const char* filename, int lineno)
 					 errmsg("terminating connection due to conflict with recovery"),
 					 errdetail_recovery_conflict()));
 		}
+		else if (IsBackgroundWorker)
+			ereport(FATAL,
+					(errcode(ERRCODE_ADMIN_SHUTDOWN),
+					 errmsg("terminating background worker \"%s\" due to administrator command",
+							MyBgworkerEntry->bgw_type)));
 		else
 		{
 			if (HasCancelMessage())
@@ -4106,6 +4159,7 @@ ProcessInterrupts(const char* filename, int lineno)
 			IdleInTransactionSessionTimeoutPending = false;
 	}
 
+<<<<<<< HEAD
 	if (IdleGangTimeoutPending)
 	{
 		/* As above, ignore the signal if the GUC has been reset to zero. */
@@ -4113,6 +4167,17 @@ ProcessInterrupts(const char* filename, int lineno)
 			DisconnectAndDestroyUnusedQEs();
 
 		IdleGangTimeoutPending = false;
+=======
+	if (IdleSessionTimeoutPending)
+	{
+		/* As above, ignore the signal if the GUC has been reset to zero. */
+		if (IdleSessionTimeout > 0)
+			ereport(FATAL,
+					(errcode(ERRCODE_IDLE_SESSION_TIMEOUT),
+					 errmsg("terminating connection due to idle-session timeout")));
+		else
+			IdleSessionTimeoutPending = false;
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	}
 
 	if (ProcSignalBarrierPending)
@@ -4463,7 +4528,11 @@ process_postgres_switches(int argc, char *argv[], GucContext ctx,
 	 * postmaster/postmaster.c (the option sets should not conflict) and with
 	 * the common help() function in main/main.c.
 	 */
+<<<<<<< HEAD
 	while ((flag = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lMm:N:nOo:Pp:r:S:sTt:v:W:-:")) != -1)
+=======
+	while ((flag = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lN:nOPp:r:S:sTt:v:W:-:")) != -1)
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	{
 		switch (flag)
 		{
@@ -4562,10 +4631,6 @@ process_postgres_switches(int argc, char *argv[], GucContext ctx,
 			case 'O':
 				/* Only use in single user mode */
 				SetConfigOption("allow_system_table_mods", "true", ctx, gucsource);
-				break;
-
-			case 'o':
-				errs++;
 				break;
 
 			case 'P':
@@ -4752,6 +4817,7 @@ PostgresMain(int argc, char *argv[],
 	sigjmp_buf	local_sigjmp_buf;
 	volatile bool send_ready_for_query = true;
 	bool		idle_in_transaction_timeout_enabled = false;
+<<<<<<< HEAD
 	bool		idle_gang_timeout_enabled = false;
 
 	/*
@@ -4760,6 +4826,9 @@ PostgresMain(int argc, char *argv[],
 	 * Save our main thread-id for comparison during signals.
 	 */
 	main_tid = pthread_self();
+=======
+	bool		idle_session_timeout_enabled = false;
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	/* Initialize startup process environment if necessary. */
 	if (!IsUnderPostmaster)
@@ -5284,8 +5353,17 @@ PostgresMain(int argc, char *argv[],
 				strncat(activity, "idle", remain);
 				set_ps_display(activity);
 				pgstat_report_activity(STATE_IDLE, NULL);
+
+				/* Start the idle-session timer */
+				if (IdleSessionTimeout > 0)
+				{
+					idle_session_timeout_enabled = true;
+					enable_timeout_after(IDLE_SESSION_TIMEOUT,
+										 IdleSessionTimeout);
+				}
 			}
 
+<<<<<<< HEAD
 			/* Start the idle-gang timer */
 			if (Gp_role == GP_ROLE_DISPATCH && IdleSessionGangTimeout > 0 && cdbcomponent_qesExist())
 			{
@@ -5293,6 +5371,10 @@ PostgresMain(int argc, char *argv[],
 				enable_timeout_after(IDLE_GANG_TIMEOUT,
 									 IdleSessionGangTimeout);
 			}
+=======
+			/* Report any recently-changed GUC options */
+			ReportChangedGUCOptions();
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 			ReadyForQuery(whereToSendOutput);
 			send_ready_for_query = false;
@@ -5318,6 +5400,7 @@ PostgresMain(int argc, char *argv[],
 		firstchar = ReadCommand(&input_message);
 
 		/*
+<<<<<<< HEAD
 		 * Reset QueryFinishPending flag, so that if we received a delayed
 		 * query finish requested after we had already finished processing
 		 * the previous command, we don't prematurely finish the next
@@ -5329,6 +5412,28 @@ PostgresMain(int argc, char *argv[],
 
 		/*
 		 * (4) disable async signal conditions again.
+=======
+		 * (4) turn off the idle-in-transaction and idle-session timeouts, if
+		 * active.  We do this before step (5) so that any last-moment timeout
+		 * is certain to be detected in step (5).
+		 *
+		 * At most one of these timeouts will be active, so there's no need to
+		 * worry about combining the timeout.c calls into one.
+		 */
+		if (idle_in_transaction_timeout_enabled)
+		{
+			disable_timeout(IDLE_IN_TRANSACTION_SESSION_TIMEOUT, false);
+			idle_in_transaction_timeout_enabled = false;
+		}
+		if (idle_session_timeout_enabled)
+		{
+			disable_timeout(IDLE_SESSION_TIMEOUT, false);
+			idle_session_timeout_enabled = false;
+		}
+
+		/*
+		 * (5) disable async signal conditions again.
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		 *
 		 * Query cancel is supposed to be a no-op when there is no query in
 		 * progress, so if a query cancel arrived while we were idle, just
@@ -5340,6 +5445,7 @@ PostgresMain(int argc, char *argv[],
 		DoingCommandRead = false;
 
 		/*
+<<<<<<< HEAD
 		 * (5) turn off the idle-in-transaction and idle-session timeouts, if
 		 * active.
 		 *
@@ -5358,6 +5464,8 @@ PostgresMain(int argc, char *argv[],
 		}
 
 		/*
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		 * (6) check for any other interesting events that happened while we
 		 * slept.
 		 */

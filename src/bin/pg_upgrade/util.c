@@ -3,7 +3,7 @@
  *
  *	utility functions
  *
- *	Copyright (c) 2010-2020, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/util.c
  */
 
@@ -478,6 +478,7 @@ str2uint(const char *str)
 {
 	return strtoul(str, NULL, 10);
 }
+<<<<<<< HEAD
 
 uint64
 str2uint64(const char *str)
@@ -519,3 +520,5 @@ pg_putenv(const char *var, const char *val)
 #endif
 	}
 }
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310

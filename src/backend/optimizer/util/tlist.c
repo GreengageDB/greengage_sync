@@ -3,9 +3,13 @@
  * tlist.c
  *	  Target list manipulation routines
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2007-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -31,11 +35,6 @@ typedef struct maxSortGroupRef_context
 
 static
 bool maxSortGroupRef_walker(Node *node, maxSortGroupRef_context *cxt);
-
-/* Test if an expression node represents a SRF call.  Beware multiple eval! */
-#define IS_SRF_CALL(node) \
-	((IsA(node, FuncExpr) && ((FuncExpr *) (node))->funcretset) || \
-	 (IsA(node, OpExpr) && ((OpExpr *) (node))->opretset))
 
 /*
  * Data structures for split_pathtarget_at_srfs().  To preserve the identity

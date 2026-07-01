@@ -3,8 +3,12 @@
 /*
  *	pg_upgrade.h
  *
+<<<<<<< HEAD
  *	Portions Copyright (c) 2016-Present, VMware, Inc. or its affiliates
  *	Copyright (c) 2010-2020, PostgreSQL Global Development Group
+=======
+ *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  *	src/bin/pg_upgrade/pg_upgrade.h
  */
 
@@ -439,13 +443,17 @@ void		output_check_banner(bool live_check);
 void		check_and_dump_old_cluster(bool live_check, char **sequence_script_file_name);
 void		check_new_cluster(void);
 void		report_clusters_compatible(void);
+<<<<<<< HEAD
 void		issue_warnings_and_set_wal_level(char *sequence_script_file_name);
 void		output_completion_banner(char *analyze_script_file_name,
 									 char *deletion_script_file_name);
+=======
+void		issue_warnings_and_set_wal_level(void);
+void		output_completion_banner(char *deletion_script_file_name);
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 void		check_cluster_versions(void);
 void		check_cluster_compatibility(bool live_check);
 void		create_script_for_old_cluster_deletion(char **deletion_script_file_name);
-void		create_script_for_cluster_analyze(char **analyze_script_file_name);
 
 
 /* controldata.c */
@@ -547,9 +555,12 @@ void		end_progress_output(void);
 void		prep_status(const char *fmt,...) pg_attribute_printf(1, 2);
 void		check_ok(void);
 unsigned int str2uint(const char *str);
+<<<<<<< HEAD
 uint64		str2uint64(const char *str);
 void		pg_putenv(const char *var, const char *val);
 void 		gp_fatal_log(const char *fmt,...) pg_attribute_printf(1, 2);
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 
 /* version.c */

@@ -3,9 +3,13 @@
  * tid.c
  *	  Functions for the built-in type tuple id
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2006-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -46,6 +50,8 @@
 #define RDELIM			')'
 #define DELIM			','
 #define NTIDARGS		2
+
+static ItemPointer currtid_for_view(Relation viewrel, ItemPointer tid);
 
 /* ----------------------------------------------------------------
  *		tidin
@@ -275,12 +281,44 @@ hashtidextended(PG_FUNCTION_ARGS)
  *	Maybe these implementations should be moved to another place
  */
 
-static ItemPointerData Current_last_tid = {{0, 0}, 0};
-
-void
-setLastTid(const ItemPointer tid)
+/*
+ * Utility wrapper for current CTID functions.
+ *		Returns the latest version of a tuple pointing at "tid" for
+ *		relation "rel".
+ */
+static ItemPointer
+currtid_internal(Relation rel, ItemPointer tid)
 {
-	Current_last_tid = *tid;
+	ItemPointer result;
+	AclResult	aclresult;
+	Snapshot	snapshot;
+	TableScanDesc scan;
+
+	result = (ItemPointer) palloc(sizeof(ItemPointerData));
+
+	aclresult = pg_class_aclcheck(RelationGetRelid(rel), GetUserId(),
+								  ACL_SELECT);
+	if (aclresult != ACLCHECK_OK)
+		aclcheck_error(aclresult, get_relkind_objtype(rel->rd_rel->relkind),
+					   RelationGetRelationName(rel));
+
+	if (rel->rd_rel->relkind == RELKIND_VIEW)
+		return currtid_for_view(rel, tid);
+
+	if (!RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
+		elog(ERROR, "cannot look at latest visible tid for relation \"%s.%s\"",
+			 get_namespace_name(RelationGetNamespace(rel)),
+			 RelationGetRelationName(rel));
+
+	ItemPointerCopy(tid, result);
+
+	snapshot = RegisterSnapshot(GetLatestSnapshot());
+	scan = table_beginscan_tid(rel, snapshot);
+	table_tuple_get_latest_tid(scan, result);
+	table_endscan(scan);
+	UnregisterSnapshot(snapshot);
+
+	return result;
 }
 
 /*
@@ -288,7 +326,7 @@ setLastTid(const ItemPointer tid)
  *		CTID should be defined in the view and it must
  *		correspond to the CTID of a base relation.
  */
-static Datum
+static ItemPointer
 currtid_for_view(Relation viewrel, ItemPointer tid)
 {
 	TupleDesc	att = RelationGetDescr(viewrel);
@@ -338,12 +376,12 @@ currtid_for_view(Relation viewrel, ItemPointer tid)
 					rte = rt_fetch(var->varno, query->rtable);
 					if (rte)
 					{
-						Datum		result;
+						ItemPointer result;
+						Relation	rel;
 
-						result = DirectFunctionCall2(currtid_byreloid,
-													 ObjectIdGetDatum(rte->relid),
-													 PointerGetDatum(tid));
-						table_close(viewrel, AccessShareLock);
+						rel = table_open(rte->relid, AccessShareLock);
+						result = currtid_internal(rel, tid);
+						table_close(rel, AccessShareLock);
 						return result;
 					}
 				}
@@ -352,6 +390,7 @@ currtid_for_view(Relation viewrel, ItemPointer tid)
 		}
 	}
 	elog(ERROR, "currtid cannot handle this view");
+<<<<<<< HEAD
 	return (Datum) 0;
 }
 
@@ -427,6 +466,16 @@ currtid_byreloid(PG_FUNCTION_ARGS)
  * the current number of blocks for the examined relation
  */
 
+=======
+	return NULL;
+}
+
+/*
+ * currtid_byrelname
+ *		Get the latest tuple version of the tuple pointing at a CTID, for a
+ *		given relation name.
+ */
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 Datum
 currtid_byrelname(PG_FUNCTION_ARGS)
 {
@@ -435,9 +484,6 @@ currtid_byrelname(PG_FUNCTION_ARGS)
 	ItemPointer result;
 	RangeVar   *relrv;
 	Relation	rel;
-	AclResult	aclresult;
-	Snapshot	snapshot;
-	TableScanDesc scan;
 
 	/*
 	 * Immediately inform client that the function is not supported
@@ -449,28 +495,8 @@ currtid_byrelname(PG_FUNCTION_ARGS)
 	relrv = makeRangeVarFromNameList(textToQualifiedNameList(relname));
 	rel = table_openrv(relrv, AccessShareLock);
 
-	aclresult = pg_class_aclcheck(RelationGetRelid(rel), GetUserId(),
-								  ACL_SELECT);
-	if (aclresult != ACLCHECK_OK)
-		aclcheck_error(aclresult, get_relkind_objtype(rel->rd_rel->relkind),
-					   RelationGetRelationName(rel));
-
-	if (rel->rd_rel->relkind == RELKIND_VIEW)
-		return currtid_for_view(rel, tid);
-
-	if (!RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
-		elog(ERROR, "cannot look at latest visible tid for relation \"%s.%s\"",
-			 get_namespace_name(RelationGetNamespace(rel)),
-			 RelationGetRelationName(rel));
-
-	result = (ItemPointer) palloc(sizeof(ItemPointerData));
-	ItemPointerCopy(tid, result);
-
-	snapshot = RegisterSnapshot(GetLatestSnapshot());
-	scan = table_beginscan_tid(rel, snapshot);
-	table_tuple_get_latest_tid(scan, result);
-	table_endscan(scan);
-	UnregisterSnapshot(snapshot);
+	/* grab the latest tuple version associated to this CTID */
+	result = currtid_internal(rel, tid);
 
 	table_close(rel, AccessShareLock);
 

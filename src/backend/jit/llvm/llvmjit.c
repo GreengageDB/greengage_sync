@@ -3,7 +3,7 @@
  * llvmjit.c
  *	  Core part of the LLVM JIT provider.
  *
- * Copyright (c) 2016-2020, PostgreSQL Global Development Group
+ * Copyright (c) 2016-2021, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
  *	  src/backend/jit/llvm/llvmjit.c
@@ -180,8 +180,11 @@ llvm_release_context(JitContext *context)
 	if (proc_exit_inprogress)
 		return;
 
+<<<<<<< HEAD
 	llvm_enter_fatal_on_oom();
 
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	if (llvm_context->module)
 	{
 		LLVMDisposeModule(llvm_context->module);
@@ -365,6 +368,47 @@ llvm_get_function(LLVMJitContext *context, const char *funcname)
 	elog(ERROR, "failed to JIT: %s", funcname);
 
 	return NULL;
+}
+
+/*
+ * Return type of a variable in llvmjit_types.c. This is useful to keep types
+ * in sync between plain C and JIT related code.
+ */
+LLVMTypeRef
+llvm_pg_var_type(const char *varname)
+{
+	LLVMValueRef v_srcvar;
+	LLVMTypeRef typ;
+
+	/* this'll return a *pointer* to the global */
+	v_srcvar = LLVMGetNamedGlobal(llvm_types_module, varname);
+	if (!v_srcvar)
+		elog(ERROR, "variable %s not in llvmjit_types.c", varname);
+
+	/* look at the contained type */
+	typ = LLVMTypeOf(v_srcvar);
+	Assert(typ != NULL && LLVMGetTypeKind(typ) == LLVMPointerTypeKind);
+	typ = LLVMGetElementType(typ);
+	Assert(typ != NULL);
+
+	return typ;
+}
+
+/*
+ * Return function type of a variable in llvmjit_types.c. This is useful to
+ * keep function types in sync between C and JITed code.
+ */
+LLVMTypeRef
+llvm_pg_var_func_type(const char *varname)
+{
+	LLVMTypeRef typ = llvm_pg_var_type(varname);
+
+	/* look at the contained type */
+	Assert(LLVMGetTypeKind(typ) == LLVMPointerTypeKind);
+	typ = LLVMGetElementType(typ);
+	Assert(typ != NULL && LLVMGetTypeKind(typ) == LLVMFunctionTypeKind);
+
+	return typ;
 }
 
 /*
@@ -844,6 +888,7 @@ llvm_session_initialize(void)
 static void
 llvm_shutdown(int code, Datum arg)
 {
+<<<<<<< HEAD
 	/*
 	 * If llvm_shutdown() is reached while in a fatal-on-oom section an error
 	 * has occurred in the middle of LLVM code. It is not safe to call back
@@ -921,6 +966,51 @@ load_type(LLVMModuleRef mod, const char *name)
 	typ = LLVMGetElementType(typ);
 	Assert(typ != NULL);
 	return typ;
+=======
+#if LLVM_VERSION_MAJOR > 11
+	{
+		if (llvm_opt3_orc)
+		{
+			LLVMOrcDisposeLLJIT(llvm_opt3_orc);
+			llvm_opt3_orc = NULL;
+		}
+		if (llvm_opt0_orc)
+		{
+			LLVMOrcDisposeLLJIT(llvm_opt0_orc);
+			llvm_opt0_orc = NULL;
+		}
+		if (llvm_ts_context)
+		{
+			LLVMOrcDisposeThreadSafeContext(llvm_ts_context);
+			llvm_ts_context = NULL;
+		}
+	}
+#else							/* LLVM_VERSION_MAJOR > 11 */
+	{
+		/* unregister profiling support, needs to be flushed to be useful */
+
+		if (llvm_opt3_orc)
+		{
+#if defined(HAVE_DECL_LLVMORCREGISTERPERF) && HAVE_DECL_LLVMORCREGISTERPERF
+			if (jit_profiling_support)
+				LLVMOrcUnregisterPerf(llvm_opt3_orc);
+#endif
+			LLVMOrcDisposeInstance(llvm_opt3_orc);
+			llvm_opt3_orc = NULL;
+		}
+
+		if (llvm_opt0_orc)
+		{
+#if defined(HAVE_DECL_LLVMORCREGISTERPERF) && HAVE_DECL_LLVMORCREGISTERPERF
+			if (jit_profiling_support)
+				LLVMOrcUnregisterPerf(llvm_opt0_orc);
+#endif
+			LLVMOrcDisposeInstance(llvm_opt0_orc);
+			llvm_opt0_orc = NULL;
+		}
+	}
+#endif							/* LLVM_VERSION_MAJOR > 11 */
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 }
 
 /* helper for llvm_create_types, returning a function's return type */
@@ -984,24 +1074,24 @@ llvm_create_types(void)
 	llvm_triple = pstrdup(LLVMGetTarget(llvm_types_module));
 	llvm_layout = pstrdup(LLVMGetDataLayoutStr(llvm_types_module));
 
-	TypeSizeT = load_type(llvm_types_module, "TypeSizeT");
+	TypeSizeT = llvm_pg_var_type("TypeSizeT");
 	TypeParamBool = load_return_type(llvm_types_module, "FunctionReturningBool");
-	TypeStorageBool = load_type(llvm_types_module, "TypeStorageBool");
-	TypePGFunction = load_type(llvm_types_module, "TypePGFunction");
-	StructNullableDatum = load_type(llvm_types_module, "StructNullableDatum");
-	StructExprContext = load_type(llvm_types_module, "StructExprContext");
-	StructExprEvalStep = load_type(llvm_types_module, "StructExprEvalStep");
-	StructExprState = load_type(llvm_types_module, "StructExprState");
-	StructFunctionCallInfoData = load_type(llvm_types_module, "StructFunctionCallInfoData");
-	StructMemoryContextData = load_type(llvm_types_module, "StructMemoryContextData");
-	StructTupleTableSlot = load_type(llvm_types_module, "StructTupleTableSlot");
-	StructHeapTupleTableSlot = load_type(llvm_types_module, "StructHeapTupleTableSlot");
-	StructMinimalTupleTableSlot = load_type(llvm_types_module, "StructMinimalTupleTableSlot");
-	StructHeapTupleData = load_type(llvm_types_module, "StructHeapTupleData");
-	StructTupleDescData = load_type(llvm_types_module, "StructTupleDescData");
-	StructAggState = load_type(llvm_types_module, "StructAggState");
-	StructAggStatePerGroupData = load_type(llvm_types_module, "StructAggStatePerGroupData");
-	StructAggStatePerTransData = load_type(llvm_types_module, "StructAggStatePerTransData");
+	TypeStorageBool = llvm_pg_var_type("TypeStorageBool");
+	TypePGFunction = llvm_pg_var_type("TypePGFunction");
+	StructNullableDatum = llvm_pg_var_type("StructNullableDatum");
+	StructExprContext = llvm_pg_var_type("StructExprContext");
+	StructExprEvalStep = llvm_pg_var_type("StructExprEvalStep");
+	StructExprState = llvm_pg_var_type("StructExprState");
+	StructFunctionCallInfoData = llvm_pg_var_type("StructFunctionCallInfoData");
+	StructMemoryContextData = llvm_pg_var_type("StructMemoryContextData");
+	StructTupleTableSlot = llvm_pg_var_type("StructTupleTableSlot");
+	StructHeapTupleTableSlot = llvm_pg_var_type("StructHeapTupleTableSlot");
+	StructMinimalTupleTableSlot = llvm_pg_var_type("StructMinimalTupleTableSlot");
+	StructHeapTupleData = llvm_pg_var_type("StructHeapTupleData");
+	StructTupleDescData = llvm_pg_var_type("StructTupleDescData");
+	StructAggState = llvm_pg_var_type("StructAggState");
+	StructAggStatePerGroupData = llvm_pg_var_type("StructAggStatePerGroupData");
+	StructAggStatePerTransData = llvm_pg_var_type("StructAggStatePerTransData");
 
 	AttributeTemplate = LLVMGetNamedFunction(llvm_types_module, "AttributeTemplate");
 }
@@ -1099,9 +1189,12 @@ llvm_resolve_symbols(LLVMOrcDefinitionGeneratorRef GeneratorObj, void *Ctx,
 	{
 		const char *name = LLVMOrcSymbolStringPoolEntryStr(LookupSet[i].Name);
 
+<<<<<<< HEAD
 #if LLVM_VERSION_MAJOR > 12
 		LLVMOrcRetainSymbolStringPoolEntry(LookupSet[i].Name);
 #endif
+=======
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		symbols[i].Name = LookupSet[i].Name;
 		symbols[i].Sym.Address = llvm_resolve_symbol(name, NULL);
 		symbols[i].Sym.Flags.GenericFlags = LLVMJITSymbolGenericFlagsExported;
