@@ -3,12 +3,8 @@
  *
  *	main source file
  *
-<<<<<<< HEAD
  *	Portions Copyright (c) 2016-Present, VMware, Inc. or its affiliates
- *	Copyright (c) 2010-2020, PostgreSQL Global Development Group
-=======
  *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  *	src/bin/pg_upgrade/pg_upgrade.c
  */
 
