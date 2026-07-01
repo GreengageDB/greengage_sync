@@ -228,17 +228,13 @@
  *    to filter expressions having to be evaluated early, and allows to JIT
  *    the entire expression into one native function.
  *
-<<<<<<< HEAD
  *    GPDB: Note that statement_mem is used to decide the operator memory
  *    instead of the work_mem, but to keep minimal change with postgres we keep
  *    the word "work_mem" in comments.
  *
  * Portions Copyright (c) 2007-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
