@@ -1,4 +1,6 @@
 CREATE TABLE rngfunc2(rngfuncid int, f2 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'rngfuncid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO rngfunc2 VALUES(1, 11);
 INSERT INTO rngfunc2 VALUES(2, 22);
 INSERT INTO rngfunc2 VALUES(1, 111);
@@ -261,7 +263,7 @@ HINT:  likely caused by a function that reads or modifies data in a distributed 
 CONTEXT:  SQL function "rngfunct" statement 1
 -- function in subselect
 select * from rngfunc2 where f2 in (select f2 from rngfunct(1) z where z.rngfuncid = rngfunc2.rngfuncid) ORDER BY 1,2;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.rngfunc2"
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.rngfunc2"  (entry db 172.17.0.2:7000 pid=23847)
 CONTEXT:  SQL function "rngfunct" during startup
 -- function in subselect
 select * from rngfunc2 where f2 in (select f2 from rngfunct(rngfunc2.rngfuncid) z where z.rngfuncid = 1) ORDER BY 1,2;
@@ -1405,9 +1407,9 @@ AS $$select $1-1, $1::text || 'z'$$ LANGUAGE sql;
 SELECT f1, rngfuncr(f1) FROM int4_tbl;
      f1      |          rngfuncr          
 -------------+----------------------------
-           0 | (-1,0z)
       123456 | (123455,123456z)
      -123456 | (-123457,-123456z)
+           0 | (-1,0z)
   2147483647 | (2147483646,2147483647z)
  -2147483647 | (-2147483648,-2147483647z)
 (5 rows)
@@ -1429,9 +1431,9 @@ AS $$select $2-1, $1::text || 'z'$$ LANGUAGE sql;
 SELECT f1, rngfuncb(f1, f1/2) FROM int4_tbl;
      f1      |          rngfuncb          
 -------------+----------------------------
-           0 | (-1,0z)
       123456 | (61727,123456z)
      -123456 | (-61729,-123456z)
+           0 | (-1,0z)
   2147483647 | (1073741822,2147483647z)
  -2147483647 | (-1073741824,-2147483647z)
 (5 rows)
@@ -1497,7 +1499,7 @@ DROP FUNCTION dup(anyelement);
 CREATE FUNCTION bad (f1 int, out f2 anyelement, out f3 anyarray)
 AS 'select $1, array[$1,$1]' LANGUAGE sql;
 ERROR:  cannot determine result data type
-DETAIL:  A result of type anyelement requires at least one input of type anyelement, anyarray, anynonarray, anyenum, or anyrange.
+DETAIL:  A result of type anyelement requires at least one input of type anyelement, anyarray, anynonarray, anyenum, anyrange, or anymultirange.
 CREATE FUNCTION dup (f1 anycompatible, f2 anycompatiblearray, f3 out anycompatible, f4 out anycompatiblearray)
 AS 'select $1, $2' LANGUAGE sql;
 SELECT dup(22, array[44]);
@@ -1603,6 +1605,8 @@ DROP FUNCTION rngfunc();
 -- some tests on SQL functions with RETURNING
 --
 create temp table tt(f1 serial, data text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- GPDB: The tests below which throw NOTICEs, throw them in indeterminate
 -- order, if the rows are hashed to different segments. Force the rows
 -- that have problem to be hashed to the same segment, using a custom hash
@@ -1654,8 +1658,8 @@ select * from tt;
 ----+----------
   1 | foo
   2 | bar
-  3 | fool
   4 | foolfool
+  3 | fool
 (4 rows)
 
 -- setof does what's expected
@@ -1679,12 +1683,12 @@ select * from insert_tt2('baz','quux');
 select * from tt;
  f1 |   data   
 ----+----------
-  1 | foo
-  2 | bar
   3 | fool
+  6 | barrish
   4 | foolfool
   5 | foolish
-  6 | barrish
+  1 | foo
+  2 | bar
   7 | baz
   8 | quux
 (8 rows)
@@ -1699,16 +1703,16 @@ select insert_tt2('foolish','barrish') limit 1;
 select * from tt;
  f1 |   data   
 ----+----------
-  1 | foo
-  2 | bar
-  3 | fool
   4 | foolfool
   5 | foolish
-  6 | barrish
+  1 | foo
+  2 | bar
   7 | baz
   8 | quux
   9 | foolish
  10 | barrish
+  3 | fool
+  6 | barrish
 (10 rows)
 
 -- triggers will fire, too
@@ -1720,8 +1724,8 @@ end $$ language plpgsql;
 create trigger tnoticetrigger after insert on tt for each row
 execute procedure noticetrigger();
 select insert_tt2('foolme','barme') limit 1;
-NOTICE:  noticetrigger 11 foolme
-NOTICE:  noticetrigger 12 barme
+NOTICE:  noticetrigger 11 foolme  (seg0 slice1 172.17.0.2:7002 pid=23675)
+NOTICE:  noticetrigger 12 barme  (seg0 slice1 172.17.0.2:7002 pid=23675)
  insert_tt2 
 ------------
          11
@@ -1730,27 +1734,29 @@ NOTICE:  noticetrigger 12 barme
 select * from tt;
  f1 |   data   
 ----+----------
-  1 | foo
-  2 | bar
-  3 | fool
   4 | foolfool
   5 | foolish
-  6 | barrish
+  1 | foo
+  2 | bar
   7 | baz
   8 | quux
   9 | foolish
  10 | barrish
  11 | foolme
  12 | barme
+  3 | fool
+  6 | barrish
 (12 rows)
 
 -- and rules work
 create temp table tt_log(f1 int, data text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create rule insert_tt_rule as on insert to tt do also
   insert into tt_log values(new.*);
 select insert_tt2('foollog','barlog') limit 1;
-NOTICE:  noticetrigger 13 foollog
-NOTICE:  noticetrigger 14 barlog
+NOTICE:  noticetrigger 13 foollog  (seg0 slice1 172.17.0.2:7002 pid=23675)
+NOTICE:  noticetrigger 14 barlog  (seg0 slice1 172.17.0.2:7002 pid=23675)
  insert_tt2 
 ------------
          13
@@ -1759,12 +1765,10 @@ NOTICE:  noticetrigger 14 barlog
 select * from tt;
  f1 |   data   
 ----+----------
+  3 | fool
+  6 | barrish
   1 | foo
   2 | bar
-  3 | fool
-  4 | foolfool
-  5 | foolish
-  6 | barrish
   7 | baz
   8 | quux
   9 | foolish
@@ -1773,6 +1777,8 @@ select * from tt;
  12 | barme
  13 | foollog
  14 | barlog
+  4 | foolfool
+  5 | foolish
 (14 rows)
 
 -- note that nextval() gets executed a second time in the rule expansion,
@@ -1846,13 +1852,14 @@ CONTEXT:  SQL function "array_to_set" during startup
 -- with "strict", this function can't be inlined in FROM
 explain (verbose, costs off)
   select * from array_to_set(array['one', 'two']) as t(f1 numeric(4,2),f2 text);
-                     QUERY PLAN                     
-----------------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Function Scan on public.array_to_set
    Output: f1, f2
    Function Call: array_to_set('{one,two}'::text[])
  Optimizer: Pivotal Optimizer (GPORCA)
-(4 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(5 rows)
 
 -- but without, it can be:
 create or replace function array_to_set(anyarray) returns setof record as $$
@@ -1885,15 +1892,18 @@ DETAIL:  Final statement returns integer instead of point at column 1.
 CONTEXT:  SQL function "array_to_set" during startup
 explain (verbose, costs off)
   select * from array_to_set(array['one', 'two']) as t(f1 numeric(4,2),f2 text);
-                     QUERY PLAN                     
-----------------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Function Scan on public.array_to_set
    Output: f1, f2
    Function Call: array_to_set('{one,two}'::text[])
  Optimizer: Pivotal Optimizer (GPORCA)
-(4 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(5 rows)
 
 create temp table rngfunc(f1 int8, f2 int8);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create function testrngfunc() returns record as $$
   insert into rngfunc values (1,2) returning *;
 $$ language sql;
@@ -1920,15 +1930,15 @@ $$ language sql;
 select testrngfunc();
  testrngfunc 
 -------------
- (1,2)
  (3,4)
+ (1,2)
 (2 rows)
 
 select * from testrngfunc() as t(f1 int8,f2 int8);
  f1 | f2 
 ----+----
-  1 |  2
   3 |  4
+  1 |  2
 (2 rows)
 
 select * from testrngfunc(); -- fail
@@ -1943,12 +1953,13 @@ create function testrngfunc() returns rngfunc_type as $$
 $$ language sql immutable;
 explain (verbose, costs off)
 select testrngfunc();
-                QUERY PLAN                 
--------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Result
    Output: '(7.136178,7.14)'::rngfunc_type
  Optimizer: Pivotal Optimizer (GPORCA)
-(3 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(4 rows)
 
 select testrngfunc();
    testrngfunc   
@@ -1958,13 +1969,14 @@ select testrngfunc();
 
 explain (verbose, costs off)
 select * from testrngfunc();
-                    QUERY PLAN                    
---------------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Function Scan on testrngfunc
    Output: f1, f2
    Function Call: '(7.136178,7.14)'::rngfunc_type
  Optimizer: Pivotal Optimizer (GPORCA)
-(4 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(5 rows)
 
 select * from testrngfunc();
     f1    |  f2  
@@ -1977,12 +1989,13 @@ create or replace function testrngfunc() returns rngfunc_type as $$
 $$ language sql volatile;
 explain (verbose, costs off)
 select testrngfunc();
-             QUERY PLAN              
--------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Result
    Output: testrngfunc()
  Optimizer: Postgres query optimizer
-(3 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(4 rows)
 
 select testrngfunc();
    testrngfunc   
@@ -1992,8 +2005,8 @@ select testrngfunc();
 
 explain (verbose, costs off)
 select * from testrngfunc();
-                           QUERY PLAN                           
-----------------------------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Subquery Scan on sirvf_sq
    Output: (sirvf_sq.testrngfunc).f1, (sirvf_sq.testrngfunc).f2
    ->  Result
@@ -2002,7 +2015,8 @@ select * from testrngfunc();
            ->  Result
                  Output: testrngfunc()
  Optimizer: Postgres query optimizer
-(8 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(9 rows)
 
 select * from testrngfunc();
     f1    |  f2  
@@ -2016,14 +2030,15 @@ create function testrngfunc() returns setof rngfunc_type as $$
 $$ language sql immutable;
 explain (verbose, costs off)
 select testrngfunc();
-              QUERY PLAN               
----------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  ProjectSet
    Output: testrngfunc()
    ->  Result
          Output: true
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(6 rows)
 
 select testrngfunc();
    testrngfunc   
@@ -2033,13 +2048,14 @@ select testrngfunc();
 
 explain (verbose, costs off)
 select * from testrngfunc();
-              QUERY PLAN               
----------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Function Scan on public.testrngfunc
    Output: f1, f2
    Function Call: testrngfunc()
  Optimizer: Pivotal Optimizer (GPORCA)
-(4 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(5 rows)
 
 select * from testrngfunc();
     f1    |  f2  
@@ -2052,14 +2068,15 @@ create or replace function testrngfunc() returns setof rngfunc_type as $$
 $$ language sql volatile;
 explain (verbose, costs off)
 select testrngfunc();
-              QUERY PLAN               
----------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  ProjectSet
    Output: testrngfunc()
    ->  Result
          Output: true
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(6 rows)
 
 select testrngfunc();
    testrngfunc   
@@ -2069,13 +2086,14 @@ select testrngfunc();
 
 explain (verbose, costs off)
 select * from testrngfunc();
-              QUERY PLAN               
----------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Function Scan on public.testrngfunc
    Output: f1, f2
    Function Call: testrngfunc()
  Optimizer: Pivotal Optimizer (GPORCA)
-(4 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(5 rows)
 
 select * from testrngfunc();
     f1    |  f2  
@@ -2088,14 +2106,15 @@ create or replace function testrngfunc() returns setof rngfunc_type as $$
 $$ language sql immutable;
 explain (verbose, costs off)
 select testrngfunc();
-              QUERY PLAN               
----------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  ProjectSet
    Output: testrngfunc()
    ->  Result
          Output: true
  Optimizer: Pivotal Optimizer (GPORCA)
-(5 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(6 rows)
 
 select testrngfunc();
    testrngfunc   
@@ -2106,13 +2125,14 @@ select testrngfunc();
 
 explain (verbose, costs off)
 select * from testrngfunc();
-              QUERY PLAN               
----------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Function Scan on public.testrngfunc
    Output: f1, f2
    Function Call: testrngfunc()
  Optimizer: Pivotal Optimizer (GPORCA)
-(4 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(5 rows)
 
 select * from testrngfunc();
     f1    |  f2  
@@ -2140,6 +2160,8 @@ NOTICE:  drop cascades to function testrngfunc()
 -- Check some cases involving added/dropped columns in a rowtype result
 --
 create temp table users (userid text, seq int, email text, todrop bool, moredrop int, enabled bool);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'userid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into users values ('id',1,'email',true,11,true);
 insert into users values ('id2',2,'email2',true,12,true);
 alter table users drop column todrop;
@@ -2248,13 +2270,14 @@ select * from rngfuncbar();
 
 -- this function is now inlinable, too:
 explain (verbose, costs off) select * from rngfuncbar();
-              QUERY PLAN               
----------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Function Scan on public.rngfuncbar
    Output: rngfuncbar
    Function Call: rngfuncbar()
  Optimizer: Pivotal Optimizer (GPORCA)
-(4 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(5 rows)
 
 drop function rngfuncbar();
 -- check handling of a SQL function with multiple OUT params (bug #5777)
@@ -2283,8 +2306,8 @@ create function extractq2(t int8_tbl) returns int8 as $$
 $$ language sql immutable;
 explain (verbose, costs off)
 select x from int8_tbl, extractq2(int8_tbl) f(x);
-                   QUERY PLAN                   
-------------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Output: f.x
    ->  Nested Loop
@@ -2295,7 +2318,8 @@ select x from int8_tbl, extractq2(int8_tbl) f(x);
                Output: f.x
                Function Call: int8_tbl.q2
  Optimizer: Postgres query optimizer
-(10 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(11 rows)
 
 select x from int8_tbl, extractq2(int8_tbl) f(x);
          x         
@@ -2312,8 +2336,8 @@ create function extractq2_2(t int8_tbl) returns table(ret1 int8) as $$
 $$ language sql immutable;
 explain (verbose, costs off)
 select x from int8_tbl, extractq2_2(int8_tbl) f(x);
-                 QUERY PLAN                  
----------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Output: ((int8_tbl.*).q2)
    ->  Nested Loop
@@ -2325,7 +2349,7 @@ select x from int8_tbl, extractq2_2(int8_tbl) f(x);
                ->  Result
                      Output: (int8_tbl.*).q2
  Optimizer: Postgres query optimizer
- Settings: optimizer=on
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
 (12 rows)
 
 select x from int8_tbl, extractq2_2(int8_tbl) f(x);
@@ -2344,14 +2368,15 @@ create function extractq2_2_opt(t int8_tbl) returns table(ret1 int8) as $$
 $$ language sql immutable;
 explain (verbose, costs off)
 select x from int8_tbl, extractq2_2_opt(int8_tbl) f(x);
-                QUERY PLAN                
-------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Output: int8_tbl.q2
    ->  Seq Scan on public.int8_tbl
          Output: int8_tbl.q2
  Optimizer: Postgres query optimizer
-(5 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(6 rows)
 
 select x from int8_tbl, extractq2_2_opt(int8_tbl) f(x);
          x         
@@ -2370,8 +2395,8 @@ create function extractq2_append(t int8_tbl) returns table(ret1 int8) as $$
 $$ language sql immutable;
 explain (verbose, costs off)
 select x from (select * from int8_tbl order by 1 limit 100) as int8_tbl, extractq2_append(int8_tbl) f(x);
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Nested Loop
    Output: (int8_tbl.q2)
    ->  Limit
@@ -2394,8 +2419,8 @@ select x from (select * from int8_tbl order by 1 limit 100) as int8_tbl, extract
                ->  Result
                      Output: int8_tbl.q2
  Optimizer: Postgres query optimizer
- Settings: optimizer=on
-(15 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(23 rows)
 
 select x from (select * from int8_tbl order by 1 limit 100) as int8_tbl, extractq2_append(int8_tbl) f(x);
          x         
@@ -2416,8 +2441,8 @@ create function extractq2_wapper(t int8_tbl) returns table(ret1 int8) as $$
   select (select extractq2(t))                                                  
 $$ language sql immutable;                                                      
 explain (verbose, costs off) select x from int8_tbl, extractq2_wapper(int8_tbl) f(x);
-                QUERY PLAN                
-------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Output: ((SubPlan 1))
    ->  Seq Scan on public.int8_tbl
@@ -2426,16 +2451,17 @@ explain (verbose, costs off) select x from int8_tbl, extractq2_wapper(int8_tbl) 
            ->  Result
                  Output: (int8_tbl.*).q2
  Optimizer: Postgres query optimizer
-(8 rows)
+ Settings: jit = 'on', jit_above_cost = '0', optimizer_jit_above_cost = '0'
+(9 rows)
 
 select x from int8_tbl, extractq2_wapper(int8_tbl) f(x);
          x         
 -------------------
+               456
+  4567890123456789
                123
   4567890123456789
  -4567890123456789
-               456
-  4567890123456789
 (5 rows)
 
 -- check handling of nulls in SRF results (bug #7808)

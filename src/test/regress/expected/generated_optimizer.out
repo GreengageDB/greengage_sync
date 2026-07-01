@@ -56,6 +56,7 @@ DETAIL:  Feature not supported: Non-default collation
  b      | integer |           |          | generated always as (a * 2) stored
 Indexes:
     "gtest1_pkey" PRIMARY KEY, btree (a)
+Distributed by: (a)
 
 -- duplicate generated
 CREATE TABLE gtest_err_1 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED GENERATED ALWAYS AS (a * 3) STORED);
@@ -127,17 +128,30 @@ CREATE TABLE gtest_err_9b (a int GENERATED ALWAYS AS (b * 2) STORED, b int);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'b' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO gtest1 VALUES (1);
-INSERT INTO gtest1 VALUES (2, DEFAULT);
+INSERT INTO gtest1 VALUES (2, DEFAULT);  -- ok
 INSERT INTO gtest1 VALUES (3, 33);  -- error
-ERROR:  cannot insert into column "b"
+ERROR:  cannot insert a non-DEFAULT value into column "b"
 DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1 VALUES (3, 33), (4, 44);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
+DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1 VALUES (3, DEFAULT), (4, 44);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
+DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1 VALUES (3, 33), (4, DEFAULT);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
+DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1 VALUES (3, DEFAULT), (4, DEFAULT);  -- ok
 SELECT * FROM gtest1 ORDER BY a;
  a | b 
 ---+---
  1 | 2
  2 | 4
-(2 rows)
+ 3 | 6
+ 4 | 8
+(4 rows)
 
+DELETE FROM gtest1 WHERE a >= 3;
 UPDATE gtest1 SET b = DEFAULT WHERE a = 1;
 UPDATE gtest1 SET b = 11 WHERE a = 1;  -- error
 ERROR:  column "b" can only be updated to DEFAULT
@@ -164,17 +178,19 @@ SELECT a, b FROM gtest1 WHERE b = 4 ORDER BY a;
 
 -- test that overflow error happens on write
 INSERT INTO gtest1 VALUES (2000000000);
-ERROR:  integer out of range
+ERROR:  integer out of range  (seg1 172.17.0.2:7003 pid=20346)
 SELECT * FROM gtest1;
  a | b 
 ---+---
- 2 | 4
  1 | 2
+ 2 | 4
 (2 rows)
 
 DELETE FROM gtest1 WHERE a = 2000000000;
 -- test with joins
 CREATE TABLE gtestx (x int, y int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO gtestx VALUES (11, 1), (22, 2), (33, 3);
 SELECT * FROM gtestx, gtest1 WHERE gtestx.y = gtest1.a;
  x  | y | a | b 
@@ -215,9 +231,37 @@ SELECT * FROM gtest1v;
  3 | 6
 (1 row)
 
-INSERT INTO gtest1v VALUES (4, 8);  -- fails
-ERROR:  cannot insert into column "b"
+INSERT INTO gtest1v VALUES (4, 8);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
 DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1v VALUES (5, DEFAULT);  -- ok
+INSERT INTO gtest1v VALUES (6, 66), (7, 77);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
+DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1v VALUES (6, DEFAULT), (7, 77);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
+DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1v VALUES (6, 66), (7, DEFAULT);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
+DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1v VALUES (6, DEFAULT), (7, DEFAULT);  -- ok
+ALTER VIEW gtest1v ALTER COLUMN b SET DEFAULT 100;
+INSERT INTO gtest1v VALUES (8, DEFAULT);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
+DETAIL:  Column "b" is a generated column.
+INSERT INTO gtest1v VALUES (8, DEFAULT), (9, DEFAULT);  -- error
+ERROR:  cannot insert a non-DEFAULT value into column "b"
+DETAIL:  Column "b" is a generated column.
+SELECT * FROM gtest1v;
+ a | b  
+---+----
+ 3 |  6
+ 7 | 14
+ 5 | 10
+ 6 | 12
+(4 rows)
+
+DELETE FROM gtest1v WHERE a >= 5;
 DROP VIEW gtest1v;
 -- CTEs
 WITH foo AS (SELECT * FROM gtest1) SELECT * FROM foo;
@@ -228,6 +272,7 @@ WITH foo AS (SELECT * FROM gtest1) SELECT * FROM foo;
 
 -- inheritance
 CREATE TABLE gtest1_1 () INHERITS (gtest1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 SELECT * FROM gtest1_1;
  a | b 
 ---+---
@@ -258,6 +303,7 @@ DETAIL:  Feature not supported: Non-default collation
  a      | integer |           | not null | 
  b      | integer |           |          | generated always as (a * 2) stored
 Inherits: gtest1
+Distributed by: (a)
 
 INSERT INTO gtest1_1 VALUES (4);
 SELECT * FROM gtest1_1;
@@ -276,6 +322,8 @@ DETAIL:  Feature not supported: Inherited tables
 (2 rows)
 
 CREATE TABLE gtest_normal (a int, b int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE gtest_normal_child (a int, b int GENERATED ALWAYS AS (a * 2) STORED) INHERITS (gtest_normal);
 NOTICE:  table has parent, setting distribution columns to match parent table
 NOTICE:  merging column "a" with inherited definition
@@ -336,18 +384,24 @@ NOTICE:  merging column "b" with inherited definition
 ERROR:  column "b" inherits from generated column but specifies identity
 -- test multiple inheritance mismatches
 CREATE TABLE gtesty (x int, b int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE gtest1_2 () INHERITS (gtest1, gtesty);  -- error
 NOTICE:  table has parent, setting distribution columns to match parent table
 NOTICE:  merging multiple inherited definitions of column "b"
 ERROR:  inherited column "b" has a generation conflict
 DROP TABLE gtesty;
 CREATE TABLE gtesty (x int, b int GENERATED ALWAYS AS (x * 22) STORED);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE gtest1_2 () INHERITS (gtest1, gtesty);  -- error
 NOTICE:  table has parent, setting distribution columns to match parent table
 NOTICE:  merging multiple inherited definitions of column "b"
 ERROR:  column "b" inherits conflicting generation expressions
 DROP TABLE gtesty;
 CREATE TABLE gtesty (x int, b int DEFAULT 55);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE gtest1_2 () INHERITS (gtest0, gtesty);  -- error
 NOTICE:  table has parent, setting distribution columns to match parent table
 NOTICE:  merging multiple inherited definitions of column "b"
@@ -355,6 +409,8 @@ ERROR:  inherited column "b" has a generation conflict
 DROP TABLE gtesty;
 -- test stored update
 CREATE TABLE gtest3 (a int, b int GENERATED ALWAYS AS (a * 3) STORED);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO gtest3 (a) VALUES (1), (2), (3), (NULL);
 SELECT * FROM gtest3 ORDER BY a;
  a | b 
@@ -376,6 +432,8 @@ SELECT * FROM gtest3 ORDER BY a;
 (4 rows)
 
 CREATE TABLE gtest3a (a text, b text GENERATED ALWAYS AS (a || '+' || a) STORED);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO gtest3a (a) VALUES ('a'), ('b'), ('c'), (NULL);
 SELECT * FROM gtest3a ORDER BY a;
  a |  b  
@@ -402,8 +460,8 @@ INSERT INTO gtest1 (a) VALUES (1), (2);
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Inherited tables
 COPY gtest1 TO stdout;
-1
 2
+1
 COPY gtest1 (a, b) TO stdout;
 ERROR:  column "b" is a generated column
 DETAIL:  Generated columns cannot be used in COPY.
@@ -425,8 +483,8 @@ DETAIL:  Feature not supported: Inherited tables
 TRUNCATE gtest3;
 INSERT INTO gtest3 (a) VALUES (1), (2);
 COPY gtest3 TO stdout;
-1
 2
+1
 COPY gtest3 (a, b) TO stdout;
 ERROR:  column "b" is a generated column
 DETAIL:  Generated columns cannot be used in COPY.
@@ -454,6 +512,8 @@ SELECT * FROM gtest2;
 
 -- simple column reference for varlena types
 CREATE TABLE gtest_varlena (a varchar, b varchar GENERATED ALWAYS AS (a) STORED);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO gtest_varlena (a) VALUES('01234567890123456789');
 INSERT INTO gtest_varlena (a) VALUES(NULL);
 SELECT * FROM gtest_varlena ORDER BY a;
@@ -470,12 +530,14 @@ CREATE TABLE gtest4 (
     a int,
     b double_int GENERATED ALWAYS AS ((a * 2, a * 3)) STORED
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO gtest4 VALUES (1), (6);
 SELECT * FROM gtest4;
  a |    b    
 ---+---------
- 1 | (2,3)
  6 | (12,18)
+ 1 | (2,3)
 (2 rows)
 
 DROP TABLE gtest4;
@@ -489,8 +551,8 @@ INSERT INTO gtest_tableoid VALUES (1), (2);
 SELECT * FROM gtest_tableoid;
  a | b 
 ---+---
- 1 | t
  2 | t
+ 1 | t
 (2 rows)
 
 -- drop column behavior
@@ -523,12 +585,14 @@ DETAIL:  Feature not supported: Non-default collation
  a      | integer |           | not null | 
 Indexes:
     "gtest10_pkey" PRIMARY KEY, btree (a)
+Distributed by: (a)
 
 CREATE TABLE gtest10a (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED);
 ALTER TABLE gtest10a DROP COLUMN b;
 INSERT INTO gtest10a (a) VALUES (1);
 -- privileges
 CREATE USER regress_user11;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE TABLE gtest11s (a int PRIMARY KEY, b int, c int GENERATED ALWAYS AS (b * 2) STORED);
 INSERT INTO gtest11s VALUES (1, 10), (2, 20);
 GRANT SELECT (a, c) ON gtest11s TO regress_user11;
@@ -564,30 +628,30 @@ DROP USER regress_user11;
 CREATE TABLE gtest20 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED CHECK (b < 50));
 INSERT INTO gtest20 (a) VALUES (10);  -- ok
 INSERT INTO gtest20 (a) VALUES (30);  -- violates constraint
-ERROR:  new row for relation "gtest20" violates check constraint "gtest20_b_check"
+ERROR:  new row for relation "gtest20" violates check constraint "gtest20_b_check"  (seg1 172.17.0.2:7003 pid=20346)
 DETAIL:  Failing row contains (30, 60).
 CREATE TABLE gtest20a (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED);
 INSERT INTO gtest20a (a) VALUES (10);
 INSERT INTO gtest20a (a) VALUES (30);
 ALTER TABLE gtest20a ADD CHECK (b < 50);  -- fails on existing row
-ERROR:  check constraint "gtest20a_b_check" of relation "gtest20a" is violated by some row
+ERROR:  check constraint "gtest20a_b_check" of relation "gtest20a" is violated by some row  (seg1 172.17.0.2:7003 pid=20346)
 CREATE TABLE gtest20b (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED);
 INSERT INTO gtest20b (a) VALUES (10);
 INSERT INTO gtest20b (a) VALUES (30);
 ALTER TABLE gtest20b ADD CONSTRAINT chk CHECK (b < 50) NOT VALID;
 ALTER TABLE gtest20b VALIDATE CONSTRAINT chk;  -- fails on existing row
-ERROR:  check constraint "chk" of relation "gtest20b" is violated by some row
+ERROR:  check constraint "chk" of relation "gtest20b" is violated by some row  (seg1 172.17.0.2:7003 pid=20346)
 -- not-null constraints
 CREATE TABLE gtest21a (a int PRIMARY KEY, b int GENERATED ALWAYS AS (nullif(a, 0)) STORED NOT NULL);
 INSERT INTO gtest21a (a) VALUES (1);  -- ok
 INSERT INTO gtest21a (a) VALUES (0);  -- violates constraint
-ERROR:  null value in column "b" of relation "gtest21a" violates not-null constraint
+ERROR:  null value in column "b" of relation "gtest21a" violates not-null constraint  (seg1 172.17.0.2:7003 pid=20346)
 DETAIL:  Failing row contains (0, null).
 CREATE TABLE gtest21b (a int PRIMARY KEY, b int GENERATED ALWAYS AS (nullif(a, 0)) STORED);
 ALTER TABLE gtest21b ALTER COLUMN b SET NOT NULL;
 INSERT INTO gtest21b (a) VALUES (1);  -- ok
 INSERT INTO gtest21b (a) VALUES (0);  -- violates constraint
-ERROR:  null value in column "b" of relation "gtest21b" violates not-null constraint
+ERROR:  null value in column "b" of relation "gtest21b" violates not-null constraint  (seg1 172.17.0.2:7003 pid=20346)
 DETAIL:  Failing row contains (0, null).
 ALTER TABLE gtest21b ALTER COLUMN b DROP NOT NULL;
 INSERT INTO gtest21b (a) VALUES (0);  -- ok now
@@ -595,16 +659,18 @@ INSERT INTO gtest21b (a) VALUES (0);  -- ok now
 CREATE TABLE gtest22a (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a / 2) STORED UNIQUE) distributed replicated;
 INSERT INTO gtest22a VALUES (2);
 INSERT INTO gtest22a VALUES (3);
-ERROR:  duplicate key value violates unique constraint "gtest22a_b_key"
+ERROR:  duplicate key value violates unique constraint "gtest22a_b_key"  (seg1 172.17.0.2:7003 pid=20346)
 DETAIL:  Key (b)=(1) already exists.
 INSERT INTO gtest22a VALUES (4);
 CREATE TABLE gtest22b (a int, b int GENERATED ALWAYS AS (a / 2) STORED, PRIMARY KEY (a, b)) distributed by (a);
 INSERT INTO gtest22b VALUES (2);
 INSERT INTO gtest22b VALUES (2);
-ERROR:  duplicate key value violates unique constraint "gtest22b_pkey"
+ERROR:  duplicate key value violates unique constraint "gtest22b_pkey"  (seg0 172.17.0.2:7002 pid=20348)
 DETAIL:  Key (a, b)=(2, 1) already exists.
 -- indexes
 CREATE TABLE gtest22c (a int, b int GENERATED ALWAYS AS (a * 2) STORED);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE INDEX gtest22c_b_idx ON gtest22c (b);
 CREATE INDEX gtest22c_expr_idx ON gtest22c ((b * 3));
 CREATE INDEX gtest22c_pred_idx ON gtest22c (a) WHERE b > 0;
@@ -638,6 +704,7 @@ Indexes:
     "gtest22c_b_idx" btree (b)
     "gtest22c_expr_idx" btree ((b * 3))
     "gtest22c_pred_idx" btree (a) WHERE b > 0
+Distributed by: (a)
 
 INSERT INTO gtest22c VALUES (1), (2), (3);
 SET enable_seqscan TO off;
@@ -698,6 +765,7 @@ ERROR:  invalid ON UPDATE action for foreign key constraint containing generated
 CREATE TABLE gtest23x (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED REFERENCES gtest23a (x) ON DELETE SET NULL);  -- error
 ERROR:  invalid ON DELETE action for foreign key constraint containing generated column
 CREATE TABLE gtest23b (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED REFERENCES gtest23a (x));
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 \d gtest23b
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Non-default collation
@@ -734,6 +802,7 @@ Indexes:
     "gtest23b_pkey" PRIMARY KEY, btree (a)
 Foreign-key constraints:
     "gtest23b_b_fkey" FOREIGN KEY (b) REFERENCES gtest23a(x)
+Distributed by: (a)
 
 INSERT INTO gtest23b VALUES (1);  -- ok
 -- GPDB doesn't enforce foreign key constraints, so this doesn't error out.
@@ -743,6 +812,7 @@ DROP TABLE gtest23a;
 CREATE TABLE gtest23p (x int, y int GENERATED ALWAYS AS (x * 2) STORED, PRIMARY KEY (x, y)) distributed by (x);
 INSERT INTO gtest23p VALUES (1), (2), (3);
 CREATE TABLE gtest23q (a int PRIMARY KEY, b int, CONSTRAINT fk_gtest FOREIGN KEY (a, b) REFERENCES gtest23p (x, y));
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 INSERT INTO gtest23q VALUES (1, 2);  -- ok
 -- GPDB doesn't enforce foreign key constraints, so this doesn't error out.
 INSERT INTO gtest23q VALUES (2, 5);  -- error
@@ -751,7 +821,7 @@ CREATE DOMAIN gtestdomain1 AS int CHECK (VALUE < 10);
 CREATE TABLE gtest24 (a int PRIMARY KEY, b gtestdomain1 GENERATED ALWAYS AS (a * 2) STORED);
 INSERT INTO gtest24 (a) VALUES (4);  -- ok
 INSERT INTO gtest24 (a) VALUES (6);  -- error
-ERROR:  value for domain gtestdomain1 violates check constraint "gtestdomain1_check"
+ERROR:  value for domain gtestdomain1 violates check constraint "gtestdomain1_check"  (seg2 172.17.0.2:7004 pid=20347)
 -- typed tables (currently not supported)
 CREATE TYPE gtest_type AS (f1 integer, f2 text, f3 bigint);
 CREATE TABLE gtest28 OF gtest_type (f1 WITH OPTIONS GENERATED ALWAYS AS (f2 *2) STORED);
@@ -759,6 +829,8 @@ ERROR:  generated columns are not supported on typed tables
 DROP TYPE gtest_type CASCADE;
 -- table partitions (currently not supported)
 CREATE TABLE gtest_parent (f1 date NOT NULL, f2 text, f3 bigint) PARTITION BY RANGE (f1);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE gtest_child PARTITION OF gtest_parent (
     f3 WITH OPTIONS GENERATED ALWAYS AS (f2 * 2) STORED
 ) FOR VALUES FROM ('2016-07-01') TO ('2016-08-01'); -- error
@@ -766,7 +838,10 @@ ERROR:  generated columns are not supported on partitions
 DROP TABLE gtest_parent;
 -- partitioned table
 CREATE TABLE gtest_parent (f1 date NOT NULL, f2 bigint, f3 bigint GENERATED ALWAYS AS (f2 * 2) STORED) PARTITION BY RANGE (f1);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE gtest_child PARTITION OF gtest_parent FOR VALUES FROM ('2016-07-01') TO ('2016-08-01');
+NOTICE:  table has parent, setting distribution columns to match parent table
 INSERT INTO gtest_parent (f1, f2) VALUES ('2016-07-15', 1);
 SELECT * FROM gtest_parent;
      f1     | f2 | f3 
@@ -783,11 +858,15 @@ SELECT * FROM gtest_child;
 DROP TABLE gtest_parent;
 -- generated columns in partition key (not allowed)
 CREATE TABLE gtest_parent (f1 date NOT NULL, f2 bigint, f3 bigint GENERATED ALWAYS AS (f2 * 2) STORED) PARTITION BY RANGE (f3);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ERROR:  cannot use generated column in partition key
 LINE 1: ...ENERATED ALWAYS AS (f2 * 2) STORED) PARTITION BY RANGE (f3);
                                                                    ^
 DETAIL:  Column "f3" is a generated column.
 CREATE TABLE gtest_parent (f1 date NOT NULL, f2 bigint, f3 bigint GENERATED ALWAYS AS (f2 * 2) STORED) PARTITION BY RANGE ((f3 * 3));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ERROR:  cannot use generated column in partition key
 LINE 1: ...ED ALWAYS AS (f2 * 2) STORED) PARTITION BY RANGE ((f3 * 3));
                                                              ^
@@ -860,6 +939,8 @@ CREATE TABLE gtest27 (
     b int,
     x int GENERATED ALWAYS AS ((a + b) * 2) STORED
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE gtest27 SET DISTRIBUTED RANDOMLY;
 INSERT INTO gtest27 (a, b) VALUES (3, 7), (4, 11);
 ALTER TABLE gtest27 ALTER COLUMN a TYPE text;  -- error
@@ -896,8 +977,8 @@ Distributed randomly
 SELECT * FROM gtest27;
  a | b  | x  
 ---+----+----
- 4 | 11 | 30
  3 |  7 | 20
+ 4 | 11 | 30
 (2 rows)
 
 ALTER TABLE gtest27 ALTER COLUMN x TYPE boolean USING x <> 0;  -- error
@@ -983,11 +1064,16 @@ CREATE TABLE gtest29 (
     a int,
     b int GENERATED ALWAYS AS (a * 2) STORED
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO gtest29 (a) VALUES (3), (4);
 ALTER TABLE gtest29 ALTER COLUMN a DROP EXPRESSION;  -- error
 ERROR:  column "a" of relation "gtest29" is not a stored generated column
 ALTER TABLE gtest29 ALTER COLUMN a DROP EXPRESSION IF EXISTS;  -- notice
 NOTICE:  column "a" of relation "gtest29" is not a stored generated column, skipping
+NOTICE:  column "a" of relation "gtest29" is not a stored generated column, skipping  (seg2 172.17.0.2:7004 pid=20347)
+NOTICE:  column "a" of relation "gtest29" is not a stored generated column, skipping  (seg1 172.17.0.2:7003 pid=20346)
+NOTICE:  column "a" of relation "gtest29" is not a stored generated column, skipping  (seg0 172.17.0.2:7002 pid=20348)
 ALTER TABLE gtest29 ALTER COLUMN b DROP EXPRESSION;
 INSERT INTO gtest29 (a) VALUES (5);
 INSERT INTO gtest29 (a, b) VALUES (6, 66);
@@ -1028,6 +1114,7 @@ Distributed by: (a)
 
 -- check that dependencies between columns have also been removed
 ALTER TABLE gtest29 DROP COLUMN a;  -- should not drop b
+NOTICE:  dropping a column that is part of the distribution policy forces a NULL distribution policy
 \d gtest29
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Non-default collation
@@ -1058,7 +1145,10 @@ CREATE TABLE gtest30 (
     a int,
     b int GENERATED ALWAYS AS (a * 2) STORED
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE gtest30_1 () INHERITS (gtest30);
+NOTICE:  table has parent, setting distribution columns to match parent table
 ALTER TABLE gtest30 ALTER COLUMN b DROP EXPRESSION;
 \d gtest30
 INFO:  GPORCA failed to produce a plan, falling back to planner
@@ -1120,7 +1210,10 @@ CREATE TABLE gtest30 (
     a int,
     b int GENERATED ALWAYS AS (a * 2) STORED
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE gtest30_1 () INHERITS (gtest30);
+NOTICE:  table has parent, setting distribution columns to match parent table
 ALTER TABLE ONLY gtest30 ALTER COLUMN b DROP EXPRESSION;  -- error
 ERROR:  ALTER TABLE / DROP EXPRESSION must be applied to child tables too
 \d gtest30
@@ -1234,8 +1327,8 @@ CREATE TRIGGER gtest4 AFTER INSERT OR UPDATE ON gtest26
   WHEN (NEW.b < 0)  -- ok
   EXECUTE PROCEDURE gtest_trigger_func();
 INSERT INTO gtest26 (a) VALUES (-2), (0), (3);
-INFO:  gtest2: BEFORE: new = (-2,)
-INFO:  gtest4: AFTER: new = (-2,-4)
+INFO:  gtest2: BEFORE: new = (-2,)  (seg1 172.17.0.2:7003 pid=20346)
+INFO:  gtest4: AFTER: new = (-2,-4)  (seg1 172.17.0.2:7003 pid=20346)
 SELECT * FROM gtest26 ORDER BY a;
  a  | b  
 ----+----
@@ -1259,19 +1352,19 @@ alter table gtest26 add column distkey integer;
 alter table gtest26 set distributed by (distkey);
 truncate gtest26;
 INSERT INTO gtest26 (a) VALUES (-2), (0), (3);
-INFO:  gtest2: BEFORE: new = (-2,,)  (seg0 127.0.1.1:7002 pid=179471)
-INFO:  gtest4: AFTER: new = (-2,-4,)  (seg0 127.0.1.1:7002 pid=179471)
+INFO:  gtest2: BEFORE: new = (-2,,)  (seg0 172.17.0.2:7002 pid=20348)
+INFO:  gtest4: AFTER: new = (-2,-4,)  (seg0 172.17.0.2:7002 pid=20348)
 alter table gtest26 drop column distkey;
 NOTICE:  dropping a column that is part of the distribution policy forces a NULL distribution policy
 UPDATE gtest26 SET a = a * -2;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: UPDATE on a table with UPDATE triggers
-INFO:  gtest1: BEFORE: old = (-2,-4)  (seg0 127.0.1.1:7002 pid=179471)
-INFO:  gtest1: BEFORE: new = (4,)  (seg0 127.0.1.1:7002 pid=179471)
-INFO:  gtest3: AFTER: old = (-2,-4)  (seg0 127.0.1.1:7002 pid=179471)
-INFO:  gtest3: AFTER: new = (4,8)  (seg0 127.0.1.1:7002 pid=179471)
-INFO:  gtest4: AFTER: old = (3,6)  (seg0 127.0.1.1:7002 pid=179471)
-INFO:  gtest4: AFTER: new = (-6,-12)  (seg0 127.0.1.1:7002 pid=179471)
+INFO:  gtest1: BEFORE: old = (-2,-4)  (seg0 172.17.0.2:7002 pid=20348)
+INFO:  gtest1: BEFORE: new = (4,)  (seg0 172.17.0.2:7002 pid=20348)
+INFO:  gtest3: AFTER: old = (-2,-4)  (seg0 172.17.0.2:7002 pid=20348)
+INFO:  gtest3: AFTER: new = (4,8)  (seg0 172.17.0.2:7002 pid=20348)
+INFO:  gtest4: AFTER: old = (3,6)  (seg0 172.17.0.2:7002 pid=20348)
+INFO:  gtest4: AFTER: new = (-6,-12)  (seg0 172.17.0.2:7002 pid=20348)
 SELECT * FROM gtest26 ORDER BY a;
  a  |  b  
 ----+-----
@@ -1281,8 +1374,8 @@ SELECT * FROM gtest26 ORDER BY a;
 (3 rows)
 
 DELETE FROM gtest26 WHERE a = -6;
-INFO:  gtest1: BEFORE: old = (-6,-12)
-INFO:  gtest3: AFTER: old = (-6,-12)
+INFO:  gtest1: BEFORE: old = (-6,-12)  (seg0 172.17.0.2:7002 pid=20348)
+INFO:  gtest3: AFTER: old = (-6,-12)  (seg0 172.17.0.2:7002 pid=20348)
 SELECT * FROM gtest26 ORDER BY a;
  a | b 
 ---+---
@@ -1309,7 +1402,7 @@ CREATE TRIGGER gtest11 BEFORE UPDATE OF b ON gtest26
 UPDATE gtest26 SET a = 1 WHERE a = 0;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: UPDATE on a table with UPDATE triggers
-NOTICE:  OK
+NOTICE:  OK  (seg0 172.17.0.2:7002 pid=20348)
 DROP TRIGGER gtest11 ON gtest26;
 TRUNCATE gtest26;
 -- check that modifications of stored generated columns in triggers do
@@ -1336,10 +1429,10 @@ INSERT INTO gtest26 (a) VALUES (1);
 UPDATE gtest26 SET a = 11 WHERE a = 1;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: UPDATE on a table with UPDATE triggers
-INFO:  gtest12_01: BEFORE: old = (1,2)
-INFO:  gtest12_01: BEFORE: new = (11,)
-INFO:  gtest12_03: BEFORE: old = (1,2)
-INFO:  gtest12_03: BEFORE: new = (10,)
+INFO:  gtest12_01: BEFORE: old = (1,2)  (seg1 172.17.0.2:7003 pid=20346)
+INFO:  gtest12_01: BEFORE: new = (11,)  (seg1 172.17.0.2:7003 pid=20346)
+INFO:  gtest12_03: BEFORE: old = (1,2)  (seg1 172.17.0.2:7003 pid=20346)
+INFO:  gtest12_03: BEFORE: new = (10,)  (seg1 172.17.0.2:7003 pid=20346)
 SELECT * FROM gtest26 ORDER BY a;
  a  | b  
 ----+----
@@ -1353,8 +1446,12 @@ CREATE TABLE gtest28a (
   c int,
   x int GENERATED ALWAYS AS (b * 2) STORED
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE gtest28a DROP COLUMN a;
+NOTICE:  dropping a column that is part of the distribution policy forces a NULL distribution policy
 CREATE TABLE gtest28b (LIKE gtest28a INCLUDING GENERATED);
+NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
 \d gtest28*
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Non-default collation

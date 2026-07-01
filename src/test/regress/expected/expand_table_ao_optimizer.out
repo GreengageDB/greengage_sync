@@ -30,8 +30,8 @@ Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             0 |    38
              1 |    37
+             0 |    38
              2 |    25
 (3 rows)
 
@@ -48,8 +48,8 @@ Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
              2 |    25
-             0 |    38
              1 |    37
+             0 |    38
 (3 rows)
 
 select numsegments from gp_distribution_policy where localoid='t1'::regclass;
@@ -79,9 +79,9 @@ Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
+             2 |    37
              0 |    33
              1 |    30
-             2 |    37
 (3 rows)
 
 abort;
@@ -136,9 +136,9 @@ Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             2 |     4
              0 |     3
              1 |     1
+             2 |     4
 (3 rows)
 
 abort;
@@ -200,8 +200,8 @@ Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             2 |    25
              0 |    38
+             2 |    25
              1 |    37
 (3 rows)
 
@@ -709,9 +709,9 @@ Alter table part_t1 expand table;
 Select gp_segment_id, count(*) from part_t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
+             2 |    25
              0 |    38
              1 |    37
-             2 |    25
 (3 rows)
 
 drop table part_t1;

@@ -131,6 +131,14 @@ s/One-Time Filter: \(gp_execution_segment\(\) = \d+/One-Time Filter: \(gp_execut
 m/ERROR:  infinite recursion detected.*/
 s/ERROR:  infinite recursion detected.*/ERROR:  infinite recursion detected/
 
+# Mask out the PG14 libpq connection-failure prefix (host/socket address is
+# environment-specific and varies between runs/clusters). Strips only the
+# "could not connect to host/socket ...:" prefix, keeping the FATAL/ERROR reason.
+m/could not connect to host "[^"]*"( \([^)]*\))?, port \d+: /
+s/could not connect to host "[^"]*"( \([^)]*\))?, port \d+: //
+m/could not connect to socket "[^"]*": /
+s/could not connect to socket "[^"]*": //
+
 m/ERROR:  could not find hash function for hash operator.*/
 s/ERROR:  could not find hash function for hash operator.*/ERROR:  could not find hash function for hash operator/
 
