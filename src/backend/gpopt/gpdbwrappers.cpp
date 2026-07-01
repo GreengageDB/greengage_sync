@@ -1896,6 +1896,18 @@ gpdb::IsCompositeType(Oid typid)
 }
 
 bool
+gpdb::IsMultirangeType(Oid typid)
+{
+	GP_WRAP_START;
+	{
+		/* catalog tables: pg_type */
+		return type_is_multirange(typid);
+	}
+	GP_WRAP_END;
+	return false;
+}
+
+bool
 gpdb::IsTextRelatedType(Oid typid)
 {
 	GP_WRAP_START;
