@@ -153,20 +153,18 @@ FOREIGN_KEY(prorettype REFERENCES pg_type(oid));
  */
 typedef FormData_pg_proc *Form_pg_proc;
 
-<<<<<<< HEAD
 /*
  * TODO: It would be nice if we could default prodataaccess to 'c' for all
  * SQL-language functions. But the process_col_defaults.pl script isn't
  * currently smart enough for that.
  */
-=======
+
 DECLARE_TOAST(pg_proc, 2836, 2837);
 
 DECLARE_UNIQUE_INDEX(pg_proc_oid_index, 2690, on pg_proc using btree(oid oid_ops));
 #define ProcedureOidIndexId  2690
 DECLARE_UNIQUE_INDEX(pg_proc_proname_args_nsp_index, 2691, on pg_proc using btree(proname name_ops, proargtypes oidvector_ops, pronamespace oid_ops));
 #define ProcedureNameArgsNspIndexId  2691
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 #ifdef EXPOSE_TO_CLIENT_CODE
 
