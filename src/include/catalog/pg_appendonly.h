@@ -168,4 +168,9 @@ RemoveAppendonlyEntry(Oid relid);
 
 extern void ATAOEntries(Form_pg_class relform1, Form_pg_class relform2);
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(pg_appendonly_relid_index, 7141, on pg_appendonly using btree(relid oid_ops));
+#define AppendOnlyRelidIndexId  7141
+
 #endif   /* PG_APPENDONLY_H */

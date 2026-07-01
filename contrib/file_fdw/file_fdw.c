@@ -3,7 +3,7 @@
  * file_fdw.c
  *		  foreign-data wrapper for server-side flat files (or programs).
  *
- * Copyright (c) 2010-2020, PostgreSQL Global Development Group
+ * Copyright (c) 2010-2021, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
  *		  contrib/file_fdw/file_fdw.c
@@ -106,7 +106,7 @@ typedef struct FileFdwExecutionState
 	bool		is_program;		/* true if filename represents an OS command */
 	List	   *options;		/* merged COPY options, excluding filename and
 								 * is_program */
-	CopyState	cstate;			/* COPY execution state */
+	CopyState	cstate;		/* COPY execution state */
 } FileFdwExecutionState;
 
 /*
@@ -741,9 +741,6 @@ fileIterateForeignScan(ForeignScanState *node)
 	 *
 	 * We can pass ExprContext = NULL because we read all columns from the
 	 * file, so no need to evaluate default expressions.
-	 *
-	 * We can also pass tupleOid = NULL because we don't allow oids for
-	 * foreign tables.
 	 */
 	ExecClearTuple(slot);
 	found = NextCopyFrom(festate->cstate, NULL,

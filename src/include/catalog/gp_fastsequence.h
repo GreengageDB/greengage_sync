@@ -72,4 +72,9 @@ extern int64 ReadLastSequence(Oid objid, int64 objmod);
  */
 extern void RemoveFastSequenceEntry(Oid objid);
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(gp_fastsequence_objid_objmod_index, 6067, on gp_fastsequence using btree(objid oid_ops, objmod  int8_ops));
+#define FastSequenceObjidObjmodIndexId  6067
+
 #endif

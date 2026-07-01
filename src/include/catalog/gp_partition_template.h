@@ -54,4 +54,9 @@ extern GpPartitionDefinition *GetGpPartitionTemplate(Oid relid, int32 level);
 extern void RemoveGpPartitionTemplateByRelId(Oid relid);
 extern bool RemoveGpPartitionTemplate(Oid relid, int32 level);
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(gp_partition_template_relid_level_index, 8023, on gp_partition_template using btree(relid oid_ops, level int2_ops));
+#define GpPartitionTemplateRelidLevelIndexId  8023
+
 #endif							/* GP_PARTITION_TEMPLATE_H */

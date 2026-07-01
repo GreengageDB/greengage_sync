@@ -564,10 +564,6 @@ _outAExpr(StringInfo str, A_Expr *node)
 
 			WRITE_NODE_FIELD(name);
 			break;
-		case AEXPR_OF:
-
-			WRITE_NODE_FIELD(name);
-			break;
 		case AEXPR_IN:
 
 			WRITE_NODE_FIELD(name);
@@ -599,9 +595,6 @@ _outAExpr(StringInfo str, A_Expr *node)
 		case AEXPR_NOT_BETWEEN_SYM:
 
 			WRITE_NODE_FIELD(name);
-			break;
-		case AEXPR_PAREN:
-
 			break;
 
 		default:

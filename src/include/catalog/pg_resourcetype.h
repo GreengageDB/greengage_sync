@@ -108,4 +108,13 @@ typedef FormData_pg_resourcetype *Form_pg_resourcetype;
 #define PG_RESRCTYPE_PRIORITY			5	/* backoff.c: priority queue */
 #define PG_RESRCTYPE_MEMORY_LIMIT		6	/* memquota.c: memory quota */
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(pg_resourcetype_oid_index, 6061, on pg_resourcetype using btree(oid oid_ops));
+#define ResourceTypeOidIndexId  6061
+DECLARE_UNIQUE_INDEX(pg_resourcetype_restypid_index, 6062, on pg_resourcetype using btree(restypid int2_ops));
+#define ResourceTypeRestypidIndexId  6062
+DECLARE_UNIQUE_INDEX(pg_resourcetype_resname_index, 6063, on pg_resourcetype using btree(resname name_ops));
+#define ResourceTypeResnameIndexId  6063
+
 #endif   /* PG_RESOURCETYPE_H */

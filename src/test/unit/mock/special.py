@@ -61,6 +61,18 @@ class SpecialFuncs(object):
         return s1 + s2;
         """
 
+    @staticmethod
+    def make_body_errstart_cold(func):
+        return """
+        /*
+         * GPDB: ereport() routes compile-time-constant elevel >= ERROR through
+         * errstart_cold() (see elog.h).  Delegate to the errstart() mock so that
+         * unit tests only need to set expectations on errstart(), regardless of
+         * the elevel.
+         */
+        return errstart(elevel, domain);
+        """
+
 class ByValStructs(object):
 
     """These are structs over 32 bit and possibly passed by-value.

@@ -62,4 +62,11 @@ typedef enum ResGroupLimitType
 	RESGROUP_LIMIT_TYPE_COUNT,
 } ResGroupLimitType;
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(pg_resgroup_oid_index, 6447, on pg_resgroup using btree(oid oid_ops));
+#define ResGroupOidIndexId  6447
+DECLARE_UNIQUE_INDEX(pg_resgroup_rsgname_index, 6444, on pg_resgroup using btree(rsgname name_ops));
+#define ResGroupRsgnameIndexId  6444
+
 #endif   /* PG_RESGROUP_H */

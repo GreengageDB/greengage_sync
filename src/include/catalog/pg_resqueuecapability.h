@@ -48,4 +48,11 @@ FOREIGN_KEY(restypid REFERENCES pg_resourcetype(restypid));
  */
 typedef FormData_pg_resqueuecapability *Form_pg_resqueuecapability;
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_INDEX(pg_resqueuecapability_resqueueid_index, 6442, on pg_resqueuecapability using btree(resqueueid oid_ops));
+#define ResQueueCapabilityResqueueidIndexId  6442
+DECLARE_INDEX(pg_resqueuecapability_restypid_index, 6443, on pg_resqueuecapability using btree(restypid int2_ops));
+#define ResQueueCapabilityRestypidIndexId  6443
+
 #endif   /* PG_RESQUEUECAPABILITY_H */

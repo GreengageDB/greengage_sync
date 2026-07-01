@@ -167,4 +167,9 @@ extern GpPolicy *createHashPartitionedPolicy(List *keys, List *opclasses, int nu
 
 extern bool IsReplicatedTable(Oid relid);
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(gp_distribution_policy_localoid_index, 8103, on gp_distribution_policy using btree(localoid oid_ops));
+#define GpPolicyLocalOidIndexId  8103
+
 #endif			/* GP_DISTRIBUTION_POLICY_H */

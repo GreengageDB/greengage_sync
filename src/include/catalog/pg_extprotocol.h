@@ -80,4 +80,11 @@ extern Oid get_extprotocol_oid(const char *prot_name, bool error_if_missing);
 extern char *
 ExtProtocolGetNameByOid(Oid	protOid);
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(pg_extprotocol_oid_index, 7156, on pg_extprotocol using btree(oid oid_ops));
+#define ExtprotocolOidIndexId  7156
+DECLARE_UNIQUE_INDEX(pg_extprotocol_ptcname_index, 7177, on pg_extprotocol using btree(ptcname name_ops));
+#define ExtprotocolPtcnameIndexId  7177
+
 #endif /* PG_EXTPROTOCOL_H */

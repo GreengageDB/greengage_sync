@@ -59,4 +59,11 @@ extern void UpdateAttributeEncodings(Oid relid, List *new_attr_encodings);
 extern Datum *get_rel_attoptions(Oid relid, AttrNumber max_attno);
 extern List * rel_get_column_encodings(Relation rel);
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_INDEX(pg_attribute_encoding_attrelid_index, 6236, on pg_attribute_encoding using btree(attrelid oid_ops));
+#define AttributeEncodingAttrelidIndexId  6236
+DECLARE_UNIQUE_INDEX(pg_attribute_encoding_attrelid_attnum_index, 6237, on pg_attribute_encoding using btree(attrelid oid_ops, attnum int2_ops));
+#define AttributeEncodingAttrelidAttnumIndexId  6237
+
 #endif   /* PG_ATTRIBUTE_ENCODING_H */

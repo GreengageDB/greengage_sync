@@ -53,4 +53,9 @@ extern void deleteProcCallbacks(Oid profnoid);
 extern void addProcCallback(Oid profnoid, Oid procallback, char promethod);
 extern Oid lookupProcCallback(Oid profnoid, char promethod);
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(pg_proc_callback_profnoid_promethod_index, 9926, on pg_proc_callback using btree(profnoid oid_ops, promethod char_ops));
+#define ProcCallbackProfnoidPromethodIndexId  9926
+
 #endif

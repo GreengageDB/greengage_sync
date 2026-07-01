@@ -1,9 +1,20 @@
 --
 -- ROWTYPES
 --
+-- start_ignore
+-- GPDB: With the default settings, the planner chooses different plans some
+-- of the queries than in upstream. That is beause low vis fraction
+-- estimation (pg_class.relallvisible) on GP causes higher index only scan
+-- cost so bitmap index scan outperforms index only scan.
+--
+-- Some tests do 'enable_sort=off' or 'enable_bitmapscan=off' to get the same
+-- plans as in upstream.
+-- end_ignore
 -- Make both a standalone composite type and a table rowtype
 create type complex_t as (r float8, i float8);
 create temp table fullname (first text, last text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'first' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- Nested composite
 create type quad as (c1 complex_t, c2 complex_t);
 -- Some simple tests of I/O conversions and row construction
@@ -70,6 +81,8 @@ LINE 1: select '(Joe,Blow) /'::fullname;
                ^
 DETAIL:  Junk after right parenthesis.
 create temp table quadtable(f1 int, q quad);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into quadtable values (1, ((3.3,4.4),(5.5,6.6)));
 insert into quadtable values (2, ((null,4.4),(5.5,6.6)));
 select * from quadtable;
@@ -86,11 +99,13 @@ LINE 1: select f1, q.c1 from quadtable;
 select f1, (q).c1, (qq.q).c1.i from quadtable qq;
  f1 |    c1     |  i  
 ----+-----------+-----
-  1 | (3.3,4.4) | 4.4
   2 | (,4.4)    | 4.4
+  1 | (3.3,4.4) | 4.4
 (2 rows)
 
 create temp table people (fn fullname, bd date);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'fn' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into people values ('(Joe,Blow)', '1984-01-10');
 select * from people;
      fn     |     bd     
@@ -118,18 +133,26 @@ select * from people;
 (1 row)
 
 insert into quadtable (f1, q.c1.r, q.c2.i) values(44,55,66);
+update quadtable set q.c1.r = 12 where f1 = 2;
+update quadtable set q.c1 = 12;  -- error, type mismatch
+ERROR:  subfield "c1" is of type complex_t but expression is of type integer
+LINE 1: update quadtable set q.c1 = 12;
+                             ^
+HINT:  You will need to rewrite or cast the expression.
 select * from quadtable;
  f1 |             q             
 ----+---------------------------
   1 | ("(3.3,4.4)","(5.5,6.6)")
-  2 | ("(,4.4)","(5.5,6.6)")
  44 | ("(55,)","(,66)")
+  2 | ("(12,4.4)","(5.5,6.6)")
 (3 rows)
 
 -- The object here is to ensure that toasted references inside
 -- composite values don't cause problems.  The large f1 value will
 -- be toasted inside pp, it must still work after being copied to people.
 create temp table pp (f1 text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into pp values (repeat('abcdefghijkl', 100000));
 insert into people select ('Jim', f1, null)::fullname, current_date from pp;
 select (fn).first, substr((fn).last, 1, 20), length((fn).last) from people;
@@ -411,6 +434,8 @@ order by thousand, hundred;
 
 -- Test case for bug #14010: indexed row comparisons fail with nulls
 create temp table test_table (a text, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into test_table values ('a', 'b');
 insert into test_table select 'a', null from generate_series(1,1000);
 insert into test_table values ('b', 'a');
@@ -437,7 +462,7 @@ select a,b from test_table where (a,b) > ('a','a') order by a,b;
 reset enable_sort;
 -- Check row comparisons with IN
 select * from int8_tbl i8 where i8 in (row(123,456));  -- fail, type mismatch
-ERROR:  cannot compare dissimilar column types bigint and integer at record column 1
+ERROR:  cannot compare dissimilar column types bigint and integer at record column 1  (seg0 slice1 172.17.0.3:7002 pid=471974)
 explain (costs off)
 select * from int8_tbl i8
 where i8 in (row(123,456)::int8_tbl, '(4567890123456789,123)');
@@ -453,8 +478,8 @@ select * from int8_tbl i8
 where i8 in (row(123,456)::int8_tbl, '(4567890123456789,123)');
         q1        | q2  
 ------------------+-----
-              123 | 456
  4567890123456789 | 123
+              123 | 456
 (2 rows)
 
 -- Check ability to select columns from an anonymous rowtype
@@ -536,6 +561,7 @@ select row(1,1.1) = any (array[ row(7,7.7), row(1,1.0), row(0,0.0) ]);
 -- Check behavior with a non-comparable rowtype
 create type cantcompare as (p point, r float8);
 create temp table cc (f1 cantcompare);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause, and no column type is suitable for a distribution key. Creating a NULL policy entry.
 insert into cc values('("(1,2)",3)');
 insert into cc values('("(4,5)",6)');
 select * from cc order by f1; -- fail, but should complain about cantcompare
@@ -868,9 +894,9 @@ UPDATE price
 select * from price;
  id | active | price  
 ----+--------+--------
-  1 | f      |     42
  10 | t      | 123.00
  11 | t      |  99.99
+  1 | f      |     42
 (3 rows)
 
 rollback;
@@ -879,6 +905,8 @@ rollback;
 -- parameters for SQL functions
 --
 create temp table compos (f1 int, f2 text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create function fcompos1(v compos) returns void as $$
 insert into compos values (v);  -- fail
 $$ language sql;
@@ -916,9 +944,9 @@ select fcompos3(row(3,'three'));
 select * from compos;
  f1 |  f2   
 ----+-------
-  1 | one
   2 | two
   3 | three
+  1 | one
 (3 rows)
 
 --
@@ -1018,21 +1046,21 @@ select longname(f) from fullname f;
 select row_to_json(i) from int8_tbl i;
                   row_to_json                   
 ------------------------------------------------
- {"q1":123,"q2":456}
- {"q1":123,"q2":4567890123456789}
  {"q1":4567890123456789,"q2":123}
  {"q1":4567890123456789,"q2":4567890123456789}
  {"q1":4567890123456789,"q2":-4567890123456789}
+ {"q1":123,"q2":456}
+ {"q1":123,"q2":4567890123456789}
 (5 rows)
 
 select row_to_json(i) from int8_tbl i(x,y);
                  row_to_json                  
 ----------------------------------------------
- {"x":123,"y":456}
- {"x":123,"y":4567890123456789}
  {"x":4567890123456789,"y":123}
  {"x":4567890123456789,"y":4567890123456789}
  {"x":4567890123456789,"y":-4567890123456789}
+ {"x":123,"y":456}
+ {"x":123,"y":4567890123456789}
 (5 rows)
 
 create temp view vv1 as select * from int8_tbl;
@@ -1049,11 +1077,11 @@ select row_to_json(i) from vv1 i;
 select row_to_json(i) from vv1 i(x,y);
                  row_to_json                  
 ----------------------------------------------
- {"x":123,"y":456}
- {"x":123,"y":4567890123456789}
  {"x":4567890123456789,"y":123}
  {"x":4567890123456789,"y":4567890123456789}
  {"x":4567890123456789,"y":-4567890123456789}
+ {"x":123,"y":456}
+ {"x":123,"y":4567890123456789}
 (5 rows)
 
 select row_to_json(ss) from
@@ -1071,11 +1099,11 @@ select row_to_json(ss) from
   (select q1, q2 from int8_tbl offset 0) as ss;
                   row_to_json                   
 ------------------------------------------------
- {"q1":123,"q2":456}
- {"q1":123,"q2":4567890123456789}
  {"q1":4567890123456789,"q2":123}
  {"q1":4567890123456789,"q2":4567890123456789}
  {"q1":4567890123456789,"q2":-4567890123456789}
+ {"q1":123,"q2":456}
+ {"q1":123,"q2":4567890123456789}
 (5 rows)
 
 select row_to_json(ss) from
@@ -1115,11 +1143,11 @@ select row_to_json(ss) from
   (select q1 as a, q2 as b from int8_tbl offset 0) as ss(x,y);
                  row_to_json                  
 ----------------------------------------------
- {"x":123,"y":456}
- {"x":123,"y":4567890123456789}
  {"x":4567890123456789,"y":123}
  {"x":4567890123456789,"y":4567890123456789}
  {"x":4567890123456789,"y":-4567890123456789}
+ {"x":123,"y":456}
+ {"x":123,"y":4567890123456789}
 (5 rows)
 
 explain (costs off)
@@ -1163,18 +1191,22 @@ select row_to_json(q) from
 (2 rows)
 
 create temp table tt1 as select * from int8_tbl order by 1 limit 2;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'q1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create temp table tt2 () inherits(tt1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 insert into tt2 values(0,0);
 select row_to_json(r) from (select q2,q1 from tt1 offset 0) r;
            row_to_json            
 ----------------------------------
+ {"q2":0,"q1":0}
  {"q2":456,"q1":123}
  {"q2":4567890123456789,"q1":123}
- {"q2":0,"q1":0}
 (3 rows)
 
 -- check no-op rowtype conversions
 create temp table tt3 () inherits(tt2);
+NOTICE:  table has parent, setting distribution columns to match parent table
 insert into tt3 values(33,44);
 select row_to_json(tt3::tt2::tt1) from tt3;
     row_to_json    
@@ -1193,7 +1225,9 @@ from (values (1,row(1,2)), (1,row(null,null)), (1,null),
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Values Scan on "*VALUES*"
    Output: ROW("*VALUES*".column1, "*VALUES*".column2), (("*VALUES*".column1 IS NULL) AND ("*VALUES*".column2 IS NOT DISTINCT FROM NULL)), (("*VALUES*".column1 IS NOT NULL) AND ("*VALUES*".column2 IS DISTINCT FROM NULL))
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 select r, r is null as isnull, r is not null as isnotnull
 from (values (1,row(1,2)), (1,row(null,null)), (1,null),
@@ -1222,7 +1256,8 @@ select r, r is null as isnull, r is not null as isnotnull from r;
          ->  Values Scan on "*VALUES*"
                Output: "*VALUES*".column1, "*VALUES*".column2
  Optimizer: Postgres query optimizer
-(7 rows)
+ Settings: optimizer = 'off'
+(8 rows)
 
 with r(a,b) as materialized
   (values (1,row(1,2)), (1,row(null,null)), (1,null),
@@ -1242,6 +1277,8 @@ select r, r is null as isnull, r is not null as isnotnull from r;
 -- Tests for component access / FieldSelect
 --
 CREATE TABLE compositetable(a text, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO compositetable(a, b) VALUES('fa', 'fb');
 -- composite type columns can't directly be accessed (error)
 SELECT d.a FROM (SELECT compositetable AS d FROM compositetable) s;

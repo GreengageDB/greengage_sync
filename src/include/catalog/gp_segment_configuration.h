@@ -69,4 +69,11 @@ typedef FormData_gp_segment_configuration *Form_gp_segment_configuration;
 
 extern bool gp_segment_config_has_mirrors(void);
 
+
+/* GG catalog indexes (re-grafted from monolithic indexing.h for PG14 catalog-header scheme) */
+DECLARE_UNIQUE_INDEX(gp_segment_config_content_preferred_role_index, 7139, on gp_segment_configuration using btree(content int2_ops, preferred_role char_ops));
+#define GpSegmentConfigContentPreferred_roleIndexId  7139
+DECLARE_UNIQUE_INDEX(gp_segment_config_dbid_index, 7140, on gp_segment_configuration using btree(dbid int2_ops));
+#define GpSegmentConfigDbidIndexId  7140
+
 #endif /*_GP_SEGMENT_CONFIGURATION_H_*/
