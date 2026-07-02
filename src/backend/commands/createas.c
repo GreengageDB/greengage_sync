@@ -310,40 +310,10 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 
 	Assert(Gp_role != GP_ROLE_EXECUTE);
 
-<<<<<<< HEAD
-	if (stmt->if_not_exists)
-	{
-		Oid			nspid;
-		Oid			oldrelid;
-
-		nspid = RangeVarGetCreationNamespace(into->rel);
-
-		oldrelid = get_relname_relid(into->rel->relname, nspid);
-		if (OidIsValid(oldrelid))
-		{
-			/*
-			 * The relation exists and IF NOT EXISTS has been specified.
-			 *
-			 * If we are in an extension script, insist that the pre-existing
-			 * object be a member of the extension, to avoid security risks.
-			 */
-			ObjectAddressSet(address, RelationRelationId, oldrelid);
-			checkMembershipInCurrentExtension(&address);
-
-			/* OK to skip */
-			ereport(NOTICE,
-					(errcode(ERRCODE_DUPLICATE_TABLE),
-					 errmsg("relation \"%s\" already exists, skipping",
-							into->rel->relname)));
-			return InvalidObjectAddress;
-		}
-	}
-=======
 	/* Check if the relation exists or not */
 	if (CreateTableAsRelExists(stmt))
 		return InvalidObjectAddress;
 
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	/*
 	 * Create the tuple receiver object and insert info it will need
 	 */
@@ -537,11 +507,14 @@ bool
 CreateTableAsRelExists(CreateTableAsStmt *ctas)
 {
 	Oid			nspid;
+	Oid			oldrelid;
+	ObjectAddress address;
 	IntoClause *into = ctas->into;
 
 	nspid = RangeVarGetCreationNamespace(into->rel);
 
-	if (get_relname_relid(into->rel->relname, nspid))
+	oldrelid = get_relname_relid(into->rel->relname, nspid);
+	if (OidIsValid(oldrelid))
 	{
 		if (!ctas->if_not_exists)
 			ereport(ERROR,
@@ -549,7 +522,16 @@ CreateTableAsRelExists(CreateTableAsStmt *ctas)
 					 errmsg("relation \"%s\" already exists",
 							into->rel->relname)));
 
-		/* The relation exists and IF NOT EXISTS has been specified */
+		/*
+		 * The relation exists and IF NOT EXISTS has been specified.
+		 *
+		 * If we are in an extension script, insist that the pre-existing
+		 * object be a member of the extension, to avoid security risks.
+		 */
+		ObjectAddressSet(address, RelationRelationId, oldrelid);
+		checkMembershipInCurrentExtension(&address);
+
+		/* OK to skip */
 		ereport(NOTICE,
 				(errcode(ERRCODE_DUPLICATE_TABLE),
 				 errmsg("relation \"%s\" already exists, skipping",
@@ -777,14 +759,12 @@ static void
 intorel_shutdown(DestReceiver *self)
 {
 	DR_intorel *myState = (DR_intorel *) self;
-<<<<<<< HEAD
 	Relation	into_rel = myState->rel;
 
 	if (into_rel == NULL)
 		return;
-=======
+
 	IntoClause *into = myState->into;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	if (!into->skipData)
 	{

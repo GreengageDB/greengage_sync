@@ -29,11 +29,8 @@ extern int	GetIntoRelEFlags(IntoClause *intoClause);
 
 extern DestReceiver *CreateIntoRelDestReceiver(IntoClause *intoClause);
 
-<<<<<<< HEAD
 struct QueryDesc;
 extern void intorel_initplan(struct QueryDesc *queryDesc, int eflags);
-=======
 extern bool CreateTableAsRelExists(CreateTableAsStmt *ctas);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 #endif							/* CREATEAS_H */
