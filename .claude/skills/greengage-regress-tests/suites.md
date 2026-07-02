@@ -133,22 +133,37 @@ cdw+sdw1-3 and will stop a local demo cluster; recover with `gpstart -a`):
 IMAGE=<registry>/gpdb8_u22:<branch> bash arenadata/scripts/run_behave_tests.bash [gpstart gpstop ...]
 ```
 
-Single-feature local repro on a healthy gpdemo (mechanism-level checks only,
-cluster-recreating scenarios excluded):
+Whole-feature local repro on a healthy gpdemo with mirrors — use the SAME tag
+selection the CI behave jobs use (`BEHAVE_FLAGS` in the workflow), or you get
+~10 bogus failures from scenarios that genuinely need a multi-host cluster:
 
 ```bash
 sudo docker exec -u gpadmin -e USER=gpadmin <container> bash -lc '
   source /usr/local/greenplum-db-devel/greenplum_path.sh
   cd /home/gpadmin/gpdb_src; source gpAux/gpdemo/gpdemo-env.sh; cd gpMgmt
   export PYTHONPATH=$PYTHONPATH:$GPHOME/bin/lib:$PWD/test
-  behave test/behave/mgmt_utils/<feature>.feature -s -k --name "<substring>"'
+  behave test/behave/mgmt_utils/<feature>.feature -s -k \
+    --tags <feature> --tags=~concourse_cluster'   # add --name "<substring>" for one scenario
 ```
 
-(Equivalent make entry: `make -C gpMgmt behave tags=<tag>`.) Gotchas:
-`-e USER=gpadmin` is mandatory (gp utilities abort "USER environment variable
-must be set"); a failed gpconfig substep makes behave's `check_return_code`
-raise `AttributeError: 'Context' object has no attribute 'error_message'`,
-MASKING the real error — read the substep output above it, not the traceback.
+(Equivalent make entry: `make -C gpMgmt behave tags=<tag>`.) Only
+`@concourse_cluster` scenarios require the multi-host cluster; the rest run
+against a local mirrored gpdemo exactly like CI's docker-compose job does.
+Gotchas:
+- `-e USER=gpadmin` is mandatory (gp utilities abort "USER environment variable
+  must be set"); a failed gpconfig substep makes behave's `check_return_code`
+  raise `AttributeError: 'Context' object has no attribute 'error_message'`,
+  MASKING the real error — read the substep output above it, not the traceback.
+- A FAILED/timed-out scenario SKIPS its remaining steps — including fault
+  resets (`walsender` suspend etc.) and async-process waits — so the next
+  scenarios inherit an active fault and a still-running gpmovemirrors/
+  pg_basebackup and hang. Kill strays by exact name and recreate before rerun.
+- Mirror-move scenarios (gpmovemirrors/gprecoverseg -i) permanently relocate
+  mirror datadirs INTO the scenarios' temp trees. Never bulk-delete those trees
+  while the cluster lives: a running mirror survives datadir deletion for ~1min
+  on open fds and FTS only notices on its next probe, so checks keep passing on
+  stale catalog state and the cluster is silently degraded for everything after
+  (the cleanup-kills-live-mirror class fixed in behave's environment.py).
 
 ## Suite-green order that worked for PG15
 

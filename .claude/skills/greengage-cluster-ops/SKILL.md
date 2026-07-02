@@ -122,6 +122,12 @@ gpstart -a                              # or gpstop -ar to restart
 - After many crashes, 2PC/pgstat debris causes cascade errors (e.g. duplicate
   prepared-transaction locks) — `gpstop -ar` and re-probe a CREATE/DROP DATABASE
   before believing a fresh bug.
+- After a full recovery / mirror move, cross-check the segment's
+  `postgresql.conf` port against `gp_segment_configuration`: segments are
+  started on the CATALOG port, so a conf still carrying the basebackup
+  source's port is invisible at runtime (`update_port_in_conf`'s `perl -i`
+  edit used to report success even when it substituted nothing — it now
+  verifies, but the class generalizes to every in-place config edit).
 
 ## Fault-test hygiene (isolation2 fault injection)
 
