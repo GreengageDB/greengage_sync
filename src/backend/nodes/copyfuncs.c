@@ -5143,12 +5143,8 @@ _copyReindexStmt(const ReindexStmt *from)
 	COPY_SCALAR_FIELD(kind);
 	COPY_NODE_FIELD(relation);
 	COPY_STRING_FIELD(name);
-<<<<<<< HEAD
 	COPY_SCALAR_FIELD(relid);
-	COPY_SCALAR_FIELD(options);
-=======
 	COPY_NODE_FIELD(params);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	return newnode;
 }

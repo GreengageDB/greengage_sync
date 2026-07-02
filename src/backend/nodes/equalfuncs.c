@@ -2326,12 +2326,8 @@ _equalReindexStmt(const ReindexStmt *a, const ReindexStmt *b)
 	COMPARE_SCALAR_FIELD(kind);
 	COMPARE_NODE_FIELD(relation);
 	COMPARE_STRING_FIELD(name);
-<<<<<<< HEAD
-	COMPARE_SCALAR_FIELD(options);
 	COMPARE_SCALAR_FIELD(relid);
-=======
 	COMPARE_NODE_FIELD(params);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	return true;
 }
