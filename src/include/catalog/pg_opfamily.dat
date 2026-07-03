@@ -232,7 +232,12 @@
   opfmethod => 'spgist', opfname => 'box_ops' },
 { oid => '5008',
   opfmethod => 'spgist', opfname => 'poly_ops' },
-<<<<<<< HEAD
+{ oid => '4199',
+  opfmethod => 'btree', opfname => 'multirange_ops' },
+{ oid => '4225',
+  opfmethod => 'hash', opfname => 'multirange_ops' },
+{ oid => '8021',
+  opfmethod => 'gist', opfname => 'multirange_ops' },
 { oid => '6221',
   opfmethod => 'btree', opfname => 'complex_ops' },
 { oid => '6224',
@@ -297,13 +302,5 @@
   opfmethod => 'hash', opfname => 'cdbhash_uuid_ops' },
 { oid => '7130',
   opfmethod => 'hash', opfname => 'cdbhash_enum_ops' },
-=======
-{ oid => '4199',
-  opfmethod => 'btree', opfname => 'multirange_ops' },
-{ oid => '4225',
-  opfmethod => 'hash', opfname => 'multirange_ops' },
-{ oid => '8021',
-  opfmethod => 'gist', opfname => 'multirange_ops' },
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 ]
