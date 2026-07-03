@@ -19,11 +19,6 @@
 #include "utils/relcache.h"
 
 
-<<<<<<< HEAD
-extern void cluster(ClusterStmt *stmt, bool isTopLevel);
-extern bool cluster_rel(Oid tableOid, Oid indexOid, int options,
-						bool printError);
-=======
 /* options for CLUSTER */
 typedef enum ClusterOption
 {
@@ -32,8 +27,8 @@ typedef enum ClusterOption
 } ClusterOption;
 
 extern void cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel);
-extern void cluster_rel(Oid tableOid, Oid indexOid, int options);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+extern bool cluster_rel(Oid tableOid, Oid indexOid, int options,
+						bool printError);
 extern void check_index_is_clusterable(Relation OldHeap, Oid indexOid,
 									   bool recheck, LOCKMODE lockmode);
 extern void mark_index_clustered(Relation rel, Oid indexOid, bool is_internal);
