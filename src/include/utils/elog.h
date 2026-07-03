@@ -184,7 +184,6 @@ extern pthread_t main_tid;
 
 #define TEXTDOMAIN NULL
 
-<<<<<<< HEAD
 /*
  * the error or log report is only issued if the predicate is true.
  */
@@ -192,9 +191,8 @@ extern pthread_t main_tid;
 	do { \
 		if(p) ereport_domain(elevel, TEXTDOMAIN, __VA_ARGS__); \
 	} while (0)
-=======
+
 extern bool message_level_is_interesting(int elevel);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 extern bool errstart(int elevel, const char *domain);
 extern pg_attribute_cold bool errstart_cold(int elevel, const char *domain);
