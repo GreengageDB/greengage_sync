@@ -115,7 +115,7 @@ static Datum CopyReadBinaryAttribute(CopyFromState cstate, FmgrInfo *flinfo,
 
 /* Low-level communications functions */
 static int	CopyGetData(CopyFromState cstate, void *databuf,
-						int minread, int maxread);
+						int datasize);
 static inline bool CopyGetInt32(CopyFromState cstate, int32 *val);
 static inline bool CopyGetInt16(CopyFromState cstate, int16 *val);
 static bool CopyLoadRawBuf(CopyFromState cstate);
@@ -213,41 +213,54 @@ ReceiveCopyBinaryHeader(CopyFromState cstate)
  * NB: no data conversion is applied here.
  */
 static int
-CopyGetData(CopyFromState cstate, void *databuf, int minread, int maxread)
+CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 {
-	int			bytesread = 0;
+	size_t		bytesread = 0;
 
 	switch (cstate->copy_src)
 	{
 		case COPY_FILE:
-			bytesread = fread(databuf, 1, maxread, cstate->copy_file);
-			if (ferror(cstate->copy_file))
-				ereport(ERROR,
-						(errcode_for_file_access(),
-						 errmsg("could not read from COPY file: %m")));
-			if (bytesread == 0)
+			bytesread = fread(databuf, 1, datasize, cstate->copy_file);
+			if (feof(cstate->copy_file))
 				cstate->reached_eof = true;
+			if (ferror(cstate->copy_file))
+			{
+				if (cstate->is_program)
+				{
+					int olderrno = errno;
+
+					close_program_pipes(cstate, true);
+
+					/*
+					 * If close_program_pipes() didn't throw an error,
+					 * the program terminated normally, but closed the
+					 * pipe first. Restore errno, and throw an error.
+					 */
+					errno = olderrno;
+
+					ereport(ERROR,
+							(errcode_for_file_access(),
+							 errmsg("could not read from COPY program: %m")));
+				}
+				else
+					ereport(ERROR,
+							(errcode_for_file_access(),
+							errmsg("could not read from COPY file: %m")));
+			}
 			break;
 		case COPY_OLD_FE:
-
-			/*
-			 * We cannot read more than minread bytes (which in practice is 1)
-			 * because old protocol doesn't have any clear way of separating
-			 * the COPY stream from following data.  This is slow, but not any
-			 * slower than the code path was originally, and we don't care
-			 * much anymore about the performance of old protocol.
-			 */
-			if (pq_getbytes((char *) databuf, minread))
+			if (pq_getbytes((char *) databuf, datasize))
 			{
 				/* Only a \. terminator is legal EOF in old protocol */
 				ereport(ERROR,
 						(errcode(ERRCODE_CONNECTION_FAILURE),
 						 errmsg("unexpected EOF on client connection with an open transaction")));
 			}
-			bytesread = minread;
+			bytesread += datasize;		/* update the count of bytes that were
+										 * read so far */
 			break;
 		case COPY_NEW_FE:
-			while (maxread > 0 && bytesread < minread && !cstate->reached_eof)
+			while (datasize > 0 && !cstate->reached_eof)
 			{
 				int			avail;
 
@@ -302,16 +315,18 @@ CopyGetData(CopyFromState cstate, void *databuf, int minread, int maxread)
 					}
 				}
 				avail = cstate->fe_msgbuf->len - cstate->fe_msgbuf->cursor;
-				if (avail > maxread)
-					avail = maxread;
+				if (avail > datasize)
+					avail = datasize;
 				pq_copymsgbytes(cstate->fe_msgbuf, databuf, avail);
 				databuf = (void *) ((char *) databuf + avail);
-				maxread -= avail;
-				bytesread += avail;
+				bytesread += avail;		/* update the count of bytes that were
+										 * read so far */
+				datasize -= avail;
 			}
 			break;
 		case COPY_CALLBACK:
-			bytesread = cstate->data_source_cb(databuf, minread, maxread);
+			bytesread = cstate->data_source_cb(databuf, datasize, datasize,
+											   cstate->data_source_cb_extra);
 			break;
 	}
 
@@ -381,7 +396,7 @@ CopyLoadRawBuf(CopyFromState cstate)
 				nbytes);
 
 	inbytes = CopyGetData(cstate, cstate->raw_buf + nbytes,
-						  1, RAW_BUF_SIZE - nbytes);
+						  RAW_BUF_SIZE - nbytes);
 	nbytes += inbytes;
 	cstate->raw_buf[nbytes] = '\0';
 	cstate->raw_buf_index = 0;
@@ -453,6 +468,13 @@ CopyReadBinaryData(CopyFromState cstate, char *dest, int nbytes)
 bool
 NextCopyFromRawFields(CopyFromState cstate, char ***fields, int *nfields)
 {
+	return NextCopyFromRawFieldsX(cstate, fields, nfields, -1);
+}
+
+static bool
+NextCopyFromRawFieldsX(CopyFromState cstate, char ***fields, int *nfields,
+					   int stop_processing_at_field)
+{
 	int			fldct;
 	bool		done;
 
@@ -482,13 +504,144 @@ NextCopyFromRawFields(CopyFromState cstate, char ***fields, int *nfields)
 
 	/* Parse the line into de-escaped field values */
 	if (cstate->opts.csv_mode)
-		fldct = CopyReadAttributesCSV(cstate);
+		fldct = CopyReadAttributesCSV(cstate, stop_processing_at_field);
 	else
-		fldct = CopyReadAttributesText(cstate);
+		fldct = CopyReadAttributesText(cstate, stop_processing_at_field);
 
 	*fields = cstate->raw_fields;
 	*nfields = fldct;
 	return true;
+}
+
+bool
+NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
+			   Datum *values, bool *nulls)
+{
+	if (!cstate->cdbsreh)
+		return NextCopyFromX(cstate, econtext, values, nulls);
+	else
+	{
+		MemoryContext oldcontext = CurrentMemoryContext;
+
+		for (;;)
+		{
+			bool		got_error = false;
+			bool		result = false;
+
+			PG_TRY();
+			{
+				result = NextCopyFromX(cstate, econtext, values, nulls);
+			}
+			PG_CATCH();
+			{
+				HandleCopyError(cstate); /* cdbsreh->processed is updated inside here */
+				got_error = true;
+				MemoryContextSwitchTo(oldcontext);
+			}
+			PG_END_TRY();
+
+			if (result)
+				cstate->cdbsreh->processed++;
+
+			if (!got_error)
+				return result;
+		}
+	}
+}
+
+/*
+ * A data error happened. This code block will always be inside a PG_CATCH()
+ * block right when a higher stack level produced an error. We handle the error
+ * by checking which error mode is set (SREH or all-or-nothing) and do the right
+ * thing accordingly. Note that we MUST have this code in a macro (as opposed
+ * to a function) as elog_dismiss() has to be inlined with PG_CATCH in order to
+ * access local error state variables.
+ *
+ * changing me? take a look at FILEAM_HANDLE_ERROR in fileam.c as well.
+ */
+static void
+HandleCopyError(CopyFromState cstate)
+{
+	if (cstate->errMode == ALL_OR_NOTHING)
+	{
+		/* re-throw error and abort */
+		PG_RE_THROW();
+	}
+	/* SREH must only handle data errors. all other errors must not be caught */
+	if (ERRCODE_TO_CATEGORY(elog_geterrcode()) != ERRCODE_DATA_EXCEPTION)
+	{
+		/* re-throw error and abort */
+		PG_RE_THROW();
+	}
+	else
+	{
+		/* SREH - release error state and handle error */
+		MemoryContext oldcontext;
+		ErrorData	*edata;
+		char	   *errormsg;
+		CdbSreh	   *cdbsreh = cstate->cdbsreh;
+
+		cdbsreh->processed++;
+
+		oldcontext = MemoryContextSwitchTo(cstate->cdbsreh->badrowcontext);
+
+		/* save a copy of the error info */
+		edata = CopyErrorData();
+
+		FlushErrorState();
+
+		/*
+		 * set the error message. Use original msg and add column name if available.
+		 * We do this even if we're not logging the errors, because
+		 * ErrorIfRejectLimit() below will use this information in the error message,
+		 * if the error count is reached.
+		 */
+		cdbsreh->rawdata->cursor = 0;
+		cdbsreh->rawdata->data = cstate->line_buf.data;
+		cdbsreh->rawdata->len = cstate->line_buf.len;
+
+		cdbsreh->is_server_enc = cstate->line_buf_converted;
+		cdbsreh->linenumber = cstate->cur_lineno;
+		if (cstate->cur_attname)
+		{
+			errormsg =  psprintf("%s, column %s",
+								 edata->message, cstate->cur_attname);
+		}
+		else
+		{
+			errormsg = edata->message;
+		}
+		cstate->cdbsreh->errmsg = errormsg;
+
+		if (IS_LOG_TO_FILE(cstate->cdbsreh->logerrors))
+		{
+			if (Gp_role == GP_ROLE_DISPATCH && !cstate->opts.on_segment)
+			{
+				cstate->cdbsreh->rejectcount++;
+
+				SendCopyFromForwardedError(cstate, cstate->cdbCopy, errormsg);
+			}
+			else
+			{
+				/* after all the prep work let cdbsreh do the real work */
+				if (Gp_role == GP_ROLE_DISPATCH)
+				{
+					cstate->cdbsreh->rejectcount++;
+				}
+				else
+				{
+					HandleSingleRowError(cstate->cdbsreh);
+				}
+			}
+		}
+		else
+			cstate->cdbsreh->rejectcount++;
+
+		ErrorIfRejectLimitReached(cstate->cdbsreh);
+
+		MemoryContextSwitchTo(oldcontext);
+		MemoryContextReset(cstate->cdbsreh->badrowcontext);
+	}
 }
 
 /*
@@ -502,7 +655,7 @@ NextCopyFromRawFields(CopyFromState cstate, char ***fields, int *nfields)
  * relation passed to BeginCopyFrom. This function fills the arrays.
  */
 bool
-NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
+NextCopyFromX(CopyFromState cstate, ExprContext *econtext,
 			 Datum *values, bool *nulls)
 {
 	TupleDesc	tupDesc;
@@ -514,10 +667,39 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 	int			i;
 	int		   *defmap = cstate->defmap;
 	ExprState **defexprs = cstate->defexprs;
+	List	   *attnumlist;
+	int			stop_processing_at_field;
+
+	/*
+	 * Figure out what fields we're going to process in this process.
+	 *
+	 * In the QD, set 'stop_processing_at_field' so that we only those
+	 * fields that are needed in the QD.
+	 */
+	switch (cstate->dispatch_mode)
+	{
+		case COPY_DIRECT:
+			stop_processing_at_field = -1;
+			attnumlist = cstate->attnumlist;
+			break;
+
+		case COPY_DISPATCH:
+			stop_processing_at_field = cstate->first_qe_processed_field;
+			attnumlist = cstate->qd_attnumlist;
+			break;
+
+		case COPY_EXECUTOR:
+			stop_processing_at_field = -1;
+			attnumlist = cstate->qe_attnumlist;
+			break;
+
+		default:
+			elog(ERROR, "unexpected COPY dispatch mode %d", cstate->dispatch_mode);
+	}
 
 	tupDesc = RelationGetDescr(cstate->rel);
 	num_phys_attrs = tupDesc->natts;
-	attr_count = list_length(cstate->attnumlist);
+	attr_count = list_length(attnumlist);
 
 	/* Initialize all values for row to NULL */
 	MemSet(values, 0, num_phys_attrs * sizeof(Datum));
@@ -532,8 +714,30 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 		char	   *string;
 
 		/* read raw fields in the next line */
-		if (!NextCopyFromRawFields(cstate, &field_strings, &fldct))
-			return false;
+		if (cstate->dispatch_mode != COPY_EXECUTOR)
+		{
+			if (!NextCopyFromRawFieldsX(cstate, &field_strings, &fldct,
+										stop_processing_at_field))
+				return false;
+		}
+		else
+		{
+			/*
+			 * We have received the raw line from the QD, and we just
+			 * need to split it into raw fields.
+			 */
+			if (cstate->stopped_processing_at_delim &&
+				cstate->line_buf.cursor <= cstate->line_buf.len)
+			{
+				if (cstate->opts.csv_mode)
+					fldct = CopyReadAttributesCSV(cstate, -1);
+				else
+					fldct = CopyReadAttributesText(cstate, -1);
+			}
+			else
+				fldct = 0;
+			field_strings = cstate->raw_fields;
+		}
 
 		/* check for overflowing fields */
 		if (attr_count > 0 && fldct > attr_count)
@@ -541,21 +745,47 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 					(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 					 errmsg("extra data after last expected column")));
 
+		/*
+		 * A completely empty line is not allowed with FILL MISSING FIELDS. Without
+		 * FILL MISSING FIELDS, it's almost surely an error, but not always:
+		 * a table with a single text column, for example, needs to accept empty
+		 * lines.
+		 */
+		if (cstate->line_buf.len == 0 &&
+			cstate->opts.fill_missing &&
+			list_length(cstate->attnumlist) > 1)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+					 errmsg("missing data for column \"%s\", found empty data line",
+							NameStr(TupleDescAttr(tupDesc, 1)->attname))));
+		}
+
 		fieldno = 0;
 
 		/* Loop to read the user attributes on the line. */
-		foreach(cur, cstate->attnumlist)
+		foreach(cur, attnumlist)
 		{
 			int			attnum = lfirst_int(cur);
 			int			m = attnum - 1;
 			Form_pg_attribute att = TupleDescAttr(tupDesc, m);
 
 			if (fieldno >= fldct)
-				ereport(ERROR,
+			{
+				/*
+				 * Some attributes are missing. In FILL MISSING FIELDS mode,
+				 * treat them as NULLs.
+				 */
+				if (!cstate->opts.fill_missing)
+					ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 						 errmsg("missing data for column \"%s\"",
 								NameStr(att->attname))));
-			string = field_strings[fieldno++];
+				fieldno++;
+				string = NULL;
+			}
+			else
+				string = field_strings[fieldno++];
 
 			if (cstate->convert_select_flags &&
 				!cstate->convert_select_flags[m])
@@ -602,7 +832,7 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 
 		Assert(fieldno == attr_count);
 	}
-	else
+	else if (attr_count)
 	{
 		/* binary */
 		int16		fld_count;
@@ -646,7 +876,7 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 					 errmsg("row field count is %d, expected %d",
 							(int) fld_count, attr_count)));
 
-		foreach(cur, cstate->attnumlist)
+		foreach(cur, attnumlist)
 		{
 			int			attnum = lfirst_int(cur);
 			int			m = attnum - 1;
@@ -666,7 +896,15 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 	 * Now compute and insert any defaults available for the columns not
 	 * provided by the input data.  Anything not processed here or above will
 	 * remain NULL.
+	 *
+	 * GPDB: The defaults are always computed in the QD, and are included
+	 * in the QD->QE stream as pre-computed Datums. Funny indentation, to
+	 * keep the indentation of the code inside the same as in upstream.
+	 * (We could improve this, and compute immutable defaults that don't
+	 * affect which segment the row belongs to, in the QE.)
 	 */
+  if (cstate->dispatch_mode != COPY_EXECUTOR)
+  {
 	for (i = 0; i < num_defaults; i++)
 	{
 		/*
@@ -679,8 +917,309 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 		values[defmap[i]] = ExecEvalExpr(defexprs[i], econtext,
 										 &nulls[defmap[i]]);
 	}
+  }
 
 	return true;
+}
+
+/*
+ * Like NextCopyFrom(), but used in the QD, when we want to parse the
+ * input line only partially. We only want to parse enough fields needed
+ * to determine which target segment to forward the row to.
+ *
+ * (The logic is actually within NextCopyFrom(). This is a separate
+ * function just for symmetry with NextCopyFromExecute()).
+ */
+static bool
+NextCopyFromDispatch(CopyFromState cstate, ExprContext *econtext,
+					 Datum *values, bool *nulls)
+{
+	return NextCopyFrom(cstate, econtext, values, nulls);
+}
+
+/*
+ * Like NextCopyFrom(), but used in the QE, when we're reading pre-processed
+ * rows from the QD.
+ */
+static bool
+NextCopyFromExecute(CopyFromState cstate, ExprContext *econtext, Datum *values, bool *nulls)
+{
+	TupleDesc	tupDesc;
+	AttrNumber	num_phys_attrs,
+				attr_count;
+	FormData_pg_attribute *attr;
+	int			i;
+	copy_from_dispatch_row frame;
+	int			r;
+	bool		got_error;
+
+	tupDesc = RelationGetDescr(cstate->rel);
+	num_phys_attrs = tupDesc->natts;
+	attr_count = list_length(cstate->attnumlist);
+
+	/*
+	 * The code below reads the 'copy_from_dispatch_row' struct, and only
+	 * then checks if it was actually a 'copy_from_dispatch_error' struct.
+	 * That only works when 'copy_from_dispatch_error' is larger than
+	 *'copy_from_dispatch_row'.
+	 */
+	StaticAssertStmt(SizeOfCopyFromDispatchError >= SizeOfCopyFromDispatchRow,
+					 "copy_from_dispatch_error must be larger than copy_from_dispatch_row");
+
+	/*
+	 * If we encounter an error while parsing the row (or we receive a row from
+	 * the QD that was already marked as an erroneous row), we loop back here
+	 * until we get a good row.
+	 */
+retry:
+	got_error = false;
+
+	r = CopyGetData(cstate, (char *) &frame, SizeOfCopyFromDispatchRow);
+	if (r == 0)
+		return false;
+	if (r != SizeOfCopyFromDispatchRow)
+		ereport(ERROR,
+				(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+				 errmsg("unexpected EOF in COPY data")));
+	if (frame.lineno == -1)
+	{
+		HandleQDErrorFrame(cstate, (char *) &frame, SizeOfCopyFromDispatchRow);
+		goto retry;
+	}
+
+	/* Prepare for parsing the input line */
+	attr = tupDesc->attrs;
+	num_phys_attrs = tupDesc->natts;
+
+	/* Initialize all values for row to NULL */
+	MemSet(values, 0, num_phys_attrs * sizeof(Datum));
+	MemSet(nulls, true, num_phys_attrs * sizeof(bool));
+
+	/* check for overflowing fields */
+	if (frame.fld_count < 0 || frame.fld_count > num_phys_attrs)
+		ereport(ERROR,
+				(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+				 errmsg("extra data after last expected column")));
+
+	/*
+	 * Read the input line into 'line_buf'.
+	 */
+	resetStringInfo(&cstate->line_buf);
+	enlargeStringInfo(&cstate->line_buf, frame.line_len);
+	if (CopyGetData(cstate, cstate->line_buf.data, frame.line_len) != frame.line_len)
+		ereport(ERROR,
+				(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+				 errmsg("unexpected EOF in COPY data")));
+	cstate->line_buf.data[frame.line_len] = '\0';
+	cstate->line_buf.len = frame.line_len;
+	cstate->line_buf.cursor = frame.residual_off;
+	cstate->line_buf_valid = true;
+	cstate->line_buf_converted = true;
+	cstate->cur_lineno = frame.lineno;
+	cstate->stopped_processing_at_delim = frame.delim_seen_at_end;
+
+	/*
+	 * Parse any fields from the input line that were not processed in the
+	 * QD already.
+	 */
+	if (!cstate->cdbsreh)
+	{
+		if (!NextCopyFromX(cstate, econtext, values, nulls))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+					 errmsg("unexpected EOF in COPY data")));
+		}
+	}
+	else
+	{
+		MemoryContext oldcontext = CurrentMemoryContext;
+		bool		result;
+
+		PG_TRY();
+		{
+			result = NextCopyFromX(cstate, econtext, values, nulls);
+
+			if (!result)
+				ereport(ERROR,
+						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+						 errmsg("unexpected EOF in COPY data")));
+		}
+		PG_CATCH();
+		{
+			HandleCopyError(cstate);
+			got_error = true;
+			MemoryContextSwitchTo(oldcontext);
+		}
+		PG_END_TRY();
+	}
+
+	/*
+	 * Read any attributes that were processed in the QD already. The attribute
+	 * numbers in the message are already in terms of the target partition, so
+	 * we do this after remapping and switching to the partition slot.
+	 */
+	for (i = 0; i < frame.fld_count; i++)
+	{
+		int16		attnum;
+		int			m;
+		int32		len;
+		Datum		value;
+
+		if (CopyGetData(cstate, &attnum, sizeof(attnum)) != sizeof(attnum))
+			ereport(ERROR,
+					(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+					 errmsg("unexpected EOF in COPY data")));
+
+		if (attnum < 1 || attnum > num_phys_attrs)
+			elog(ERROR, "invalid attnum received from QD: %d (num physical attributes: %d)",
+				 attnum, num_phys_attrs);
+		m = attnum - 1;
+
+		cstate->cur_attname = NameStr(attr[m].attname);
+
+		if (attr[attnum - 1].attbyval)
+		{
+			if (CopyGetData(cstate, &value, sizeof(Datum)) != sizeof(Datum))
+				ereport(ERROR,
+						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+						 errmsg("unexpected EOF in COPY data")));
+		}
+		else
+		{
+			char	   *p;
+
+			if (attr[attnum - 1].attlen > 0)
+			{
+				len = attr[attnum - 1].attlen;
+
+				p = palloc(len);
+				if (CopyGetData(cstate, p, len) != len)
+					ereport(ERROR,
+							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+							 errmsg("unexpected EOF in COPY data")));
+			}
+			else if (attr[attnum - 1].attlen == -1)
+			{
+				/* For simplicity, varlen's are always transmitted in "long" format */
+				if (CopyGetData(cstate, &len, sizeof(len)) != sizeof(len))
+					ereport(ERROR,
+							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+							 errmsg("unexpected EOF in COPY data")));
+				if (len < VARHDRSZ)
+					elog(ERROR, "invalid varlen length received from QD: %d", len);
+				p = palloc(len);
+				SET_VARSIZE(p, len);
+				if (CopyGetData(cstate, p + VARHDRSZ, len - VARHDRSZ) != len - VARHDRSZ)
+					ereport(ERROR,
+							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+							 errmsg("unexpected EOF in COPY data")));
+			}
+			else if (attr[attnum - 1].attlen == -2)
+			{
+				/*
+				 * Like the varlen case above, cstrings are sent with a length
+				 * prefix and no terminator, so we have to NULL-terminate in
+				 * memory after reading them in.
+				 */
+				if (CopyGetData(cstate, &len, sizeof(len)) != sizeof(len))
+					ereport(ERROR,
+							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+							 errmsg("unexpected EOF in COPY data")));
+				p = palloc(len + 1);
+				if (CopyGetData(cstate, p, len) != len)
+					ereport(ERROR,
+							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+							 errmsg("unexpected EOF in COPY data")));
+				p[len] = '\0';
+			}
+			else
+			{
+				elog(ERROR, "attribute %d has invalid length %d",
+					 attnum, attr[attnum - 1].attlen);
+			}
+			value = PointerGetDatum(p);
+		}
+
+		cstate->cur_attname = NULL;
+
+		values[m] = value;
+		nulls[m] = false;
+	}
+
+	if (got_error)
+		goto retry;
+
+	/*
+	 * Here we should compute defaults for any columns for which we didn't
+	 * get a default from the QD. But at the moment, all defaults are evaluated
+	 * in the QD.
+	 */
+	return true;
+}
+
+/*
+ * Parse and handle an "error frame" from QD.
+ *
+ * The caller has already read part of the frame; 'p' points to that part,
+ * of length 'len'.
+ */
+static void
+HandleQDErrorFrame(CopyFromState cstate, char *p, int len)
+{
+	CdbSreh *cdbsreh = cstate->cdbsreh;
+	MemoryContext oldcontext;
+	copy_from_dispatch_error errframe;
+	char	   *errormsg;
+	char	   *line;
+	int			r;
+
+	Assert(len <= SizeOfCopyFromDispatchError);
+
+	Assert(Gp_role == GP_ROLE_EXECUTE);
+
+	oldcontext = MemoryContextSwitchTo(cdbsreh->badrowcontext);
+
+	/*
+	 * Copy the part of the struct that the caller had already read, and
+	 * read the rest.
+	 */
+	memcpy(&errframe, p, len);
+
+	r = CopyGetData(cstate, ((char *) &errframe) + len, SizeOfCopyFromDispatchError - len);
+	if (r != SizeOfCopyFromDispatchError - len)
+		ereport(ERROR,
+				(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+				 errmsg("unexpected EOF in COPY data")));
+
+	errormsg = palloc(errframe.errmsg_len + 1);
+	line = palloc(errframe.line_len + 1);
+
+	r = CopyGetData(cstate, errormsg, errframe.errmsg_len);
+	if (r != errframe.errmsg_len)
+		ereport(ERROR,
+				(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+				 errmsg("unexpected EOF in COPY data")));
+	errormsg[errframe.errmsg_len] = '\0';
+
+	r = CopyGetData(cstate, line, errframe.line_len);
+	if (r != errframe.line_len)
+		ereport(ERROR,
+				(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+				 errmsg("unexpected EOF in COPY data")));
+	line[errframe.line_len] = '\0';
+
+	cdbsreh->linenumber = errframe.lineno;
+	cdbsreh->rawdata->cursor = 0;
+	cdbsreh->rawdata->data = line;
+	cdbsreh->rawdata->len = strlen(line);
+	cdbsreh->errmsg = errormsg;
+	cdbsreh->is_server_enc = errframe.line_buf_converted;
+
+	HandleSingleRowError(cdbsreh);
+
+	MemoryContextSwitchTo(oldcontext);
+
 }
 
 /*
@@ -941,9 +1480,26 @@ CopyReadLineText(CopyFromState cstate)
 				{
 					raw_buf_ptr++;	/* eat newline */
 					cstate->eol_type = EOL_CRNL;	/* in case not set yet */
+
+					/*
+					 * GPDB: end of line. Since we don't error out if we find a
+					 * bare CR or LF in CRLF mode, break here instead.
+					 */
+					break;
 				}
 				else
 				{
+					/*
+					 * GPDB_91_MERGE_FIXME: these commented-out blocks (as well
+					 * as the restructured newline checks) are here because we
+					 * allow the user to manually set the newline mode, and
+					 * therefore don't error out on bare CR/LF in the middle of
+					 * a column. Instead, they will be included verbatim.
+					 *
+					 * This probably has other fallout -- but so does changing
+					 * the behavior. Discuss.
+					 */
+#if 0
 					/* found \r, but no \n */
 					if (cstate->eol_type == EOL_CRNL)
 						ereport(ERROR,
@@ -954,14 +1510,19 @@ CopyReadLineText(CopyFromState cstate)
 								 !cstate->opts.csv_mode ?
 								 errhint("Use \"\\r\" to represent carriage return.") :
 								 errhint("Use quoted CSV field to represent carriage return.")));
-
-					/*
-					 * if we got here, it is the first line and we didn't find
-					 * \n, so don't consume the peeked character
-					 */
-					cstate->eol_type = EOL_CR;
+#endif
+					/* GPDB: only reset eol_type if it's currently unknown. */
+					if (cstate->eol_type == EOL_UNKNOWN)
+					{
+						/*
+						 * if we got here, it is the first line and we didn't find
+						 * \n, so don't consume the peeked character
+						 */
+						cstate->eol_type = EOL_CR;
+					}
 				}
 			}
++#if 0 /* GPDB_91_MERGE_FIXME: see above. */
 			else if (cstate->eol_type == EOL_NL)
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
@@ -971,13 +1532,19 @@ CopyReadLineText(CopyFromState cstate)
 						 !cstate->opts.csv_mode ?
 						 errhint("Use \"\\r\" to represent carriage return.") :
 						 errhint("Use quoted CSV field to represent carriage return.")));
-			/* If reach here, we have found the line terminator */
-			break;
+#endif
+			/* GPDB: a CR only ends the line in CR mode. */
+			if (cstate->eol_type == EOL_CR)
+			{
+				/* If reach here, we have found the line terminator */
+				break;
+			}
 		}
 
 		/* Process \n */
 		if (c == '\n' && (!cstate->opts.csv_mode || !in_quote))
 		{
+#if 0 /* GPDB_91_MERGE_FIXME: see above. */
 			if (cstate->eol_type == EOL_CR || cstate->eol_type == EOL_CRNL)
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
@@ -987,9 +1554,17 @@ CopyReadLineText(CopyFromState cstate)
 						 !cstate->opts.csv_mode ?
 						 errhint("Use \"\\n\" to represent newline.") :
 						 errhint("Use quoted CSV field to represent newline.")));
-			cstate->eol_type = EOL_NL;	/* in case not set yet */
-			/* If reach here, we have found the line terminator */
-			break;
+#endif
+			/* GPDB: only reset eol_type if it's currently unknown. */
+			if (cstate->eol_type == EOL_UNKNOWN)
+				cstate->eol_type = EOL_NL;	/* in case not set yet */
+
+			/* GPDB: a LF only ends the line in LF mode. */
+			if (cstate->eol_type == EOL_NL)
+			{
+				/* If reach here, we have found the line terminator */
+				break;
+			}
 		}
 
 		/*
@@ -1011,6 +1586,60 @@ CopyReadLineText(CopyFromState cstate)
 			 */
 			c2 = copy_raw_buf[raw_buf_ptr];
 
+			/*
+			 * We need to recognize the EOL.
+			 * Github issue: https://github.com/greenplum-db/gpdb/issues/12454
+			 */
+			if(c2 == '\n')
+			{
+				if(cstate->eol_type == EOL_UNKNOWN)
+				{
+				/* We still do not found the first EOL.
+				 * The current '\n' will be recongnized as EOL
+				 * in next loop of c1.
+				 */
+					goto not_end_of_copy;
+				}
+				else if(cstate->eol_type == EOL_NL)
+				{
+					// found a new line with '\n'
+					raw_buf_ptr++;
+					break;
+				}
+			}
+			if (c2 == '\r')
+			{
+				if(cstate->eol_type == EOL_UNKNOWN)
+				{
+					goto not_end_of_copy;
+				}
+				else if(cstate->eol_type == EOL_CR)
+				{
+					// found a new line wirh '\r'
+					raw_buf_ptr++;
+					break;
+				}
+				else if(cstate->eol_type == EOL_CRNL)
+				{
+					/*
+					 * Because the eol is '\r\n', we need another character c3
+					 * which comes after c2 if exists.
+					 */
+					char c3;
+					raw_buf_ptr++;
+					IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(0);
+					IF_NEED_REFILL_AND_EOF_BREAK(0);
+					c3 = copy_raw_buf[raw_buf_ptr];
+					if(c3 == '\n')
+					{
+						// found a new line with '\r\n'
+						raw_buf_ptr++;
+						break;
+					} else {
+						NO_END_OF_COPY_GOTO;
+					}
+				}
+			}
 			if (c2 == '.')
 			{
 				raw_buf_ptr++;	/* consume the '.' */
@@ -1030,18 +1659,24 @@ CopyReadLineText(CopyFromState cstate)
 					if (c2 == '\n')
 					{
 						if (!cstate->opts.csv_mode)
+						{
+							cstate->raw_buf_index = raw_buf_ptr;
 							ereport(ERROR,
 									(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 									 errmsg("end-of-copy marker does not match previous newline style")));
+						}
 						else
 							NO_END_OF_COPY_GOTO;
 					}
 					else if (c2 != '\r')
 					{
 						if (!cstate->opts.csv_mode)
+						{
+							cstate->raw_buf_index = raw_buf_ptr;
 							ereport(ERROR,
 									(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 									 errmsg("end-of-copy marker corrupt")));
+						}
 						else
 							NO_END_OF_COPY_GOTO;
 					}
@@ -1055,9 +1690,12 @@ CopyReadLineText(CopyFromState cstate)
 				if (c2 != '\r' && c2 != '\n')
 				{
 					if (!cstate->opts.csv_mode)
+					{
+						cstate->raw_buf_index = raw_buf_ptr;
 						ereport(ERROR,
 								(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 								 errmsg("end-of-copy marker corrupt")));
+					}
 					else
 						NO_END_OF_COPY_GOTO;
 				}
@@ -1066,6 +1704,7 @@ CopyReadLineText(CopyFromState cstate)
 					(cstate->eol_type == EOL_CRNL && c2 != '\n') ||
 					(cstate->eol_type == EOL_CR && c2 != '\r'))
 				{
+					cstate->raw_buf_index = raw_buf_ptr;
 					ereport(ERROR,
 							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 							 errmsg("end-of-copy marker does not match previous newline style")));
@@ -1084,7 +1723,7 @@ CopyReadLineText(CopyFromState cstate)
 				break;
 			}
 			else if (!cstate->opts.csv_mode)
-
+			{
 				/*
 				 * If we are here, it means we found a backslash followed by
 				 * something other than a period.  In non-CSV mode, anything
@@ -1097,6 +1736,7 @@ CopyReadLineText(CopyFromState cstate)
 				 * so we don't increment in those cases.
 				 */
 				raw_buf_ptr++;
+			}
 		}
 
 		/*
@@ -1173,9 +1813,11 @@ GetDecimalFromHex(char hex)
  * The return value is the number of fields actually read.
  */
 static int
-CopyReadAttributesText(CopyFromState cstate)
+CopyReadAttributesText(CopyFromState cstate, int stop_processing_at_field)
 {
 	char		delimc = cstate->opts.delim[0];
+	char		escapec = cstate->opts.escape[0];
+	bool		delim_off = cstate->opts.delim_off;
 	int			fieldno;
 	char	   *output_ptr;
 	char	   *cur_ptr;
@@ -1208,7 +1850,7 @@ CopyReadAttributesText(CopyFromState cstate)
 	output_ptr = cstate->attribute_buf.data;
 
 	/* set pointer variables for loop */
-	cur_ptr = cstate->line_buf.data;
+	cur_ptr = cstate->line_buf.data + cstate->line_buf.cursor;
 	line_end_ptr = cstate->line_buf.data + cstate->line_buf.len;
 
 	/* Outer loop iterates over fields */
@@ -1220,6 +1862,15 @@ CopyReadAttributesText(CopyFromState cstate)
 		char	   *end_ptr;
 		int			input_len;
 		bool		saw_non_ascii = false;
+
+		/*
+		 * In QD, stop once we have processed the last field we need in the QD.
+		 */
+		if (fieldno == stop_processing_at_field)
+		{
+			cstate->stopped_processing_at_delim = true;
+			break;
+		}
 
 		/* Make sure there is enough space for the next value */
 		if (fieldno >= cstate->max_fields)
@@ -1252,12 +1903,12 @@ CopyReadAttributesText(CopyFromState cstate)
 			if (cur_ptr >= line_end_ptr)
 				break;
 			c = *cur_ptr++;
-			if (c == delimc)
+			if (c == delimc && !delim_off)
 			{
 				found_delim = true;
 				break;
 			}
-			if (c == '\\')
+			if (c == escapec && !cstate->opts.escape_off)
 			{
 				if (cur_ptr >= line_end_ptr)
 					break;
@@ -1383,8 +2034,18 @@ CopyReadAttributesText(CopyFromState cstate)
 		fieldno++;
 		/* Done if we hit EOL instead of a delim */
 		if (!found_delim)
+		{
+			cstate->stopped_processing_at_delim = false;
 			break;
+		}
 	}
+
+	/*
+	 * Make note of the stopping point in 'line_buf.cursor', so that we
+	 * can send the rest to the QE later.
+	 */
+	cstate->line_buf.cursor = cur_ptr - cstate->line_buf.data;
+
 
 	/* Clean up state of attribute_buf */
 	output_ptr--;
@@ -1401,9 +2062,10 @@ CopyReadAttributesText(CopyFromState cstate)
  * "standard" (i.e. common) CSV usage.
  */
 static int
-CopyReadAttributesCSV(CopyFromState cstate)
+CopyReadAttributesCSV(CopyFromState cstate, int stop_processing_at_field)
 {
 	char		delimc = cstate->opts.delim[0];
+	bool		delim_off = cstate->opts.delim_off;
 	char		quotec = cstate->opts.quote[0];
 	char		escapec = cstate->opts.escape[0];
 	int			fieldno;
@@ -1438,7 +2100,7 @@ CopyReadAttributesCSV(CopyFromState cstate)
 	output_ptr = cstate->attribute_buf.data;
 
 	/* set pointer variables for loop */
-	cur_ptr = cstate->line_buf.data;
+	cur_ptr = cstate->line_buf.data + cstate->line_buf.cursor;
 	line_end_ptr = cstate->line_buf.data + cstate->line_buf.len;
 
 	/* Outer loop iterates over fields */
@@ -1450,6 +2112,15 @@ CopyReadAttributesCSV(CopyFromState cstate)
 		char	   *start_ptr;
 		char	   *end_ptr;
 		int			input_len;
+
+		/*
+		 * In QD, stop once we have processed the last field we need in the QD.
+		 */
+		if (fieldno == stop_processing_at_field)
+		{
+			cstate->stopped_processing_at_delim = true;
+			break;
+		}
 
 		/* Make sure there is enough space for the next value */
 		if (fieldno >= cstate->max_fields)
@@ -1482,7 +2153,7 @@ CopyReadAttributesCSV(CopyFromState cstate)
 					goto endfield;
 				c = *cur_ptr++;
 				/* unquoted field delimiter */
-				if (c == delimc)
+				if (c == delimc && !delim_off)
 				{
 					found_delim = true;
 					goto endfield;
@@ -1554,8 +2225,17 @@ endfield:
 		fieldno++;
 		/* Done if we hit EOL instead of a delim */
 		if (!found_delim)
+		{
+			cstate->stopped_processing_at_delim = false;
 			break;
+		}
 	}
+
+	/*
+	 * Make note of the stopping point in 'line_buf.cursor', so that we
+	 * can send the rest to the QE later.
+	 */
+	cstate->line_buf.cursor = cur_ptr - cstate->line_buf.data;
 
 	/* Clean up state of attribute_buf */
 	output_ptr--;

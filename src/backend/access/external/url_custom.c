@@ -18,6 +18,7 @@
 #include "access/url.h"
 #include "catalog/pg_extprotocol.h"
 #include "commands/copy.h"
+#include "commands/copyfrom_internal.h"
 #include "utils/memutils.h"
 
 /*
@@ -38,14 +39,14 @@ static int32
 InvokeExtProtocol(void *ptr,
                   size_t nbytes,
                   URL_CUSTOM_FILE *file,
-                  CopyState pstate,
+                  CopyFromState pstate,
                   bool last_call);
 
 URL_FILE *
 url_custom_fopen(char *url,
                  bool forwrite,
                  extvar_t *ev,
-                 CopyState pstate,
+                 CopyFromState pstate,
                  ExternalSelectDesc desc)
 {
 	/* we're using a custom protocol */
@@ -135,7 +136,7 @@ url_custom_ferror(URL_FILE *file, int bytesread, char *ebuf, int ebuflen)
 }
 
 size_t
-url_custom_fread(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
+url_custom_fread(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
 {
 	URL_CUSTOM_FILE   *cfile = (URL_CUSTOM_FILE *) file;
 
@@ -143,7 +144,7 @@ url_custom_fread(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
 }
 
 size_t
-url_custom_fwrite(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
+url_custom_fwrite(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
 {
 	URL_CUSTOM_FILE   *cfile = (URL_CUSTOM_FILE *) file;
 
@@ -154,7 +155,7 @@ static int32
 InvokeExtProtocol(void *ptr,
                   size_t nbytes,
                   URL_CUSTOM_FILE *file,
-                  CopyState pstate,
+                  CopyFromState pstate,
                   bool last_call)
 {
 	LOCAL_FCINFO(fcinfo, 0);
