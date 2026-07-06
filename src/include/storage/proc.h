@@ -69,11 +69,7 @@ struct XidCache
 
 /* flags reset at EOXact */
 #define		PROC_VACUUM_STATE_MASK \
-<<<<<<< HEAD
-	(/* PROC_IN_VACUUM | */ PROC_VACUUM_FOR_WRAPAROUND)
-=======
-	(PROC_IN_VACUUM | PROC_IN_SAFE_IC | PROC_VACUUM_FOR_WRAPAROUND)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+	(/* PROC_IN_VACUUM | */ PROC_IN_SAFE_IC | PROC_VACUUM_FOR_WRAPAROUND)
 
 /*
  * We allow a small number of "weak" relation locks (AccessShareLock,
@@ -445,11 +441,8 @@ extern PGDLLIMPORT int DeadlockTimeout;
 extern PGDLLIMPORT int StatementTimeout;
 extern PGDLLIMPORT int LockTimeout;
 extern PGDLLIMPORT int IdleInTransactionSessionTimeout;
-<<<<<<< HEAD
 extern PGDLLIMPORT int IdleSessionGangTimeout;
-=======
 extern PGDLLIMPORT int IdleSessionTimeout;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 extern bool log_lock_waits;
 
 
