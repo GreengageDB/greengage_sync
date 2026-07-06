@@ -697,7 +697,7 @@ secure_open_gssapi(Port *port)
 
 /*
  * Return if GSSAPI authentication was used on this connection.
-*/
+ */
 bool
 be_gssapi_get_auth(Port *port)
 {
