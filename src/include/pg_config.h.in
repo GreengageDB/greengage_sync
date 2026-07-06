@@ -762,13 +762,11 @@
 /* Define to 1 if you have the <winldap.h> header file. */
 #undef HAVE_WINLDAP_H
 
-<<<<<<< HEAD
 /* Define to 1 if you have the <winsock2.h> header file. */
 #undef HAVE_WINSOCK2_H
-=======
+
 /* Define to 1 if you have the `writev' function. */
 #undef HAVE_WRITEV
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 /* Define to 1 if you have the `X509_get_signature_nid' function. */
 #undef HAVE_X509_GET_SIGNATURE_NID
@@ -958,12 +956,8 @@
 /* Define to 1 to build with BSD Authentication support. (--with-bsd-auth) */
 #undef USE_BSD_AUTH
 
-<<<<<<< HEAD
 /* Define to 1 to build with libcurl support. (--with-libcurl) */
 #undef USE_CURL
-
-/* Define to use /dev/urandom for random number generation */
-#undef USE_DEV_URANDOM
 
 /* Define to 1 if you want float8, int8, etc values to be passed by value.
    (Always defined in GPDB) */
@@ -972,8 +966,6 @@
 /* Define to 1 to build with gpcloud (--enable-gpcloud) */
 #undef USE_GPCLOUD
 
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 /* Define to build with ICU support. (--with-icu) */
 #undef USE_ICU
 
@@ -999,15 +991,9 @@
 /* Define to build with OpenSSL support. (--with-openssl) */
 #undef USE_OPENSSL
 
-<<<<<<< HEAD
-/* Define to use OpenSSL for random number generation */
-#undef USE_OPENSSL_RANDOM
-
 /* Define to 1 to build with Greenplum ORCA optimizer. (--enable-orca) */
 #undef USE_ORCA
 
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 /* Define to 1 to build with PAM support. (--with-pam) */
 #undef USE_PAM
 
