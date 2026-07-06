@@ -1627,16 +1627,11 @@ DefineRange(CreateRangeStmt *stmt)
 	/* alignment must be TYPALIGN_INT or TYPALIGN_DOUBLE for ranges */
 	alignment = (subtypalign == TYPALIGN_DOUBLE) ? TYPALIGN_DOUBLE : TYPALIGN_INT;
 
-<<<<<<< HEAD
-	/* Allocate OID for array type */
+	/* Allocate OID for array type, its multirange, and its multirange array */
 	rangeArrayName = makeArrayTypeName(typeName, typeNamespace);
 	rangeArrayOid = AssignTypeArrayOid(rangeArrayName, typeNamespace);
-=======
-	/* Allocate OID for array type, its multirange, and its multirange array */
-	rangeArrayOid = AssignTypeArrayOid();
-	multirangeOid = AssignTypeMultirangeOid();
-	multirangeArrayOid = AssignTypeMultirangeArrayOid();
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+	multirangeOid = AssignTypeMultirangeOid(multirangeTypeName, typeNamespace);
+	multirangeArrayOid = AssignTypeMultirangeArrayOid(multirangeArrayName, typeNamespace);
 
 	/* Create the pg_type entry */
 	address =
@@ -2550,7 +2545,7 @@ AssignTypeArrayOid(char *arrayTypeName, Oid typeNamespace)
  *	Pre-assign the range type's multirange OID for use in pg_type.oid
  */
 Oid
-AssignTypeMultirangeOid(void)
+AssignTypeMultirangeOid(char *multirangeTypeName, Oid typeNamespace)
 {
 	Oid			type_multirange_oid;
 
@@ -2569,8 +2564,11 @@ AssignTypeMultirangeOid(void)
 	{
 		Relation	pg_type = table_open(TypeRelationId, AccessShareLock);
 
-		type_multirange_oid = GetNewOidWithIndex(pg_type, TypeOidIndexId,
-												 Anum_pg_type_oid);
+		type_multirange_oid = GetNewOidForType(pg_type,
+											   TypeOidIndexId,
+											   Anum_pg_type_oid,
+											   multirangeTypeName,
+											   typeNamespace);
 		table_close(pg_type, AccessShareLock);
 	}
 
@@ -2583,7 +2581,7 @@ AssignTypeMultirangeOid(void)
  *	Pre-assign the range type's multirange array OID for use in pg_type.typarray
  */
 Oid
-AssignTypeMultirangeArrayOid(void)
+AssignTypeMultirangeArrayOid(char *multirangeArrayTypeName, Oid typeNamespace)
 {
 	Oid			type_multirange_array_oid;
 
@@ -2602,8 +2600,11 @@ AssignTypeMultirangeArrayOid(void)
 	{
 		Relation	pg_type = table_open(TypeRelationId, AccessShareLock);
 
-		type_multirange_array_oid = GetNewOidWithIndex(pg_type, TypeOidIndexId,
-													   Anum_pg_type_oid);
+		type_multirange_array_oid = GetNewOidForType(pg_type,
+													 TypeOidIndexId,
+													 Anum_pg_type_oid,
+													 multirangeArrayTypeName,
+													 typeNamespace);
 		table_close(pg_type, AccessShareLock);
 	}
 
