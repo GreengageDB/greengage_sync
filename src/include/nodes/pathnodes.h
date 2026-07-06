@@ -67,20 +67,9 @@ typedef struct QualCost
  */
 typedef struct AggClauseCosts
 {
-<<<<<<< HEAD
-	int			numAggs;		/* total number of aggregate functions */
-	int			numOrderedAggs; /* number w/ DISTINCT/ORDER BY/WITHIN GROUP */
-	int			numPureOrderedAggs; /* CDB: number that use ORDER BY/WITHIN GROUP, not counting DISTINCT */
-	bool		hasNonCombine;	/* CDB: any agg func w/o a combine func? */
-	bool		hasNonPartial;	/* does any agg not support partial mode? */
-	bool		hasNonSerial;	/* is any partial agg non-serializable? */
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	QualCost	transCost;		/* total per-input-row execution costs */
 	QualCost	finalCost;		/* total per-aggregated-row costs */
 	Size		transitionSpace;	/* space for pass-by-ref transition data */
-
-	List	   *distinctAggrefs;	/* CDB: List of Aggrfefs with aggdistinct */
 } AggClauseCosts;
 
 /*
@@ -439,8 +428,12 @@ struct PlannerInfo
 	List	   *agginfos;		/* AggInfo structs */
 	List	   *aggtransinfos;	/* AggTransInfo structs */
 	int			numOrderedAggs; /* number w/ DISTINCT/ORDER BY/WITHIN GROUP */
+	int			numPureOrderedAggs; /* CDB: number that use ORDER BY/WITHIN GROUP, not counting DISTINCT */
+	bool		hasNonCombineAggs;	/* CDB: any agg func w/o a combine func? */
 	bool		hasNonPartialAggs;	/* does any agg not support partial mode? */
 	bool		hasNonSerialAggs;	/* is any partial agg non-serializable? */
+
+	List	   *distinctAggrefs;	/* CDB: List of Aggrfefs with aggdistinct */
 
 	/* These fields are used only when hasRecursion is true: */
 	int			wt_param_id;	/* PARAM_EXEC ID for the work table */
@@ -1065,11 +1058,7 @@ struct IndexOptInfo
 	bool		amhasgettuple;	/* does AM have amgettuple interface? */
 	bool		amhasgetbitmap; /* does AM have amgetbitmap interface? */
 	bool		amcanparallel;	/* does AM support parallel scan? */
-<<<<<<< HEAD
-
-=======
 	bool		amcanmarkpos;	/* does AM support mark/restore? */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	/* Rather than include amapi.h here, we declare amcostestimate like this */
 	void		(*amcostestimate) ();	/* AM's cost estimator */
 };

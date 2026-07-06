@@ -4498,7 +4498,7 @@ create_grouping_paths(PlannerInfo *root,
 		 * even if there are DISTINCT aggs or grouping sets.
 		 */
 		if (parse->groupClause != NIL &&
-			agg_costs->numPureOrderedAggs == 0 &&
+			root->numPureOrderedAggs == 0 &&
 			grouping_is_hashable(parse->groupClause))
 			flags |= GROUPING_CAN_USE_MPP_HASH;
 
@@ -7829,7 +7829,7 @@ add_paths_to_grouping_rel(PlannerInfo *root, RelOptInfo *input_rel,
 	{
 		try_mpp_multistage_aggregation = false;
 	}
-	else if (agg_costs->hasNonCombine || agg_costs->hasNonSerial)
+	else if (root->hasNonCombineAggs || root->hasNonSerialAggs)
 	{
 		try_mpp_multistage_aggregation = false;
 	}
@@ -7866,20 +7866,12 @@ add_paths_to_grouping_rel(PlannerInfo *root, RelOptInfo *input_rel,
 			MemSet(&extra->agg_final_costs, 0, sizeof(AggClauseCosts));
 			if (parse->hasAggs)
 			{
-				List	   *partial_target_exprs;
-
 				/* partial phase */
-				partial_target_exprs = partially_grouped_target->exprs;
-				get_agg_clause_costs(root, (Node *) partial_target_exprs,
-									 AGGSPLIT_INITIAL_SERIAL,
+				get_agg_clause_costs(root, AGGSPLIT_INITIAL_SERIAL,
 									 &extra->agg_partial_costs);
 
 				/* final phase */
-				get_agg_clause_costs(root, (Node *) grouped_rel->reltarget->exprs,
-									 AGGSPLIT_FINAL_DESERIAL,
-									 agg_final_costs);
-				get_agg_clause_costs(root, extra->havingQual,
-									 AGGSPLIT_FINAL_DESERIAL,
+				get_agg_clause_costs(root, AGGSPLIT_FINAL_DESERIAL,
 									 agg_final_costs);
 			}
 
@@ -7909,7 +7901,6 @@ add_paths_to_grouping_rel(PlannerInfo *root, RelOptInfo *input_rel,
 										   partially_grouped_target,
 										   havingQual,
 										   dNumGroupsTotal,
-										   agg_costs,
 										   &extra->agg_partial_costs,
 										   &extra->agg_final_costs,
 										   gd ? gd->rollups : NIL,
