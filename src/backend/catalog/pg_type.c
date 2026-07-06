@@ -38,14 +38,15 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
-
-<<<<<<< HEAD
 #include "access/genam.h"
 #include "access/heapam.h"
 #include "access/reloptions.h"
 #include "catalog/pg_type_encoding.h"
 #include "cdb/cdbvars.h"
 #include "parser/parse_type.h"
+
+static char *makeUniqueTypeName(const char *typeName, Oid typeNamespace,
+								bool tryOriginal);
 
 /*
  * Record a type's default encoding clause in the catalog.
@@ -205,13 +206,6 @@ update_type_encoding(Oid typid, Datum typoptions)
 	table_close(pgtypeenc, NoLock);
 
 }
-=======
-static char *makeUniqueTypeName(const char *typeName, Oid typeNamespace,
-								bool tryOriginal);
-
-/* Potentially set by pg_upgrade_support functions */
-Oid			binary_upgrade_next_pg_type_oid = InvalidOid;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 /* ----------------------------------------------------------------
  *		TypeShellMake
@@ -1087,9 +1081,6 @@ moveArrayTypeName(Oid typeOid, const char *typeName, Oid typeNamespace)
 	return true;
 }
 
-<<<<<<< HEAD
-=======
-
 /*
  * makeMultirangeTypeName
  *	  - given a range type name, make a multirange type name for it
@@ -1175,4 +1166,3 @@ makeUniqueTypeName(const char *typeName, Oid typeNamespace, bool tryOriginal)
 
 	return NULL;
 }
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
