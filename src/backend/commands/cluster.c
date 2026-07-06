@@ -209,8 +209,7 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 		table_close(rel, NoLock);
 
 		/* Do the job. */
-<<<<<<< HEAD
-		cluster_rel(tableOid, indexOid, stmt->options, true /* printError */);
+		cluster_rel(tableOid, indexOid, options, true /* printError */);
 
 		if (Gp_role == GP_ROLE_DISPATCH)
 		{
@@ -221,9 +220,6 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 										GetAssignedOidsForDispatch(),
 										NULL);
 		}
-=======
-		cluster_rel(tableOid, indexOid, options);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	}
 	else
 	{
@@ -272,9 +268,8 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 			/* functions in indexes may want a snapshot set */
 			PushActiveSnapshot(GetTransactionSnapshot());
 			/* Do the job. */
-<<<<<<< HEAD
 			dispatch = cluster_rel(rvtc->tableOid, rvtc->indexOid,
-								   stmt->options | CLUOPT_RECHECK,
+								   options | CLUOPT_RECHECK,
 								   false /* printError */);
 
 			if (Gp_role == GP_ROLE_DISPATCH && dispatch)
@@ -289,10 +284,6 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 											NULL);
 			}
 
-=======
-			cluster_rel(rvtc->tableOid, rvtc->indexOid,
-						options | CLUOPT_RECHECK);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 			PopActiveSnapshot();
 			CommitTransactionCommand();
 		}

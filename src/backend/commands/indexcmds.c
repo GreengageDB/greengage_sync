@@ -100,8 +100,8 @@ static char *ChooseIndexNameAddition(List *colnames);
 static void RangeVarCallbackForReindexIndex(const RangeVar *relation,
 											Oid relId, Oid oldRelId, void *arg);
 static void reindex_error_callback(void *args);
-static void ReindexPartitions(Oid relid, int options, bool isTopLevel);
-static void ReindexMultipleInternal(List *relids, int options);
+static void ReindexPartitions(Oid relid, int options, bool isTopLevel, ReindexStmt *parent_stmt);
+static void ReindexMultipleInternal(List *relids, int options, ReindexStmt *parent_stmt);
 static bool ReindexRelationConcurrently(Oid relationOid, int options);
 static void update_relispartition(Oid relationId, bool newval);
 static inline void set_indexsafe_procflags(void);
@@ -2818,10 +2818,9 @@ ReindexParseOptions(ParseState *pstate, ReindexStmt *stmt)
  *		Recreate a specific index.
  */
 void
-ReindexIndex(ReindexStmt *stmt, bool isTopLevel)
+ReindexIndex(ReindexStmt *stmt, int options, bool isTopLevel)
 {
 	RangeVar   *indexRelation = stmt->relation;
-	int			options = stmt->options;
 	struct ReindexIndexCallbackState state;
 	Oid			indOid;
 	char		persistence;
@@ -2872,7 +2871,7 @@ ReindexIndex(ReindexStmt *stmt, bool isTopLevel)
 	relkind = get_rel_relkind(indOid);
 
 	if (relkind == RELKIND_PARTITIONED_INDEX)
-		ReindexPartitions(indOid, options, isTopLevel);
+		ReindexPartitions(indOid, options, isTopLevel, stmt);
 	else if ((options & REINDEXOPT_CONCURRENTLY) != 0 &&
 			 persistence != RELPERSISTENCE_TEMP)
 		ReindexRelationConcurrently(indOid, options);
@@ -2891,7 +2890,7 @@ ReindexIndex(ReindexStmt *stmt, bool isTopLevel)
 		qestmt = makeNode(ReindexStmt);
 		qestmt->kind = REINDEX_OBJECT_INDEX;
 		qestmt->relation = NULL;
-		qestmt->options = options;
+		qestmt->params = stmt->params;
 		qestmt->relid = indOid;
 
 		CdbDispatchUtilityStatement((Node *) qestmt,
@@ -2978,10 +2977,9 @@ RangeVarCallbackForReindexIndex(const RangeVar *relation,
  *		Recreate all indexes of a table (and of its toast table, if any)
  */
 Oid
-ReindexTable(ReindexStmt *stmt, bool isTopLevel)
+ReindexTable(ReindexStmt *stmt, int options, bool isTopLevel)
 {
 	RangeVar   *relation = stmt->relation;
-	int			options = stmt->options;
 	Oid			heapOid;
 	bool		result;
 
@@ -3014,7 +3012,7 @@ ReindexTable(ReindexStmt *stmt, bool isTopLevel)
 									   RangeVarCallbackOwnsTable, NULL);
 
 	if (get_rel_relkind(heapOid) == RELKIND_PARTITIONED_TABLE)
-		ReindexPartitions(heapOid, options, isTopLevel);
+		ReindexPartitions(heapOid, options, isTopLevel, stmt);
 	else if ((options & REINDEXOPT_CONCURRENTLY) != 0 &&
 			 get_rel_persistence(heapOid) != RELPERSISTENCE_TEMP)
 	{
@@ -3048,7 +3046,7 @@ ReindexTable(ReindexStmt *stmt, bool isTopLevel)
 		qestmt = makeNode(ReindexStmt);
 		qestmt->kind = REINDEX_OBJECT_TABLE;
 		qestmt->relation = NULL;
-		qestmt->options = options;
+		qestmt->params = stmt->params;
 		qestmt->relid = heapOid;
 
 		CdbDispatchUtilityStatement((Node *) qestmt,
@@ -3070,8 +3068,7 @@ ReindexTable(ReindexStmt *stmt, bool isTopLevel)
  * That means this must not be called within a user transaction block!
  */
 void
-ReindexMultipleTables(const char *objectName, ReindexObjectType objectKind,
-					  int options)
+ReindexMultipleTables(ReindexStmt *parent_stmt, int options)
 {
 	Oid			objectOid;
 	Relation	relationRelation;
@@ -3083,6 +3080,8 @@ ReindexMultipleTables(const char *objectName, ReindexObjectType objectKind,
 	List	   *relids = NIL;
 	int			num_keys;
 	bool		concurrent_warning = false;
+	char *objectName = parent_stmt->name;
+	ReindexObjectType objectKind = parent_stmt->kind;
 
 	Assert(Gp_role != GP_ROLE_EXECUTE);
 	AssertArg(objectName);
@@ -3236,7 +3235,7 @@ ReindexMultipleTables(const char *objectName, ReindexObjectType objectKind,
 	 * Process each relation listed in a separate transaction.  Note that this
 	 * commits and then starts a new transaction immediately.
 	 */
-	ReindexMultipleInternal(relids, options);
+	ReindexMultipleInternal(relids, options, parent_stmt);
 
 	MemoryContextDelete(private_context);
 }
@@ -3267,7 +3266,7 @@ reindex_error_callback(void *arg)
  * by the caller.
  */
 static void
-ReindexPartitions(Oid relid, int options, bool isTopLevel)
+ReindexPartitions(Oid relid, int options, bool isTopLevel, ReindexStmt *parent_stmt)
 {
 	List	   *partitions = NIL;
 	char		relkind = get_rel_relkind(relid);
@@ -3344,7 +3343,7 @@ ReindexPartitions(Oid relid, int options, bool isTopLevel)
 	 * Process each partition listed in a separate transaction.  Note that
 	 * this commits and then starts a new transaction immediately.
 	 */
-	ReindexMultipleInternal(partitions, options);
+	ReindexMultipleInternal(partitions, options, parent_stmt);
 
 	/*
 	 * Clean up working storage --- note we must do this after
@@ -3362,7 +3361,7 @@ ReindexPartitions(Oid relid, int options, bool isTopLevel)
  * and starts a new transaction when finished.
  */
 static void
-ReindexMultipleInternal(List *relids, int options)
+ReindexMultipleInternal(List *relids, int options, ReindexStmt *parent_stmt)
 {
 	ListCell   *l;
 
@@ -3474,7 +3473,7 @@ ReindexMultipleInternal(List *relids, int options)
 			stmt->kind = relkind == RELKIND_INDEX ?
 						 REINDEX_OBJECT_INDEX : REINDEX_OBJECT_TABLE;
 			stmt->relation = NULL;
-			stmt->options = options;
+			stmt->params = parent_stmt->params;
 			stmt->relid = relid;
 
 			PushActiveSnapshot(GetTransactionSnapshot());

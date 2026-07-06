@@ -2042,7 +2042,6 @@ typedef enum AlterTableType
 	AT_AddIdentity,				/* ADD IDENTITY */
 	AT_SetIdentity,				/* SET identity column options */
 	AT_DropIdentity,			/* DROP IDENTITY */
-<<<<<<< HEAD
 	AT_AlterCollationRefreshVersion,	/* ALTER COLLATION ... REFRESH VERSION */
 
 	AT_SetDistributedBy,		/* SET DISTRIBUTED BY */
@@ -2058,9 +2057,6 @@ typedef enum AlterTableType
 	AT_PartSetTemplate,			/* Set Subpartition Template */
 	AT_PartSplit,				/* Split */
 	AT_PartTruncate				/* Truncate */
-=======
-	AT_AlterCollationRefreshVersion /* ALTER COLLATION ... REFRESH VERSION */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt
@@ -3896,12 +3892,8 @@ typedef struct ReindexStmt
 								 * etc. */
 	RangeVar   *relation;		/* Table or index to reindex */
 	const char *name;			/* name of database to reindex */
-<<<<<<< HEAD
-	int			options;		/* Reindex options flags */
 	Oid			relid;			/* oid of table or index, used by QE */
-=======
 	List	   *params;			/* list of DefElem nodes */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 } ReindexStmt;
 
 /* ----------------------

@@ -22,11 +22,8 @@
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "catalog/catalog.h"
-<<<<<<< HEAD
 #include "catalog/gp_partition_template.h"
-=======
 #include "catalog/index.h"
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 #include "catalog/namespace.h"
 #include "catalog/partition.h"
 #include "catalog/pg_inherits.h"
@@ -1101,17 +1098,10 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 				switch (stmt->kind)
 				{
 					case REINDEX_OBJECT_INDEX:
-<<<<<<< HEAD
-						ReindexIndex(stmt, isTopLevel);
+						ReindexIndex(stmt, options, isTopLevel);
 						break;
 					case REINDEX_OBJECT_TABLE:
-						ReindexTable(stmt, isTopLevel);
-=======
-						ReindexIndex(stmt->relation, options, isTopLevel);
-						break;
-					case REINDEX_OBJECT_TABLE:
-						ReindexTable(stmt->relation, options, isTopLevel);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+						ReindexTable(stmt, options, isTopLevel);
 						break;
 					case REINDEX_OBJECT_SCHEMA:
 					case REINDEX_OBJECT_SYSTEM:
@@ -1128,7 +1118,7 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 												  (stmt->kind == REINDEX_OBJECT_SCHEMA) ? "REINDEX SCHEMA" :
 												  (stmt->kind == REINDEX_OBJECT_SYSTEM) ? "REINDEX SYSTEM" :
 												  "REINDEX DATABASE");
-						ReindexMultipleTables(stmt->name, stmt->kind, options);
+						ReindexMultipleTables(stmt, options);
 						break;
 					default:
 						elog(ERROR, "unrecognized object type: %d",
@@ -1323,11 +1313,7 @@ ProcessUtilitySlow(ParseState *pstate,
 			case T_CreateForeignTableStmt:
 				{
 					List	   *stmts;
-<<<<<<< HEAD
-					ListCell   *l;
 					List	   *more_stmts = NIL;
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 					RangeVar   *table_rv = NULL;
 
 					/* Run parse analysis ... */
@@ -1345,18 +1331,13 @@ ProcessUtilitySlow(ParseState *pstate,
 						stmts = transformCreateStmt((CreateStmt *) parsetree,
 													queryString);
 
-<<<<<<< HEAD
-					/* ... and do it */
 			process_more_stmts:
-					foreach(l, stmts)
-=======
 					/*
 					 * ... and do it.  We can't use foreach() because we may
 					 * modify the list midway through, so pick off the
 					 * elements one at a time, the hard way.
 					 */
 					while (stmts != NIL)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 					{
 						Node	   *stmt = (Node *) linitial(stmts);
 

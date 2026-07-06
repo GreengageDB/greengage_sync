@@ -10859,20 +10859,13 @@ ReindexStmt:
 					n->kind = $2;
 					n->relation = $4;
 					n->name = NULL;
-<<<<<<< HEAD
-					n->options = 0;
+					n->params = NIL;
 
 					if ($3)
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("REINDEX CONCURRENTLY is not supported")));
 
-=======
-					n->params = NIL;
-					if ($3)
-						n->params = lappend(n->params,
-								makeDefElem("concurrently", NULL, @3));
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 					$$ = (Node *)n;
 				}
 			| REINDEX reindex_target_multitable opt_concurrently name
@@ -10881,20 +10874,13 @@ ReindexStmt:
 					n->kind = $2;
 					n->name = $4;
 					n->relation = NULL;
-<<<<<<< HEAD
-					n->options = 0;
+					n->params = NIL;
 
 					if ($3)
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("REINDEX CONCURRENTLY is not supported")));
 
-=======
-					n->params = NIL;
-					if ($3)
-						n->params = lappend(n->params,
-								makeDefElem("concurrently", NULL, @3));
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 					$$ = (Node *)n;
 				}
 			| REINDEX '(' utility_option_list ')' reindex_target_type opt_concurrently qualified_name
@@ -10903,20 +10889,13 @@ ReindexStmt:
 					n->kind = $5;
 					n->relation = $7;
 					n->name = NULL;
-<<<<<<< HEAD
-					n->options = $3;
+					n->params = $3;
 
 					if ($6)
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("REINDEX CONCURRENTLY is not supported")));
 
-=======
-					n->params = $3;
-					if ($6)
-						n->params = lappend(n->params,
-								makeDefElem("concurrently", NULL, @6));
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 					$$ = (Node *)n;
 				}
 			| REINDEX '(' utility_option_list ')' reindex_target_multitable opt_concurrently name
@@ -10925,20 +10904,13 @@ ReindexStmt:
 					n->kind = $5;
 					n->name = $7;
 					n->relation = NULL;
-<<<<<<< HEAD
-					n->options = $3;
+					n->params = $3;
 
 					if ($6)
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("REINDEX CONCURRENTLY is not supported")));
 
-=======
-					n->params = $3;
-					if ($6)
-						n->params = lappend(n->params,
-								makeDefElem("concurrently", NULL, @6));
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 					$$ = (Node *)n;
 				}
 		;
