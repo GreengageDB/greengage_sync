@@ -63,19 +63,14 @@ InitializeBackupManifest(backup_manifest_info *manifest,
 	if (want_manifest == MANIFEST_OPTION_NO)
 		manifest->buffile = NULL;
 	else
-<<<<<<< HEAD
-		manifest->buffile = BufFileCreateTemp("InitializeBackupManifest", false);
-	manifest->checksum_type = manifest_checksum_type;
-	pg_sha256_init(&manifest->manifest_ctx);
-=======
 	{
-		manifest->buffile = BufFileCreateTemp(false);
+		/* GPDB: pass operation name for MPP workfile-set tracking */
+		manifest->buffile = BufFileCreateTemp("InitializeBackupManifest", false);
 		manifest->manifest_ctx = pg_cryptohash_create(PG_SHA256);
 		if (pg_cryptohash_init(manifest->manifest_ctx) < 0)
 			elog(ERROR, "failed to initialize checksum of backup manifest");
 	}
 
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	manifest->manifest_size = UINT64CONST(0);
 	manifest->force_encode = (want_manifest == MANIFEST_OPTION_FORCE_ENCODE);
 	manifest->first_file = true;
