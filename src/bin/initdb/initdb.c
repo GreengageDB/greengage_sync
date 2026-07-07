@@ -3217,6 +3217,7 @@ main(int argc, char *argv[])
 	 * their short version value
 	 */
 	int			c;
+	int			option_index;
 	char	   *effective_user;
 	PQExpBuffer start_db_cmd;
 	char		pg_ctl_path[MAXPGPATH];
@@ -3254,11 +3255,7 @@ main(int argc, char *argv[])
 
 	/* process command-line options */
 
-<<<<<<< HEAD
-	while ((c = getopt_long(argc, argv, "dD:E:kL:nNU:WA:sST:X:g", long_options, NULL)) != -1)
-=======
 	while ((c = getopt_long(argc, argv, "A:dD:E:gkL:nNsST:U:WX:", long_options, &option_index)) != -1)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	{
 		switch (c)
 		{
