@@ -2492,17 +2492,6 @@ _outIncrementalSortPath(StringInfo str, const IncrementalSortPath *node)
 }
 
 static void
-_outIncrementalSortPath(StringInfo str, const IncrementalSortPath *node)
-{
-	WRITE_NODE_TYPE("INCREMENTALSORTPATH");
-
-	_outPathInfo(str, (const Path *) node);
-
-	WRITE_NODE_FIELD(spath.subpath);
-	WRITE_INT_FIELD(nPresortedCols);
-}
-
-static void
 _outGroupPath(StringInfo str, const GroupPath *node)
 {
 	WRITE_NODE_TYPE("GROUPPATH");
@@ -6331,7 +6320,6 @@ outNode(StringInfo str, const void *obj)
 			case T_SelectStmt:
 				_outSelectStmt(str, obj);
 				break;
-<<<<<<< HEAD
 			case T_InsertStmt:
 				_outInsertStmt(str, obj);
 				break;
@@ -6341,12 +6329,11 @@ outNode(StringInfo str, const void *obj)
 			case T_UpdateStmt:
 				_outUpdateStmt(str, obj);
 				break;
-			case T_Null:
-				_outNull(str, obj);
-=======
 			case T_PLAssignStmt:
 				_outPLAssignStmt(str, obj);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+				break;
+			case T_Null:
+				_outNull(str, obj);
 				break;
 			case T_ColumnDef:
 				_outColumnDef(str, obj);
