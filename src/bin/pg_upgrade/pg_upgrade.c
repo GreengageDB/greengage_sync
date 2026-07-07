@@ -94,11 +94,7 @@ OSInfo		os_info;
 int
 main(int argc, char **argv)
 {
-<<<<<<< HEAD
 	char       *sequence_script_file_name = NULL;
-	char	   *analyze_script_file_name = NULL;
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	char	   *deletion_script_file_name = NULL;
 	bool		live_check = false;
 
@@ -252,15 +248,10 @@ main(int argc, char **argv)
 		   "Upgrade Complete\n"
 		   "----------------\n");
 
-<<<<<<< HEAD
 	report_progress(NULL, DONE, "Upgrade complete");
 	close_progress();
 
-	output_completion_banner(analyze_script_file_name,
-							 deletion_script_file_name);
-=======
 	output_completion_banner(deletion_script_file_name);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	pg_free(deletion_script_file_name);
 
