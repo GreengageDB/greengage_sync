@@ -548,6 +548,27 @@ get_agg_clause_costs(PlannerInfo *root, AggSplit aggsplit, AggClauseCosts *costs
 		AggTransInfo *transinfo = (AggTransInfo *) lfirst(lc);
 
 		/*
+		 * GPDB: Record whether any aggregate cannot be combined, or (for an
+		 * INTERNAL transition state) cannot be serialized.  The MPP planner
+		 * consults these flags (AggClauseCosts.hasNonCombine / hasNonSerial)
+		 * to decide whether it may split aggregation into multiple stages with
+		 * a Motion in between.  Splitting an aggregate that lacks a combine or
+		 * serialization function would reference function OID 0 and fail with
+		 * "cache lookup failed for function 0" (e.g. string_agg with ORDER BY).
+		 * This mirrors the root->hasNonPartialAggs / root->hasNonSerialAggs
+		 * bookkeeping done in preprocess_aggref() when the transinfos are first
+		 * built; we keep a separate copy on AggClauseCosts because the MPP
+		 * grouping-path code can still multi-stage some DISTINCT aggregates
+		 * (which upstream marks as hasNonPartialAggs) via the DQA path.
+		 */
+		if (!OidIsValid(transinfo->combinefn_oid))
+			costs->hasNonCombine = true;
+		else if (transinfo->aggtranstype == INTERNALOID &&
+				 (!OidIsValid(transinfo->serialfn_oid) ||
+				  !OidIsValid(transinfo->deserialfn_oid)))
+			costs->hasNonSerial = true;
+
+		/*
 		 * Add the appropriate component function execution costs to
 		 * appropriate totals.
 		 */
@@ -651,6 +672,32 @@ get_agg_clause_costs(PlannerInfo *root, AggSplit aggsplit, AggClauseCosts *costs
 	{
 		AggInfo    *agginfo = (AggInfo *) lfirst(lc);
 		Aggref	   *aggref = agginfo->representative_aggref;
+
+		/*
+		 * GPDB: Count aggregates that require ordered input.  numPureOrderedAggs
+		 * counts those with an explicit ORDER BY / WITHIN GROUP: their result
+		 * depends on the global input order, so they cannot be split into
+		 * multiple aggregation stages with a Motion in between.  The MPP
+		 * grouping planner relies on this count (cdb_create_multistage_grouping_paths's
+		 * has_ordered_aggs gate and the can_hash test); without it an ORDER BY
+		 * aggregate such as array_agg(x ORDER BY x) is wrongly routed into a
+		 * multi-stage plan.  (DISTINCT aggregates are handled separately via the
+		 * DQA path, so they are not counted here.)
+		 */
+		if (aggref->aggorder != NIL)
+			costs->numPureOrderedAggs++;
+
+		/*
+		 * GPDB: Remember the DISTINCT-qualified aggregates.  The MPP grouping
+		 * planner uses this list (cdb_create_multistage_grouping_paths ->
+		 * recognize_dqa_type) to build the specialized DQA multi-stage paths,
+		 * which dedup the DISTINCT argument by adding it to the first-stage
+		 * group key.  Without this list the DQA paths are never generated and a
+		 * DISTINCT aggregate falls through to the generic two-stage partial
+		 * aggregation, which cannot partialize a DISTINCT aggregate.
+		 */
+		if (aggref->aggdistinct != NIL)
+			costs->distinctAggrefs = lappend(costs->distinctAggrefs, aggref);
 
 		/*
 		 * Add the appropriate component function execution costs to
