@@ -18,6 +18,7 @@
 #include "storage/procsignal.h"
 #include "storage/relfilenode.h"
 #include "storage/standbydefs.h"
+#include "datatype/timestamp.h"
 
 /* User-settable GUC parameters */
 extern int	vacuum_defer_cleanup_age;
