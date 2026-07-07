@@ -67,6 +67,7 @@
 #include "catalog/pg_stat_last_shoperation.h"
 #include "catalog/pg_statistic.h"
 #include "catalog/pg_trigger.h"
+#include "catalog/toasting.h"
 #include "cdb/cdbvars.h"
 
 static bool IsAoSegmentClass(Form_pg_class reltuple);
@@ -377,7 +378,6 @@ IsSharedRelation(Oid relationId)
 		relationId == ReplicationOriginRelationId ||
 		relationId == SubscriptionRelationId)
 		return true;
-<<<<<<< HEAD
 
 	/* GPDB additions */
 	if (relationId == GpIdRelationId ||
@@ -397,10 +397,7 @@ IsSharedRelation(Oid relationId)
 		relationId == AuthTimeConstraintRelationId)
 		return true;
 
-	/* These are their indexes (see indexing.h) */
-=======
 	/* These are their indexes */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	if (relationId == AuthIdRolnameIndexId ||
 		relationId == AuthIdOidIndexId ||
 		relationId == AuthMemRoleMemIndexId ||
@@ -419,7 +416,6 @@ IsSharedRelation(Oid relationId)
 		relationId == SubscriptionObjectIndexId ||
 		relationId == SubscriptionNameIndexId)
 		return true;
-<<<<<<< HEAD
 
 	/* GPDB added indexes */
 	if (/* MPP-6929: metadata tracking */
@@ -446,10 +442,7 @@ IsSharedRelation(Oid relationId)
 		return true;
 	}
 
-	/* These are their toast tables and toast indexes (see toasting.h) */
-=======
 	/* These are their toast tables and toast indexes */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	if (relationId == PgAuthidToastTable ||
 		relationId == PgAuthidToastIndex ||
 		relationId == PgDatabaseToastTable ||
