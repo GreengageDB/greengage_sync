@@ -1163,11 +1163,12 @@ _readFuncCall(void)
 	READ_NODE_FIELD(args);
 	READ_NODE_FIELD(agg_order);
 	READ_NODE_FIELD(agg_filter);
+	READ_NODE_FIELD(over);
 	READ_BOOL_FIELD(agg_within_group);
 	READ_BOOL_FIELD(agg_star);
 	READ_BOOL_FIELD(agg_distinct);
 	READ_BOOL_FIELD(func_variadic);
-	READ_NODE_FIELD(over);
+	READ_ENUM_FIELD(funcformat, CoercionForm);
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();
@@ -1276,11 +1277,6 @@ _readAExpr(void)
 		local_node->kind = AEXPR_NULLIF;
 		READ_NODE_FIELD(name);
 	}
-	else if (strncmp(token,"OF",length)==0)
-	{
-		local_node->kind = AEXPR_OF;
-		READ_NODE_FIELD(name);
-	}
 	else if (strncmp(token,"IN",length)==0)
 	{
 		local_node->kind = AEXPR_IN;
@@ -1319,11 +1315,6 @@ _readAExpr(void)
 	else if (strncmp(token,"NOT_BETWEEN_SYM",length)==0)
 	{
 		local_node->kind = AEXPR_NOT_BETWEEN_SYM;
-		READ_NODE_FIELD(name);
-	}
-	else if (strncmp(token,"PAREN",length)==0)
-	{
-		local_node->kind = AEXPR_PAREN;
 		READ_NODE_FIELD(name);
 	}
 	else
@@ -1381,12 +1372,8 @@ _readAggref(void)
 	READ_CHAR_FIELD(aggkind);
 	READ_UINT_FIELD(agglevelsup);
 	READ_ENUM_FIELD(aggsplit, AggSplit);
-<<<<<<< HEAD
-
-=======
 	READ_INT_FIELD(aggno);
 	READ_INT_FIELD(aggtransno);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	READ_LOCATION_FIELD(location);
 	READ_INT_FIELD(agg_expr_id);
 
@@ -3664,6 +3651,8 @@ _readRestrictInfo(void)
 	READ_BOOL_FIELD(outerjoin_delayed);
 	READ_BOOL_FIELD(can_join);
 	READ_BOOL_FIELD(pseudoconstant);
+	READ_BOOL_FIELD(leakproof);
+	READ_UINT_FIELD(security_level);
 	READ_BOOL_FIELD(contain_outer_query_references);
 	READ_BITMAPSET_FIELD(clause_relids);
 	READ_BITMAPSET_FIELD(required_relids);
