@@ -5,7 +5,7 @@
  *
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2020, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -22,13 +22,25 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "access/heapam.h"
+#include "access/htup_details.h"
 #include "access/sysattr.h"
-#include "access/table.h"
+#include "access/tableam.h"
 #include "access/xact.h"
+#include "access/xlog.h"
+#include "catalog/dependency.h"
 #include "catalog/pg_authid.h"
+#include "catalog/pg_type.h"
 #include "commands/copy.h"
 #include "commands/defrem.h"
+#include "commands/trigger.h"
+#include "executor/execPartition.h"
 #include "executor/executor.h"
+#include "executor/nodeModifyTable.h"
+#include "executor/tuptable.h"
+#include "foreign/fdwapi.h"
+#include "libpq/libpq.h"
+#include "libpq/pqformat.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -37,20 +49,19 @@
 #include "parser/parse_collate.h"
 #include "parser/parse_expr.h"
 #include "parser/parse_relation.h"
+#include "port/pg_bswap.h"
 #include "rewrite/rewriteHandler.h"
-<<<<<<< HEAD
 #include "storage/fd.h"
 #include "storage/execute_pipe.h"
 #include "tcop/tcopprot.h"
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/partcache.h"
+#include "utils/portal.h"
 #include "utils/rel.h"
 #include "utils/rls.h"
-<<<<<<< HEAD
 #include "utils/snapmgr.h"
 
 #include "access/external.h"
@@ -981,8 +992,6 @@ CopyReadBinaryData(CopyState cstate, char *dest, int nbytes)
 	return copied_bytes;
 }
 
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 /*
  *	 DoCopy executes the SQL COPY statement
@@ -1008,6 +1017,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 	   int stmt_location, int stmt_len,
 	   uint64 *processed)
 {
+	CopyState	cstate;
 	bool		is_from = stmt->is_from;
 	bool		pipe = (stmt->filename == NULL || Gp_role == GP_ROLE_EXECUTE);
 	Relation	rel;
@@ -1272,8 +1282,6 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 
 	if (is_from)
 	{
-		CopyFromState cstate;
-
 		Assert(rel);
 
 		if (stmt->sreh && Gp_role != GP_ROLE_EXECUTE && !rel->rd_cdbpolicy)
@@ -1290,7 +1298,6 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 		if (XactReadOnly && !rel->rd_islocaltemp)
 			PreventCommandIfReadOnly("COPY FROM");
 
-<<<<<<< HEAD
 		cstate = BeginCopyFrom(pstate, rel, stmt->filename, stmt->is_program,
 							   NULL, NULL, stmt->attlist, options);
 		cstate->whereClause = whereClause;
@@ -1349,17 +1356,10 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 			PG_RE_THROW();
 		}
 		PG_END_TRY();
-=======
-		cstate = BeginCopyFrom(pstate, rel, whereClause,
-							   stmt->filename, stmt->is_program,
-							   NULL, stmt->attlist, stmt->options);
-		*processed = CopyFrom(cstate);	/* copy from file to database */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		EndCopyFrom(cstate);
 	}
 	else
 	{
-<<<<<<< HEAD
 		/*
 		 * GPDB_91_MERGE_FIXME: ExecutorStart() is called in BeginCopyTo,
 		 * but the TRY-CATCH block only starts here. If an error is
@@ -1403,15 +1403,6 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 		PG_END_TRY();
 
 		EndCopyTo(cstate, processed);
-=======
-		CopyToState cstate;
-
-		cstate = BeginCopyTo(pstate, rel, query, relid,
-							 stmt->filename, stmt->is_program,
-							 stmt->attlist, stmt->options);
-		*processed = DoCopyTo(cstate);	/* copy from database to file */
-		EndCopyTo(cstate);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	}
 
 	if (rel != NULL)
@@ -1426,13 +1417,14 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
  * Process the statement option list for COPY.
  *
  * Scan the options list (a list of DefElem) and transpose the information
- * into *opts_out, applying appropriate error checking.
+ * into cstate, applying appropriate error checking.
  *
- * If 'opts_out' is not NULL, it is assumed to be filled with zeroes initially.
+ * cstate is assumed to be filled with zeroes initially.
  *
  * This is exported so that external users of the COPY API can sanity-check
- * a list of options.  In that usage, 'opts_out' can be passed as NULL and
- * the collected data is just leaked until CurrentMemoryContext is reset.
+ * a list of options.  In that usage, cstate should be passed as NULL
+ * (since external users don't know sizeof(CopyStateData)) and the collected
+ * data is just leaked until CurrentMemoryContext is reset.
  *
  * Note that additional checking, such as whether column names listed in FORCE
  * QUOTE actually exist, has to be applied later.  This just checks for
@@ -1440,7 +1432,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
  */
 void
 ProcessCopyOptions(ParseState *pstate,
-				   CopyFormatOptions *opts_out,
+				   CopyState cstate,
 				   bool is_from,
 				   List *options)
 {
@@ -1450,10 +1442,9 @@ ProcessCopyOptions(ParseState *pstate,
 	ListCell   *option;
 
 	/* Support external use for option sanity checking */
-	if (opts_out == NULL)
-		opts_out = (CopyFormatOptions *) palloc0(sizeof(CopyFormatOptions));
+	if (cstate == NULL)
+		cstate = (CopyStateData *) palloc0(sizeof(CopyStateData));
 
-<<<<<<< HEAD
 	cstate->escape_off = false;
 	cstate->skip_foreign_partitions = false;
 
@@ -1461,9 +1452,6 @@ ProcessCopyOptions(ParseState *pstate,
 
 	cstate->delim_off = false;
 	cstate->file_encoding = -1;
-=======
-	opts_out->file_encoding = -1;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	/* Extract options from the statement node tree */
 	foreach(option, options)
@@ -1483,9 +1471,9 @@ ProcessCopyOptions(ParseState *pstate,
 			if (strcmp(fmt, "text") == 0)
 				 /* default format */ ;
 			else if (strcmp(fmt, "csv") == 0)
-				opts_out->csv_mode = true;
+				cstate->csv_mode = true;
 			else if (strcmp(fmt, "binary") == 0)
-				opts_out->binary = true;
+				cstate->binary = true;
 			else
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1500,32 +1488,27 @@ ProcessCopyOptions(ParseState *pstate,
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
 			freeze_specified = true;
-			opts_out->freeze = defGetBoolean(defel);
+			cstate->freeze = defGetBoolean(defel);
 		}
 		else if (strcmp(defel->defname, "delimiter") == 0)
 		{
-			if (opts_out->delim)
+			if (cstate->delim)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
-<<<<<<< HEAD
 			cstate->delim = defGetString(defel);
 
 			if (cstate->delim && pg_strcasecmp(cstate->delim, "off") == 0)
 				cstate->delim_off = true;
-=======
-			opts_out->delim = defGetString(defel);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		}
 		else if (strcmp(defel->defname, "null") == 0)
 		{
-			if (opts_out->null_print)
+			if (cstate->null_print)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
-<<<<<<< HEAD
 			cstate->null_print = defGetString(defel);
 
 			/*
@@ -1536,9 +1519,6 @@ ProcessCopyOptions(ParseState *pstate,
 			 */
 			if(!cstate->null_print)
 				cstate->null_print = "";
-=======
-			opts_out->null_print = defGetString(defel);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		}
 		else if (strcmp(defel->defname, "header") == 0)
 		{
@@ -1548,37 +1528,36 @@ ProcessCopyOptions(ParseState *pstate,
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
 			header_specified = true;
-			opts_out->header_line = defGetBoolean(defel);
+			cstate->header_line = defGetBoolean(defel);
 		}
 		else if (strcmp(defel->defname, "quote") == 0)
 		{
-			if (opts_out->quote)
+			if (cstate->quote)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
-			opts_out->quote = defGetString(defel);
+			cstate->quote = defGetString(defel);
 		}
 		else if (strcmp(defel->defname, "escape") == 0)
 		{
-			if (opts_out->escape)
+			if (cstate->escape)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
-			opts_out->escape = defGetString(defel);
+			cstate->escape = defGetString(defel);
 		}
 		else if (strcmp(defel->defname, "force_quote") == 0)
 		{
-			if (opts_out->force_quote || opts_out->force_quote_all)
+			if (cstate->force_quote || cstate->force_quote_all)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
 			if (defel->arg && IsA(defel->arg, A_Star))
-				opts_out->force_quote_all = true;
+				cstate->force_quote_all = true;
 			else if (defel->arg && IsA(defel->arg, List))
-<<<<<<< HEAD
 				cstate->force_quote = castNode(List, defel->arg);
 			else if (defel->arg && IsA(defel->arg, String))
 			{
@@ -1590,9 +1569,6 @@ ProcessCopyOptions(ParseState *pstate,
 					cstate->force_quote = parse_joined_option_list(strVal(defel->arg), ",");
 				}
 			}
-=======
-				opts_out->force_quote = castNode(List, defel->arg);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 			else
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1602,22 +1578,18 @@ ProcessCopyOptions(ParseState *pstate,
 		}
 		else if (strcmp(defel->defname, "force_not_null") == 0)
 		{
-			if (opts_out->force_notnull)
+			if (cstate->force_notnull)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
 			if (defel->arg && IsA(defel->arg, List))
-<<<<<<< HEAD
 				cstate->force_notnull = castNode(List, defel->arg);
 			else if (defel->arg && IsA(defel->arg, String))
 			{
 				/* OPTIONS (force_not_null 'c1,c2') */
 				cstate->force_notnull = parse_joined_option_list(strVal(defel->arg), ",");
 			}
-=======
-				opts_out->force_notnull = castNode(List, defel->arg);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 			else
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1627,12 +1599,12 @@ ProcessCopyOptions(ParseState *pstate,
 		}
 		else if (strcmp(defel->defname, "force_null") == 0)
 		{
-			if (opts_out->force_null)
+			if (cstate->force_null)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options")));
 			if (defel->arg && IsA(defel->arg, List))
-				opts_out->force_null = castNode(List, defel->arg);
+				cstate->force_null = castNode(List, defel->arg);
 			else
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1647,14 +1619,14 @@ ProcessCopyOptions(ParseState *pstate,
 			 * named columns to binary form, storing the rest as NULLs. It's
 			 * allowed for the column list to be NIL.
 			 */
-			if (opts_out->convert_selectively)
+			if (cstate->convert_selectively)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
-			opts_out->convert_selectively = true;
+			cstate->convert_selectively = true;
 			if (defel->arg == NULL || IsA(defel->arg, List))
-				opts_out->convert_select = castNode(List, defel->arg);
+				cstate->convert_select = castNode(List, defel->arg);
 			else
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1664,13 +1636,13 @@ ProcessCopyOptions(ParseState *pstate,
 		}
 		else if (strcmp(defel->defname, "encoding") == 0)
 		{
-			if (opts_out->file_encoding >= 0)
+			if (cstate->file_encoding >= 0)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
-			opts_out->file_encoding = pg_char_to_encoding(defGetString(defel));
-			if (opts_out->file_encoding < 0)
+			cstate->file_encoding = pg_char_to_encoding(defGetString(defel));
+			if (cstate->file_encoding < 0)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 						 errmsg("argument to option \"%s\" must be a valid encoding name",
@@ -1735,12 +1707,12 @@ ProcessCopyOptions(ParseState *pstate,
 	 * Check for incompatible options (must do these two before inserting
 	 * defaults)
 	 */
-	if (opts_out->binary && opts_out->delim)
+	if (cstate->binary && cstate->delim)
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("COPY cannot specify DELIMITER in BINARY mode")));
 
-	if (opts_out->binary && opts_out->null_print)
+	if (cstate->binary && cstate->null_print)
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("COPY cannot specify NULL in BINARY mode")));
@@ -1748,46 +1720,42 @@ ProcessCopyOptions(ParseState *pstate,
 	cstate->eol_type = EOL_UNKNOWN;
 
 	/* Set defaults for omitted options */
-	if (!opts_out->delim)
-		opts_out->delim = opts_out->csv_mode ? "," : "\t";
+	if (!cstate->delim)
+		cstate->delim = cstate->csv_mode ? "," : "\t";
 
-	if (!opts_out->null_print)
-		opts_out->null_print = opts_out->csv_mode ? "" : "\\N";
-	opts_out->null_print_len = strlen(opts_out->null_print);
+	if (!cstate->null_print)
+		cstate->null_print = cstate->csv_mode ? "" : "\\N";
+	cstate->null_print_len = strlen(cstate->null_print);
 
-	if (opts_out->csv_mode)
+	if (cstate->csv_mode)
 	{
-		if (!opts_out->quote)
-			opts_out->quote = "\"";
-		if (!opts_out->escape)
-			opts_out->escape = opts_out->quote;
+		if (!cstate->quote)
+			cstate->quote = "\"";
+		if (!cstate->escape)
+			cstate->escape = cstate->quote;
 	}
 
 	if (!cstate->csv_mode && !cstate->escape)
 		cstate->escape = "\\";			/* default escape for text mode */
 
 	/* Only single-byte delimiter strings are supported. */
-<<<<<<< HEAD
 	/* GPDB: This is checked later */
 #if 0
 	if (strlen(cstate->delim) != 1)
-=======
-	if (strlen(opts_out->delim) != 1)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY delimiter must be a single one-byte character")));
 #endif
 
 	/* Disallow end-of-line characters */
-	if (strchr(opts_out->delim, '\r') != NULL ||
-		strchr(opts_out->delim, '\n') != NULL)
+	if (strchr(cstate->delim, '\r') != NULL ||
+		strchr(cstate->delim, '\n') != NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("COPY delimiter cannot be newline or carriage return")));
 
-	if (strchr(opts_out->null_print, '\r') != NULL ||
-		strchr(opts_out->null_print, '\n') != NULL)
+	if (strchr(cstate->null_print, '\r') != NULL ||
+		strchr(cstate->null_print, '\n') != NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("COPY null representation cannot use newline or carriage return")));
@@ -1802,68 +1770,48 @@ ProcessCopyOptions(ParseState *pstate,
 	 * future-proofing.  Likewise we disallow all digits though only octal
 	 * digits are actually dangerous.
 	 */
-<<<<<<< HEAD
 	if (!cstate->csv_mode && !cstate->delim_off &&
-=======
-	if (!opts_out->csv_mode &&
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		strchr("\\.abcdefghijklmnopqrstuvwxyz0123456789",
-			   opts_out->delim[0]) != NULL)
+			   cstate->delim[0]) != NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("COPY delimiter cannot be \"%s\"", opts_out->delim)));
+				 errmsg("COPY delimiter cannot be \"%s\"", cstate->delim)));
 
 	/* Check header */
-<<<<<<< HEAD
 	/*
 	 * In PostgreSQL, HEADER is not allowed in text mode either, but in GPDB,
 	 * only forbid it with BINARY.
 	 */
 	if (cstate->binary && cstate->header_line)
-=======
-	if (!opts_out->csv_mode && opts_out->header_line)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("COPY cannot specify HEADER in BINARY mode")));
 
 	/* Check quote */
-	if (!opts_out->csv_mode && opts_out->quote != NULL)
+	if (!cstate->csv_mode && cstate->quote != NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY quote available only in CSV mode")));
 
-	if (opts_out->csv_mode && strlen(opts_out->quote) != 1)
+	if (cstate->csv_mode && strlen(cstate->quote) != 1)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY quote must be a single one-byte character")));
 
-<<<<<<< HEAD
 	if (cstate->csv_mode && cstate->delim[0] == cstate->quote[0] && !cstate->delim_off)
-=======
-	if (opts_out->csv_mode && opts_out->delim[0] == opts_out->quote[0])
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("COPY delimiter and quote must be different")));
 
 	/* Check escape */
-<<<<<<< HEAD
 	if (cstate->csv_mode && cstate->escape != NULL && strlen(cstate->escape) != 1)
-=======
-	if (!opts_out->csv_mode && opts_out->escape != NULL)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY escape in CSV format must be a single character")));
 
-<<<<<<< HEAD
 	if (!cstate->csv_mode && cstate->escape != NULL &&
 		(strchr(cstate->escape, '\r') != NULL ||
 		strchr(cstate->escape, '\n') != NULL))
-=======
-	if (opts_out->csv_mode && strlen(opts_out->escape) != 1)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("COPY escape representation in text format cannot use newline or carriage return")));
@@ -1877,49 +1825,45 @@ ProcessCopyOptions(ParseState *pstate,
 	}
 
 	/* Check force_quote */
-	if (!opts_out->csv_mode && (opts_out->force_quote || opts_out->force_quote_all))
+	if (!cstate->csv_mode && (cstate->force_quote || cstate->force_quote_all))
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY force quote available only in CSV mode")));
-	if ((opts_out->force_quote || opts_out->force_quote_all) && is_from)
+	if ((cstate->force_quote || cstate->force_quote_all) && is_from)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY force quote only available using COPY TO")));
 
 	/* Check force_notnull */
-	if (!opts_out->csv_mode && opts_out->force_notnull != NIL)
+	if (!cstate->csv_mode && cstate->force_notnull != NIL)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY force not null available only in CSV mode")));
-	if (opts_out->force_notnull != NIL && !is_from)
+	if (cstate->force_notnull != NIL && !is_from)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY force not null only available using COPY FROM")));
 
 	/* Check force_null */
-	if (!opts_out->csv_mode && opts_out->force_null != NIL)
+	if (!cstate->csv_mode && cstate->force_null != NIL)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY force null available only in CSV mode")));
 
-	if (opts_out->force_null != NIL && !is_from)
+	if (cstate->force_null != NIL && !is_from)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY force null only available using COPY FROM")));
 
 	/* Don't allow the delimiter to appear in the null string. */
-<<<<<<< HEAD
 	if (strchr(cstate->null_print, cstate->delim[0]) != NULL && !cstate->delim_off)
-=======
-	if (strchr(opts_out->null_print, opts_out->delim[0]) != NULL)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY delimiter must not appear in the NULL specification")));
 
 	/* Don't allow the CSV quote char to appear in the null string. */
-	if (opts_out->csv_mode &&
-		strchr(opts_out->null_print, opts_out->quote[0]) != NULL)
+	if (cstate->csv_mode &&
+		strchr(cstate->null_print, cstate->quote[0]) != NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("CSV quote character must not appear in the NULL specification")));
@@ -1994,7 +1938,6 @@ ProcessCopyOptions(ParseState *pstate,
 }
 
 /*
-<<<<<<< HEAD
  * Common setup routines used by BeginCopyFrom and BeginCopyTo.
  *
  * Iff <binary>, unload or reload in the binary format, as opposed to the
@@ -7423,8 +7366,6 @@ CopyAttributeOutCSV(CopyState cstate, char *string,
 }
 
 /*
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  * CopyGetAttnums - build an integer list of attnums to be copied
  *
  * The input attnamelist is either the user-specified column list,
@@ -7514,7 +7455,6 @@ CopyGetAttnums(TupleDesc tupDesc, Relation rel, List *attnamelist)
 
 	return attnums;
 }
-<<<<<<< HEAD
 
 /* remove end of line chars from end of a buffer */
 void truncateEol(StringInfo buf, EolType eol_type)
@@ -7936,5 +7876,3 @@ parse_joined_option_list(char *str, char *delimiter)
 
 	return cols;
 }
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
