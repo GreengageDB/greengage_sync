@@ -1509,9 +1509,6 @@ backtrack:
 		 */
 		if (minoff > maxoff)
 			attempt_pagedel = (blkno == scanblkno);
-		else if (callback == NULL)
-			/* GPDB_13_MERGE_FIXME: Commit 02c9386 has alternative fix */
-			stats->num_index_tuples += maxoff - minoff + 1;
 		else if (callback)
 			stats->num_index_tuples += nhtidslive;
 		else
