@@ -386,83 +386,6 @@ currtid_for_view(Relation viewrel, ItemPointer tid)
 		}
 	}
 	elog(ERROR, "currtid cannot handle this view");
-<<<<<<< HEAD
-	return (Datum) 0;
-}
-
-
-/*
- * This function originates from PostgreSQL,
- * is currently not supported by GPDB - MPP-7886.
- * The problem is that calling function
- * heapam.c::heap_get_latest_tid below fails to return
- * the current number of blocks for the examined relation
- */
-
-Datum
-currtid_byreloid(PG_FUNCTION_ARGS)
-{
-	Oid			reloid = PG_GETARG_OID(0);
-	ItemPointer tid = PG_GETARG_ITEMPOINTER(1);
-	ItemPointer result;
-	Relation	rel;
-	AclResult	aclresult;
-	Snapshot	snapshot;
-	TableScanDesc scan;
-
-	/*
-	 * Immediately inform client that the function is not supported
-	 */
-	ereport(ERROR,
-			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-			 errmsg("function currtid is not supported by GPDB")));
-
-	result = (ItemPointer) palloc(sizeof(ItemPointerData));
-	if (!reloid)
-	{
-		*result = Current_last_tid;
-		PG_RETURN_ITEMPOINTER(result);
-	}
-
-	rel = table_open(reloid, AccessShareLock);
-
-	aclresult = pg_class_aclcheck(RelationGetRelid(rel), GetUserId(),
-								  ACL_SELECT);
-	if (aclresult != ACLCHECK_OK)
-		aclcheck_error(aclresult, get_relkind_objtype(rel->rd_rel->relkind),
-					   RelationGetRelationName(rel));
-
-	if (rel->rd_rel->relkind == RELKIND_VIEW)
-		return currtid_for_view(rel, tid);
-
-	if (!RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
-		elog(ERROR, "cannot look at latest visible tid for relation \"%s.%s\"",
-			 get_namespace_name(RelationGetNamespace(rel)),
-			 RelationGetRelationName(rel));
-
-	ItemPointerCopy(tid, result);
-
-	snapshot = RegisterSnapshot(GetLatestSnapshot());
-	scan = table_beginscan_tid(rel, snapshot);
-	table_tuple_get_latest_tid(scan, result);
-	table_endscan(scan);
-	UnregisterSnapshot(snapshot);
-
-	table_close(rel, AccessShareLock);
-
-	PG_RETURN_ITEMPOINTER(result);
-}
-
-
-/*
- * This function originates from PostgreSQL,
- * is currently not supported by GPDB - MPP-7886.
- * The problem is that calling function
- * heapam.c::heap_get_latest_tid below fails to return
- * the current number of blocks for the examined relation
- */
-
-=======
 	return NULL;
 }
 
@@ -471,7 +394,6 @@ currtid_byreloid(PG_FUNCTION_ARGS)
  *		Get the latest tuple version of the tuple pointing at a CTID, for a
  *		given relation name.
  */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 Datum
 currtid_byrelname(PG_FUNCTION_ARGS)
 {
