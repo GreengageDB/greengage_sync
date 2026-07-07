@@ -1293,8 +1293,7 @@ statext_mcv_clauselist_selectivity(PlannerInfo *root, List *clauses, int varReli
 	ListCell   *l;
 	Bitmapset **list_attnums;
 	int			listidx;
-<<<<<<< HEAD
-	Selectivity sel = 1.0;
+	Selectivity sel = (is_or) ? 0.0 : 1.0;
 	RangeTblEntry *rte = planner_rt_fetch(rel->relid, root);
 
 	/*
@@ -1305,10 +1304,7 @@ statext_mcv_clauselist_selectivity(PlannerInfo *root, List *clauses, int varReli
 	 * So for partitioned tables we do consider extended stats.
 	 */
 	if (rte->inh && rte->relkind != RELKIND_PARTITIONED_TABLE)
-		return 1.0;
-=======
-	Selectivity sel = (is_or) ? 0.0 : 1.0;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+		return sel;
 
 	/* check if there's any stats that might be useful for us. */
 	if (!has_stats_of_kind(rel->statlist, STATS_EXT_MCV))
@@ -1394,24 +1390,12 @@ statext_mcv_clauselist_selectivity(PlannerInfo *root, List *clauses, int varReli
 			listidx++;
 		}
 
-<<<<<<< HEAD
-		/*
-		 * First compute "simple" selectivity, i.e. without the extended
-		 * statistics, and essentially assuming independence of the
-		 * columns/clauses. We'll then use the various selectivities computed
-		 * from MCV list to improve it.
-		 */
-		simple_sel = clauselist_selectivity_simple(root, stat_clauses, varRelid,
-												   jointype, sjinfo, NULL,
-												   false); /* no damping */
-=======
 		if (is_or)
 		{
 			bool	   *or_matches = NULL;
 			Selectivity simple_or_sel = 0.0,
 						stat_sel = 0.0;
 			MCVList    *mcv_list;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 			/* Load the MCV list stored in the statistics object */
 			mcv_list = statext_mcv_load(stat->statOid);
@@ -1447,7 +1431,7 @@ statext_mcv_clauselist_selectivity(PlannerInfo *root, List *clauses, int varReli
 				 * columns/clauses.
 				 */
 				simple_sel = clause_selectivity_ext(root, clause, varRelid,
-													jointype, sjinfo, false);
+													jointype, sjinfo, false, false);
 
 				overlap_simple_sel = simple_or_sel * simple_sel;
 
@@ -1520,7 +1504,7 @@ statext_mcv_clauselist_selectivity(PlannerInfo *root, List *clauses, int varReli
 			 */
 			simple_sel = clauselist_selectivity_ext(root, stat_clauses,
 													varRelid, jointype,
-													sjinfo, false);
+													sjinfo, false, false);
 
 			/*
 			 * Multi-column estimate using MCV statistics, along with base and
