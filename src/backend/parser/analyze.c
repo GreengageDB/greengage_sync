@@ -50,11 +50,8 @@
 #include "parser/parse_type.h"
 #include "parser/parsetree.h"
 #include "rewrite/rewriteManip.h"
-<<<<<<< HEAD
-#include "utils/guc.h"
-=======
 #include "utils/builtins.h"
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+#include "utils/guc.h"
 #include "utils/rel.h"
 
 #include "cdb/cdbhash.h"
