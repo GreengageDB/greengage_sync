@@ -621,12 +621,8 @@ AggregateCreate(const char *aggName,
 							 GetUserId(),	/* proowner */
 							 INTERNALlanguageId,	/* languageObjectId */
 							 InvalidOid,	/* no validator */
-<<<<<<< HEAD
 							 InvalidOid,		/* no describe function */
-							 "aggregate_dummy", /* placeholder proc */
-=======
 							 "aggregate_dummy", /* placeholder (no such proc) */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 							 NULL,	/* probin */
 							 PROKIND_AGGREGATE,
 							 false, /* security invoker (currently not
