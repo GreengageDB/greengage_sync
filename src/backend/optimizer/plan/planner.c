@@ -2363,7 +2363,6 @@ grouping_planner(PlannerInfo *root, bool inheritance_update,
 		root->processed_tlist = preprocess_targetlist(root);
 
 		/*
-<<<<<<< HEAD
 		 * In the top query, determine a locus to indicate where the final
 		 * result will be needed.
 		 *
@@ -2395,26 +2394,13 @@ grouping_planner(PlannerInfo *root, bool inheritance_update,
 				}
 			}
 		}
-		
+
 		/*
-		 * Collect statistics about aggregates for estimating costs, and mark
-		 * all the aggregates with resolved aggtranstypes.  We must do this
-		 * before slicing and dicing the tlist into various pathtargets, else
-		 * some copies of the Aggref nodes might escape being marked with the
-		 * correct transtypes.
-		 *
-		 * Note: currently, we do not detect duplicate aggregates here.  This
-		 * may result in somewhat-overestimated cost, which is fine for our
-		 * purposes since all Paths will get charged the same.  But at some
-		 * point we might wish to do that detection in the planner, rather
-		 * than during executor startup.
-=======
 		 * Mark all the aggregates with resolved aggtranstypes, and detect
 		 * aggregates that are duplicates or can share transition state.  We
 		 * must do this before slicing and dicing the tlist into various
 		 * pathtargets, else some copies of the Aggref nodes might escape
 		 * being marked.
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		 */
 		if (parse->hasAggs)
 		{
@@ -4498,7 +4484,7 @@ create_grouping_paths(PlannerInfo *root,
 		 * even if there are DISTINCT aggs or grouping sets.
 		 */
 		if (parse->groupClause != NIL &&
-			agg_costs->numPureOrderedAggs == 0 &&
+			agg_costs.numPureOrderedAggs == 0 &&
 			grouping_is_hashable(parse->groupClause))
 			flags |= GROUPING_CAN_USE_MPP_HASH;
 
@@ -7866,20 +7852,12 @@ add_paths_to_grouping_rel(PlannerInfo *root, RelOptInfo *input_rel,
 			MemSet(&extra->agg_final_costs, 0, sizeof(AggClauseCosts));
 			if (parse->hasAggs)
 			{
-				List	   *partial_target_exprs;
-
 				/* partial phase */
-				partial_target_exprs = partially_grouped_target->exprs;
-				get_agg_clause_costs(root, (Node *) partial_target_exprs,
-									 AGGSPLIT_INITIAL_SERIAL,
+				get_agg_clause_costs(root, AGGSPLIT_INITIAL_SERIAL,
 									 &extra->agg_partial_costs);
 
 				/* final phase */
-				get_agg_clause_costs(root, (Node *) grouped_rel->reltarget->exprs,
-									 AGGSPLIT_FINAL_DESERIAL,
-									 agg_final_costs);
-				get_agg_clause_costs(root, extra->havingQual,
-									 AGGSPLIT_FINAL_DESERIAL,
+				get_agg_clause_costs(root, AGGSPLIT_FINAL_DESERIAL,
 									 agg_final_costs);
 			}
 
