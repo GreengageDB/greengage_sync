@@ -244,7 +244,6 @@ SELECT * FROM mvtest1;
 SELECT * FROM mvtest2;
 ROLLBACK;
 
-<<<<<<< HEAD
 -- make sure refresh mat view will dispatch oid at the final
 -- execution of the mat view's body query. See Github Issue
 -- https://github.com/greenplum-db/gpdb/issues/11956 for details.
@@ -267,7 +266,6 @@ refresh materialized view mat_view_github_issue_11956;
 
 drop materialized view mat_view_github_issue_11956;
 drop table t_github_issue_11956;
-=======
 -- INSERT privileges if relation owner is not allowed to insert.
 CREATE SCHEMA matview_schema;
 CREATE USER regress_matview_user;
@@ -318,4 +316,3 @@ EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE MATERIALIZED VIEW IF NOT EXISTS matview_ine_tab AS
     SELECT 1 / 0 WITH NO DATA; -- ok
 DROP MATERIALIZED VIEW matview_ine_tab;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
