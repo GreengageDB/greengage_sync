@@ -16,6 +16,7 @@
 #include "funcapi.h"
 #include "libpq-fe.h"
 #include "utils/builtins.h"
+#include "common/hex_decode.h"
 #include "utils/portal.h"
 #include "utils/faultinjector.h"
 #include "cdb/cdbdisp_query.h"
