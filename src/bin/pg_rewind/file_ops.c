@@ -35,14 +35,11 @@ static void create_target_dir(const char *path);
 static void remove_target_dir(const char *path);
 static void create_target_symlink(const char *path, const char *link);
 static void remove_target_symlink(const char *path);
-<<<<<<< HEAD
 static void create_target_tablespace_layout(const char *path, const char *link);
-=======
 
 static void recurse_dir(const char *datadir, const char *parentpath,
 						process_file_callback_t callback);
 
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 /*
  * Open a target file for writing. If 'trunc' is true and the file already
  * exists, it will be truncated.
