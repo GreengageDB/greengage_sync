@@ -75,11 +75,6 @@ raw_parser(const char *str, RawParseMode mode)
 	}
 	PG_END_TRY();
 
-<<<<<<< HEAD
-	/* base_yylex() only needs this much initialization */
-	yyextra.have_lookahead = false;
-	yyextra.tail_partition_magic = false;
-=======
 	/* base_yylex() only needs us to initialize the lookahead token, if any */
 	if (mode == RAW_PARSE_DEFAULT)
 		yyextra.have_lookahead = false;
@@ -100,7 +95,9 @@ raw_parser(const char *str, RawParseMode mode)
 		yyextra.lookahead_yylloc = 0;
 		yyextra.lookahead_end = NULL;
 	}
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+
+	/* GPDB: needed for the OptFirstPartitionSpec lookahead handling */
+	yyextra.tail_partition_magic = false;
 
 	/* initialize the bison parser */
 	parser_init(&yyextra);
