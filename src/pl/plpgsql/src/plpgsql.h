@@ -217,15 +217,10 @@ typedef struct PLpgSQL_type
  */
 typedef struct PLpgSQL_expr
 {
-<<<<<<< HEAD
-	char	   *query;
-	SPIPlanPtr	plan;
-	bool		cachable;			/* true if plan can be cached */
-=======
 	char	   *query;			/* query string, verbatim from function body */
 	RawParseMode parseMode;		/* raw_parser() mode to use */
 	SPIPlanPtr	plan;			/* plan, or NULL if not made yet */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+	bool		cachable;			/* true if plan can be cached */
 	Bitmapset  *paramnos;		/* all dnos referenced by this query */
 
 	/* function containing this expr (not set until we first parse query) */
