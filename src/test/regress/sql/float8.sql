@@ -53,12 +53,10 @@ SELECT ' INFINITY    x'::float8;
 
 SELECT 'Infinity'::float8 + 100.0;
 SELECT 'Infinity'::float8 / 'Infinity'::float8;
-SELECT '42'::float8 / 'Infinity'::float8;
 SELECT 'nan'::float8 / 'nan'::float8;
 SELECT 'nan'::float8 / '0'::float8;
 SELECT 'nan'::numeric::float8;
 
-<<<<<<< HEAD
 SELECT '' AS five, f1 FROM FLOAT8_TBL ORDER BY 2;
 
 SELECT '' AS four, f.f1 FROM FLOAT8_TBL f WHERE f.f1 <> '1004.3' ORDER BY 2;
@@ -72,61 +70,37 @@ SELECT '' AS three, f.f1 FROM FLOAT8_TBL f WHERE  f.f1 < '1004.3' ORDER BY 2;
 SELECT '' AS four, f.f1 FROM FLOAT8_TBL f WHERE '1004.3' >= f.f1 ORDER BY 2;
 
 SELECT '' AS four, f.f1 FROM FLOAT8_TBL f WHERE  f.f1 <= '1004.3' ORDER BY 2;
-=======
-SELECT * FROM FLOAT8_TBL;
 
-SELECT f.* FROM FLOAT8_TBL f WHERE f.f1 <> '1004.3';
-
-SELECT f.* FROM FLOAT8_TBL f WHERE f.f1 = '1004.3';
-
-SELECT f.* FROM FLOAT8_TBL f WHERE '1004.3' > f.f1;
-
-SELECT f.* FROM FLOAT8_TBL f WHERE  f.f1 < '1004.3';
-
-SELECT f.* FROM FLOAT8_TBL f WHERE '1004.3' >= f.f1;
-
-SELECT f.* FROM FLOAT8_TBL f WHERE  f.f1 <= '1004.3';
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
-
-SELECT f.f1, f.f1 * '-10' AS x
+SELECT '' AS three, f.f1, f.f1 * '-10' AS x
    FROM FLOAT8_TBL f
    WHERE f.f1 > '0.0' ORDER BY 2;
 
-SELECT f.f1, f.f1 + '-10' AS x
+SELECT '' AS three, f.f1, f.f1 + '-10' AS x
    FROM FLOAT8_TBL f
    WHERE f.f1 > '0.0' ORDER BY 2;
 
-SELECT f.f1, f.f1 / '-10' AS x
+SELECT '' AS three, f.f1, f.f1 / '-10' AS x
    FROM FLOAT8_TBL f
    WHERE f.f1 > '0.0' ORDER BY 2;
 
-SELECT f.f1, f.f1 - '-10' AS x
+SELECT '' AS three, f.f1, f.f1 - '-10' AS x
    FROM FLOAT8_TBL f
    WHERE f.f1 > '0.0' ORDER BY 2;
 
-SELECT f.f1 ^ '2.0' AS square_f1
+SELECT '' AS one, f.f1 ^ '2.0' AS square_f1
    FROM FLOAT8_TBL f where f.f1 = '1004.3';
 
 -- absolute value
-SELECT f.f1, @f.f1 AS abs_f1
+SELECT '' AS five, f.f1, @f.f1 AS abs_f1
    FROM FLOAT8_TBL f;
 
 -- truncate
-<<<<<<< HEAD
 SELECT '' AS five, f.f1, trunc(f.f1) AS trunc_f1
    FROM FLOAT8_TBL f ORDER BY 2;
 
 -- round
 SELECT '' AS five, f.f1, round(f.f1) AS round_f1
    FROM FLOAT8_TBL f ORDER BY 2;
-=======
-SELECT f.f1, trunc(f.f1) AS trunc_f1
-   FROM FLOAT8_TBL f;
-
--- round
-SELECT f.f1, round(f.f1) AS round_f1
-   FROM FLOAT8_TBL f;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 -- ceil / ceiling
 select ceil(f1) as ceil_f1 from float8_tbl f ORDER BY 1;
@@ -146,7 +120,7 @@ SELECT sqrt(float8 '64') AS eight;
 
 SELECT |/ float8 '64' AS eight;
 
-SELECT f.f1, |/f.f1 AS sqrt_f1
+SELECT '' AS three, f.f1, |/f.f1 AS sqrt_f1
    FROM FLOAT8_TBL f
    WHERE f.f1 > '0.0' ORDER BY 2;
 
@@ -189,7 +163,7 @@ SELECT power(float8 '-inf', float8 'inf');
 SELECT power(float8 '-inf', float8 '-inf');
 
 -- take exp of ln(f.f1)
-SELECT f.f1, exp(ln(f.f1)) AS exp_ln_f1
+SELECT '' AS three, f.f1, exp(ln(f.f1)) AS exp_ln_f1
    FROM FLOAT8_TBL f
    WHERE f.f1 > '0.0' ORDER BY 2;
 
@@ -199,41 +173,30 @@ SELECT exp('inf'::float8), exp('-inf'::float8), exp('nan'::float8);
 -- cube root
 SELECT ||/ float8 '27' AS three;
 
-<<<<<<< HEAD
 SELECT '' AS five, f.f1, ||/f.f1 AS cbrt_f1 FROM FLOAT8_TBL f ORDER BY 2;
 
 
 SELECT '' AS five, f1 FROM FLOAT8_TBL ORDER BY 2;
-=======
-SELECT f.f1, ||/f.f1 AS cbrt_f1 FROM FLOAT8_TBL f;
-
-
-SELECT * FROM FLOAT8_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 UPDATE FLOAT8_TBL
    SET f1 = FLOAT8_TBL.f1 * '-1'
    WHERE FLOAT8_TBL.f1 > '0.0';
 
-SELECT f.f1 * '1e200' from FLOAT8_TBL f;
+SELECT '' AS bad, f.f1 * '1e200' from FLOAT8_TBL f;
 
-SELECT f.f1 ^ '1e200' from FLOAT8_TBL f;
+SELECT '' AS bad, f.f1 ^ '1e200' from FLOAT8_TBL f;
 
 SELECT 0 ^ 0 + 0 ^ 1 + 0 ^ 0.0 + 0 ^ 0.5;
 
-SELECT ln(f.f1) from FLOAT8_TBL f where f.f1 = '0.0' ;
+SELECT '' AS bad, ln(f.f1) from FLOAT8_TBL f where f.f1 = '0.0' ;
 
-SELECT ln(f.f1) from FLOAT8_TBL f where f.f1 < '0.0' ;
+SELECT '' AS bad, ln(f.f1) from FLOAT8_TBL f where f.f1 < '0.0' ;
 
-SELECT exp(f.f1) from FLOAT8_TBL f;
+SELECT '' AS bad, exp(f.f1) from FLOAT8_TBL f;
 
-SELECT f.f1 / '0.0' from FLOAT8_TBL f;
+SELECT '' AS bad, f.f1 / '0.0' from FLOAT8_TBL f;
 
-<<<<<<< HEAD
 SELECT '' AS five, f1 FROM FLOAT8_TBL ORDER BY 2;
-=======
-SELECT * FROM FLOAT8_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 -- hyperbolic functions
 -- we run these with extra_float_digits = 0 too, since different platforms
@@ -371,11 +334,7 @@ INSERT INTO FLOAT8_TBL(f1) VALUES ('-1.2345678901234e+200');
 
 INSERT INTO FLOAT8_TBL(f1) VALUES ('-1.2345678901234e-200');
 
-<<<<<<< HEAD
 SELECT '' AS five, f1 FROM FLOAT8_TBL ORDER BY 2;
-=======
-SELECT * FROM FLOAT8_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 -- test edge-case coercions to integer
 SELECT '32767.4'::float8::int2;
