@@ -730,42 +730,14 @@ ProcArrayEndTransaction(PGPROC *proc, TransactionId latestXid)
 
 	/* must be cleared with xid/xmin: */
 	/* avoid unnecessarily dirtying shared cachelines */
-	if (proc->vacuumFlags & PROC_VACUUM_STATE_MASK)
+	if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
 	{
-<<<<<<< HEAD
 		Assert(!LWLockHeldByMe(ProcArrayLock));
-		LWLockAcquire(ProcArrayLock, LW_SHARED);
-		Assert(proc->vacuumFlags == ProcGlobal->vacuumFlags[proc->pgxactoff]);
-		proc->vacuumFlags &= ~PROC_VACUUM_STATE_MASK;
-		ProcGlobal->vacuumFlags[proc->pgxactoff] = proc->vacuumFlags;
+		LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
+		Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
+		proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
+		ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
 		LWLockRelease(ProcArrayLock);
-=======
-		/*
-		 * If we have no XID, we don't need to lock, since we won't affect
-		 * anyone else's calculation of a snapshot.  We might change their
-		 * estimate of global xmin, but that's OK.
-		 */
-		Assert(!TransactionIdIsValid(proc->xid));
-		Assert(proc->subxidStatus.count == 0);
-		Assert(!proc->subxidStatus.overflowed);
-
-		proc->lxid = InvalidLocalTransactionId;
-		proc->xmin = InvalidTransactionId;
-		proc->delayChkpt = false;	/* be sure this is cleared in abort */
-		proc->recoveryConflictPending = false;
-
-		/* must be cleared with xid/xmin: */
-		/* avoid unnecessarily dirtying shared cachelines */
-		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
-		{
-			Assert(!LWLockHeldByMe(ProcArrayLock));
-			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
-			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
-			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
-			LWLockRelease(ProcArrayLock);
-		}
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	}
 
 	resetTmGxact();
@@ -984,13 +956,9 @@ ProcArrayClearTransaction(PGPROC *proc)
 	proc->xmin = InvalidTransactionId;
 	proc->recoveryConflictPending = false;
 
-<<<<<<< HEAD
 	proc->localDistribXactData.state = LOCALDISTRIBXACT_STATE_NONE;
 
-	Assert(!(proc->vacuumFlags & PROC_VACUUM_STATE_MASK));
-=======
 	Assert(!(proc->statusFlags & PROC_VACUUM_STATE_MASK));
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	Assert(!proc->delayChkpt);
 
 	/*
@@ -4816,6 +4784,9 @@ XidCacheRemoveRunningXids(TransactionId xid,
 
 	/* Also advance global latestCompletedXid while holding the lock */
 	MaintainLatestCompletedXid(latestXid);
+
+	/* ... and xactCompletionCount */
+	ShmemVariableCache->xactCompletionCount++;
 
 	LWLockRelease(ProcArrayLock);
 }
