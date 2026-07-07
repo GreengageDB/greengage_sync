@@ -67,15 +67,16 @@ typedef struct QualCost
  */
 typedef struct AggClauseCosts
 {
-<<<<<<< HEAD
-	int			numAggs;		/* total number of aggregate functions */
-	int			numOrderedAggs; /* number w/ DISTINCT/ORDER BY/WITHIN GROUP */
+	/*
+	 * GPDB: upstream PG13 moved its agg counters
+	 * (numAggs/numOrderedAggs/hasNonPartialAggs/hasNonSerialAggs) onto
+	 * PlannerInfo, leaving AggClauseCosts to hold only costs.  We keep the
+	 * CDB-specific counters that the MPP grouping-path code
+	 * (cdbgroupingpaths.c, planner.c) still consumes via agg_costs.
+	 */
 	int			numPureOrderedAggs; /* CDB: number that use ORDER BY/WITHIN GROUP, not counting DISTINCT */
 	bool		hasNonCombine;	/* CDB: any agg func w/o a combine func? */
-	bool		hasNonPartial;	/* does any agg not support partial mode? */
 	bool		hasNonSerial;	/* is any partial agg non-serializable? */
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	QualCost	transCost;		/* total per-input-row execution costs */
 	QualCost	finalCost;		/* total per-aggregated-row costs */
 	Size		transitionSpace;	/* space for pass-by-ref transition data */
@@ -1065,11 +1066,7 @@ struct IndexOptInfo
 	bool		amhasgettuple;	/* does AM have amgettuple interface? */
 	bool		amhasgetbitmap; /* does AM have amgetbitmap interface? */
 	bool		amcanparallel;	/* does AM support parallel scan? */
-<<<<<<< HEAD
-
-=======
 	bool		amcanmarkpos;	/* does AM support mark/restore? */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	/* Rather than include amapi.h here, we declare amcostestimate like this */
 	void		(*amcostestimate) ();	/* AM's cost estimator */
 };
