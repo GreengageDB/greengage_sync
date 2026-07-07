@@ -2547,18 +2547,32 @@ AssignTypeArrayOid(char *arrayTypeName, Oid typeNamespace)
 Oid
 AssignTypeMultirangeOid(char *multirangeTypeName, Oid typeNamespace)
 {
+#if 0
 	Oid			type_multirange_oid;
-	Relation	pg_type;
-	
-	pg_type = table_open(TypeRelationId, AccessShareLock);
-	type_multirange_oid = GetNewOidForType(pg_type,
-										   TypeOidIndexId,
-										   Anum_pg_type_oid,
-										   multirangeTypeName,
-										   typeNamespace);
-	table_close(pg_type, AccessShareLock);
+
+	/* Use binary-upgrade override for pg_type.oid? */
+	if (IsBinaryUpgrade)
+	{
+		if (!OidIsValid(binary_upgrade_next_mrng_pg_type_oid))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("pg_type multirange OID value not set when in binary upgrade mode")));
+
+		type_multirange_oid = binary_upgrade_next_mrng_pg_type_oid;
+		binary_upgrade_next_mrng_pg_type_oid = InvalidOid;
+	}
+	else
+	{
+		Relation	pg_type = table_open(TypeRelationId, AccessShareLock);
+
+		type_multirange_oid = GetNewOidWithIndex(pg_type, TypeOidIndexId,
+												 Anum_pg_type_oid);
+		table_close(pg_type, AccessShareLock);
+	}
 
 	return type_multirange_oid;
+#endif
+	return AssignTypeArrayOid(multirangeTypeName, typeNamespace);
 }
 
 /*
@@ -2569,18 +2583,32 @@ AssignTypeMultirangeOid(char *multirangeTypeName, Oid typeNamespace)
 Oid
 AssignTypeMultirangeArrayOid(char *multirangeArrayTypeName, Oid typeNamespace)
 {
+#if 0
 	Oid			type_multirange_array_oid;
-	Relation	pg_type;
-	
-	pg_type = table_open(TypeRelationId, AccessShareLock);
-	type_multirange_array_oid = GetNewOidForType(pg_type,
-												 TypeOidIndexId,
-												 Anum_pg_type_oid,
-												 multirangeArrayTypeName,
-												 typeNamespace);
-	table_close(pg_type, AccessShareLock);
+
+	/* Use binary-upgrade override for pg_type.oid? */
+	if (IsBinaryUpgrade)
+	{
+		if (!OidIsValid(binary_upgrade_next_mrng_array_pg_type_oid))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("pg_type multirange array OID value not set when in binary upgrade mode")));
+
+		type_multirange_array_oid = binary_upgrade_next_mrng_array_pg_type_oid;
+		binary_upgrade_next_mrng_array_pg_type_oid = InvalidOid;
+	}
+	else
+	{
+		Relation	pg_type = table_open(TypeRelationId, AccessShareLock);
+
+		type_multirange_array_oid = GetNewOidWithIndex(pg_type, TypeOidIndexId,
+													   Anum_pg_type_oid);
+		table_close(pg_type, AccessShareLock);
+	}
 
 	return type_multirange_array_oid;
+#endif
+	return AssignTypeArrayOid(multirangeArrayTypeName, typeNamespace);
 }
 
 
