@@ -83,15 +83,7 @@ static Expr *make_distinct_op(ParseState *pstate, List *opname,
 							  Node *ltree, Node *rtree, int location);
 static Node *make_nulltest_from_distinct(ParseState *pstate,
 										 A_Expr *distincta, Node *arg);
-<<<<<<< HEAD
-static int	operator_precedence_group(Node *node, const char **nodename);
-static void emit_precedence_warnings(ParseState *pstate,
-									 int opgroup, const char *opname,
-									 Node *lchild, Node *rchild,
-									 int location);
 static bool isWhenIsNotDistinctFromExpr(Node *warg);
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 
 /*
