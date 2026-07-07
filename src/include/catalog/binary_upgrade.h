@@ -21,8 +21,6 @@
 #if 0
 extern PGDLLIMPORT Oid binary_upgrade_next_pg_type_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_array_pg_type_oid;
-extern PGDLLIMPORT Oid binary_upgrade_next_mrng_pg_type_oid;
-extern PGDLLIMPORT Oid binary_upgrade_next_mrng_array_pg_type_oid;
 
 extern PGDLLIMPORT Oid binary_upgrade_next_heap_pg_class_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_index_pg_class_oid;
@@ -31,6 +29,15 @@ extern PGDLLIMPORT Oid binary_upgrade_next_toast_pg_class_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_pg_enum_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_pg_authid_oid;
 #endif
+
+/*
+ * GPDB: multirange type OIDs are still preserved via the upstream
+ * binary_upgrade_next_mrng_* globals (set by pg_upgrade_support.c and read by
+ * DefineMultirange in typecmds.c), unlike other catalog OIDs which go through
+ * the generic OID pre-assignment machinery above.
+ */
+extern PGDLLIMPORT Oid binary_upgrade_next_mrng_pg_type_oid;
+extern PGDLLIMPORT Oid binary_upgrade_next_mrng_array_pg_type_oid;
 
 extern PGDLLIMPORT bool binary_upgrade_record_init_privs;
 
