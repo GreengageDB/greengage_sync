@@ -106,7 +106,7 @@ typedef struct FileFdwExecutionState
 	bool		is_program;		/* true if filename represents an OS command */
 	List	   *options;		/* merged COPY options, excluding filename and
 								 * is_program */
-	CopyFromState cstate;		/* COPY execution state */
+	CopyState	cstate;		/* COPY execution state */
 } FileFdwExecutionState;
 
 /*
@@ -672,7 +672,7 @@ fileBeginForeignScan(ForeignScanState *node, int eflags)
 	char	   *filename;
 	bool		is_program;
 	List	   *options;
-	CopyFromState cstate;
+	CopyState	cstate;
 	FileFdwExecutionState *festate;
 
 	/*
@@ -694,7 +694,6 @@ fileBeginForeignScan(ForeignScanState *node, int eflags)
 	 */
 	cstate = BeginCopyFrom(NULL,
 						   node->ss.ss_currentRelation,
-						   NULL,
 						   filename,
 						   is_program,
 						   NULL,
@@ -768,7 +767,6 @@ fileReScanForeignScan(ForeignScanState *node)
 
 	festate->cstate = BeginCopyFrom(NULL,
 									node->ss.ss_currentRelation,
-									NULL,
 									festate->filename,
 									festate->is_program,
 									NULL,
@@ -1126,7 +1124,7 @@ file_acquire_sample_rows(Relation onerel, int elevel,
 	char	   *filename;
 	bool		is_program;
 	List	   *options;
-	CopyFromState cstate;
+	CopyState	cstate;
 	ErrorContextCallback errcallback;
 	MemoryContext oldcontext = CurrentMemoryContext;
 	MemoryContext tupcontext;
@@ -1144,11 +1142,7 @@ file_acquire_sample_rows(Relation onerel, int elevel,
 	/*
 	 * Create CopyState from FDW options.
 	 */
-<<<<<<< HEAD
 	cstate = BeginCopyFrom(NULL, onerel, filename, is_program, NULL, NULL, NIL,
-=======
-	cstate = BeginCopyFrom(NULL, onerel, NULL, filename, is_program, NULL, NIL,
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 						   options);
 
 	/*
