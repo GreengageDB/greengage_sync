@@ -305,19 +305,12 @@ static void binary_upgrade_set_namespace_oid(Archive *fout,
 static void dumpSearchPath(Archive *AH);
 static void binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 													 PQExpBuffer upgrade_buffer,
-<<<<<<< HEAD
 													 const TypeInfo *tyinfo,
-													 bool force_array_type);
+													 bool force_array_type,
+													 bool include_multirange_type);
 static void binary_upgrade_set_type_oids_by_rel(Archive *fout,
 													PQExpBuffer upgrade_buffer,
 													const TableInfo *tblinfo);
-=======
-													 Oid pg_type_oid,
-													 bool force_array_type,
-													 bool include_multirange_type);
-static void binary_upgrade_set_type_oids_by_rel_oid(Archive *fout,
-													PQExpBuffer upgrade_buffer, Oid pg_rel_oid);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 static void binary_upgrade_set_pg_class_oids(Archive *fout,
 											 PQExpBuffer upgrade_buffer,
 											 Oid pg_class_oid, bool is_index);
@@ -4757,26 +4750,17 @@ binary_upgrade_set_namespace_oid(Archive *fout, PQExpBuffer upgrade_buffer,
 static void
 binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 										 PQExpBuffer upgrade_buffer,
-<<<<<<< HEAD
 										 const TypeInfo *tyinfo,
-										 bool force_array_type)
+										 bool force_array_type,
+										 bool include_multirange_type)
 {
 	PQExpBuffer upgrade_query = createPQExpBuffer();
 	PGresult   *res;
 	Oid			pg_type_array_oid = tyinfo->typarrayoid;
 	Oid			pg_type_array_ns_oid = tyinfo->typarrayns;
 	char	*pg_type_array_name = tyinfo->typarrayname;
-=======
-										 Oid pg_type_oid,
-										 bool force_array_type,
-										 bool include_multirange_type)
-{
-	PQExpBuffer upgrade_query = createPQExpBuffer();
-	PGresult   *res;
-	Oid			pg_type_array_oid;
 	Oid			pg_type_multirange_oid;
 	Oid			pg_type_multirange_array_oid;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 
 	simple_oid_list_append(&preassigned_oids, tyinfo->dobj.catId.oid);
@@ -4787,7 +4771,6 @@ binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 						tyinfo->dobj.catId.oid, tyinfo->dobj.namespace->dobj.catId.oid, tyinfo->dobj.name);
 
 	if (!OidIsValid(pg_type_array_oid) && force_array_type)
-<<<<<<< HEAD
 	{
 		/*
 		 * If the old version didn't assign an array type, but the new version
@@ -4817,9 +4800,6 @@ binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 		pg_type_array_ns_oid = tyinfo->dobj.namespace->dobj.catId.oid;
 		pg_type_array_name = psprintf("_%s", tyinfo->dobj.name);
 	}
-=======
-		pg_type_array_oid = get_next_possible_free_pg_type_oid(fout, upgrade_query);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	if (OidIsValid(pg_type_array_oid))
 	{
@@ -4846,7 +4826,7 @@ binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 							  "JOIN pg_catalog.pg_range r "
 							  "ON t.oid = r.rngmultitypid "
 							  "WHERE r.rngtypid = '%u'::pg_catalog.oid;",
-							  pg_type_oid);
+							  tyinfo->dobj.catId.oid);
 
 			res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
 
@@ -4881,32 +4861,9 @@ binary_upgrade_set_type_oids_by_rel(Archive *fout,
 										PQExpBuffer upgrade_buffer,
 										const TableInfo *tblinfo)
 {
-<<<<<<< HEAD
 	TypeInfo *typinfo = findTypeByOid(tblinfo->reltype);
 	binary_upgrade_set_type_oids_by_type_oid(fout, upgrade_buffer,
-											 typinfo, false);
-=======
-	PQExpBuffer upgrade_query = createPQExpBuffer();
-	PGresult   *upgrade_res;
-	Oid			pg_type_oid;
-
-	appendPQExpBuffer(upgrade_query,
-					  "SELECT c.reltype AS crel "
-					  "FROM pg_catalog.pg_class c "
-					  "WHERE c.oid = '%u'::pg_catalog.oid;",
-					  pg_rel_oid);
-
-	upgrade_res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
-
-	pg_type_oid = atooid(PQgetvalue(upgrade_res, 0, PQfnumber(upgrade_res, "crel")));
-
-	if (OidIsValid(pg_type_oid))
-		binary_upgrade_set_type_oids_by_type_oid(fout, upgrade_buffer,
-												 pg_type_oid, false, false);
-
-	PQclear(upgrade_res);
-	destroyPQExpBuffer(upgrade_query);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+											 typinfo, false, false);
 }
 
 static void
@@ -5501,7 +5458,6 @@ getTypes(Archive *fout, int *numTypes)
 		else
 			tyinfo[i].isArray = false;
 
-<<<<<<< HEAD
 		tyinfo[i].typstorage = pg_strdup(PQgetvalue(res, i, i_typstorage));
 
 		if (dopt->binary_upgrade)
@@ -5510,12 +5466,11 @@ getTypes(Archive *fout, int *numTypes)
 			tyinfo[i].typarrayname =  pg_strdup(PQgetvalue(res, i, i_typarrayname));
 			tyinfo[i].typarrayns =  atooid(PQgetvalue(res, i, i_typarrayns));
 		}
-=======
+
 		if (tyinfo[i].typtype == 'm')
 			tyinfo[i].isMultirange = true;
 		else
 			tyinfo[i].isMultirange = false;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 		/* Decide whether we want to dump it */
 		selectDumpableType(&tyinfo[i], fout);
@@ -7061,28 +7016,14 @@ getTables(Archive *fout, int *numTables)
 		 * plain or partitioned tables, but the backend doesn't presently
 		 * allow that.
 		 *
-<<<<<<< HEAD
+		 * We only need to lock the table for certain components; see
+		 * pg_dump.h
+		 *
 		 * GPDB: Build a single LOCK TABLE statement to lock all interesting tables.
 		 * This is more performant than issuing a separate LOCK TABLE statement for each table,
 		 * with considerable savings in FE/BE overhead. It does come at the cost of some increased
 		 * memory usage in both FE and BE, which we will be able to tolerate.
 		 */
-=======
-		 * We only need to lock the table for certain components; see
-		 * pg_dump.h
-		 */
-		if (tblinfo[i].dobj.dump &&
-			(tblinfo[i].relkind == RELKIND_RELATION ||
-			 tblinfo->relkind == RELKIND_PARTITIONED_TABLE) &&
-			(tblinfo[i].dobj.dump & DUMP_COMPONENTS_REQUIRING_LOCK))
-		{
-			resetPQExpBuffer(query);
-			appendPQExpBuffer(query,
-							  "LOCK TABLE %s IN ACCESS SHARE MODE",
-							  fmtQualifiedDumpable(&tblinfo[i]));
-			ExecuteSqlStatement(fout, query->data);
-		}
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 		if ((tblinfo[i].dobj.dump & DUMP_COMPONENTS_REQUIRING_LOCK) &&
 			(tblinfo[i].relkind == RELKIND_RELATION ||
@@ -11111,13 +11052,7 @@ dumpEnumType(Archive *fout, const TypeInfo *tyinfo)
 	appendPQExpBuffer(delq, "DROP TYPE %s;\n", qualtypname);
 
 	if (dopt->binary_upgrade)
-<<<<<<< HEAD
-		binary_upgrade_set_type_oids_by_type_oid(fout, q, tyinfo, false);
-=======
-		binary_upgrade_set_type_oids_by_type_oid(fout, q,
-												 tyinfo->dobj.catId.oid,
-												 false, false);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+		binary_upgrade_set_type_oids_by_type_oid(fout, q, tyinfo, false, false);
 
 	appendPQExpBuffer(q, "CREATE TYPE %s AS ENUM (",
 					  qualtypname);
@@ -11218,7 +11153,6 @@ dumpRangeType(Archive *fout, const TypeInfo *tyinfo)
 	char	   *qualtypname;
 	char	   *procname;
 
-<<<<<<< HEAD
 	if (!fout->is_prepared[PREPQUERY_DUMPRANGETYPE])
 	{
 		/* Set up query for range-specific details */
@@ -11227,6 +11161,13 @@ dumpRangeType(Archive *fout, const TypeInfo *tyinfo)
 
 		appendPQExpBufferStr(query,
 							 "SELECT ");
+
+		if (fout->remoteVersion >= 140000)
+			appendPQExpBufferStr(query,
+								 "pg_catalog.format_type(rngmultitypid, NULL) AS rngmultitype, ");
+		else
+			appendPQExpBufferStr(query,
+								 "NULL AS rngmultitype, ");
 
 		appendPQExpBufferStr(query,
 							 "pg_catalog.format_type(rngsubtype, NULL) AS rngsubtype, "
@@ -11249,31 +11190,6 @@ dumpRangeType(Archive *fout, const TypeInfo *tyinfo)
 
 	printfPQExpBuffer(query,
 					  "EXECUTE dumpRangeType('%u')",
-=======
-	appendPQExpBuffer(query,
-					  "SELECT ");
-
-	if (fout->remoteVersion >= 140000)
-		appendPQExpBuffer(query,
-						  "pg_catalog.format_type(rngmultitypid, NULL) AS rngmultitype, ");
-	else
-		appendPQExpBuffer(query,
-						  "NULL AS rngmultitype, ");
-
-	appendPQExpBuffer(query,
-					  "pg_catalog.format_type(rngsubtype, NULL) AS rngsubtype, "
-					  "opc.opcname AS opcname, "
-					  "(SELECT nspname FROM pg_catalog.pg_namespace nsp "
-					  "  WHERE nsp.oid = opc.opcnamespace) AS opcnsp, "
-					  "opc.opcdefault, "
-					  "CASE WHEN rngcollation = st.typcollation THEN 0 "
-					  "     ELSE rngcollation END AS collation, "
-					  "rngcanonical, rngsubdiff "
-					  "FROM pg_catalog.pg_range r, pg_catalog.pg_type st, "
-					  "     pg_catalog.pg_opclass opc "
-					  "WHERE st.oid = rngsubtype AND opc.oid = rngsubopc AND "
-					  "rngtypid = '%u'",
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 					  tyinfo->dobj.catId.oid);
 
 	res = ExecuteSqlQueryForSingleRow(fout, query->data);
@@ -11289,13 +11205,8 @@ dumpRangeType(Archive *fout, const TypeInfo *tyinfo)
 
 	if (dopt->binary_upgrade)
 		binary_upgrade_set_type_oids_by_type_oid(fout, q,
-<<<<<<< HEAD
 												 tyinfo,
-												 false);
-=======
-												 tyinfo->dobj.catId.oid,
 												 false, true);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	appendPQExpBuffer(q, "CREATE TYPE %s AS RANGE (",
 					  qualtypname);
@@ -11402,15 +11313,9 @@ dumpUndefinedType(Archive *fout, const TypeInfo *tyinfo)
 	appendPQExpBuffer(delq, "DROP TYPE %s;\n", qualtypname);
 
 	if (dopt->binary_upgrade)
-<<<<<<< HEAD
 		binary_upgrade_set_type_oids_by_type_oid(fout,
 												 q, tyinfo,
-												 false);
-=======
-		binary_upgrade_set_type_oids_by_type_oid(fout, q,
-												 tyinfo->dobj.catId.oid,
 												 false, false);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	appendPQExpBuffer(q, "CREATE TYPE %s;\n",
 					  qualtypname);
@@ -11492,7 +11397,6 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 	char	   *typdefault;
 	bool		typdefault_is_literal = false;
 
-<<<<<<< HEAD
 	if (!fout->is_prepared[PREPQUERY_DUMPBASETYPE])
 	{
 		/* Set up query for type-specific details */
@@ -11521,6 +11425,13 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 			appendPQExpBufferStr(query, "(typcollation <> 0) AS typcollatable, ");
 		else
 			appendPQExpBufferStr(query, "false AS typcollatable, ");
+		if (fout->remoteVersion >= 140000)
+			appendPQExpBufferStr(query,
+								"typsubscript, "
+								"typsubscript::pg_catalog.oid AS typsubscriptoid, ");
+		else
+			appendPQExpBufferStr(query,
+								"'-' AS typsubscript, 0 AS typsubscriptoid, ");
 
 		/* Before 8.4, pg_get_expr does not allow 0 for its second arg */
 		if (fout->remoteVersion >= 80400)
@@ -11537,58 +11448,6 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 
 		fout->is_prepared[PREPQUERY_DUMPBASETYPE] = true;
 	}
-=======
-	/* Fetch type-specific details */
-	appendPQExpBufferStr(query, "SELECT typlen, "
-						 "typinput, typoutput, typreceive, typsend, "
-						 "typreceive::pg_catalog.oid AS typreceiveoid, "
-						 "typsend::pg_catalog.oid AS typsendoid, "
-						 "typanalyze, "
-						 "typanalyze::pg_catalog.oid AS typanalyzeoid, "
-						 "typdelim, typbyval, typalign, typstorage, ");
-
-	if (fout->remoteVersion >= 80300)
-		appendPQExpBufferStr(query,
-							 "typmodin, typmodout, "
-							 "typmodin::pg_catalog.oid AS typmodinoid, "
-							 "typmodout::pg_catalog.oid AS typmodoutoid, ");
-	else
-		appendPQExpBufferStr(query,
-							 "'-' AS typmodin, '-' AS typmodout, "
-							 "0 AS typmodinoid, 0 AS typmodoutoid, ");
-
-	if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-							 "typcategory, typispreferred, ");
-	else
-		appendPQExpBufferStr(query,
-							 "'U' AS typcategory, false AS typispreferred, ");
-
-	if (fout->remoteVersion >= 90100)
-		appendPQExpBufferStr(query, "(typcollation <> 0) AS typcollatable, ");
-	else
-		appendPQExpBufferStr(query, "false AS typcollatable, ");
-
-	if (fout->remoteVersion >= 140000)
-		appendPQExpBufferStr(query,
-							 "typsubscript, "
-							 "typsubscript::pg_catalog.oid AS typsubscriptoid, ");
-	else
-		appendPQExpBufferStr(query,
-							 "'-' AS typsubscript, 0 AS typsubscriptoid, ");
-
-	/* Before 8.4, pg_get_expr does not allow 0 for its second arg */
-	if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-							 "pg_catalog.pg_get_expr(typdefaultbin, 0) AS typdefaultbin, typdefault ");
-	else
-		appendPQExpBufferStr(query,
-							 "pg_catalog.pg_get_expr(typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, typdefault ");
-
-	appendPQExpBuffer(query, "FROM pg_catalog.pg_type "
-					  "WHERE oid = '%u'::pg_catalog.oid",
-					  tyinfo->dobj.catId.oid);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	printfPQExpBuffer(query,
 					  "EXECUTE dumpBaseType('%u')",
@@ -11644,13 +11503,8 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 	 */
 	if (dopt->binary_upgrade)
 		binary_upgrade_set_type_oids_by_type_oid(fout, q,
-<<<<<<< HEAD
 												 tyinfo,
-												 false);
-=======
-												 tyinfo->dobj.catId.oid,
 												 false, false);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	appendPQExpBuffer(q,
 					  "CREATE TYPE %s (\n"
@@ -11879,14 +11733,9 @@ dumpDomain(Archive *fout, const TypeInfo *tyinfo)
 
 	if (dopt->binary_upgrade)
 		binary_upgrade_set_type_oids_by_type_oid(fout, q,
-<<<<<<< HEAD
 												 tyinfo,
-												 true);	/* force array type */
-=======
-												 tyinfo->dobj.catId.oid,
 												 true,		/* force array type */
 												 false);	/* force multirange type */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	qtypname = pg_strdup(fmtId(tyinfo->dobj.name));
 	qualtypname = pg_strdup(fmtQualifiedDumpable(tyinfo));
@@ -12084,13 +11933,8 @@ dumpCompositeType(Archive *fout, const TypeInfo *tyinfo)
 	if (dopt->binary_upgrade)
 	{
 		binary_upgrade_set_type_oids_by_type_oid(fout, q,
-<<<<<<< HEAD
 												 tyinfo,
-												 false);
-=======
-												 tyinfo->dobj.catId.oid,
 												 false, false);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		binary_upgrade_set_pg_class_oids(fout, q, tyinfo->typrelid, false);
 	}
 
@@ -12364,13 +12208,8 @@ dumpShellType(Archive *fout, const ShellTypeInfo *stinfo)
 
 	if (dopt->binary_upgrade)
 		binary_upgrade_set_type_oids_by_type_oid(fout, q,
-<<<<<<< HEAD
 												 stinfo->baseType,
-												 false);
-=======
-												 stinfo->baseType->dobj.catId.oid,
 												 false, false);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	appendPQExpBuffer(q, "CREATE TYPE %s;\n",
 					  fmtQualifiedDumpable(stinfo));
