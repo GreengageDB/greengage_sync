@@ -200,16 +200,11 @@ be_gssapi_write(Port *port, void *ptr, size_t len)
 		major = gss_wrap(&minor, gctx, 1, GSS_C_QOP_DEFAULT,
 						 &input, &conf_state, &output);
 		if (major != GSS_S_COMPLETE)
-<<<<<<< HEAD
-			pg_GSS_error_be(FATAL, gettext_noop("GSSAPI wrap error"), major, minor);
-
-=======
 		{
-			pg_GSS_error(_("GSSAPI wrap error"), major, minor);
+			pg_GSS_error_be(_("GSSAPI wrap error"), major, minor);
 			errno = ECONNRESET;
 			return -1;
 		}
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		if (conf_state == 0)
 		{
 			ereport(COMMERROR,
@@ -390,17 +385,11 @@ be_gssapi_read(Port *port, void *ptr, size_t len)
 
 		major = gss_unwrap(&minor, gctx, &input, &output, &conf_state, NULL);
 		if (major != GSS_S_COMPLETE)
-<<<<<<< HEAD
-			pg_GSS_error_be(FATAL, gettext_noop("GSSAPI unwrap error"),
-						 major, minor);
-
-=======
 		{
-			pg_GSS_error(_("GSSAPI unwrap error"), major, minor);
+			pg_GSS_error_be(_("GSSAPI unwrap error"), major, minor);
 			errno = ECONNRESET;
 			return -1;
 		}
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		if (conf_state == 0)
 		{
 			ereport(COMMERROR,
@@ -602,11 +591,7 @@ secure_open_gssapi(Port *port)
 									   NULL, NULL);
 		if (GSS_ERROR(major))
 		{
-<<<<<<< HEAD
-			pg_GSS_error_be(ERROR, gettext_noop("could not accept GSSAPI security context"),
-=======
-			pg_GSS_error(_("could not accept GSSAPI security context"),
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+			pg_GSS_error_be(_("could not accept GSSAPI security context"),
 						 major, minor);
 			gss_release_buffer(&minor, &output);
 			return -1;
@@ -700,15 +685,10 @@ secure_open_gssapi(Port *port)
 								&PqGSSMaxPktSize);
 
 	if (GSS_ERROR(major))
-<<<<<<< HEAD
-		pg_GSS_error_be(FATAL, gettext_noop("GSSAPI size check error"),
-					 major, minor);
-=======
 	{
-		pg_GSS_error(_("GSSAPI size check error"), major, minor);
+		pg_GSS_error_be(_("GSSAPI size check error"), major, minor);
 		return -1;
 	}
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	port->gss->enc = true;
 
