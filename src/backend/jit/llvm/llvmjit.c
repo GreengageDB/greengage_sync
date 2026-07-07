@@ -172,6 +172,8 @@ llvm_release_context(JitContext *context)
 {
 	LLVMJitContext *llvm_context = (LLVMJitContext *) context;
 
+	llvm_enter_fatal_on_oom();
+
 	/*
 	 * When this backend is exiting, don't clean up LLVM. As an error might
 	 * have occurred from within LLVM, we do not want to risk reentering. All
@@ -180,11 +182,6 @@ llvm_release_context(JitContext *context)
 	if (proc_exit_inprogress)
 		return;
 
-<<<<<<< HEAD
-	llvm_enter_fatal_on_oom();
-
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	if (llvm_context->module)
 	{
 		LLVMDisposeModule(llvm_context->module);
@@ -888,7 +885,6 @@ llvm_session_initialize(void)
 static void
 llvm_shutdown(int code, Datum arg)
 {
-<<<<<<< HEAD
 	/*
 	 * If llvm_shutdown() is reached while in a fatal-on-oom section an error
 	 * has occurred in the middle of LLVM code. It is not safe to call back
@@ -946,71 +942,6 @@ llvm_shutdown(int code, Datum arg)
 		}
 	}
 #endif							/* LLVM_VERSION_MAJOR > 11 */
-}
-
-/* helper for llvm_create_types, returning a global var's type */
-static LLVMTypeRef
-load_type(LLVMModuleRef mod, const char *name)
-{
-	LLVMValueRef value;
-	LLVMTypeRef typ;
-
-	/* this'll return a *pointer* to the global */
-	value = LLVMGetNamedGlobal(mod, name);
-	if (!value)
-		elog(ERROR, "type %s is unknown", name);
-
-	/* therefore look at the contained type and return that */
-	typ = LLVMTypeOf(value);
-	Assert(typ != NULL);
-	typ = LLVMGetElementType(typ);
-	Assert(typ != NULL);
-	return typ;
-=======
-#if LLVM_VERSION_MAJOR > 11
-	{
-		if (llvm_opt3_orc)
-		{
-			LLVMOrcDisposeLLJIT(llvm_opt3_orc);
-			llvm_opt3_orc = NULL;
-		}
-		if (llvm_opt0_orc)
-		{
-			LLVMOrcDisposeLLJIT(llvm_opt0_orc);
-			llvm_opt0_orc = NULL;
-		}
-		if (llvm_ts_context)
-		{
-			LLVMOrcDisposeThreadSafeContext(llvm_ts_context);
-			llvm_ts_context = NULL;
-		}
-	}
-#else							/* LLVM_VERSION_MAJOR > 11 */
-	{
-		/* unregister profiling support, needs to be flushed to be useful */
-
-		if (llvm_opt3_orc)
-		{
-#if defined(HAVE_DECL_LLVMORCREGISTERPERF) && HAVE_DECL_LLVMORCREGISTERPERF
-			if (jit_profiling_support)
-				LLVMOrcUnregisterPerf(llvm_opt3_orc);
-#endif
-			LLVMOrcDisposeInstance(llvm_opt3_orc);
-			llvm_opt3_orc = NULL;
-		}
-
-		if (llvm_opt0_orc)
-		{
-#if defined(HAVE_DECL_LLVMORCREGISTERPERF) && HAVE_DECL_LLVMORCREGISTERPERF
-			if (jit_profiling_support)
-				LLVMOrcUnregisterPerf(llvm_opt0_orc);
-#endif
-			LLVMOrcDisposeInstance(llvm_opt0_orc);
-			llvm_opt0_orc = NULL;
-		}
-	}
-#endif							/* LLVM_VERSION_MAJOR > 11 */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 }
 
 /* helper for llvm_create_types, returning a function's return type */
@@ -1189,12 +1120,9 @@ llvm_resolve_symbols(LLVMOrcDefinitionGeneratorRef GeneratorObj, void *Ctx,
 	{
 		const char *name = LLVMOrcSymbolStringPoolEntryStr(LookupSet[i].Name);
 
-<<<<<<< HEAD
 #if LLVM_VERSION_MAJOR > 12
 		LLVMOrcRetainSymbolStringPoolEntry(LookupSet[i].Name);
 #endif
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		symbols[i].Name = LookupSet[i].Name;
 		symbols[i].Sym.Address = llvm_resolve_symbol(name, NULL);
 		symbols[i].Sym.Flags.GenericFlags = LLVMJITSymbolGenericFlagsExported;
