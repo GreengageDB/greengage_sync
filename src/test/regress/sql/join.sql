@@ -49,22 +49,22 @@ analyze onerow;
 -- before diving into more complex join syntax.
 --
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL AS tx;
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL tx;
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL AS t1 (a, b, c);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL t1 (a, b, c);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL t1 (a, b, c), J2_TBL t2 (d, e);
 
-SELECT t1.a, t2.e
+SELECT '' AS "xxx", t1.a, t2.e
   FROM J1_TBL t1 (a, b, c), J2_TBL t2 (d, e)
   WHERE t1.a = t2.d;
 
@@ -75,26 +75,26 @@ SELECT t1.a, t2.e
 -- which degenerate into a standard unqualified inner join.
 --
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL CROSS JOIN J2_TBL;
 
 -- ambiguous column
-SELECT i, k, t
+SELECT '' AS "xxx", i, k, t
   FROM J1_TBL CROSS JOIN J2_TBL;
 
 -- resolve previous ambiguity by specifying the table name
-SELECT t1.i, k, t
+SELECT '' AS "xxx", t1.i, k, t
   FROM J1_TBL t1 CROSS JOIN J2_TBL t2;
 
-SELECT ii, tt, kk
+SELECT '' AS "xxx", ii, tt, kk
   FROM (J1_TBL CROSS JOIN J2_TBL)
     AS tx (ii, jj, tt, ii2, kk);
 
-SELECT tx.ii, tx.jj, tx.kk
+SELECT '' AS "xxx", tx.ii, tx.jj, tx.kk
   FROM (J1_TBL t1 (a, b, c) CROSS JOIN J2_TBL t2 (d, e))
     AS tx (ii, jj, tt, ii2, kk);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL CROSS JOIN J2_TBL a CROSS JOIN J2_TBL b;
 
 
@@ -111,18 +111,18 @@ SELECT *
 --
 
 -- Inner equi-join on specified column
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL INNER JOIN J2_TBL USING (i);
 
 -- Same as above, slightly different syntax
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL JOIN J2_TBL USING (i);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL t1 (a, b, c) JOIN J2_TBL t2 (a, d) USING (a)
   ORDER BY a, d;
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL t1 (a, b, c) JOIN J2_TBL t2 (a, b) USING (b)
   ORDER BY b, t1.a;
 
@@ -132,18 +132,18 @@ SELECT *
 -- Inner equi-join on all columns with the same name
 --
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL NATURAL JOIN J2_TBL;
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL t1 (a, b, c) NATURAL JOIN J2_TBL t2 (a, d);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL t1 (a, b, c) NATURAL JOIN J2_TBL t2 (d, a);
 
 -- mismatch number of columns
 -- currently, Postgres will fill in with underlying names
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL t1 (a, b) NATURAL JOIN J2_TBL t2 (a);
 
 
@@ -151,10 +151,10 @@ SELECT *
 -- Inner joins (equi-joins)
 --
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL JOIN J2_TBL ON (J1_TBL.i = J2_TBL.i);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL JOIN J2_TBL ON (J1_TBL.i = J2_TBL.k);
 
 
@@ -162,7 +162,7 @@ SELECT *
 -- Non-equi-joins
 --
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL JOIN J2_TBL ON (J1_TBL.i <= J2_TBL.k);
 
 
@@ -171,32 +171,32 @@ SELECT *
 -- Note that OUTER is a noise word
 --
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL LEFT OUTER JOIN J2_TBL USING (i)
   ORDER BY i, k, t;
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL LEFT JOIN J2_TBL USING (i)
   ORDER BY i, k, t;
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL RIGHT OUTER JOIN J2_TBL USING (i);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL RIGHT JOIN J2_TBL USING (i);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL FULL OUTER JOIN J2_TBL USING (i)
   ORDER BY i, k, t;
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL FULL JOIN J2_TBL USING (i)
   ORDER BY i, k, t;
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL LEFT JOIN J2_TBL USING (i) WHERE (k = 1);
 
-SELECT *
+SELECT '' AS "xxx", *
   FROM J1_TBL LEFT JOIN J2_TBL USING (i) WHERE (i = 1);
 
 --
@@ -714,11 +714,7 @@ explain (costs off)
 select a.idv, b.idv from tidv a, tidv b where a.idv = b.idv;
 
 set enable_mergejoin = 0;
-<<<<<<< HEAD
 set enable_nestloop = 1;
-=======
-set enable_hashjoin = 0;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 explain (costs off)
 select a.idv, b.idv from tidv a, tidv b where a.idv = b.idv;
@@ -930,33 +926,6 @@ where
 order by 1,2;
 
 --
--- variant where a PlaceHolderVar is needed at a join, but not above the join
---
-
-explain (costs off)
-select * from
-  int4_tbl as i41,
-  lateral
-    (select 1 as x from
-      (select i41.f1 as lat,
-              i42.f1 as loc from
-         int8_tbl as i81, int4_tbl as i42) as ss1
-      right join int4_tbl as i43 on (i43.f1 > 1)
-      where ss1.loc = ss1.lat) as ss2
-where i41.f1 > 0;
-
-select * from
-  int4_tbl as i41,
-  lateral
-    (select 1 as x from
-      (select i41.f1 as lat,
-              i42.f1 as loc from
-         int8_tbl as i81, int4_tbl as i42) as ss1
-      right join int4_tbl as i43 on (i43.f1 > 1)
-      where ss1.loc = ss1.lat) as ss2
-where i41.f1 > 0;
-
---
 -- test the corner cases FULL JOIN ON TRUE and FULL JOIN ON FALSE
 --
 select * from int4_tbl a full join int4_tbl b on true;
@@ -1084,28 +1053,6 @@ select * from
 select * from
   (select 1 as x) ss1 left join (select 2 as y) ss2 on (true),
   lateral (select ss2.y as z limit 1) ss3;
-
--- Test proper handling of appendrel PHVs during useless-RTE removal
-explain (costs off)
-select * from
-  (select 0 as z) as t1
-  left join
-  (select true as a) as t2
-  on true,
-  lateral (select true as b
-           union all
-           select a as b) as t3
-where b;
-
-select * from
-  (select 0 as z) as t1
-  left join
-  (select true as a) as t2
-  on true,
-  lateral (select true as b
-           union all
-           select a as b) as t3
-where b;
 
 --
 -- test inlining of immutable functions
