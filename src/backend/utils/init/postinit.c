@@ -91,12 +91,9 @@ static void ShutdownPostgres(int code, Datum arg);
 static void StatementTimeoutHandler(void);
 static void LockTimeoutHandler(void);
 static void IdleInTransactionSessionTimeoutHandler(void);
-<<<<<<< HEAD
 static void IdleGangTimeoutHandler(void);
 static void ClientCheckTimeoutHandler(void);
-=======
 static void IdleSessionTimeoutHandler(void);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 static bool ThereIsAtLeastOneRole(void);
 static void process_startup_options(Port *port, bool am_superuser);
 static void process_settings(Oid databaseid, Oid roleid);
@@ -716,12 +713,9 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		RegisterTimeout(LOCK_TIMEOUT, LockTimeoutHandler);
 		RegisterTimeout(IDLE_IN_TRANSACTION_SESSION_TIMEOUT,
 						IdleInTransactionSessionTimeoutHandler);
-<<<<<<< HEAD
 		RegisterTimeout(IDLE_GANG_TIMEOUT, IdleGangTimeoutHandler);
 		RegisterTimeout(CLIENT_CONNECTION_CHECK_TIMEOUT, ClientCheckTimeoutHandler);
-=======
 		RegisterTimeout(IDLE_SESSION_TIMEOUT, IdleSessionTimeoutHandler);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	}
 
 	/*
@@ -1511,20 +1505,21 @@ IdleInTransactionSessionTimeoutHandler(void)
 }
 
 static void
-<<<<<<< HEAD
 IdleGangTimeoutHandler(void)
 {
 	IdleGangTimeoutPending = true;
-=======
-IdleSessionTimeoutHandler(void)
-{
-	IdleSessionTimeoutPending = true;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	InterruptPending = true;
 	SetLatch(MyLatch);
 }
 
-<<<<<<< HEAD
+static void
+IdleSessionTimeoutHandler(void)
+{
+	IdleSessionTimeoutPending = true;
+	InterruptPending = true;
+	SetLatch(MyLatch);
+}
+
 static void
 ClientCheckTimeoutHandler(void)
 {
@@ -1533,8 +1528,6 @@ ClientCheckTimeoutHandler(void)
 	SetLatch(&MyProc->procLatch);
 }
 
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 /*
  * Returns true if at least one role is defined in this database cluster.
  */
