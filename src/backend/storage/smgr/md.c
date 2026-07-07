@@ -345,24 +345,8 @@ do_truncate(const char *path)
 {
 	int			save_errno;
 	int			ret;
-<<<<<<< HEAD
-	int			fd;
-
-	/* truncate(2) would be easier here, but Windows hasn't got it */
-	fd = OpenTransientFile(path, O_RDWR | PG_BINARY);
-	if (fd >= 0)
-	{
-		ret = ftruncate(fd, 0);
-		save_errno = errno;
-		CloseTransientFile(fd);
-		errno = save_errno;
-	}
-	else
-		ret = -1;
-=======
 
 	ret = pg_truncate(path, 0);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	/* Log a warning here to avoid repetition in callers. */
 	if (ret < 0 && errno != ENOENT)
