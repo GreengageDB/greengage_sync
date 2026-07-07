@@ -225,16 +225,13 @@ extern SortPath *create_sort_path(PlannerInfo *root,
 								  Path *subpath,
 								  List *pathkeys,
 								  double limit_tuples);
-<<<<<<< HEAD
-#if 0 /* Group nodes are not used in GPDB */
-=======
 extern IncrementalSortPath *create_incremental_sort_path(PlannerInfo *root,
 														 RelOptInfo *rel,
 														 Path *subpath,
 														 List *pathkeys,
 														 int presorted_keys,
-														 double limit_tuples);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+														 double limit_tuples);								  
+#if 0 /* Group nodes are not used in GPDB */
 extern GroupPath *create_group_path(PlannerInfo *root,
 									RelOptInfo *rel,
 									Path *subpath,
