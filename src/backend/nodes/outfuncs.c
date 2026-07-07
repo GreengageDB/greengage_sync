@@ -6331,7 +6331,6 @@ outNode(StringInfo str, const void *obj)
 			case T_SelectStmt:
 				_outSelectStmt(str, obj);
 				break;
-<<<<<<< HEAD
 			case T_InsertStmt:
 				_outInsertStmt(str, obj);
 				break;
@@ -6343,10 +6342,8 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_Null:
 				_outNull(str, obj);
-=======
 			case T_PLAssignStmt:
 				_outPLAssignStmt(str, obj);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 				break;
 			case T_ColumnDef:
 				_outColumnDef(str, obj);
