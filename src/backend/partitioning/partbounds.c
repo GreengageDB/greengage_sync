@@ -4743,13 +4743,7 @@ satisfies_hash_partition(PG_FUNCTION_ARGS)
 		int			j;
 
 		/* Open parent relation and fetch partition key info */
-<<<<<<< HEAD
-		parent = try_relation_open(parentId, AccessShareLock, false);
-		if (parent == NULL)
-			PG_RETURN_NULL();
-=======
 		parent = relation_open(parentId, AccessShareLock);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		key = RelationGetPartitionKey(parent);
 
 		/* Reject parent table that is not hash-partitioned. */
