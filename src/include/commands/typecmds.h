@@ -29,13 +29,9 @@ extern ObjectAddress DefineEnum(CreateEnumStmt *stmt);
 extern ObjectAddress DefineRange(CreateRangeStmt *stmt);
 extern ObjectAddress AlterEnum(AlterEnumStmt *stmt);
 extern ObjectAddress DefineCompositeType(RangeVar *typevar, List *coldeflist);
-<<<<<<< HEAD
 extern Oid AssignTypeArrayOid(char *arrayTypeName, Oid typeNamespace);
-=======
-extern Oid	AssignTypeArrayOid(void);
-extern Oid	AssignTypeMultirangeOid(void);
-extern Oid	AssignTypeMultirangeArrayOid(void);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+extern Oid AssignTypeMultirangeOid(char *multirangeTypeName, Oid typeNamespace);
+extern Oid AssignTypeMultirangeArrayOid(char *multirangeArrayTypeName, Oid typeNamespace);
 
 extern ObjectAddress AlterDomainDefault(List *names, Node *defaultRaw);
 extern ObjectAddress AlterDomainNotNull(List *names, bool notNull);
