@@ -1240,12 +1240,7 @@ create_seq_hashtable(void)
 {
 	HASHCTL		ctl;
 
-<<<<<<< HEAD
-	memset(&ctl, 0, sizeof(ctl));
 	ctl.keysize = sizeof(struct SeqTableKey);
-=======
-	ctl.keysize = sizeof(Oid);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	ctl.entrysize = sizeof(SeqTableData);
 
 	seqhashtab = hash_create("Sequence values", 16, &ctl,
