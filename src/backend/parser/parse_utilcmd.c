@@ -97,15 +97,12 @@ typedef struct
 	List	   *ckconstraints;	/* CHECK constraints */
 	List	   *fkconstraints;	/* FOREIGN KEY constraints */
 	List	   *ixconstraints;	/* index-creating constraints */
-<<<<<<< HEAD
 	List	   *inh_indexes;	/* cloned indexes from INCLUDING INDEXES
 								 * GPDB: used by transformDistributedBy
 								 * Note: Attribute numbers in expressions
 								 * might not be correct, only use names */
 	List	   *attr_encodings; /* List of ColumnReferenceStorageDirectives */
-=======
 	List	   *likeclauses;	/* LIKE clauses that need post-processing */
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	List	   *extstats;		/* cloned extended statistics */
 	List	   *blist;			/* "before list" of things to do before
 								 * creating the table */
@@ -299,11 +296,8 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	cxt.ckconstraints = NIL;
 	cxt.fkconstraints = NIL;
 	cxt.ixconstraints = NIL;
-<<<<<<< HEAD
 	cxt.inh_indexes = NIL; /* GPDB: used by transformDistributedBy */
-=======
 	cxt.likeclauses = NIL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	cxt.extstats = NIL;
 	cxt.attr_encodings = stmt->attr_encodings;
 	cxt.blist = NIL;
@@ -4386,12 +4380,9 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 	cxt.ckconstraints = NIL;
 	cxt.fkconstraints = NIL;
 	cxt.ixconstraints = NIL;
-<<<<<<< HEAD
 	cxt.inh_indexes = NIL; /* GPDB: used by transformDistributedBy */
 	cxt.attr_encodings = NIL;
-=======
 	cxt.likeclauses = NIL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	cxt.extstats = NIL;
 	cxt.blist = NIL;
 	cxt.alist = NIL;
