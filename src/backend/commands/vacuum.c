@@ -1645,36 +1645,6 @@ vac_update_relstats(Relation relation,
 }
 
 /*
- * fetch_database_tuple - Fetch a copy of database tuple from pg_database.
- *
- * This using disk heap table instead of system cache.
- * relation: opened pg_database relation in vac_update_datfrozenxid().
- */
-static HeapTuple
-fetch_database_tuple(Relation relation, Oid dbOid)
-{
-	ScanKeyData skey[1];
-	SysScanDesc sscan;
-	HeapTuple	tuple = NULL;
-
-	ScanKeyInit(&skey[0],
-				Anum_pg_database_oid,
-				BTEqualStrategyNumber, F_OIDEQ,
-				ObjectIdGetDatum(dbOid));
-
-	sscan = systable_beginscan(relation, DatabaseOidIndexId, true,
-							   NULL, 1, skey);
-
-	tuple = systable_getnext(sscan);
-	if (HeapTupleIsValid(tuple))
-		tuple = heap_copytuple(tuple);
-
-	systable_endscan(sscan);
-
-	return tuple;
-}
-
-/*
  *	vac_update_datfrozenxid() -- update pg_database.datfrozenxid for our DB
  *
  *		Update pg_database's datfrozenxid entry for our database to be the
@@ -1695,8 +1665,8 @@ fetch_database_tuple(Relation relation, Oid dbOid)
 void
 vac_update_datfrozenxid(void)
 {
-	HeapTuple	cached_tuple;
-	Form_pg_database	cached_dbform;
+	HeapTuple	tuple;
+	Form_pg_database dbform;
 	Relation	relation;
 	SysScanDesc scan;
 	HeapTuple	classTup;
@@ -1834,10 +1804,6 @@ vac_update_datfrozenxid(void)
 	/* Now fetch the pg_database tuple we need to update. */
 	relation = table_open(DatabaseRelationId, RowExclusiveLock);
 
-<<<<<<< HEAD
-	cached_tuple = SearchSysCache1(DATABASEOID, ObjectIdGetDatum(MyDatabaseId));
-	cached_dbform = (Form_pg_database) GETSTRUCT(cached_tuple);
-=======
 	/*
 	 * Get the pg_database tuple to scribble on.  Note that this does not
 	 * directly rely on the syscache to avoid issues with flattened toast
@@ -1858,56 +1824,44 @@ vac_update_datfrozenxid(void)
 		elog(ERROR, "could not find tuple for database %u", MyDatabaseId);
 
 	dbform = (Form_pg_database) GETSTRUCT(tuple);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	/*
 	 * As in vac_update_relstats(), we ordinarily don't want to let
 	 * datfrozenxid go backward; but if it's "in the future" then it must be
 	 * corrupt and it seems best to overwrite it.
 	 */
-	if (cached_dbform->datfrozenxid != newFrozenXid &&
-		(TransactionIdPrecedes(cached_dbform->datfrozenxid, newFrozenXid) ||
-		 TransactionIdPrecedes(lastSaneFrozenXid, cached_dbform->datfrozenxid)))
+	if (dbform->datfrozenxid != newFrozenXid &&
+		(TransactionIdPrecedes(dbform->datfrozenxid, newFrozenXid) ||
+		 TransactionIdPrecedes(lastSaneFrozenXid, dbform->datfrozenxid)))
+	{
+		dbform->datfrozenxid = newFrozenXid;
 		dirty = true;
+	}
 	else
-		newFrozenXid = cached_dbform->datfrozenxid;
+		newFrozenXid = dbform->datfrozenxid;
 
 	/* Ditto for datminmxid */
-	if (cached_dbform->datminmxid != newMinMulti &&
-		(MultiXactIdPrecedes(cached_dbform->datminmxid, newMinMulti) ||
-		 MultiXactIdPrecedes(lastSaneMinMulti, cached_dbform->datminmxid)))
+	if (dbform->datminmxid != newMinMulti &&
+		(MultiXactIdPrecedes(dbform->datminmxid, newMinMulti) ||
+		 MultiXactIdPrecedes(lastSaneMinMulti, dbform->datminmxid)))
+	{
+		dbform->datminmxid = newMinMulti;
 		dirty = true;
+	}
 	else
-		newMinMulti = cached_dbform->datminmxid;
+		newMinMulti = dbform->datminmxid;
 
 	if (dirty)
 	{
-		HeapTuple			tuple;
-		Form_pg_database	tmp_dbform;
-		/*
-		 * Fetch a copy of the tuple to scribble on from pg_database disk
-		 * heap table instead of system cache
-		 * "SearchSysCacheCopy1(DATABASEOID, ObjectIdGetDatum(MyDatabaseId))".
-		 * Since the cache already flatten toast tuple, so the
-		 * heap_inplace_update will fail with "wrong tuple length".
-		 */
-		tuple = fetch_database_tuple(relation, MyDatabaseId);
-		if (!HeapTupleIsValid(tuple))
-			elog(ERROR, "could not find tuple for database %u", MyDatabaseId);
-		tmp_dbform = (Form_pg_database) GETSTRUCT(tuple);
-		tmp_dbform->datfrozenxid = newFrozenXid;
-		tmp_dbform->datminmxid = newMinMulti;
-
 		heap_inplace_update(relation, tuple);
-		heap_freetuple(tuple);
 #ifdef FAULT_INJECTOR
 		FaultInjector_InjectFaultIfSet(
 			"vacuum_update_dat_frozen_xid", DDLNotSpecified,
-			NameStr(cached_dbform->datname), "");
+			NameStr(dbform->datname), "");
 #endif
 	}
 
-	ReleaseSysCache(cached_tuple);
+	heap_freetuple(tuple);
 	table_close(relation, RowExclusiveLock);
 
 	/*
@@ -2145,13 +2099,9 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		 * xmin doesn't become visible ahead of setting the flag.)
 		 */
 		LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-<<<<<<< HEAD
 #if 0 /* Upstream code not applicable to GPDB */
-		MyProc->vacuumFlags |= PROC_IN_VACUUM;
-#endif
-=======
 		MyProc->statusFlags |= PROC_IN_VACUUM;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+#endif
 		if (params->is_wraparound)
 			MyProc->statusFlags |= PROC_VACUUM_FOR_WRAPAROUND;
 		ProcGlobal->statusFlags[MyProc->pgxactoff] = MyProc->statusFlags;
