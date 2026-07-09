@@ -1553,7 +1553,6 @@ add_multi_dqas_hash_agg_path(PlannerInfo *root,
 	 * variables present inside AggRefs, not AggRefs themselves. Therefore,
 	 * AggClauseCosts can be zero-initialized here.
 	 */
-	AggClauseCosts DedupCost = {};
 	Assert(!contain_agg_clause((Node *) info->tup_split_target->exprs));
 
 	if (gp_enable_dqa_pruning)
@@ -1581,7 +1580,7 @@ add_multi_dqas_hash_agg_path(PlannerInfo *root,
 										true, /* streaming */
 										dummy_group_clause, /* only its length 1 is being used here */
 										NIL,
-										&DedupCost,
+										NULL, /* aggcosts */
 										estimate_num_groups_on_segment(info->dNumDistinctGroups,
 																	   path->rows, path->locus));
 
@@ -1614,7 +1613,7 @@ add_multi_dqas_hash_agg_path(PlannerInfo *root,
 										false, /* streaming */
 										info->dqa_group_clause,
 										NIL,
-										&DedupCost,
+										NULL, /* aggcosts */
 										clamp_row_est(info->dNumDistinctGroups / CdbPathLocus_NumSegments(distinct_locus)));
 
 		split = AGG_HASHED;
