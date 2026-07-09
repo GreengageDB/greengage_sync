@@ -799,13 +799,9 @@ copy_table(Relation rel)
 										 NULL, false, false);
 
 	attnamelist = make_copy_attnamelist(relmapentry);
-<<<<<<< HEAD
-	cstate = BeginCopyFrom(pstate, rel, NULL, false, copy_read_data,
+	cstate = BeginCopyFrom(pstate, rel, NULL, NULL, false, copy_read_data,
 						   NULL /* callback extra data */,
 						   attnamelist, NIL);
-=======
-	cstate = BeginCopyFrom(pstate, rel, NULL, NULL, false, copy_read_data, attnamelist, NIL);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	/* Do the copy */
 	(void) CopyFrom(cstate);
