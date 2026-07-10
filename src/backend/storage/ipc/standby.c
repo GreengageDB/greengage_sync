@@ -323,7 +323,6 @@ ResolveRecoveryConflictWithVirtualXIDs(VirtualTransactionId *waitlist,
 		/* wait until the virtual xid is gone */
 		while (!VirtualXactLock(*waitlist, false))
 		{
-<<<<<<< HEAD
 			/*
 			 * Report via ps if we have been waiting for more than 500 msec
 			 * (should that be configurable?)
@@ -343,8 +342,6 @@ ResolveRecoveryConflictWithVirtualXIDs(VirtualTransactionId *waitlist,
 				new_status[len] = '\0'; /* truncate off " waiting" */
 			}
 
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 			/* Is it time to kill it? */
 			if (WaitExceedsMaxStandbyDelay(wait_event_info))
 			{
@@ -387,7 +384,7 @@ ResolveRecoveryConflictWithVirtualXIDs(VirtualTransactionId *waitlist,
 					const char *old_status;
 					int			len;
 
-					old_status = get_ps_display(&len);
+					old_status = get_real_act_ps_display(&len);
 					new_status = (char *) palloc(len + 8 + 1);
 					memcpy(new_status, old_status, len);
 					strcpy(new_status + len, " waiting");
