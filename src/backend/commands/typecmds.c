@@ -113,11 +113,6 @@ typedef struct
 	Oid			subscriptOid;
 } AlterTypeRecurseParams;
 
-/* Potentially set by pg_upgrade_support functions */
-Oid			binary_upgrade_next_array_pg_type_oid = InvalidOid;
-Oid			binary_upgrade_next_mrng_pg_type_oid = InvalidOid;
-Oid			binary_upgrade_next_mrng_array_pg_type_oid = InvalidOid;
-
 static void makeRangeConstructors(const char *name, Oid namespace,
 								  Oid rangeOid, Oid subtype);
 static void makeMultirangeConstructors(const char *name, Oid namespace,
@@ -1627,11 +1622,9 @@ DefineRange(CreateRangeStmt *stmt)
 	/* alignment must be TYPALIGN_INT or TYPALIGN_DOUBLE for ranges */
 	alignment = (subtypalign == TYPALIGN_DOUBLE) ? TYPALIGN_DOUBLE : TYPALIGN_INT;
 
-	/* Allocate OID for array type, its multirange, and its multirange array */
+	/* Allocate OID for array type */
 	rangeArrayName = makeArrayTypeName(typeName, typeNamespace);
 	rangeArrayOid = AssignTypeArrayOid(rangeArrayName, typeNamespace);
-	multirangeOid = AssignTypeMultirangeOid(multirangeTypeName, typeNamespace);
-	multirangeArrayOid = AssignTypeMultirangeArrayOid(multirangeArrayName, typeNamespace);
 
 	/* Create the pg_type entry */
 	address =
@@ -1700,6 +1693,15 @@ DefineRange(CreateRangeStmt *stmt)
 		multirangeNamespace = typeNamespace;
 		multirangeTypeName = makeMultirangeTypeName(typeName, multirangeNamespace);
 	}
+
+	/*
+	 * Allocate OIDs for the multirange and its array type.  GPDB assigns
+	 * these by type name and namespace (see oid_dispatch.c), so this must
+	 * wait until the multirange name and namespace are settled above.
+	 */
+	multirangeArrayName = makeArrayTypeName(multirangeTypeName, typeNamespace);
+	multirangeOid = AssignTypeMultirangeOid(multirangeTypeName, multirangeNamespace);
+	multirangeArrayOid = AssignTypeMultirangeArrayOid(multirangeArrayName, multirangeNamespace);
 
 	mltrngaddress =
 		TypeCreate(multirangeOid,	/* force assignment of this type OID */
@@ -1779,8 +1781,6 @@ DefineRange(CreateRangeStmt *stmt)
 	pfree(rangeArrayName);
 
 	/* Create the multirange's array type */
-
-	multirangeArrayName = makeArrayTypeName(multirangeTypeName, typeNamespace);
 
 	TypeCreate(multirangeArrayOid,	/* force assignment of this type OID */
 			   multirangeArrayName, /* type name */

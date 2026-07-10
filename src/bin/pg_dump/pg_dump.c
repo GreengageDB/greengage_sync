@@ -4789,42 +4789,56 @@ binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 
 	/*
 	 * Pre-set the multirange type oid and its own array type oid.
+	 *
+	 * GGDB: like all other types, these are preassigned by name and
+	 * namespace through the oid_dispatch machinery rather than through
+	 * upstream's backend globals, so that QD and QE clusters restore
+	 * identical OIDs.  A pre-14 version has no multirange types; the
+	 * multirange created during restore is then allocated a new OID like
+	 * any other object that did not exist in the old cluster.
 	 */
-	if (include_multirange_type)
+	if (include_multirange_type && fout->remoteVersion >= 140000)
 	{
-		if (fout->remoteVersion >= 140000)
-		{
-			appendPQExpBuffer(upgrade_query,
-							  "SELECT t.oid, t.typarray "
-							  "FROM pg_catalog.pg_type t "
-							  "JOIN pg_catalog.pg_range r "
-							  "ON t.oid = r.rngmultitypid "
-							  "WHERE r.rngtypid = '%u'::pg_catalog.oid;",
-							  tyinfo->dobj.catId.oid);
+		Oid			pg_type_multirange_oid;
+		Oid			pg_type_multirange_array_oid;
 
-			res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
+		printfPQExpBuffer(upgrade_query,
+						  "SELECT t.oid, t.typname, t.typnamespace, "
+						  "a.oid AS aroid, a.typname AS arname, "
+						  "a.typnamespace AS arns "
+						  "FROM pg_catalog.pg_type t "
+						  "JOIN pg_catalog.pg_range r "
+						  "ON t.oid = r.rngmultitypid "
+						  "JOIN pg_catalog.pg_type a "
+						  "ON a.oid = t.typarray "
+						  "WHERE r.rngtypid = '%u'::pg_catalog.oid;",
+						  tyinfo->dobj.catId.oid);
 
-			pg_type_multirange_oid = atooid(PQgetvalue(res, 0, PQfnumber(res, "oid")));
-			pg_type_multirange_array_oid = atooid(PQgetvalue(res, 0, PQfnumber(res, "typarray")));
+		res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
 
-			PQclear(res);
-		}
-		else
-		{
-			pg_type_multirange_oid = get_next_possible_free_pg_type_oid(fout, upgrade_query);
-			pg_type_multirange_array_oid = get_next_possible_free_pg_type_oid(fout, upgrade_query);
-		}
+		pg_type_multirange_oid = atooid(PQgetvalue(res, 0, PQfnumber(res, "oid")));
+		pg_type_multirange_array_oid = atooid(PQgetvalue(res, 0, PQfnumber(res, "aroid")));
 
+		simple_oid_list_append(&preassigned_oids, pg_type_multirange_oid);
 		appendPQExpBufferStr(upgrade_buffer,
 							 "\n-- For binary upgrade, must preserve multirange pg_type oid\n");
 		appendPQExpBuffer(upgrade_buffer,
-						  "SELECT pg_catalog.binary_upgrade_set_next_multirange_pg_type_oid('%u'::pg_catalog.oid);\n\n",
-						  pg_type_multirange_oid);
+						  "SELECT pg_catalog.binary_upgrade_set_next_multirange_pg_type_oid('%u'::pg_catalog.oid, "
+						   "'%u'::pg_catalog.oid, $$%s$$::text);\n\n",
+						  pg_type_multirange_oid,
+						  atooid(PQgetvalue(res, 0, PQfnumber(res, "typnamespace"))),
+						  PQgetvalue(res, 0, PQfnumber(res, "typname")));
+
+		simple_oid_list_append(&preassigned_oids, pg_type_multirange_array_oid);
 		appendPQExpBufferStr(upgrade_buffer,
 							 "\n-- For binary upgrade, must preserve multirange pg_type array oid\n");
 		appendPQExpBuffer(upgrade_buffer,
-						  "SELECT pg_catalog.binary_upgrade_set_next_multirange_array_pg_type_oid('%u'::pg_catalog.oid);\n\n",
-						  pg_type_multirange_array_oid);
+						  "SELECT pg_catalog.binary_upgrade_set_next_multirange_array_pg_type_oid('%u'::pg_catalog.oid, "
+						  "'%u'::pg_catalog.oid, $$%s$$::text);\n\n",
+						  pg_type_multirange_array_oid,
+						  atooid(PQgetvalue(res, 0, PQfnumber(res, "arns"))),
+						  PQgetvalue(res, 0, PQfnumber(res, "arname")));
+		PQclear(res);
 	}
 
 	destroyPQExpBuffer(upgrade_query);
