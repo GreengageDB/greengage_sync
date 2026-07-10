@@ -1899,9 +1899,6 @@ static struct config_bool ConfigureNamesBool[] =
 	},
 
 	{
-<<<<<<< HEAD
-		{"allow_system_table_mods", PGC_USERSET, CUSTOM_OPTIONS,
-=======
 		{"in_hot_standby", PGC_INTERNAL, PRESET_OPTIONS,
 			gettext_noop("Shows whether hot standby is currently active."),
 			NULL,
@@ -1913,8 +1910,7 @@ static struct config_bool ConfigureNamesBool[] =
 	},
 
 	{
-		{"allow_system_table_mods", PGC_SUSET, DEVELOPER_OPTIONS,
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+		{"allow_system_table_mods", PGC_USERSET, CUSTOM_OPTIONS,
 			gettext_noop("Allows modifications of the structure of system tables."),
 			NULL,
 			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
@@ -6483,8 +6479,10 @@ AtEOXact_GUC(bool isCommit, int nestLevel)
 
 			/* Report new value if we changed it */
 			if (changed && (gconf->flags & GUC_REPORT))
-<<<<<<< HEAD
-				ReportGUCOption(gconf);
+			{
+				gconf->status |= GUC_NEEDS_REPORT;
+				report_needed = true;
+			}
 
 			/*
 			 * If a guc's value changed on QD,
@@ -6499,11 +6497,6 @@ AtEOXact_GUC(bool isCommit, int nestLevel)
 				MemoryContext oldcontext = MemoryContextSwitchTo(TopMemoryContext);
 				gp_guc_restore_list = lappend(gp_guc_restore_list, gconf);
 				MemoryContextSwitchTo(oldcontext);
-=======
-			{
-				gconf->status |= GUC_NEEDS_REPORT;
-				report_needed = true;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 			}
 		}						/* end of stack-popping loop */
 
