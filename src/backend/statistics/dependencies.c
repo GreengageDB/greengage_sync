@@ -1074,14 +1074,8 @@ clauselist_apply_dependencies(PlannerInfo *root, List *clauses,
 			}
 		}
 
-<<<<<<< HEAD
-		simple_sel = clauselist_selectivity_simple(root, attr_clauses, varRelid,
-												   jointype, sjinfo, NULL,
-												   false); /* no damping */
-=======
 		simple_sel = clauselist_selectivity_ext(root, attr_clauses, varRelid,
-												jointype, sjinfo, false);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+												jointype, sjinfo, false, false);
 		attr_sel[attidx++] = simple_sel;
 	}
 
