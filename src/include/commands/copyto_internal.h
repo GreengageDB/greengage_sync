@@ -83,6 +83,7 @@ typedef struct CopyToStateData
 
 extern CopyToState BeginCopyToOnSegment(QueryDesc *queryDesc);
 extern void EndCopyToOnSegment(CopyToState cstate);
+extern uint64 CopyToQueryOnSegment(CopyToState cstate);
 extern CopyToState BeginCopyToForeignTable(Relation forrel, List *options);
 extern void CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot);
 extern void CopyOneCustomRowTo(CopyToState cstate, bytea *value);

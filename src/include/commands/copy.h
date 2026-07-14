@@ -176,11 +176,15 @@ extern uint64 DoCopyTo(CopyToState cstate);
 extern List *CopyGetAttnums(TupleDesc tupDesc, Relation rel,
 							List *attnamelist);
 
+struct CdbSreh;
+
 extern char *limit_printout_length(const char *str);
 extern void truncateEol(StringInfo buf, EolType eol_type);
 extern void truncateEolStr(char *str, EolType eol_type);
 extern void MangleCopyFileName(char **filename_ptr, struct CdbSreh *cdbsreh);
 extern ProgramPipes *open_program_pipes(char *command, bool forwrite);
+extern void close_program_pipes(ProgramPipes *program_pipes,
+								FILE **copy_file_p, bool ifThrow);
 extern void setEncodingConversionProc(FmgrInfo **enc_conversion_proc,
 									  int encoding, bool iswritable);
 

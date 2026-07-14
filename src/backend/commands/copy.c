@@ -81,6 +81,7 @@ CopyStmt *glob_copystmt = NULL;
 extern bool Test_copy_qd_qe_split;
 
 static List *parse_joined_option_list(char *str, char *delimiter);
+static uint64 CopyDispatchOnSegment(const CopyStmt *stmt);
 
 /*
  *	 DoCopy executes the SQL COPY statement
@@ -428,7 +429,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 		PG_TRY();
 		{
 			if (Gp_role == GP_ROLE_DISPATCH && cstate->opts.on_segment)
-				*processed = CopyDispatchOnSegment(cstate, stmt);
+				*processed = CopyDispatchOnSegment(stmt);
 			else
 				*processed = CopyFrom(cstate);	/* copy from file to database */
 		}
@@ -476,7 +477,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 			if (Gp_role == GP_ROLE_DISPATCH && cstate->opts.on_segment)
 			{
 				if (cstate->rel)
-					*processed = CopyDispatchOnSegment(cstate, stmt);
+					*processed = CopyDispatchOnSegment(stmt);
 				else
 					*processed = CopyToQueryOnSegment(cstate);
 			}
@@ -1231,6 +1232,49 @@ parse_joined_option_list(char *str, char *delimiter)
 }
 
 /*
+ * Dispatch a COPY ON SEGMENT statement to QEs, and sum up the number of
+ * rows each of them processed/rejected.  Used by both COPY FROM and
+ * COPY TO; each QE does the actual reading/writing of its own file.
+ */
+static uint64
+CopyDispatchOnSegment(const CopyStmt *stmt)
+{
+	CopyStmt   *dispatchStmt;
+	CdbPgResults pgresults = {0};
+	int			i;
+	uint64		processed = 0;
+	uint64		rejected = 0;
+
+	dispatchStmt = copyObject((CopyStmt *) stmt);
+
+	CdbDispatchUtilityStatement((Node *) dispatchStmt,
+								DF_NEED_TWO_PHASE |
+								DF_WITH_SNAPSHOT |
+								DF_CANCEL_ON_ERROR,
+								NIL,
+								&pgresults);
+
+	/*
+	 * GPDB_91_MERGE_FIXME: SREH handling seems to be handled in a different
+	 * place for every type of copy. This should be consolidated with the
+	 * others.
+	 */
+	for (i = 0; i < pgresults.numResults; ++i)
+	{
+		struct pg_result *result = pgresults.pg_results[i];
+
+		processed += result->numCompleted;
+		rejected += result->numRejected;
+	}
+
+	if (rejected)
+		ReportSrehResults(NULL, rejected);
+
+	cdbdisp_clearCdbPgResults(&pgresults);
+	return processed;
+}
+
+/*
  * Run a COPY ... PROGRAM (or external web table) command and set up pipes
  * for communicating with it.  Used by both COPY FROM and COPY TO.
  */
@@ -1275,6 +1319,59 @@ open_program_pipes(char *command, bool forwrite)
 	}
 
 	return program_pipes;
+}
+
+/*
+ * Close the pipes opened by open_program_pipes(), collecting the exit
+ * status of the program.  '*copy_file_p' is the stdio stream on top of the
+ * data pipe, if any; it is closed and reset to NULL.  If ifThrow is true,
+ * raise an error when the program did not exit cleanly.
+ *
+ * Used by both COPY FROM and COPY TO.
+ */
+void
+close_program_pipes(ProgramPipes *program_pipes, FILE **copy_file_p,
+					bool ifThrow)
+{
+	int ret = 0;
+	StringInfoData sinfo;
+	initStringInfo(&sinfo);
+
+	if (*copy_file_p)
+	{
+		fclose(*copy_file_p);
+		*copy_file_p = NULL;
+	}
+
+	/* just return if pipes not created, like when relation does not exist */
+	if (!program_pipes)
+	{
+		return;
+	}
+
+	ret = pclose_with_stderr(program_pipes->pid, program_pipes->pipes, &sinfo);
+
+	if (ret == 0 || !ifThrow)
+	{
+		return;
+	}
+
+	if (ret == -1)
+	{
+		/* pclose()/wait4() ended with an error; errno should be valid */
+		ereport(ERROR,
+				(errcode_for_file_access(),
+				 errmsg("can not close pipe: %m")));
+	}
+	else if (!WIFSIGNALED(ret))
+	{
+		/*
+		 * pclose() returned the process termination state.
+		 */
+		ereport(ERROR,
+				(errcode(ERRCODE_SQL_ROUTINE_EXCEPTION),
+				 errmsg("command error message: %s", sinfo.data)));
+	}
 }
 
 /*

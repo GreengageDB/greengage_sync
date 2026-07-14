@@ -31,6 +31,9 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
+#include "cdb/cdbsreh.h"
+#include "cdb/cdbvars.h"
+
 #define ISOCTAL(c) (((c) >= '0') && ((c) <= '7'))
 #define OCTVALUE(c) ((c) - '0')
 
@@ -104,6 +107,9 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 
 
 /* non-export function prototypes */
+static bool NextCopyFromRawFieldsX(CopyFromState cstate, char ***fields,
+								   int *nfields, int stop_processing_at_field);
+static void HandleQDErrorFrame(CopyFromState cstate, char *p, int len);
 static bool CopyReadLine(CopyFromState cstate);
 static bool CopyReadLineText(CopyFromState cstate);
 static int	CopyReadAttributesText(CopyFromState cstate, int stop_processing_at_field);
@@ -114,8 +120,6 @@ static Datum CopyReadBinaryAttribute(CopyFromState cstate, FmgrInfo *flinfo,
 
 
 /* Low-level communications functions */
-static int	CopyGetData(CopyFromState cstate, void *databuf,
-						int datasize);
 static inline bool CopyGetInt32(CopyFromState cstate, int32 *val);
 static inline bool CopyGetInt16(CopyFromState cstate, int16 *val);
 static bool CopyLoadRawBuf(CopyFromState cstate);
@@ -212,7 +216,7 @@ ReceiveCopyBinaryHeader(CopyFromState cstate)
  *
  * NB: no data conversion is applied here.
  */
-static int
+int
 CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 {
 	size_t		bytesread = 0;
@@ -229,7 +233,8 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 				{
 					int olderrno = errno;
 
-					close_program_pipes(cstate, true);
+					close_program_pipes(cstate->program_pipes,
+										&cstate->copy_file, true);
 
 					/*
 					 * If close_program_pipes() didn't throw an error,
@@ -559,7 +564,7 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
  *
  * changing me? take a look at FILEAM_HANDLE_ERROR in fileam.c as well.
  */
-static void
+void
 HandleCopyError(CopyFromState cstate)
 {
 	if (cstate->errMode == ALL_OR_NOTHING)
@@ -930,7 +935,7 @@ NextCopyFromX(CopyFromState cstate, ExprContext *econtext,
  * (The logic is actually within NextCopyFrom(). This is a separate
  * function just for symmetry with NextCopyFromExecute()).
  */
-static bool
+bool
 NextCopyFromDispatch(CopyFromState cstate, ExprContext *econtext,
 					 Datum *values, bool *nulls)
 {
@@ -941,7 +946,7 @@ NextCopyFromDispatch(CopyFromState cstate, ExprContext *econtext,
  * Like NextCopyFrom(), but used in the QE, when we're reading pre-processed
  * rows from the QD.
  */
-static bool
+bool
 NextCopyFromExecute(CopyFromState cstate, ExprContext *econtext, Datum *values, bool *nulls)
 {
 	TupleDesc	tupDesc;

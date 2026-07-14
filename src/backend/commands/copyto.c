@@ -39,6 +39,7 @@
 #include "storage/execute_pipe.h"
 #include "storage/fd.h"
 #include "tcop/tcopprot.h"
+#include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/partcache.h"
@@ -74,8 +75,8 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 /* non-export function prototypes */
 static void EndCopy(CopyToState cstate);
 static void ClosePipeToProgram(CopyToState cstate);
-static void close_program_pipes(CopyToState cstate, bool ifThrow);
 static uint64 CopyTo(CopyToState cstate);
+static uint64 CopyToDispatch(CopyToState cstate);
 static void CopyToDispatchFlush(CopyToState cstate);
 static void CopyAttributeOutText(CopyToState cstate, char *string);
 static void CopyAttributeOutCSV(CopyToState cstate, char *string,
@@ -214,7 +215,8 @@ CopySendEndOfRow(CopyToState cstate)
 						 * error message from the subprocess' exit code than
 						 * just "Broken Pipe"
 						 */
-						close_program_pipes(cstate, true);
+						close_program_pipes(cstate->program_pipes,
+						                    &cstate->copy_file, true);
 
 						/*
 						 * If close_program_pipes() didn't throw an error,
@@ -298,7 +300,8 @@ CopyToDispatchFlush(CopyToState cstate)
 						 * message from the subprocess' exit code than just
 						 * "Broken Pipe"
 						 */
-						close_program_pipes(cstate, true);
+						close_program_pipes(cstate->program_pipes,
+						                    &cstate->copy_file, true);
 
 						/*
 						 * If close_program_pipes() didn't throw an error,
@@ -388,57 +391,6 @@ ClosePipeToProgram(CopyToState cstate)
 				 errmsg("program \"%s\" failed",
 						cstate->filename),
 				 errdetail_internal("%s", wait_result_to_str(pclose_rc))));
-	}
-}
-
-/*
- * Close the pipes opened by open_program_pipes(), collecting the exit
- * status of the program.  If ifThrow is true, raise an error when the
- * program did not exit cleanly.
- */
-static void
-close_program_pipes(CopyToState cstate, bool ifThrow)
-{
-	Assert(cstate->is_program);
-
-	int ret = 0;
-	StringInfoData sinfo;
-	initStringInfo(&sinfo);
-
-	if (cstate->copy_file)
-	{
-		fclose(cstate->copy_file);
-		cstate->copy_file = NULL;
-	}
-
-	/* just return if pipes not created, like when relation does not exist */
-	if (!cstate->program_pipes)
-	{
-		return;
-	}
-
-	ret = pclose_with_stderr(cstate->program_pipes->pid, cstate->program_pipes->pipes, &sinfo);
-
-	if (ret == 0 || !ifThrow)
-	{
-		return;
-	}
-
-	if (ret == -1)
-	{
-		/* pclose()/wait4() ended with an error; errno should be valid */
-		ereport(ERROR,
-				(errcode_for_file_access(),
-				 errmsg("can not close pipe: %m")));
-	}
-	else if (!WIFSIGNALED(ret))
-	{
-		/*
-		 * pclose() returned the process termination state.
-		 */
-		ereport(ERROR,
-				(errcode(ERRCODE_SQL_ROUTINE_EXCEPTION),
-				 errmsg("command error message: %s", sinfo.data)));
 	}
 }
 
@@ -803,7 +755,7 @@ BeginCopyToCommon(ParseState *pstate,
 		/* See Multibyte encoding comment above */
 		cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
 		setEncodingConversionProc(&cstate->enc_conversion_proc,
-								  cstate->file_encoding, !is_from);
+								  cstate->file_encoding, true);
 	}
 	else
 	{
@@ -1460,7 +1412,7 @@ CopyToDispatch(CopyToState cstate)
 
 
 
-static uint64
+uint64
 CopyToQueryOnSegment(CopyToState cstate)
 {
 	Assert(Gp_role != GP_ROLE_EXECUTE);
@@ -1633,47 +1585,6 @@ CopyTo(CopyToState cstate)
 
 	MemoryContextDelete(cstate->rowcontext);
 
-	return processed;
-}
-
-/*
- * Dispatch a COPY ON SEGMENT statement to QEs.
- */
-static uint64
-CopyDispatchOnSegment(CopyToState cstate, const CopyStmt *stmt)
-{
-	CopyStmt   *dispatchStmt;
-	CdbPgResults pgresults = {0};
-	int			i;
-	uint64		processed = 0;
-	uint64		rejected = 0;
-
-	dispatchStmt = copyObject((CopyStmt *) stmt);
-
-	CdbDispatchUtilityStatement((Node *) dispatchStmt,
-								DF_NEED_TWO_PHASE |
-								DF_WITH_SNAPSHOT |
-								DF_CANCEL_ON_ERROR,
-								NIL,
-								&pgresults);
-
-	/*
-	 * GPDB_91_MERGE_FIXME: SREH handling seems to be handled in a different
-	 * place for every type of copy. This should be consolidated with the
-	 * others.
-	 */
-	for (i = 0; i < pgresults.numResults; ++i)
-	{
-		struct pg_result *result = pgresults.pg_results[i];
-
-		processed += result->numCompleted;
-		rejected += result->numRejected;
-	}
-
-	if (rejected)
-		ReportSrehResults(NULL, rejected);
-
-	cdbdisp_clearCdbPgResults(&pgresults);
 	return processed;
 }
 

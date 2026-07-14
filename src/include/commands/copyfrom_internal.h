@@ -251,4 +251,18 @@ typedef struct
 extern void ReceiveCopyBegin(CopyFromState cstate);
 extern void ReceiveCopyBinaryHeader(CopyFromState cstate);
 
+/* in copyfromparse.c, shared with copyfrom.c */
+extern int	CopyGetData(CopyFromState cstate, void *databuf, int datasize);
+extern bool NextCopyFromX(CopyFromState cstate, ExprContext *econtext,
+						  Datum *values, bool *nulls);
+extern bool NextCopyFromDispatch(CopyFromState cstate, ExprContext *econtext,
+								 Datum *values, bool *nulls);
+extern bool NextCopyFromExecute(CopyFromState cstate, ExprContext *econtext,
+								Datum *values, bool *nulls);
+extern void HandleCopyError(CopyFromState cstate);
+
+/* in copyfrom.c, shared with copyfromparse.c */
+extern void SendCopyFromForwardedError(CopyFromState cstate, CdbCopy *cdbCopy,
+									   char *errormsg);
+
 #endif							/* COPYFROM_INTERNAL_H */

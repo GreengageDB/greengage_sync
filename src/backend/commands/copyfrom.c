@@ -118,10 +118,37 @@ typedef struct CopyMultiInsertInfo
 } CopyMultiInsertInfo;
 
 
+/*
+ * Testing GUC: When enabled, COPY FROM prints an INFO line to indicate which
+ * fields are processed in the QD, and which in the QE.
+ */
+extern bool Test_copy_qd_qe_split;
+
 /* non-export function prototypes */
 char *limit_printout_length(const char *str);
 
 static void ClosePipeFromProgram(CopyFromState cstate);
+
+static void SendCopyFromForwardedTuple(CopyFromState cstate,
+									   CdbCopy *cdbCopy,
+									   bool toAll,
+									   int target_seg,
+									   Relation rel,
+									   int64 lineno,
+									   char *line,
+									   int line_len,
+									   Datum *values,
+									   bool *nulls);
+static void SendCopyFromForwardedHeader(CopyFromState cstate,
+										CdbCopy *cdbCopy);
+static GpDistributionData *InitDistributionData(CopyFromState cstate,
+												EState *estate);
+static void FreeDistributionData(GpDistributionData *distData);
+static void InitCopyFromDispatchSplit(CopyFromState cstate,
+									  GpDistributionData *distData,
+									  EState *estate);
+static unsigned int GetTargetSeg(GpDistributionData *distData,
+								 TupleTableSlot *slot);
 
 /*
  * error context callback for COPY FROM
@@ -1666,7 +1693,7 @@ BeginCopyFrom(ParseState *pstate,
 		/* See Multibyte encoding comment above */
 		cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
 		setEncodingConversionProc(&cstate->enc_conversion_proc,
-								  cstate->file_encoding, !is_from);
+								  cstate->file_encoding, false);
 	}
 	else
 	{
@@ -2172,7 +2199,7 @@ SendCopyFromForwardedHeader(CopyFromState cstate, CdbCopy *cdbCopy)
 	cdbCopySendDataToAll(cdbCopy, (char *) &header_frame, sizeof(header_frame));
 }
 
-static void
+void
 SendCopyFromForwardedError(CopyFromState cstate, CdbCopy *cdbCopy, char *errormsg)
 {
 	copy_from_dispatch_error *errframe;
