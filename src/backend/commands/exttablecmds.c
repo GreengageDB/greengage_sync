@@ -620,6 +620,8 @@ transformFormatOpts(char formattype, List *formatOpts, int numcols, bool iswrita
 
 	CopyFormatOptions cstate_opts;
 
+	memset(&cstate_opts, 0, sizeof(cstate_opts));
+
 	pstate = make_parsestate(NULL);
 	pstate->p_sourcetext = NULL;
 
