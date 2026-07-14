@@ -180,6 +180,9 @@ extern char *limit_printout_length(const char *str);
 extern void truncateEol(StringInfo buf, EolType eol_type);
 extern void truncateEolStr(char *str, EolType eol_type);
 extern void MangleCopyFileName(char **filename_ptr, struct CdbSreh *cdbsreh);
+extern ProgramPipes *open_program_pipes(char *command, bool forwrite);
+extern void setEncodingConversionProc(FmgrInfo **enc_conversion_proc,
+									  int encoding, bool iswritable);
 
 extern CopyStmt *glob_copystmt;
 

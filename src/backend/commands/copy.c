@@ -63,6 +63,7 @@
 #include "commands/queue.h"
 #include "nodes/makefuncs.h"
 #include "postmaster/autostats.h"
+#include "storage/execute_pipe.h"
 #include "utils/metrics_utils.h"
 #include "utils/resscheduler.h"
 #include "utils/string_utils.h"
@@ -1227,4 +1228,93 @@ parse_joined_option_list(char *str, char *delimiter)
 	}
 
 	return cols;
+}
+
+/*
+ * Run a COPY ... PROGRAM (or external web table) command and set up pipes
+ * for communicating with it.  Used by both COPY FROM and COPY TO.
+ */
+ProgramPipes *
+open_program_pipes(char *command, bool forwrite)
+{
+	int save_errno;
+	pqsigfunc save_SIGPIPE;
+	/* set up extvar */
+	extvar_t extvar;
+	memset(&extvar, 0, sizeof(extvar));
+
+	external_set_env_vars(&extvar, command, false, NULL, NULL, false, 0);
+
+	ProgramPipes *program_pipes = palloc(sizeof(ProgramPipes));
+	program_pipes->pid = -1;
+	program_pipes->pipes[0] = -1;
+	program_pipes->pipes[1] = -1;
+	program_pipes->shexec = make_command(command, &extvar);
+
+	/*
+	 * Preserve the SIGPIPE handler and set to default handling.  This
+	 * allows "normal" SIGPIPE handling in the command pipeline.  Normal
+	 * for PG is to *ignore* SIGPIPE.
+	 */
+	save_SIGPIPE = pqsignal(SIGPIPE, SIG_DFL);
+
+	program_pipes->pid = popen_with_stderr(program_pipes->pipes, program_pipes->shexec, forwrite);
+
+	save_errno = errno;
+
+	/* Restore the SIGPIPE handler */
+	pqsignal(SIGPIPE, save_SIGPIPE);
+
+	elog(DEBUG5, "COPY ... PROGRAM command: %s", program_pipes->shexec);
+	if (program_pipes->pid == -1)
+	{
+		errno = save_errno;
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_RESOURCES),
+				 errmsg("can not start command: %s", command)));
+	}
+
+	return program_pipes;
+}
+
+/*
+ * setEncodingConversionProc
+ *
+ * COPY and External tables use a custom path to the encoding conversion
+ * API because external tables have their own encoding (which is not
+ * necessarily client_encoding). We therefore have to set the correct
+ * encoding conversion function pointer ourselves, to be later used in
+ * the conversion engine.
+ *
+ * Sets *enc_conversion_proc; used by both COPY FROM (and readable external
+ * tables) and COPY TO (and writable external tables).
+ *
+ * The code here mimics a part of SetClientEncoding() in mbutils.c
+ */
+void
+setEncodingConversionProc(FmgrInfo **enc_conversion_proc, int encoding,
+						  bool iswritable)
+{
+	Oid		conversion_proc;
+
+	/*
+	 * COPY FROM and RET: convert from file to server
+	 * COPY TO   and WET: convert from server to file
+	 */
+	if (iswritable)
+		conversion_proc = FindDefaultConversionProc(GetDatabaseEncoding(), encoding);
+	else
+		conversion_proc = FindDefaultConversionProc(encoding, GetDatabaseEncoding());
+
+	if (OidIsValid(conversion_proc))
+	{
+		/* conversion proc found */
+		*enc_conversion_proc = palloc(sizeof(FmgrInfo));
+		fmgr_info(conversion_proc, *enc_conversion_proc);
+	}
+	else
+	{
+		/* no conversion function (both encodings are probably the same) */
+		*enc_conversion_proc = NULL;
+	}
 }

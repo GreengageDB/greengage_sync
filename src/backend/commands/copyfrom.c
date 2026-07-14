@@ -39,7 +39,6 @@
 #include "pgstat.h"
 #include "rewrite/rewriteHandler.h"
 #include "storage/fd.h"
-#include "storage/execute_pipe.h"
 #include "tcop/tcopprot.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
@@ -1664,7 +1663,8 @@ BeginCopyFrom(ParseState *pstate,
 			  pg_database_encoding_max_length() > 1));
 		/* See Multibyte encoding comment above */
 		cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
-		setEncodingConversionProc(cstate, cstate->file_encoding, !is_from);
+		setEncodingConversionProc(&cstate->enc_conversion_proc,
+								  cstate->file_encoding, !is_from);
 	}
 	else
 	{
@@ -2349,131 +2349,4 @@ GetTargetSeg(GpDistributionData *distData, TupleTableSlot *slot)
 	}
 
 	return target_seg;
-}
-
-static ProgramPipes*
-open_program_pipes(char *command, bool forwrite)
-{
-	int save_errno;
-	pqsigfunc save_SIGPIPE;
-	/* set up extvar */
-	extvar_t extvar;
-	memset(&extvar, 0, sizeof(extvar));
-
-	external_set_env_vars(&extvar, command, false, NULL, NULL, false, 0);
-
-	ProgramPipes *program_pipes = palloc(sizeof(ProgramPipes));
-	program_pipes->pid = -1;
-	program_pipes->pipes[0] = -1;
-	program_pipes->pipes[1] = -1;
-	program_pipes->shexec = make_command(command, &extvar);
-
-	/*
-	 * Preserve the SIGPIPE handler and set to default handling.  This
-	 * allows "normal" SIGPIPE handling in the command pipeline.  Normal
-	 * for PG is to *ignore* SIGPIPE.
-	 */
-	save_SIGPIPE = pqsignal(SIGPIPE, SIG_DFL);
-
-	program_pipes->pid = popen_with_stderr(program_pipes->pipes, program_pipes->shexec, forwrite);
-
-	save_errno = errno;
-
-	/* Restore the SIGPIPE handler */
-	pqsignal(SIGPIPE, save_SIGPIPE);
-
-	elog(DEBUG5, "COPY ... PROGRAM command: %s", program_pipes->shexec);
-	if (program_pipes->pid == -1)
-	{
-		errno = save_errno;
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_RESOURCES),
-				 errmsg("can not start command: %s", command)));
-	}
-
-	return program_pipes;
-}
-
-static void
-close_program_pipes(CopyFromState cstate, bool ifThrow)
-{
-	Assert(cstate->is_program);
-
-	int ret = 0;
-	StringInfoData sinfo;
-	initStringInfo(&sinfo);
-
-	if (cstate->copy_file)
-	{
-		fclose(cstate->copy_file);
-		cstate->copy_file = NULL;
-	}
-
-	/* just return if pipes not created, like when relation does not exist */
-	if (!cstate->program_pipes)
-	{
-		return;
-	}
-	
-	ret = pclose_with_stderr(cstate->program_pipes->pid, cstate->program_pipes->pipes, &sinfo);
-
-	if (ret == 0 || !ifThrow)
-	{
-		return;
-	}
-
-	if (ret == -1)
-	{
-		/* pclose()/wait4() ended with an error; errno should be valid */
-		ereport(ERROR,
-				(errcode_for_file_access(),
-				 errmsg("can not close pipe: %m")));
-	}
-	else if (!WIFSIGNALED(ret))
-	{
-		/*
-		 * pclose() returned the process termination state.
-		 */
-		ereport(ERROR,
-				(errcode(ERRCODE_SQL_ROUTINE_EXCEPTION),
-				 errmsg("command error message: %s", sinfo.data)));
-	}
-}
-
-/*
- * setEncodingConversionProc
- *
- * COPY and External tables use a custom path to the encoding conversion
- * API because external tables have their own encoding (which is not
- * necessarily client_encoding). We therefore have to set the correct
- * encoding conversion function pointer ourselves, to be later used in
- * the conversion engine.
- *
- * The code here mimics a part of SetClientEncoding() in mbutils.c
- */
-static void
-setEncodingConversionProc(CopyFromState cstate, int encoding, bool iswritable)
-{
-	Oid		conversion_proc;
-	
-	/*
-	 * COPY FROM and RET: convert from file to server
-	 * COPY TO   and WET: convert from server to file
-	 */
-	if (iswritable)
-		conversion_proc = FindDefaultConversionProc(GetDatabaseEncoding(), encoding);
-	else		
-		conversion_proc = FindDefaultConversionProc(encoding, GetDatabaseEncoding());
-	
-	if (OidIsValid(conversion_proc))
-	{
-		/* conversion proc found */
-		cstate->enc_conversion_proc = palloc(sizeof(FmgrInfo));
-		fmgr_info(conversion_proc, cstate->enc_conversion_proc);
-	}
-	else
-	{
-		/* no conversion function (both encodings are probably the same) */
-		cstate->enc_conversion_proc = NULL;
-	}
 }
