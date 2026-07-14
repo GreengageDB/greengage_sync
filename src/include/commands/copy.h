@@ -79,6 +79,17 @@ typedef enum CopySrcDest
 } CopySrcDest;
 
 /*
+ *	Represents the end-of-line terminator type of the input
+ */
+typedef enum EolType
+{
+	EOL_UNKNOWN,
+	EOL_NL,
+	EOL_CR,
+	EOL_CRNL
+} EolType;
+
+/*
  * A struct to hold COPY options, in a parsed form. All of these are related
  * to formatting, except for 'freeze', which doesn't really belong here, but
  * it's expedient to parse it along with all the other options.
@@ -112,6 +123,7 @@ typedef struct CopyFormatOptions
 	bool		escape_off;		/* treat backslashes as non-special? */
 	bool		skip_foreign_partitions;  /* skip foreign/external partitions */
 	bool		delim_off;		/* delimiter is set to OFF? */
+	EolType		eol_type;		/* EOL type of input */
 	char	   *eol_str;		/* optional NEWLINE from command. before eol_type is defined */
 	SingleRowErrorDesc *sreh;
 	bool		on_segment; /* QE save data files locally */

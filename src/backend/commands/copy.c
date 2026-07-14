@@ -804,6 +804,8 @@ ProcessCopyOptions(ParseState *pstate,
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("COPY cannot specify NULL in BINARY mode")));
+	
+	opts_out->eol_type = EOL_UNKNOWN;
 
 	/* Set defaults for omitted options */
 	if (!opts_out->delim)
@@ -942,7 +944,7 @@ ProcessCopyOptions(ParseState *pstate,
 				 errmsg("COPY force null only available using COPY FROM")));
 
 	/* Don't allow the delimiter to appear in the null string. */
-	if (strchr(opts_out->null_print, opts_out->delim[0]) != NULL)
+	if (strchr(opts_out->null_print, opts_out->delim[0]) != NULL && !opts_out->delim_off)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY delimiter must not appear in the NULL specification")));
@@ -989,10 +991,33 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("fill missing fields only available for data loading, not unloading")));
 	
-	if (opts_out->eol_str && !is_from)
-		ereport(ERROR,
-				(errcode(ERRCODE_GP_FEATURE_NOT_YET),
-				 errmsg("newline currently available for data loading only, not unloading")));
+	/*
+	 * NEWLINE
+	 */
+	if (opts_out->eol_str)
+	{
+		if (!is_from)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_GP_FEATURE_NOT_YET),
+					errmsg("newline currently available for data loading only, not unloading")));
+		}
+		else
+		{
+			if (pg_strcasecmp(opts_out->eol_str, "lf") == 0)
+				opts_out->eol_type = EOL_NL;
+			else if (pg_strcasecmp(opts_out->eol_str, "cr") == 0)
+				opts_out->eol_type = EOL_CR;
+			else if (pg_strcasecmp(opts_out->eol_str, "crlf") == 0)
+				opts_out->eol_type = EOL_CRNL;
+			else
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("invalid value for NEWLINE \"%s\"",
+								opts_out->eol_str),
+						 errhint("Valid options are: 'LF', 'CRLF' and 'CR'.")));
+		}
+	}
 
 	if (opts_out->escape != NULL && pg_strcasecmp(opts_out->escape, "off") == 0)
 	{

@@ -856,7 +856,7 @@ static HeapTuple
 externalgettup_defined(FileScanDesc scan)
 {
 	HeapTuple	tuple = NULL;
-	CopyToState	pstate = scan->fs_pstate;
+	CopyFromStateData	*pstate = scan->fs_pstate;
 	MemoryContext oldcontext;
 
 	MemoryContextReset(pstate->rowcontext);
@@ -1370,7 +1370,7 @@ open_external_writable_source(ExternalInsertDesc extInsertDesc)
 							  extInsertDesc->ext_pstate->opts.csv_mode,
 							  extInsertDesc->ext_pstate->opts.escape,
 							  extInsertDesc->ext_pstate->opts.quote,
-							  extInsertDesc->ext_pstate->eol_type,
+							  extInsertDesc->ext_pstate->opts.eol_type,
 							  extInsertDesc->ext_pstate->opts.header_line,
 							  0,
 						 extInsertDesc->ext_custom_formatter_params);

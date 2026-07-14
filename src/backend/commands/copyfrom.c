@@ -118,7 +118,7 @@ typedef struct CopyMultiInsertInfo
 
 
 /* non-export function prototypes */
-static char *limit_printout_length(const char *str);
+char *limit_printout_length(const char *str);
 
 static void ClosePipeFromProgram(CopyFromState cstate);
 
@@ -1091,6 +1091,9 @@ CopyFrom(CopyFromState cstate)
 			}
 			PG_END_TRY();
 
+			if (got_error)
+				continue;
+
 			if (prevResultRelInfo != resultRelInfo)
 			{
 				/* Determine which triggers exist on this partition */
@@ -1646,26 +1649,6 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->file_encoding = cstate->opts.file_encoding;
 
 	/*
-	 * NEWLINE
-	 */
-	cstate->eol_type = EOL_UNKNOWN;
-	if (cstate->opts.eol_str)
-	{
-		if (pg_strcasecmp(cstate->opts.eol_str, "lf") == 0)
-			cstate->eol_type = EOL_NL;
-		else if (pg_strcasecmp(cstate->opts.eol_str, "cr") == 0)
-			cstate->eol_type = EOL_CR;
-		else if (pg_strcasecmp(cstate->opts.eol_str, "crlf") == 0)
-			cstate->eol_type = EOL_CRNL;
-		else
-			ereport(ERROR,
-					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-					 errmsg("invalid value for NEWLINE \"%s\"",
-							cstate->opts.eol_str),
-					 errhint("Valid options are: 'LF', 'CRLF' and 'CR'.")));
-	}
-
-	/*
 	 * Set up encoding conversion info.  Even if the file and server encodings
 	 * are the same, we must apply pg_any_to_server() to validate data in
 	 * multibyte encodings.
@@ -1690,6 +1673,8 @@ BeginCopyFrom(ParseState *pstate,
 	cstate->copy_src = COPY_FILE;	/* default */
 
 	cstate->whereClause = whereClause;
+
+	cstate->eol_type = cstate->opts.eol_type;
 
 	MemoryContextSwitchTo(oldcontext);
 
