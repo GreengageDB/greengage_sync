@@ -164,8 +164,6 @@ typedef struct CopyFromStateData
 	List	   *qe_attnumlist;
 	bool		stopped_processing_at_delim;
 
-	bool		ignore_extra_line; /* Don't count CSV header or binary trailer in
-									  "processed" line number for on_segment mode*/
 	ProgramPipes	*program_pipes; /* COPY PROGRAM pipes for data and stderr */
 	MemoryContext rowcontext;	/* per-row evaluation context */
 

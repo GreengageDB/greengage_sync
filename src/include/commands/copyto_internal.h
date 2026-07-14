@@ -72,9 +72,6 @@ typedef struct CopyToStateData
 	List	   *qe_attnumlist;
 	bool		stopped_processing_at_delim;
 
-	bool		on_segment; /* QE save data files locally */
-	bool		ignore_extra_line; /* Don't count CSV header or binary trailer in
-									  "processed" line number for on_segment mode*/
 	ProgramPipes	*program_pipes; /* COPY PROGRAM pipes for data and stderr */
 
 

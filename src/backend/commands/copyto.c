@@ -861,7 +861,7 @@ BeginCopyToOnSegment(QueryDesc *queryDesc)
 	cstate->filename = pstrdup(copyIntoClause->filename);
 	cstate->is_program = copyIntoClause->is_program;
 
-	if (cstate->on_segment)
+	if (cstate->opts.on_segment)
 		MangleCopyFileName(&cstate->filename, NULL);
 	filename = cstate->filename;
 
@@ -1058,7 +1058,7 @@ BeginCopyTo(ParseState *pstate,
 	else
 		cstate->dispatch_mode = COPY_DIRECT;
 
-	bool		pipe = (filename == NULL || (Gp_role == GP_ROLE_EXECUTE && !cstate->on_segment));
+	bool		pipe = (filename == NULL || (Gp_role == GP_ROLE_EXECUTE && !cstate->opts.on_segment));
 
 	if (cstate->opts.on_segment && Gp_role == GP_ROLE_DISPATCH)
 	{
@@ -1080,7 +1080,7 @@ BeginCopyTo(ParseState *pstate,
 		cstate->filename = pstrdup(filename);
 		cstate->is_program = is_program;
 
-		if (cstate->on_segment)
+		if (cstate->opts.on_segment)
 			MangleCopyFileName(&cstate->filename, NULL);
 		filename = cstate->filename;
 
