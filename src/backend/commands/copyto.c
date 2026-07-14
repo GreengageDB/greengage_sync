@@ -501,7 +501,7 @@ BeginCopyToCommon(ParseState *pstate,
 	is_external_table = rel != NULL && rel_is_external_table(rel->rd_id);
 
 	/* Extract options from the statement node tree */
-	ProcessCopyOptions(pstate, cstate, false, options, is_external_table);
+	ProcessCopyOptions(pstate, &cstate->opts, false, options, is_external_table);
 
 	if (cstate->opts.delim_off && !is_external_table)
 	{
