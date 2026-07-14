@@ -1321,7 +1321,9 @@ CopyToDispatch(CopyToState cstate)
 	/* We use fe_msgbuf as a per-row buffer regardless of copy_dest */
 	cstate->fe_msgbuf = makeStringInfo();
 
-	cdbCopy = makeCdbCopy(cstate, false);
+	cdbCopy = makeCdbCopy(cstate->rel->rd_cdbpolicy,
+						  cstate->opts.on_segment, false);
+	cstate->cdbCopy = cdbCopy;
 
 	/* XXX: lock all partitions */
 

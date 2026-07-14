@@ -921,7 +921,9 @@ CopyFrom(CopyFromState cstate)
 		 * - dispatch the modified COPY command to all segment databases.
 		 * - prepare cdbhash for hashing on row values.
 		 */
-		cdbCopy = makeCdbCopy(cstate, true);
+		cdbCopy = makeCdbCopy(cstate->rel->rd_cdbpolicy,
+							  cstate->opts.on_segment, true);
+		cstate->cdbCopy = cdbCopy;
 
 		/*
 		 * Dispatch the COPY command.
