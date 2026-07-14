@@ -44,6 +44,8 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
+#include "libpq-fe.h"
+
 #include "access/external.h"
 #include "access/url.h"
 #include "catalog/catalog.h"
@@ -72,7 +74,6 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 static void EndCopy(CopyToState cstate);
 static void ClosePipeToProgram(CopyToState cstate);
 static uint64 CopyTo(CopyToState cstate);
-static void CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot);
 static void CopyToDispatchFlush(CopyToState cstate);
 static void CopyAttributeOutText(CopyToState cstate, char *string);
 static void CopyAttributeOutCSV(CopyToState cstate, char *string,
@@ -84,7 +85,6 @@ static void SendCopyEnd(CopyToState cstate);
 static void CopySendData(CopyToState cstate, const void *databuf, int datasize);
 static void CopySendString(CopyToState cstate, const char *str);
 static void CopySendChar(CopyToState cstate, char c);
-static void CopySendEndOfRow(CopyToState cstate);
 static void CopySendInt32(CopyToState cstate, int32 val);
 static void CopySendInt16(CopyToState cstate, int16 val);
 

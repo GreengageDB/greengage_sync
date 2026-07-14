@@ -47,6 +47,8 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
+#include "libpq-fe.h"
+
 #include "access/external.h"
 #include "access/url.h"
 #include "catalog/catalog.h"

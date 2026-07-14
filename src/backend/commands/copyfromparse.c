@@ -106,8 +106,8 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 /* non-export function prototypes */
 static bool CopyReadLine(CopyFromState cstate);
 static bool CopyReadLineText(CopyFromState cstate);
-static int	CopyReadAttributesText(CopyFromState cstate);
-static int	CopyReadAttributesCSV(CopyFromState cstate);
+static int	CopyReadAttributesText(CopyFromState cstate, int stop_processing_at_field);
+static int	CopyReadAttributesCSV(CopyFromState cstate, int stop_processing_at_field);
 static Datum CopyReadBinaryAttribute(CopyFromState cstate, FmgrInfo *flinfo,
 									 Oid typioparam, int32 typmod,
 									 bool *isnull);
@@ -1522,7 +1522,7 @@ CopyReadLineText(CopyFromState cstate)
 					}
 				}
 			}
-+#if 0 /* GPDB_91_MERGE_FIXME: see above. */
+#if 0 /* GPDB_91_MERGE_FIXME: see above. */
 			else if (cstate->eol_type == EOL_NL)
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
