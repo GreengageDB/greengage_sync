@@ -1291,18 +1291,14 @@ sendFileWithContent(const char *filename, const char *content,
 		update_basebackup_progress(pad);
 	}
 
-<<<<<<< HEAD
 	elogif(debug_basebackup, LOG,
 			"basebackup send file -- Sent file '%s' with content \n%s.",
 			filename, content);
 
-	pg_checksum_update(&checksum_ctx, (uint8 *) content, len);
-=======
 	if (pg_checksum_update(&checksum_ctx, (uint8 *) content, len) < 0)
 		elog(ERROR, "could not update checksum of file \"%s\"",
 			 filename);
 
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	AddFileToBackupManifest(manifest, NULL, filename, len,
 							(pg_time_t) statbuf.st_mtime, &checksum_ctx);
 }
