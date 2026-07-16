@@ -671,11 +671,8 @@ extern void pqSaveMessageField(PGresult *res, char code,
 extern void pqSaveParameterStatus(PGconn *conn, const char *name,
 								  const char *value);
 extern int	pqRowProcessor(PGconn *conn, const char **errmsgp);
-<<<<<<< HEAD
-extern bool PQsendQueryStart(PGconn *conn);
-=======
+extern bool PQsendQueryStart(PGconn *conn, bool newQuery);
 extern int	PQsendQueryContinue(PGconn *conn, const char *query);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 /* === in fe-protocol2.c === */
 
