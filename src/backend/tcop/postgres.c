@@ -5357,7 +5357,6 @@ PostgresMain(int argc, char *argv[],
 				enable_timeout_after(IDLE_GANG_TIMEOUT,
 									 IdleSessionGangTimeout);
 			}
-			
 			/* Report any recently-changed GUC options */
 			ReportChangedGUCOptions();
 
