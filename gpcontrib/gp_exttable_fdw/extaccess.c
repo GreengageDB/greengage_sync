@@ -856,7 +856,7 @@ static HeapTuple
 externalgettup_defined(FileScanDesc scan)
 {
 	HeapTuple	tuple = NULL;
-	CopyFromStateData	*pstate = scan->fs_pstate;
+	CopyFromState pstate = scan->fs_pstate;
 	MemoryContext oldcontext;
 
 	MemoryContextReset(pstate->rowcontext);
