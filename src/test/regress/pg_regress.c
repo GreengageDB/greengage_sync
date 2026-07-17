@@ -3315,7 +3315,7 @@ regression_main(int argc, char *argv[],
 
 	for (sl = setup_tests; sl != NULL && !halt_work; sl = sl->next)
 	{
-		run_single_test(sl->str, tfunc);
+		run_single_test(sl->str, startfunc, postfunc);
 	}
 
 	for (sl = schedulelist; sl != NULL && !halt_work; sl = sl->next)
