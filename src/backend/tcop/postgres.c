@@ -3530,9 +3530,8 @@ drop_unnamed_stmt(void)
 /*
  * quickdie() occurs when signaled SIGQUIT by the postmaster.
  *
-<<<<<<< HEAD
- * Some backend has bought the farm,
- * so we need to stop what we're doing and exit.
+ * Either some backend has bought the farm, or we've been told to shut down
+ * "immediately"; so we need to stop what we're doing and exit.
  *
  * NOTE: see MPP-9518 and MPP-7564, there are other backend processes
  * which come through here, there isn't anything specific to any particular
@@ -3542,10 +3541,6 @@ drop_unnamed_stmt(void)
  *
  *
  * @param SIGNAL_ARGS -- so the signature matches a signal handler.  Nore that
-=======
- * Either some backend has bought the farm, or we've been told to shut down
- * "immediately"; so we need to stop what we're doing and exit.
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
  */
 void
 quickdie(SIGNAL_ARGS)
@@ -4159,15 +4154,6 @@ ProcessInterrupts(const char* filename, int lineno)
 			IdleInTransactionSessionTimeoutPending = false;
 	}
 
-<<<<<<< HEAD
-	if (IdleGangTimeoutPending)
-	{
-		/* As above, ignore the signal if the GUC has been reset to zero. */
-		if (IdleSessionGangTimeout > 0)
-			DisconnectAndDestroyUnusedQEs();
-
-		IdleGangTimeoutPending = false;
-=======
 	if (IdleSessionTimeoutPending)
 	{
 		/* As above, ignore the signal if the GUC has been reset to zero. */
@@ -4177,7 +4163,15 @@ ProcessInterrupts(const char* filename, int lineno)
 					 errmsg("terminating connection due to idle-session timeout")));
 		else
 			IdleSessionTimeoutPending = false;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+	}
+
+	if (IdleGangTimeoutPending)
+	{
+		/* As above, ignore the signal if the GUC has been reset to zero. */
+		if (IdleSessionGangTimeout > 0)
+			DisconnectAndDestroyUnusedQEs();
+
+		IdleGangTimeoutPending = false;
 	}
 
 	if (ProcSignalBarrierPending)
@@ -4528,11 +4522,7 @@ process_postgres_switches(int argc, char *argv[], GucContext ctx,
 	 * postmaster/postmaster.c (the option sets should not conflict) and with
 	 * the common help() function in main/main.c.
 	 */
-<<<<<<< HEAD
 	while ((flag = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lMm:N:nOo:Pp:r:S:sTt:v:W:-:")) != -1)
-=======
-	while ((flag = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lN:nOPp:r:S:sTt:v:W:-:")) != -1)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	{
 		switch (flag)
 		{
@@ -4817,7 +4807,7 @@ PostgresMain(int argc, char *argv[],
 	sigjmp_buf	local_sigjmp_buf;
 	volatile bool send_ready_for_query = true;
 	bool		idle_in_transaction_timeout_enabled = false;
-<<<<<<< HEAD
+	bool		idle_session_timeout_enabled = false;
 	bool		idle_gang_timeout_enabled = false;
 
 	/*
@@ -4826,9 +4816,6 @@ PostgresMain(int argc, char *argv[],
 	 * Save our main thread-id for comparison during signals.
 	 */
 	main_tid = pthread_self();
-=======
-	bool		idle_session_timeout_enabled = false;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 	/* Initialize startup process environment if necessary. */
 	if (!IsUnderPostmaster)
@@ -5363,7 +5350,6 @@ PostgresMain(int argc, char *argv[],
 				}
 			}
 
-<<<<<<< HEAD
 			/* Start the idle-gang timer */
 			if (Gp_role == GP_ROLE_DISPATCH && IdleSessionGangTimeout > 0 && cdbcomponent_qesExist())
 			{
@@ -5371,10 +5357,8 @@ PostgresMain(int argc, char *argv[],
 				enable_timeout_after(IDLE_GANG_TIMEOUT,
 									 IdleSessionGangTimeout);
 			}
-=======
 			/* Report any recently-changed GUC options */
 			ReportChangedGUCOptions();
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 			ReadyForQuery(whereToSendOutput);
 			send_ready_for_query = false;
@@ -5400,7 +5384,6 @@ PostgresMain(int argc, char *argv[],
 		firstchar = ReadCommand(&input_message);
 
 		/*
-<<<<<<< HEAD
 		 * Reset QueryFinishPending flag, so that if we received a delayed
 		 * query finish requested after we had already finished processing
 		 * the previous command, we don't prematurely finish the next
@@ -5411,8 +5394,6 @@ PostgresMain(int argc, char *argv[],
 		IdleTracker_ActivateProcess();
 
 		/*
-		 * (4) disable async signal conditions again.
-=======
 		 * (4) turn off the idle-in-transaction and idle-session timeouts, if
 		 * active.  We do this before step (5) so that any last-moment timeout
 		 * is certain to be detected in step (5).
@@ -5430,10 +5411,15 @@ PostgresMain(int argc, char *argv[],
 			disable_timeout(IDLE_SESSION_TIMEOUT, false);
 			idle_session_timeout_enabled = false;
 		}
+		if (idle_gang_timeout_enabled)
+		{
+			disable_timeout(IDLE_GANG_TIMEOUT, false);
+			idle_gang_timeout_enabled = false;
+		}
 
 		/*
 		 * (5) disable async signal conditions again.
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+
 		 *
 		 * Query cancel is supposed to be a no-op when there is no query in
 		 * progress, so if a query cancel arrived while we were idle, just
@@ -5445,27 +5431,6 @@ PostgresMain(int argc, char *argv[],
 		DoingCommandRead = false;
 
 		/*
-<<<<<<< HEAD
-		 * (5) turn off the idle-in-transaction and idle-session timeouts, if
-		 * active.
-		 *
-		 * At most one of these two will be active, so there's no need to
-		 * worry about combining the timeout.c calls into one.
-		 */
-		if (idle_in_transaction_timeout_enabled)
-		{
-			disable_timeout(IDLE_IN_TRANSACTION_SESSION_TIMEOUT, false);
-			idle_in_transaction_timeout_enabled = false;
-		}
-		if (idle_gang_timeout_enabled)
-		{
-			disable_timeout(IDLE_GANG_TIMEOUT, false);
-			idle_gang_timeout_enabled = false;
-		}
-
-		/*
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		 * (6) check for any other interesting events that happened while we
 		 * slept.
 		 */
