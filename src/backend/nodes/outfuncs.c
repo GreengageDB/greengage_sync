@@ -6331,6 +6331,7 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_Null:
 				_outNull(str, obj);
+				break;
 			case T_PLAssignStmt:
 				_outPLAssignStmt(str, obj);
 				break;
