@@ -11428,7 +11428,7 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 								 "pg_catalog.pg_get_expr(typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, typdefault ");
 
 		appendPQExpBuffer(query, "FROM pg_catalog.pg_type "
-						  "WHERE oid = 	$1");
+						  "WHERE oid = $1");
 
 		ExecuteSqlStatement(fout, query->data);
 
