@@ -64,7 +64,7 @@ typedef struct CopyToStateData
 	MemoryContext rowcontext;	/* per-row evaluation context */
 	uint64		bytes_processed;	/* number of bytes processed so far */
 
-	/* Greenplum Database specific variables */
+	/* GPDB specific variables */
 	FmgrInfo   *enc_conversion_proc; /* conv proc from exttbl encoding to
 										server or the other way around */
 	int			first_qe_processed_field;
@@ -78,7 +78,7 @@ typedef struct CopyToStateData
 	/* Information on the connections to QEs. */
 	CdbCopy    *cdbCopy;
 
-/* end Greenplum Database specific variables */
+/* end GPDB specific variables */
 } CopyToStateData;
 
 extern CopyToState BeginCopyToOnSegment(QueryDesc *queryDesc);

@@ -446,7 +446,7 @@ BeginCopyToCommon(ParseState *pstate,
 
 	oldcontext = MemoryContextSwitchTo(cstate->copycontext);
 
-	/* Greenplum needs this to detect custom protocol */
+	/* GPDB needs this to detect custom protocol */
 	if (rel)
 		cstate->rel = rel;
 
@@ -1280,7 +1280,7 @@ CopyToDispatch(CopyToState cstate)
 	/* XXX: lock all partitions */
 
 	/*
-	 * Start a COPY command in every db of every segment in Greenplum Database.
+	 * Start a COPY command in every db of every segment in GPDB.
 	 *
 	 * From this point in the code we need to be extra careful
 	 * about error handling. ereport() must not be called until
@@ -1880,7 +1880,7 @@ CopyAttributeOutText(CopyToState cstate, char *string)
 				CopySendChar(cstate, c);
 				start = ++ptr;	/* do not include char in next run */
 			}
-			else if (c == '\\' || c == delimc)
+			else if (c == escapec || c == delimc)
 			{
 				DUMPSOFAR();
 				CopySendChar(cstate, escapec);

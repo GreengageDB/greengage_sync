@@ -1069,7 +1069,7 @@ CopyFrom(CopyFromState cstate)
 			 * In COPY FROM ON SEGMENT, check the distribution key in the
 			 * QE.
 			 * Note: For partitioned tables, the order of the root table's columns can be
-			 * inconsistent with the order of the partition's columns and Greenplum/PostgreSQL
+			 * inconsistent with the order of the partition's columns and GPDB/PostgreSQL
 			 * allows such behavior. When they have different orders, we need to re-order the
 			 * TupleTableSlot (myslot) to make it match the partition's columns (see execute_attr_map_slot()
 			 * for details). We must perform this check before the re-ordering of TupleTableslot,
@@ -1553,7 +1553,7 @@ BeginCopyFrom(ParseState *pstate,
 
 	oldcontext = MemoryContextSwitchTo(cstate->copycontext);
 
-	/* Greenplum needs this to detect custom protocol */
+	/* GPDB needs this to detect custom protocol */
 	if (rel)
 		cstate->rel = rel;
 
