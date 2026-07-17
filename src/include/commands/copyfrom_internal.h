@@ -156,7 +156,7 @@ typedef struct CopyFromStateData
 	/* Shorthand for number of unconsumed bytes available in raw_buf */
 #define RAW_BUF_BYTES(cstate) ((cstate)->raw_buf_len - (cstate)->raw_buf_index)
 
-	/* Greenplum Database specific variables */
+	/* GPDB specific variables */
 	FmgrInfo   *enc_conversion_proc; /* conv proc from exttbl encoding to
 										server or the other way around */
 	int			first_qe_processed_field;
@@ -170,7 +170,7 @@ typedef struct CopyFromStateData
 	/* Information on the connections to QEs. */
 	CdbCopy    *cdbCopy;
 
-/* end Greenplum Database specific variables */
+/* end GPDB specific variables */
 } CopyFromStateData;
 
 /* Header contains information that applies to all the rows that follow. */

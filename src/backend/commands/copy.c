@@ -27,8 +27,6 @@
 #include "access/xact.h"
 #include "catalog/pg_authid.h"
 #include "commands/copy.h"
-#include "commands/copyfrom_internal.h"
-#include "commands/copyto_internal.h"
 #include "commands/defrem.h"
 #include "executor/executor.h"
 #include "mb/pg_wchar.h"
@@ -60,6 +58,8 @@
 #include "cdb/cdbdispatchresult.h"
 #include "cdb/cdbsreh.h"
 #include "cdb/cdbvars.h"
+#include "commands/copyfrom_internal.h"
+#include "commands/copyto_internal.h"
 #include "commands/queue.h"
 #include "nodes/makefuncs.h"
 #include "postmaster/autostats.h"
@@ -126,8 +126,8 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY single row error handling only available using COPY FROM")));
 
-/* GPDB_91_MERGE_FIXME: this should probably be done earlier, e.g. in parser */
-	/* Transfer any SREH options to the options list, so that BeginCopy can see them. */
+	/* GPDB_91_MERGE_FIXME: this should probably be done earlier, e.g. in parser */
+	/* Transfer any SREH options to the options list, so that BeginCopyFrom can see them. */
 	if (stmt->sreh)
 	{
 		SingleRowErrorDesc *sreh = (SingleRowErrorDesc *) stmt->sreh;
@@ -607,7 +607,7 @@ ProcessCopyOptions(ParseState *pstate,
 			 * must assume that if NULL AS was indicated and has no value
 			 * the actual value is an empty string.
 			 */
-			if(!opts_out->null_print)
+			if (!opts_out->null_print)
 				opts_out->null_print = "";
 		}
 		else if (strcmp(defel->defname, "header") == 0)
@@ -806,7 +806,6 @@ ProcessCopyOptions(ParseState *pstate,
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("COPY cannot specify NULL in BINARY mode")));
-	
 	opts_out->eol_type = EOL_UNKNOWN;
 
 	/* Set defaults for omitted options */
@@ -872,7 +871,7 @@ ProcessCopyOptions(ParseState *pstate,
 	 * In PostgreSQL, HEADER is not allowed in text mode either, but in GPDB,
 	 * only forbid it with BINARY.
 	 */
-	if (!opts_out->binary && opts_out->header_line)
+	if (opts_out->binary && opts_out->header_line)
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("COPY cannot specify HEADER in BINARY mode")));
@@ -992,7 +991,7 @@ ProcessCopyOptions(ParseState *pstate,
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("fill missing fields only available for data loading, not unloading")));
-	
+
 	/*
 	 * NEWLINE
 	 */
@@ -1119,8 +1118,8 @@ CopyGetAttnums(TupleDesc tupDesc, Relation rel, List *attnamelist)
 }
 
 /*
- * Modify the filename in cstate->filename, and cstate->cdbsreh if any,
- * for COPY ON SEGMENT.
+ * Modify the filename in *filename_ptr, and the error-log filename in
+ * cdbsreh if any, for COPY ON SEGMENT.
  *
  * Replaces the "<SEGID>" token in the filename with this segment's ID.
  */

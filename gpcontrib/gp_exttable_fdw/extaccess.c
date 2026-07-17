@@ -1167,9 +1167,9 @@ lookupCustomFormatter(List **options, bool iswritable)
  */
 static void
 InitToParseState(CopyToState pstate, Relation relation,
-			   char fmtType,
-			   char *uri, int rejectlimit,
-			   bool islimitinrows, char logerrors)
+				 char fmtType,
+				 char *uri, int rejectlimit,
+				 bool islimitinrows, char logerrors)
 {
 	/* Initialize 'out_functions', like CopyTo() would. */
 	CopyToState cstate = pstate;
@@ -1272,6 +1272,7 @@ InitFromParseState(CopyFromState pstate, Relation relation,
 											   ALLOCSET_DEFAULT_MAXSIZE);
 }
 
+
 /*
  * Prepare the formatter data to be used inside the formatting UDF.
  * This function should be called every time before invoking the
@@ -1347,6 +1348,7 @@ open_external_readable_source(FileScanDesc scan, ExternalSelectDesc desc)
 	scan->fs_file = url_fopen(scan->fs_uri,
 							  false /* for read */ ,
 							  &extvar,
+							  &scan->fs_pstate->opts,
 							  scan->fs_pstate,
 							  desc);
 }
@@ -1379,7 +1381,8 @@ open_external_writable_source(ExternalInsertDesc extInsertDesc)
 	extInsertDesc->ext_file = url_fopen(extInsertDesc->ext_uri,
 										true /* forwrite */ ,
 										&extvar,
-										extInsertDesc->ext_pstate,
+										&extInsertDesc->ext_pstate->opts,
+										NULL,
 										NULL);
 }
 

@@ -1173,7 +1173,7 @@ is_file_exists(const char* filename)
 }
 
 URL_FILE *
-url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate)
+url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts)
 {
 	URL_CURL_FILE *file;
 	int         ip_mode;
@@ -1229,7 +1229,7 @@ url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate)
 		unsigned int tmp_len = strlen(file->curl_url) + 1;
 		memmove(file->curl_url, file->curl_url + 3, tmp_len - 3);
 		memcpy(file->curl_url, "http", 4);
-		pstate->opts.header_line = 0;
+		opts->header_line = 0;
 	}
 
 	/* initialize a curl session and get a libcurl handle for it */
@@ -1889,7 +1889,7 @@ gp_proto1_read(char *buf, int bufsz, URL_CURL_FILE *file, CopyFromState pstate, 
  * a push model with a POST request.
  */
 static void
-gp_proto0_write(URL_CURL_FILE *file, CopyFromState pstate)
+gp_proto0_write(URL_CURL_FILE *file, CopyToState pstate)
 {	
 	char*		buf;
 	int		nbytes;
@@ -1970,7 +1970,7 @@ curl_fread(char *buf, int bufsz, URL_CURL_FILE *file, CopyFromState pstate)
 }
 
 static size_t
-curl_fwrite(char *buf, int nbytes, URL_CURL_FILE *file, CopyFromState pstate)
+curl_fwrite(char *buf, int nbytes, URL_CURL_FILE *file, CopyToState pstate)
 {
 	if (!file->for_write)
 		elog(ERROR, "cannot write to a read-mode external table");
@@ -2035,7 +2035,7 @@ url_curl_fread(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
 }
 
 size_t
-url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
+url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyToState pstate)
 {
 	URL_CURL_FILE *cfile = (URL_CURL_FILE *) file;
 
@@ -2047,7 +2047,7 @@ url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
  * flush all remaining buffered data waiting to be written out to external source
  */
 void
-url_curl_fflush(URL_FILE *file, CopyFromState pstate)
+url_curl_fflush(URL_FILE *file, CopyToState pstate)
 {
 	gp_proto0_write((URL_CURL_FILE *) file, pstate);
 }
@@ -2067,7 +2067,7 @@ curl_not_compiled_error(void)
 }
 
 URL_FILE *
-url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate)
+url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts)
 {
 	curl_not_compiled_error();
 	return NULL; /* keep compiler quiet */
@@ -2092,12 +2092,12 @@ size_t url_curl_fread(void *ptr, size_t size, URL_FILE *file, CopyFromState psta
 	curl_not_compiled_error();
 	return 0; /* keep compiler quiet */
 }
-size_t url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
+size_t url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyToState pstate)
 {
 	curl_not_compiled_error();
 	return 0; /* keep compiler quiet */
 }
-void url_curl_fflush(URL_FILE *file, CopyFromState pstate)
+void url_curl_fflush(URL_FILE *file, CopyToState pstate)
 {
 	curl_not_compiled_error();
 }
