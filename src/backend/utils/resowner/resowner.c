@@ -1408,7 +1408,6 @@ ResourceOwnerForgetJIT(ResourceOwner owner, Datum handle)
 }
 
 /*
-<<<<<<< HEAD
  * Cdb: walk through a resource owner and it's childrens
  */
 void
@@ -1424,7 +1423,9 @@ CdbResourceOwnerWalker(ResourceOwner owner, ResourceWalkerCallback callback)
 	/* Recurse to handle descendants */
 	for (child = owner->firstchild; child != NULL; child = child->nextchild)
 		CdbResourceOwnerWalker(child, callback);
-=======
+}
+
+/*
  * Make sure there is room for at least one more entry in a ResourceOwner's
  * cryptohash context reference array.
  *
@@ -1467,5 +1468,4 @@ PrintCryptoHashLeakWarning(Datum handle)
 {
 	elog(WARNING, "cryptohash context reference leak: context %p still referenced",
 		 DatumGetPointer(handle));
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 }
