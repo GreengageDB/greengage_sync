@@ -249,6 +249,18 @@ preprocess_aggref(Aggref *aggref, PlannerInfo *root)
 			root->hasNonPartialAggs = true;
 		}
 
+		/*
+		 * The PostgreSQL 'numOrderedAggs' field includes DISTINCT aggregates,
+		 * too, but cdbgroup.c handles DISTINCT aggregates differently, and
+		 * needs to know if there are any purely ordered aggs, not counting
+		 * DISTINCT aggs.
+		 */
+		if (aggref->aggorder != NIL)
+			root->numPureOrderedAggs++;
+
+		if (aggref->aggdistinct != NIL)
+			root->distinctAggrefs = lappend(root->distinctAggrefs, aggref);
+
 		get_typlenbyval(aggtranstype,
 						&transtypeLen,
 						&transtypeByVal);
@@ -288,15 +300,24 @@ preprocess_aggref(Aggref *aggref, PlannerInfo *root)
 			/*
 			 * Check whether partial aggregation is feasible, unless we
 			 * already found out that we can't do it.
+			 *
+			 * In GPDB, we can do two-stage aggregation with DISTINCT-qualified
+			 * aggregates, if the data distribution happens to match the DISTINCT
+			 * expressions. So we keep track whether all aggregates have combine
+			 * functions, even if there are DISTINCT aggregates. hasNonCombineAggs is
+			 * set if there are any aggregates without combine functions, even if
+			 * there are DISTINCT aggregates.
 			 */
-			if (!root->hasNonPartialAggs)
+			if (!root->hasNonCombineAggs)
 			{
 				/*
 				 * If there is no combine function, then partial aggregation
 				 * is not possible.
 				 */
-				if (!OidIsValid(transinfo->combinefn_oid))
+				if (!OidIsValid(transinfo->combinefn_oid)) {
+					root->hasNonCombineAggs = true;
 					root->hasNonPartialAggs = true;
+				}
 
 				/*
 				 * If we have any aggs with transtype INTERNAL then we must
