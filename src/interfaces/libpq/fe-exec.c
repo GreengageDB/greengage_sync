@@ -62,11 +62,7 @@ static bool static_std_strings = false;
 static PGEvent *dupEvents(PGEvent *events, int count, size_t *memSize);
 static bool pqAddTuple(PGresult *res, PGresAttValue *tup,
 					   const char **errmsgp);
-<<<<<<< HEAD
-=======
 static int	PQsendQueryInternal(PGconn *conn, const char *query, bool newQuery);
-static bool PQsendQueryStart(PGconn *conn, bool newQuery);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 static int	PQsendQueryGuts(PGconn *conn,
 							const char *command,
 							const char *stmtName,
@@ -1461,13 +1457,8 @@ PQsendQueryPrepared(PGconn *conn,
 /*
  * Common startup code for PQsendQuery and sibling routines
  */
-<<<<<<< HEAD
 bool
-PQsendQueryStart(PGconn *conn)
-=======
-static bool
 PQsendQueryStart(PGconn *conn, bool newQuery)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 {
 	if (!conn)
 		return false;
