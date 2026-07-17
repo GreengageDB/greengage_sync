@@ -4805,13 +4805,9 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 							 "\n     LEFT JOIN pg_catalog.pg_class c2 ON i.indrelid = c2.oid");
 
 	appendPQExpBufferStr(&buf, "\nWHERE c.relkind IN (");
-<<<<<<< HEAD
 	if (showTables ||
 		(showExternal && isGPDB6000OrBelow()))
-=======
-	if (showTables)
 	{
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		appendPQExpBufferStr(&buf, CppAsString2(RELKIND_RELATION) ","
 							 CppAsString2(RELKIND_PARTITIONED_TABLE) ",");
 		/* with 'S' or a pattern, allow 't' to match TOAST tables too */
@@ -4860,21 +4856,9 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 							 "      AND n.nspname !~ '^pg_toast'\n"
 							 "      AND n.nspname <> 'information_schema'\n");
 
-<<<<<<< HEAD
-	/*
-	 * TOAST objects are suppressed unconditionally.  Since we don't provide
-	 * any way to select RELKIND_TOASTVALUE above, we would never show toast
-	 * tables in any case; it seems a bit confusing to allow their indexes to
-	 * be shown.  Use plain \d if you really need to look at a TOAST
-	 * table/index.
-	 */
-	appendPQExpBufferStr(&buf, "      AND n.nspname !~ '^pg_toast'\n");
-
 	if (!showChildren)
 		appendPQExpBuffer(&buf, "      AND c.oid NOT IN (select inhrelid from pg_catalog.pg_inherits)\n");
 
-=======
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	processSQLNamePattern(pset.db, &buf, pattern, true, false,
 						  "n.nspname", "c.relname", NULL,
 						  "pg_catalog.pg_table_is_visible(c.oid)");
