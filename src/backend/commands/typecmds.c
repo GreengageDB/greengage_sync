@@ -1950,6 +1950,7 @@ makeMultirangeConstructors(const char *name, Oid namespace,
 							 BOOTSTRAP_SUPERUSERID, /* proowner */
 							 INTERNALlanguageId,	/* language */
 							 F_FMGR_INTERNAL_VALIDATOR,
+							 InvalidOid,	/* describeFuncOid */
 							 "multirange_constructor0", /* prosrc */
 							 NULL,	/* probin */
 							 PROKIND_FUNCTION,
@@ -1967,7 +1968,9 @@ makeMultirangeConstructors(const char *name, Oid namespace,
 							 PointerGetDatum(NULL), /* proconfig */
 							 InvalidOid,	/* prosupport */
 							 1.0,	/* procost */
-							 0.0);	/* prorows */
+							 0.0,	/* prorows */
+							 PRODATAACCESS_NONE,	/* prodataaccess */
+							 PROEXECLOCATION_ANY);	/* proexeclocation */
 
 	/*
 	 * Make the constructor internally-dependent on the multirange type so
@@ -1993,6 +1996,7 @@ makeMultirangeConstructors(const char *name, Oid namespace,
 							 BOOTSTRAP_SUPERUSERID, /* proowner */
 							 INTERNALlanguageId,	/* language */
 							 F_FMGR_INTERNAL_VALIDATOR,
+							 InvalidOid,	/* describeFuncOid */
 							 "multirange_constructor1", /* prosrc */
 							 NULL,	/* probin */
 							 PROKIND_FUNCTION,
@@ -2010,7 +2014,9 @@ makeMultirangeConstructors(const char *name, Oid namespace,
 							 PointerGetDatum(NULL), /* proconfig */
 							 InvalidOid,	/* prosupport */
 							 1.0,	/* procost */
-							 0.0);	/* prorows */
+							 0.0,	/* prorows */
+							 PRODATAACCESS_NONE,	/* prodataaccess */
+							 PROEXECLOCATION_ANY);	/* proexeclocation */
 	/* ditto */
 	recordDependencyOn(&myself, &referenced, DEPENDENCY_INTERNAL);
 	pfree(argtypes);
@@ -2033,6 +2039,7 @@ makeMultirangeConstructors(const char *name, Oid namespace,
 							 BOOTSTRAP_SUPERUSERID, /* proowner */
 							 INTERNALlanguageId,	/* language */
 							 F_FMGR_INTERNAL_VALIDATOR,
+							 InvalidOid,	/* describeFuncOid */
 							 "multirange_constructor2", /* prosrc */
 							 NULL,	/* probin */
 							 PROKIND_FUNCTION,
@@ -2050,7 +2057,9 @@ makeMultirangeConstructors(const char *name, Oid namespace,
 							 PointerGetDatum(NULL), /* proconfig */
 							 InvalidOid,	/* prosupport */
 							 1.0,	/* procost */
-							 0.0);	/* prorows */
+							 0.0,	/* prorows */
+							 PRODATAACCESS_NONE,	/* prodataaccess */
+							 PROEXECLOCATION_ANY);	/* proexeclocation */
 	/* ditto */
 	recordDependencyOn(&myself, &referenced, DEPENDENCY_INTERNAL);
 	pfree(argtypes);
