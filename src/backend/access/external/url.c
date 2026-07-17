@@ -189,7 +189,7 @@ get_eol_delimiter(List *params)
  * On error, ereport()s
  */
 URL_FILE *
-url_fopen(char *url, bool forwrite, extvar_t *ev, CopyState pstate, ExternalSelectDesc desc)
+url_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate, ExternalSelectDesc desc)
 {
 	/*
 	 * if 'url' starts with "execute:" then it's a command to execute and
@@ -298,7 +298,7 @@ size_t
 url_fread(void *ptr,
           size_t size,
           URL_FILE *file,
-          CopyState pstate)
+          CopyFromState pstate)
 {
     switch (file->type)
     {
@@ -320,7 +320,7 @@ url_fread(void *ptr,
 }
 
 size_t
-url_fwrite(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
+url_fwrite(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
 {
     switch (file->type)
     {
@@ -346,7 +346,7 @@ url_fwrite(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
  * flush all remaining buffered data waiting to be written out to external source
  */
 void
-url_fflush(URL_FILE *file, CopyState pstate)
+url_fflush(URL_FILE *file, CopyFromState pstate)
 {
     switch (file->type)
     {

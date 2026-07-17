@@ -26,6 +26,7 @@
 #include "cdb/cdbsreh.h"
 #include "cdb/cdbutil.h"
 #include "cdb/cdbvars.h"
+#include "commands/copyfrom_internal.h"
 #include "miscadmin.h"
 #include "utils/guc.h"
 #include "utils/resowner.h"
@@ -1172,7 +1173,7 @@ is_file_exists(const char* filename)
 }
 
 URL_FILE *
-url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyState pstate)
+url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate)
 {
 	URL_CURL_FILE *file;
 	int         ip_mode;
@@ -1228,7 +1229,7 @@ url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyState pstate)
 		unsigned int tmp_len = strlen(file->curl_url) + 1;
 		memmove(file->curl_url, file->curl_url + 3, tmp_len - 3);
 		memcpy(file->curl_url, "http", 4);
-		pstate->header_line = 0;
+		pstate->opts.header_line = 0;
 	}
 
 	/* initialize a curl session and get a libcurl handle for it */
@@ -1622,7 +1623,7 @@ compress_zstd_data(URL_CURL_FILE *file)
  * byte 5-X: the block itself.
  */
 static size_t
-gp_proto1_read(char *buf, int bufsz, URL_CURL_FILE *file, CopyState pstate, char *buf2)
+gp_proto1_read(char *buf, int bufsz, URL_CURL_FILE *file, CopyFromState pstate, char *buf2)
 {
 	char type;
 	int  n = 0, len = 0;
@@ -1888,7 +1889,7 @@ gp_proto1_read(char *buf, int bufsz, URL_CURL_FILE *file, CopyState pstate, char
  * a push model with a POST request.
  */
 static void
-gp_proto0_write(URL_CURL_FILE *file, CopyState pstate)
+gp_proto0_write(URL_CURL_FILE *file, CopyFromState pstate)
 {	
 	char*		buf;
 	int		nbytes;
@@ -1941,7 +1942,7 @@ gp_proto0_write_done(URL_CURL_FILE *file)
 }
 
 static size_t
-curl_fread(char *buf, int bufsz, URL_CURL_FILE *file, CopyState pstate)
+curl_fread(char *buf, int bufsz, URL_CURL_FILE *file, CopyFromState pstate)
 {
 	char*		p = buf;
 	char*		q = buf + bufsz;
@@ -1969,7 +1970,7 @@ curl_fread(char *buf, int bufsz, URL_CURL_FILE *file, CopyState pstate)
 }
 
 static size_t
-curl_fwrite(char *buf, int nbytes, URL_CURL_FILE *file, CopyState pstate)
+curl_fwrite(char *buf, int nbytes, URL_CURL_FILE *file, CopyFromState pstate)
 {
 	if (!file->for_write)
 		elog(ERROR, "cannot write to a read-mode external table");
@@ -2025,7 +2026,7 @@ curl_fwrite(char *buf, int nbytes, URL_CURL_FILE *file, CopyState pstate)
 }
 
 size_t
-url_curl_fread(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
+url_curl_fread(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
 {
 	URL_CURL_FILE *cfile = (URL_CURL_FILE *) file;
 
@@ -2034,7 +2035,7 @@ url_curl_fread(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
 }
 
 size_t
-url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
+url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
 {
 	URL_CURL_FILE *cfile = (URL_CURL_FILE *) file;
 
@@ -2046,7 +2047,7 @@ url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
  * flush all remaining buffered data waiting to be written out to external source
  */
 void
-url_curl_fflush(URL_FILE *file, CopyState pstate)
+url_curl_fflush(URL_FILE *file, CopyFromState pstate)
 {
 	gp_proto0_write((URL_CURL_FILE *) file, pstate);
 }
@@ -2066,7 +2067,7 @@ curl_not_compiled_error(void)
 }
 
 URL_FILE *
-url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyState pstate)
+url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate)
 {
 	curl_not_compiled_error();
 	return NULL; /* keep compiler quiet */
@@ -2086,17 +2087,17 @@ bool url_curl_ferror(URL_FILE *file, int bytesread, char *ebuf, int ebuflen)
 	curl_not_compiled_error();
 	return false; /* keep compiler quiet */
 }
-size_t url_curl_fread(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
+size_t url_curl_fread(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
 {
 	curl_not_compiled_error();
 	return 0; /* keep compiler quiet */
 }
-size_t url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyState pstate)
+size_t url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyFromState pstate)
 {
 	curl_not_compiled_error();
 	return 0; /* keep compiler quiet */
 }
-void url_curl_fflush(URL_FILE *file, CopyState pstate)
+void url_curl_fflush(URL_FILE *file, CopyFromState pstate)
 {
 	curl_not_compiled_error();
 }

@@ -18,29 +18,6 @@
 #include "commands/trigger.h"
 
 /*
- * Represents the different source cases we need to worry about at
- * the bottom level
- */
-typedef enum CopySource
-{
-	COPY_FILE,					/* from file (or a piped program) */
-	COPY_OLD_FE,				/* from frontend (2.0 protocol) */
-	COPY_NEW_FE,				/* from frontend (3.0 protocol) */
-	COPY_CALLBACK				/* from callback function */
-} CopySource;
-
-/*
- *	Represents the end-of-line terminator type of the input
- */
-typedef enum EolType
-{
-	EOL_UNKNOWN,
-	EOL_NL,
-	EOL_CR,
-	EOL_CRNL
-} EolType;
-
-/*
  * Represents the heap insert method to be used during COPY FROM.
  */
 typedef enum CopyInsertMethod
@@ -49,6 +26,15 @@ typedef enum CopyInsertMethod
 	CIM_MULTI,					/* always use table_multi_insert */
 	CIM_MULTI_CONDITIONAL		/* use table_multi_insert only if valid */
 } CopyInsertMethod;
+
+/*
+ * Holds the target's distribution policy during COPY FROM.
+ */
+typedef struct GpDistributionData
+{
+	GpPolicy   *policy;		/* partitioning policy for this table */
+	CdbHash	   *cdbHash;	/* corresponding CdbHash object */
+} GpDistributionData;
 
 /*
  * This struct contains all the state variables used throughout a COPY FROM
@@ -68,7 +54,7 @@ typedef enum CopyInsertMethod
 typedef struct CopyFromStateData
 {
 	/* low-level state data */
-	CopySource	copy_src;		/* type of copy source */
+	CopySrcDest	copy_src;		/* type of copy source */
 	FILE	   *copy_file;		/* used if copy_src == COPY_FILE */
 	StringInfo	fe_msgbuf;		/* used if copy_src == COPY_NEW_FE */
 	bool		reached_eof;	/* true if we read to end of copy data (not
@@ -82,9 +68,11 @@ typedef struct CopyFromStateData
 	/* parameters from the COPY command */
 	Relation	rel;			/* relation to copy from */
 	List	   *attnumlist;		/* integer list of attnums to copy */
+	List	   *attnamelist;	/* list of attributes by name */
 	char	   *filename;		/* filename, or NULL for STDIN */
 	bool		is_program;		/* is 'filename' a program to popen? */
 	copy_data_source_cb data_source_cb; /* function for reading data */
+	void	   *data_source_cb_extra;
 
 	CopyFormatOptions opts;
 	bool	   *convert_select_flags;	/* per-column CSV/TEXT CS flags */
@@ -99,6 +87,7 @@ typedef struct CopyFromStateData
 	/*
 	 * Working state
 	 */
+	CopyDispatchMode dispatch_mode;
 	MemoryContext copycontext;	/* per-copy execution context */
 
 	AttrNumber	num_defaults;
@@ -111,6 +100,15 @@ typedef struct CopyFromStateData
 	ExprState  *qualexpr;
 
 	TransitionCaptureState *transition_capture;
+
+	StringInfo	dispatch_msgbuf; /* used in COPY_DISPATCH mode, to construct message
+								  * to send to QE. */
+	
+	/* Error handling options */
+	CopyErrMode	errMode;
+	struct CdbSreh *cdbsreh; /* single row error handler */
+	int			lastsegid;
+
 
 	/*
 	 * These variables are used to reduce overhead in COPY FROM.
@@ -157,9 +155,114 @@ typedef struct CopyFromStateData
 	uint64		bytes_processed;/* number of bytes processed so far */
 	/* Shorthand for number of unconsumed bytes available in raw_buf */
 #define RAW_BUF_BYTES(cstate) ((cstate)->raw_buf_len - (cstate)->raw_buf_index)
+
+	/* Greenplum Database specific variables */
+	FmgrInfo   *enc_conversion_proc; /* conv proc from exttbl encoding to
+										server or the other way around */
+	int			first_qe_processed_field;
+	List	   *qd_attnumlist;
+	List	   *qe_attnumlist;
+	bool		stopped_processing_at_delim;
+
+	ProgramPipes	*program_pipes; /* COPY PROGRAM pipes for data and stderr */
+	MemoryContext rowcontext;	/* per-row evaluation context */
+
+	/* Information on the connections to QEs. */
+	CdbCopy    *cdbCopy;
+
+/* end Greenplum Database specific variables */
 } CopyFromStateData;
+
+/* Header contains information that applies to all the rows that follow. */
+typedef struct
+{
+	/*
+	 * First field that should be processed in the QE. Any fields before
+	 * this will be included as Datums in the rows that follow.
+	 */
+	int16		first_qe_processed_field;
+} copy_from_dispatch_header;
+
+typedef struct
+{
+	/*
+	 * Information about this input line.
+	 *
+	 * 'relid' is the target relation's OID. Normally, the same as
+	 * cstate->relid, but for a partitioned relation, it indicates the target
+	 * partition. Note: this must be the first field, because InvalidOid means
+	 * that this is actually a 'copy_from_dispatch_error' struct.
+	 *
+	 * 'lineno' is the input line number, for error reporting.
+	 */
+	int64		lineno;
+	Oid			relid;
+
+	uint32		line_len;			/* size of the included input line */
+	uint32		residual_off;		/* offset in the line, where QE should
+									 * process remaining fields */
+	bool		delim_seen_at_end;  /* conveys to QE if QD saw a delim at end
+									 * of its processing */
+	uint16		fld_count;			/* # of fields that were processed in the
+									 * QD. */
+
+	/* The input line follows. */
+
+	/*
+	 * For each field that was parsed in the QD already, the following data follows:
+	 *
+	 * int16	fieldnum;
+	 * <data>
+	 *
+	 * NULL values are not included, any attributes that are not included in
+	 * the message are implicitly NULL.
+	 *
+	 * For pass-by-value datatypes, the <data> is the raw Datum. For
+	 * simplicity, it is always sent as a full-width 8-byte Datum, regardless
+	 * of the datatype's length.
+	 *
+	 * For other fixed width datatypes, <data> is the datatype's value.
+	 *
+	 * For variable-length datatypes, <data> begins with a 4-byte length field,
+	 * followed by the data. Cstrings (typlen = -2) are also sent in this
+	 * format.
+	 */
+} copy_from_dispatch_row;
+
+/* Size of the struct, without padding at the end. */
+#define SizeOfCopyFromDispatchRow (offsetof(copy_from_dispatch_row, fld_count) + sizeof(uint16))
+
+typedef struct
+{
+	int64		error_marker;	/* constant -1, to mark that this is an error
+								 * frame rather than 'copy_from_dispatch_row' */
+	int64		lineno;
+	uint32		errmsg_len;
+	uint32		line_len;
+	bool		line_buf_converted;
+
+	/* 'errmsg' follows */
+	/* 'line' follows */
+} copy_from_dispatch_error;
+
+/* Size of the struct, without padding at the end. */
+#define SizeOfCopyFromDispatchError (offsetof(copy_from_dispatch_error, line_buf_converted) + sizeof(bool))
 
 extern void ReceiveCopyBegin(CopyFromState cstate);
 extern void ReceiveCopyBinaryHeader(CopyFromState cstate);
+
+/* in copyfromparse.c, shared with copyfrom.c */
+extern int	CopyGetData(CopyFromState cstate, void *databuf, int datasize);
+extern bool NextCopyFromX(CopyFromState cstate, ExprContext *econtext,
+						  Datum *values, bool *nulls);
+extern bool NextCopyFromDispatch(CopyFromState cstate, ExprContext *econtext,
+								 Datum *values, bool *nulls);
+extern bool NextCopyFromExecute(CopyFromState cstate, ExprContext *econtext,
+								Datum *values, bool *nulls);
+extern void HandleCopyError(CopyFromState cstate);
+
+/* in copyfrom.c, shared with copyfromparse.c */
+extern void SendCopyFromForwardedError(CopyFromState cstate, CdbCopy *cdbCopy,
+									   char *errormsg);
 
 #endif							/* COPYFROM_INTERNAL_H */
