@@ -890,7 +890,7 @@ static HeapTuple
 externalgettup_custom(FileScanDesc scan)
 {
 	HeapTuple	tuple;
-	CopyFromState	pstate = scan->fs_pstate;
+	CopyFromState pstate = scan->fs_pstate;
 	FormatterData *formatter = scan->fs_formatter;
 	MemoryContext oldctxt = CurrentMemoryContext;
 
