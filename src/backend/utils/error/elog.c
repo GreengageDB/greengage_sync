@@ -230,8 +230,6 @@ static void write_pipe_chunks(char *data, int len, int dest);
 static void send_message_to_frontend(ErrorData *edata);
 static const char *error_severity(int elevel);
 static void append_with_tabs(StringInfo buf, const char *str);
-<<<<<<< HEAD
-static bool is_log_level_output(int elevel, int log_min_level);
 static void write_pipe_chunks(char *data, int len, int dest);
 static void write_csvlog(ErrorData *edata);
 static void elog_debug_linger(ErrorData *edata);
@@ -245,7 +243,6 @@ ignore_returned_result(long long int result)
 
 static void setup_formatted_log_time(void);
 static void setup_formatted_start_time(void);
-=======
 
 
 /*
@@ -339,7 +336,6 @@ message_level_is_interesting(int elevel)
 		return true;
 	return false;
 }
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 
 /*
@@ -374,8 +370,6 @@ err_gettext(const char *str)
 #endif
 }
 
-<<<<<<< HEAD
-=======
 /*
  * errstart_cold
  *		A simple wrapper around errstart, but hinted to be "cold".  Supporting
@@ -390,7 +384,6 @@ errstart_cold(int elevel, const char *domain)
 	return errstart(elevel, domain);
 }
 
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 /*
  * errstart --- begin an error-reporting cycle
  *
@@ -573,13 +566,9 @@ errstart(int elevel, const char *domain)
 	if (elevel >= ERROR)
 	{
 		edata->sqlerrcode = ERRCODE_INTERNAL_ERROR;
-<<<<<<< HEAD
 		edata->omit_location = false;
 	}
-	else if (elevel == WARNING)
-=======
 	else if (elevel >= WARNING)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 		edata->sqlerrcode = ERRCODE_WARNING;
 	else
 		edata->sqlerrcode = ERRCODE_SUCCESSFUL_COMPLETION;
