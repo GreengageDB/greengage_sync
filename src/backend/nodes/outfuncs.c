@@ -2492,17 +2492,6 @@ _outIncrementalSortPath(StringInfo str, const IncrementalSortPath *node)
 }
 
 static void
-_outIncrementalSortPath(StringInfo str, const IncrementalSortPath *node)
-{
-	WRITE_NODE_TYPE("INCREMENTALSORTPATH");
-
-	_outPathInfo(str, (const Path *) node);
-
-	WRITE_NODE_FIELD(spath.subpath);
-	WRITE_INT_FIELD(nPresortedCols);
-}
-
-static void
 _outGroupPath(StringInfo str, const GroupPath *node)
 {
 	WRITE_NODE_TYPE("GROUPPATH");
