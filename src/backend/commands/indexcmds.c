@@ -3080,7 +3080,7 @@ ReindexMultipleTables(ReindexStmt *parent_stmt, int options)
 	List	   *relids = NIL;
 	int			num_keys;
 	bool		concurrent_warning = false;
-	char *objectName = parent_stmt->name;
+	const char *objectName = parent_stmt->name;
 	ReindexObjectType objectKind = parent_stmt->kind;
 
 	Assert(Gp_role != GP_ROLE_EXECUTE);
