@@ -250,7 +250,7 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 				else
 					ereport(ERROR,
 							(errcode_for_file_access(),
-							errmsg("could not read from COPY file: %m")));
+							 errmsg("could not read from COPY file: %m")));
 			}
 			break;
 		case COPY_OLD_FE:
@@ -1516,6 +1516,7 @@ CopyReadLineText(CopyFromState cstate)
 								 errhint("Use \"\\r\" to represent carriage return.") :
 								 errhint("Use quoted CSV field to represent carriage return.")));
 #endif
+
 					/* GPDB: only reset eol_type if it's currently unknown. */
 					if (cstate->eol_type == EOL_UNKNOWN)
 					{
@@ -2050,7 +2051,6 @@ CopyReadAttributesText(CopyFromState cstate, int stop_processing_at_field)
 	 * can send the rest to the QE later.
 	 */
 	cstate->line_buf.cursor = cur_ptr - cstate->line_buf.data;
-
 
 	/* Clean up state of attribute_buf */
 	output_ptr--;
