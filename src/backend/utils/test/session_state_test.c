@@ -19,7 +19,7 @@
     will_be_called_with_sideeffect(ExceptionalCondition, &_ExceptionalCondition, NULL);\
 
 #define EXPECT_EREPORT(LOG_LEVEL)     \
-	if (__builtin_constant_p(LOG_LEVEL) && (LOG_LEVEL) >= ERROR) \
+	if ((LOG_LEVEL) >= ERROR) \
 	{ \
 		expect_any(errstart_cold, elevel); \
 		expect_any(errstart_cold, domain); \
@@ -35,10 +35,7 @@
 	} \
     else \
     { \
-		if (__builtin_constant_p(LOG_LEVEL)) \
-			will_return_with_sideeffect(errstart_cold, false, &_ExceptionalCondition, NULL); \
-		else \
-			will_return_with_sideeffect(errstart, false, &_ExceptionalCondition, NULL); \
+		will_return_with_sideeffect(errstart_cold, false, &_ExceptionalCondition, NULL); \
     } \
 
 #undef PG_RE_THROW
