@@ -766,7 +766,7 @@ intorel_shutdown(DestReceiver *self)
 
 	IntoClause *into = myState->into;
 
-	if (!into->skipData)
+	if (into && !into->skipData)
 	{
 		FreeBulkInsertState(myState->bistate);
 		table_finish_bulk_insert(myState->rel, myState->ti_options);
