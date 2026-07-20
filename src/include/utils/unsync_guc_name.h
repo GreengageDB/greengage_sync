@@ -360,7 +360,6 @@
 		"min_parallel_table_scan_size",
 		"min_wal_size",
 		"old_snapshot_threshold",
-		"operator_precedence_warning",
 		"optimizer",
 		"optimizer_analyze_midlevel_partition",
 		"optimizer_analyze_root_partition",
