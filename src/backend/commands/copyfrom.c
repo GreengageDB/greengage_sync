@@ -883,6 +883,7 @@ CopyFrom(CopyFromState cstate)
 	if (cstate->dispatch_mode == COPY_DISPATCH || is_check_distkey)
 	{
 		distData = InitDistributionData(cstate, estate);
+
 		/*
 		 * If this table is distributed randomly, there is nothing to check,
 		 * after all.

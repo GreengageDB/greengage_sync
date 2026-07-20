@@ -216,7 +216,7 @@ CopySendEndOfRow(CopyToState cstate)
 						 * just "Broken Pipe"
 						 */
 						close_program_pipes(cstate->program_pipes,
-						                    &cstate->copy_file, true);
+											&cstate->copy_file, true);
 
 						/*
 						 * If close_program_pipes() didn't throw an error,
@@ -301,7 +301,7 @@ CopyToDispatchFlush(CopyToState cstate)
 						 * "Broken Pipe"
 						 */
 						close_program_pipes(cstate->program_pipes,
-						                    &cstate->copy_file, true);
+											&cstate->copy_file, true);
 
 						/*
 						 * If close_program_pipes() didn't throw an error,
@@ -1409,8 +1409,6 @@ CopyToDispatch(CopyToState cstate)
 
 	return processed;
 }
-
-
 
 uint64
 CopyToQueryOnSegment(CopyToState cstate)
