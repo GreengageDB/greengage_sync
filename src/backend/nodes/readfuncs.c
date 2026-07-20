@@ -1371,12 +1371,8 @@ _readAggref(void)
 	READ_CHAR_FIELD(aggkind);
 	READ_UINT_FIELD(agglevelsup);
 	READ_ENUM_FIELD(aggsplit, AggSplit);
-<<<<<<< HEAD
-
-=======
 	READ_INT_FIELD(aggno);
 	READ_INT_FIELD(aggtransno);
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 	READ_LOCATION_FIELD(location);
 	READ_INT_FIELD(agg_expr_id);
 
