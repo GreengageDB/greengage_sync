@@ -68,7 +68,7 @@
 #include "utils/resscheduler.h"
 #include "utils/string_utils.h"
 
-static volatile CopyToState glob_cstate = NULL;
+volatile CopyToState glob_cstate = NULL;
 
 
 /* GPDB_91_MERGE_FIXME: passing through a global variable like this is ugly */
@@ -467,7 +467,6 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 			cstate = BeginCopyTo(pstate, rel, query, relid,
 								 stmt->filename, stmt->is_program,
 								 stmt->attlist, options);
-			glob_cstate = cstate;
 
 			/*
 			 * "copy t to file on segment"					CopyDispatchOnSegment

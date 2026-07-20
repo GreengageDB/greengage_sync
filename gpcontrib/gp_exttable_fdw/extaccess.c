@@ -69,14 +69,18 @@ static void InitFromParseState(CopyFromState pstate, Relation relation,
 
 static void FunctionCallPrepareFormatter(FunctionCallInfoBaseData *fcinfo,
 							 int nArgs,
-							 CopyFromState pstate,
 							 FmgrInfo *formatter_func,
 							 List *formatter_params,
 							 FormatterData *formatter,
 							 Relation rel,
 							 TupleDesc tupDesc,
 							 FmgrInfo *convFuncs,
-							 Oid *typioparams);
+							 Oid *typioparams,
+							 bool saw_eof,
+							 MemoryContext rowcontext,
+							 bool need_transcoding,
+							 FmgrInfo *enc_conversion_proc,
+							 int file_encoding);
 
 static void open_external_readable_source(FileScanDesc scan, ExternalSelectDesc desc);
 static void open_external_writable_source(ExternalInsertDesc extInsertDesc);
@@ -595,10 +599,6 @@ external_insert_init(Relation rel)
 #endif
 	}
 
-	/*
-	 * Allocate and init our structure that keeps track of data parsing state
-	 */
-	extInsertDesc->ext_pstate = (CopyToStateData *) palloc0(sizeof(CopyToStateData));
 	extInsertDesc->ext_tupDesc = RelationGetDescr(rel);
 
 	/*
@@ -703,14 +703,18 @@ external_insert(ExternalInsertDesc extInsertDesc, TupleTableSlot *slot)
 		/* per call formatter prep */
 		FunctionCallPrepareFormatter(fcinfo,
 									 1,
-									 pstate,
 									 extInsertDesc->ext_custom_formatter_func,
 									 extInsertDesc->ext_custom_formatter_params,
 									 formatter,
 									 extInsertDesc->ext_rel,
 									 extInsertDesc->ext_tupDesc,
 									 pstate->out_functions,
-									 NULL);
+									 NULL,
+									 false, /* saw_eof: not applicable on write */
+									 pstate->rowcontext,
+									 pstate->need_transcoding,
+									 pstate->enc_conversion_proc,
+									 pstate->file_encoding);
 
 		/* Mark the correct record type in the passed tuple */
 
@@ -933,14 +937,18 @@ externalgettup_custom(FileScanDesc scan)
 				/* per call formatter prep */
 				FunctionCallPrepareFormatter(fcinfo,
 						0,
-						pstate,
 						scan->fs_custom_formatter_func,
 						scan->fs_custom_formatter_params,
 						formatter,
 						scan->fs_rd,
 						scan->fs_tupDesc,
 						scan->in_functions,
-						scan->typioparams);
+						scan->typioparams,
+						pstate->reached_eof,
+						pstate->rowcontext,
+						pstate->need_transcoding,
+						pstate->enc_conversion_proc,
+						pstate->file_encoding);
 				(void) FunctionCallInvoke(fcinfo);
 
 			}
@@ -1285,14 +1293,18 @@ InitFromParseState(CopyFromState pstate, Relation relation,
 static void
 FunctionCallPrepareFormatter(FunctionCallInfoBaseData *fcinfo,
 							 int nArgs,
-							 CopyFromState pstate,
 							 FmgrInfo *formatter_func,
 							 List *formatter_params,
 							 FormatterData *formatter,
 							 Relation rel,
 							 TupleDesc tupDesc,
 							 FmgrInfo *convFuncs,
-							 Oid *typioparams)
+							 Oid *typioparams,
+							 bool saw_eof,
+							 MemoryContext rowcontext,
+							 bool need_transcoding,
+							 FmgrInfo *enc_conversion_proc,
+							 int file_encoding)
 {
 	formatter->type = T_FormatterData;
 	formatter->fmt_relation = rel;
@@ -1302,12 +1314,12 @@ FunctionCallPrepareFormatter(FunctionCallInfoBaseData *fcinfo,
 	formatter->fmt_badrow_num = 0;
 	formatter->fmt_args = formatter_params;
 	formatter->fmt_conv_funcs = convFuncs;
-	formatter->fmt_saw_eof = pstate->reached_eof;
+	formatter->fmt_saw_eof = saw_eof;
 	formatter->fmt_typioparams = typioparams;
-	formatter->fmt_perrow_ctx = pstate->rowcontext;
-	formatter->fmt_needs_transcoding = pstate->need_transcoding;
-	formatter->fmt_conversion_proc = pstate->enc_conversion_proc;
-	formatter->fmt_external_encoding = pstate->file_encoding;
+	formatter->fmt_perrow_ctx = rowcontext;
+	formatter->fmt_needs_transcoding = need_transcoding;
+	formatter->fmt_conversion_proc = enc_conversion_proc;
+	formatter->fmt_external_encoding = file_encoding;
 
 	InitFunctionCallInfoData( /* FunctionCallInfoData */ *fcinfo,
 							  /* FmgrInfo */ formatter_func,
@@ -1349,8 +1361,9 @@ open_external_readable_source(FileScanDesc scan, ExternalSelectDesc desc)
 							  false /* for read */ ,
 							  &extvar,
 							  &scan->fs_pstate->opts,
-							  scan->fs_pstate,
-							  desc);
+							  scan->fs_pstate->eol_type,
+							  desc,
+							  RelationGetRelationName(scan->fs_rd));
 }
 
 /*
@@ -1382,8 +1395,9 @@ open_external_writable_source(ExternalInsertDesc extInsertDesc)
 										true /* forwrite */ ,
 										&extvar,
 										&extInsertDesc->ext_pstate->opts,
+										extInsertDesc->ext_pstate->opts.eol_type,
 										NULL,
-										NULL);
+										RelationGetRelationName(extInsertDesc->ext_rel));
 }
 
 /*

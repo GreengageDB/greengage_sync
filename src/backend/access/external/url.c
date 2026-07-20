@@ -189,7 +189,7 @@ get_eol_delimiter(List *params)
  * On error, ereport()s
  */
 URL_FILE *
-url_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts, CopyFromState pstate, ExternalSelectDesc desc)
+url_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts, EolType eol_type, ExternalSelectDesc desc, const char *relname)
 {
 	/*
 	 * if 'url' starts with "execute:" then it's a command to execute and
@@ -198,7 +198,7 @@ url_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts, CopyF
 	if (pg_strncasecmp(url, EXEC_URL_PREFIX, strlen(EXEC_URL_PREFIX)) == 0)
 		return url_execute_fopen(url, forwrite, ev);
 	else if (IS_FILE_URI(url))
-		return url_file_fopen(url, forwrite, ev, pstate);
+		return url_file_fopen(url, forwrite, ev, opts, eol_type, relname);
 	else if (IS_HTTP_URI(url) || IS_GPFDIST_URI(url) || IS_GPFDISTS_URI(url))
 		return url_curl_fopen(url, forwrite, ev, opts);
 	else
