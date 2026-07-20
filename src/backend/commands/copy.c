@@ -806,6 +806,7 @@ ProcessCopyOptions(ParseState *pstate,
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("COPY cannot specify NULL in BINARY mode")));
+
 	opts_out->eol_type = EOL_UNKNOWN;
 
 	/* Set defaults for omitted options */
