@@ -663,7 +663,7 @@ void
 external_insert(ExternalInsertDesc extInsertDesc, TupleTableSlot *slot)
 {
 	TupleDesc	tupDesc = extInsertDesc->ext_tupDesc;
-	CopyToStateData *pstate = extInsertDesc->ext_pstate;
+	CopyToState pstate = extInsertDesc->ext_pstate;
 	bool		customFormat = (extInsertDesc->ext_custom_formatter_func != NULL);
 
 	if (extInsertDesc->ext_noop)
@@ -856,7 +856,7 @@ static HeapTuple
 externalgettup_defined(FileScanDesc scan)
 {
 	HeapTuple	tuple = NULL;
-	CopyFromStateData	*pstate = scan->fs_pstate;
+	CopyFromState pstate = scan->fs_pstate;
 	MemoryContext oldcontext;
 
 	MemoryContextReset(pstate->rowcontext);
@@ -890,7 +890,7 @@ static HeapTuple
 externalgettup_custom(FileScanDesc scan)
 {
 	HeapTuple	tuple;
-	CopyFromState	pstate = scan->fs_pstate;
+	CopyFromState pstate = scan->fs_pstate;
 	FormatterData *formatter = scan->fs_formatter;
 	MemoryContext oldctxt = CurrentMemoryContext;
 
