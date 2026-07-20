@@ -1022,10 +1022,6 @@ CopyFrom(CopyFromState cstate)
 
 		ExecClearTuple(myslot);
 
-		/* Directly store the values/nulls array in the slot */
-		if (!NextCopyFrom(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
-			break;
-
 		if (cstate->dispatch_mode == COPY_EXECUTOR)
 		{
 			if (!NextCopyFromExecute(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
