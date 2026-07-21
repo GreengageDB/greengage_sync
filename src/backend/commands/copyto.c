@@ -436,6 +436,8 @@ BeginCopyToCommon(ParseState *pstate,
 	/* Allocate workspace and zero all fields */
 	cstate = (CopyToStateData *) palloc0(sizeof(CopyToStateData));
 
+	glob_cstate = cstate;
+
 	/*
 	 * We allocate everything used by a cstate in a new memory context. This
 	 * avoids memory leaks during repeated use of COPY in a query.
@@ -950,8 +952,6 @@ BeginCopyTo(ParseState *pstate,
 			List *options)
 {
 	CopyToState	cstate;
-	TupleDesc	tupDesc;
-	int			num_phys_attrs;
 	MemoryContext oldcontext;
 
 	if (rel != NULL && rel->rd_rel->relkind != RELKIND_RELATION)

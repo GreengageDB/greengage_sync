@@ -34,7 +34,7 @@ typedef struct URL_FSTREAM_FILE
 } URL_FSTREAM_FILE;
 
 URL_FILE *
-url_file_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate)
+url_file_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts, EolType eol_type, const char *relname)
 {
 	URL_FSTREAM_FILE *file;
 	char	   *path = strchr(url + strlen(PROTOCOL_FILE), '/');
@@ -43,7 +43,7 @@ url_file_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate)
 	const char *response_string;
 
 	if (forwrite)
-		elog(ERROR, "cannot change a readable external table \"%s\"", pstate->cur_relname);
+		elog(ERROR, "cannot change a readable external table \"%s\"", relname);
 
 	memset(&fo, 0, sizeof fo);
 
@@ -55,13 +55,13 @@ url_file_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate)
 	file->common.type = CFTYPE_FILE; /* marked as local FILE */
 	file->common.url = pstrdup(url);
 
-	fo.is_csv = pstate->opts.csv_mode;
-	fo.quote = pstate->opts.quote ? *pstate->opts.quote : 0;
-	fo.escape = pstate->opts.escape ? *pstate->opts.escape : 0;
-	fo.eol_type = pstate->eol_type;
-	fo.header = pstate->opts.header_line;
+	fo.is_csv = opts->csv_mode;
+	fo.quote = opts->quote ? *opts->quote : 0;
+	fo.escape = opts->escape ? *opts->escape : 0;
+	fo.eol_type = eol_type;
+	fo.header = opts->header_line;
 	fo.bufsize = 32 * 1024;
-	pstate->opts.header_line = 0;
+	opts->header_line = 0;
 
 	/*
 	 * Open the file stream. This includes opening the first file to be read

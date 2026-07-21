@@ -80,7 +80,7 @@ extern void external_set_env_vars_ext(extvar_t *extvar, char *uri, bool csv, cha
 									  uint32 scancounter, List *params);
 
 /* exported functions */
-extern URL_FILE *url_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts, CopyFromState pstate, ExternalSelectDesc desc);
+extern URL_FILE *url_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts, EolType eol_type, ExternalSelectDesc desc, const char *relname);
 extern void url_fclose(URL_FILE *file, bool failOnError, const char *relname);
 extern bool url_feof(URL_FILE *file, int bytesread);
 extern bool url_ferror(URL_FILE *file, int bytesread, char *ebuf, int ebuflen);
@@ -100,7 +100,7 @@ extern size_t url_curl_fread(void *ptr, size_t size, URL_FILE *file, CopyFromSta
 extern size_t url_curl_fwrite(void *ptr, size_t size, URL_FILE *file, CopyToState pstate);
 extern void url_curl_fflush(URL_FILE *file, CopyToState pstate);
 
-extern URL_FILE *url_file_fopen(char *url, bool forwrite, extvar_t *ev, CopyFromState pstate);
+extern URL_FILE *url_file_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts, EolType eol_type, const char *relname);
 extern void url_file_fclose(URL_FILE *file, bool failOnError, const char *relname);
 extern bool url_file_feof(URL_FILE *file, int bytesread);
 extern bool url_file_ferror(URL_FILE *file, int bytesread, char *ebuf, int ebuflen);

@@ -81,6 +81,13 @@ typedef struct CopyToStateData
 /* end GPDB specific variables */
 } CopyToStateData;
 
+/*
+ * GPDB: set by BeginCopyToCommon() as soon as the state is allocated, so that
+ * DoCopy()'s PG_CATCH block can run mppExecutorCleanup() even when the error
+ * is thrown inside BeginCopyTo() after ExecutorStart().  Reset in DoCopy().
+ */
+extern volatile CopyToState glob_cstate;
+
 extern CopyToState BeginCopyToOnSegment(QueryDesc *queryDesc);
 extern void EndCopyToOnSegment(CopyToState cstate);
 extern uint64 CopyToQueryOnSegment(CopyToState cstate);

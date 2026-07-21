@@ -173,6 +173,41 @@ typedef struct CopyFromStateData
 /* end GPDB specific variables */
 } CopyFromStateData;
 
+/*
+ * When doing a COPY FROM through the dispatcher, the QD reads the input from
+ * the input file (or stdin or program), and forwards the data to the QE nodes,
+ * where they will actually be inserted.
+ *
+ * Ideally, the QD would just pass through each line to the QE as is, and let
+ * the QEs to do all the processing. Because the more processing the QD has
+ * to do, the more likely it is to become a bottleneck.
+ *
+ * However, the QD needs to figure out which QE to send each row to. For that,
+ * it needs to at least parse the distribution key. The distribution key might
+ * also be a DEFAULTed column, in which case the DEFAULT value needs to be
+ * evaluated in the QD. In that case, the QD must send the computed value
+ * to the QE - we cannot assume that the QE can re-evaluate the expression and
+ * arrive at the same value, at least not if the DEFAULT expression is volatile.
+ *
+ * Therefore, we need a flexible format between the QD and QE, where the QD
+ * processes just enough of each input line to figure out where to send it.
+ * It must send the values it had to parse and evaluate to the QE, as well
+ * as the rest of the original input line, so that the QE can parse the rest
+ * of it.
+ *
+ * The 'copy_from_dispatch_*' structs are used in the QD->QE stream. For each
+ * input line, the QD constructs a 'copy_from_dispatch_row' struct, and sends
+ * it to the QE. Before any rows, a QDtoQESignature is sent first, followed by
+ * a 'copy_from_dispatch_header'. When QD encounters a recoverable error that
+ * needs to be logged in the error log (LOG ERRORS SEGMENT REJECT LIMIT), it
+ * sends the erroneous raw to a QE, in a 'copy_from_dispatch_error' struct.
+ *
+ *
+ * COPY TO is simpler: The QEs form the output rows in the final form, and the QD
+ * just collects and forwards them to the client. The QD doesn't need to parse
+ * the rows at all.
+ */
+
 /* Header contains information that applies to all the rows that follow. */
 typedef struct
 {
