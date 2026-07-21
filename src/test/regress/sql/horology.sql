@@ -292,13 +292,8 @@ SELECT date '1994-01-01' + time '10:00' AS "Jan_01_1994_10am";
 SELECT date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_8am";
 SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
 
-<<<<<<< HEAD
-SELECT '' AS "64", d1 + interval '1 year' AS one_year FROM TIMESTAMP_HOROLOGY_TBL ORDER BY 2;
-SELECT '' AS "64", d1 - interval '1 year' AS one_year FROM TIMESTAMP_HOROLOGY_TBL ORDER BY 2;
-=======
-SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMP_TBL;
-SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMP_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMP_HOROLOGY_TBL;
+SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMP_HOROLOGY_TBL;
 
 SELECT timestamp with time zone '1996-03-01' - interval '1 second' AS "Feb 29";
 SELECT timestamp with time zone '1999-03-01' - interval '1 second' AS "Feb 28";
@@ -327,13 +322,8 @@ SELECT timestamptz(date '1994-01-01', time with time zone '11:00-8') AS "Jan_01_
 SELECT timestamptz(date '1994-01-01', time with time zone '10:00-8') AS "Jan_01_1994_10am";
 SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
 
-<<<<<<< HEAD
-SELECT '' AS "64", d1 + interval '1 year' AS one_year FROM TIMESTAMPTZ_HOROLOGY_TBL ORDER BY 2;
-SELECT '' AS "64", d1 - interval '1 year' AS one_year FROM TIMESTAMPTZ_HOROLOGY_TBL ORDER BY 2;
-=======
-SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
-SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMPTZ_HOROLOGY_TBL;
+SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMPTZ_HOROLOGY_TBL;
 
 --
 -- time, interval arithmetic
@@ -444,21 +434,12 @@ SELECT f1 AS "timestamp"
   FROM TEMP_TIMESTAMP
   ORDER BY "timestamp";
 
-<<<<<<< HEAD
-SELECT '' AS "160", d.f1 AS "timestamp", t.f1 AS "interval", d.f1 + t.f1 AS plus
-  FROM TEMP_TIMESTAMP d, INTERVAL_HOROLOGY_TBL t
-  ORDER BY plus, "timestamp", "interval";
-
-SELECT '' AS "160", d.f1 AS "timestamp", t.f1 AS "interval", d.f1 - t.f1 AS minus
-  FROM TEMP_TIMESTAMP d, INTERVAL_HOROLOGY_TBL t
-=======
 SELECT d.f1 AS "timestamp", t.f1 AS "interval", d.f1 + t.f1 AS plus
-  FROM TEMP_TIMESTAMP d, INTERVAL_TBL t
+  FROM TEMP_TIMESTAMP d, INTERVAL_HOROLOGY_TBL t
   ORDER BY plus, "timestamp", "interval";
 
 SELECT d.f1 AS "timestamp", t.f1 AS "interval", d.f1 - t.f1 AS minus
-  FROM TEMP_TIMESTAMP d, INTERVAL_TBL t
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+  FROM TEMP_TIMESTAMP d, INTERVAL_HOROLOGY_TBL t
   WHERE isfinite(d.f1)
   ORDER BY minus, "timestamp", "interval";
 
@@ -516,29 +497,17 @@ SET DateStyle TO 'US,Postgres';
 
 SHOW DateStyle;
 
-<<<<<<< HEAD
-SELECT '' AS "64", d1 AS us_postgres FROM TIMESTAMP_HOROLOGY_TBL ORDER BY 2;
+SELECT d1 AS us_postgres FROM TIMESTAMP_HOROLOGY_TBL;
 
 SET DateStyle TO 'US,ISO';
 
-SELECT '' AS "64", d1 AS us_iso FROM TIMESTAMP_HOROLOGY_TBL ORDER BY 2;
-=======
-SELECT d1 AS us_postgres FROM TIMESTAMP_TBL;
-
-SET DateStyle TO 'US,ISO';
-
-SELECT d1 AS us_iso FROM TIMESTAMP_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+SELECT d1 AS us_iso FROM TIMESTAMP_HOROLOGY_TBL;
 
 SET DateStyle TO 'US,SQL';
 
 SHOW DateStyle;
 
-<<<<<<< HEAD
-SELECT '' AS "64", d1 AS us_sql FROM TIMESTAMP_HOROLOGY_TBL ORDER BY 2;
-=======
-SELECT d1 AS us_sql FROM TIMESTAMP_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+SELECT d1 AS us_sql FROM TIMESTAMP_HOROLOGY_TBL;
 
 SET DateStyle TO 'European,Postgres';
 
@@ -548,31 +517,19 @@ INSERT INTO TIMESTAMP_HOROLOGY_TBL VALUES('13/06/1957');
 
 SELECT count(*) as one FROM TIMESTAMP_HOROLOGY_TBL WHERE d1 = 'Jun 13 1957';
 
-<<<<<<< HEAD
-SELECT '' AS "65", d1 AS european_postgres FROM TIMESTAMP_HOROLOGY_TBL ORDER BY 2;
-=======
-SELECT d1 AS european_postgres FROM TIMESTAMP_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+SELECT d1 AS european_postgres FROM TIMESTAMP_HOROLOGY_TBL;
 
 SET DateStyle TO 'European,ISO';
 
 SHOW DateStyle;
 
-<<<<<<< HEAD
-SELECT '' AS "65", d1 AS european_iso FROM TIMESTAMP_HOROLOGY_TBL ORDER BY 2;
-=======
-SELECT d1 AS european_iso FROM TIMESTAMP_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+SELECT d1 AS european_iso FROM TIMESTAMP_HOROLOGY_TBL;
 
 SET DateStyle TO 'European,SQL';
 
 SHOW DateStyle;
 
-<<<<<<< HEAD
-SELECT '' AS "65", d1 AS european_sql FROM TIMESTAMP_HOROLOGY_TBL ORDER BY 2;
-=======
-SELECT d1 AS european_sql FROM TIMESTAMP_TBL;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+SELECT d1 AS european_sql FROM TIMESTAMP_HOROLOGY_TBL;
 
 RESET DateStyle;
 

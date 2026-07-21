@@ -231,56 +231,52 @@ SELECT to_char(d1, 'IYYY IYY IY I IW IDDD ID')
 SELECT to_char(d1, 'FMIYYY FMIYY FMIY FMI FMIW FMIDDD FMID')
    FROM TIMESTAMP_TBL;
 
-<<<<<<< HEAD
 -- TO_TIMESTAMP()
-SELECT '' AS to_timestamp_1, to_timestamp('0097/Feb/16 --> 08:14:30', 'YYYY/Mon/DD --> HH:MI:SS');
+SELECT to_timestamp('0097/Feb/16 --> 08:14:30', 'YYYY/Mon/DD --> HH:MI:SS');
 
-SELECT '' AS to_timestamp_2, to_timestamp('97/2/16 8:14:30', 'FMYYYY/FMMM/FMDD FMHH:FMMI:FMSS');
+SELECT to_timestamp('97/2/16 8:14:30', 'FMYYYY/FMMM/FMDD FMHH:FMMI:FMSS');
 
-SELECT '' AS to_timestamp_3, to_timestamp('1985 January 12', 'YYYY FMMonth DD');
+SELECT to_timestamp('1985 January 12', 'YYYY FMMonth DD');
 
-SELECT '' AS to_timestamp_4, to_timestamp('My birthday-> Year: 1976, Month: May, Day: 16',
-                                          '"My birthday-> Year" YYYY, "Month:" FMMonth, "Day:" DD');
+SELECT to_timestamp('My birthday-> Year: 1976, Month: May, Day: 16',
+                    '"My birthday-> Year" YYYY, "Month:" FMMonth, "Day:" DD');
 
-SELECT '' AS to_timestamp_5, to_timestamp('1,582nd VIII 21', 'Y,YYYth FMRM DD');
+SELECT to_timestamp('1,582nd VIII 21', 'Y,YYYth FMRM DD');
 
-SELECT '' AS to_timestamp_6, to_timestamp('15 "text between quote marks" 98 54 45', 
-                                          E'HH "\\text between quote marks\\"" YY MI SS');
+SELECT to_timestamp('15 "text between quote marks" 98 54 45', 
+                    E'HH "\\text between quote marks\\"" YY MI SS');
     
-SELECT '' AS to_timestamp_7, to_timestamp('05121445482000', 'MMDDHHMISSYYYY');    
+SELECT ('05121445482000', 'MMDDHHMISSYYYY');    
 
-SELECT '' AS to_timestamp_8, to_timestamp('2000January09Sunday', 'YYYYFMMonthDDFMDay');
+SELECT to_timestamp('2000January09Sunday', 'YYYYFMMonthDDFMDay');
 
-SELECT '' AS to_timestamp_9, to_timestamp('97/Feb/16', 'YYMonDD');
+SELECT to_timestamp('97/Feb/16', 'YYMonDD');
 
-SELECT '' AS to_timestamp_10, to_timestamp('19971116', 'YYYYMMDD');
+SELECT to_timestamp('19971116', 'YYYYMMDD');
 
-SELECT '' AS to_timestamp_11, to_timestamp('20000-1116', 'YYYY-MMDD');
+SELECT to_timestamp('20000-1116', 'YYYY-MMDD');
 
-SELECT '' AS to_timestamp_12, to_timestamp('9-1116', 'Y-MMDD');
+SELECT to_timestamp('9-1116', 'Y-MMDD');
 
-SELECT '' AS to_timestamp_13, to_timestamp('95-1116', 'YY-MMDD');
+SELECT to_timestamp('95-1116', 'YY-MMDD');
 
-SELECT '' AS to_timestamp_14, to_timestamp('995-1116', 'YYY-MMDD');
+SELECT to_timestamp('995-1116', 'YYY-MMDD');
 
-SELECT '' AS to_timestamp_15, to_timestamp('2005426', 'YYYYWWD');
+SELECT to_timestamp('2005426', 'YYYYWWD');
 
-SELECT '' AS to_timestamp_16, to_timestamp('2005300', 'YYYYDDD');
+SELECT to_timestamp('2005300', 'YYYYDDD');
 
-SELECT '' AS to_timestamp_17, to_timestamp('2005527', 'IYYYIWID');
+SELECT to_timestamp('2005527', 'IYYYIWID');
 
-SELECT '' AS to_timestamp_18, to_timestamp('005527', 'IYYIWID');
+SELECT to_timestamp('005527', 'IYYIWID');
 
-SELECT '' AS to_timestamp_19, to_timestamp('05527', 'IYIWID');
+SELECT to_timestamp('05527', 'IYIWID');
 
-SELECT '' AS to_timestamp_20, to_timestamp('5527', 'IIWID');
+SELECT to_timestamp('5527', 'IIWID');
 
-SELECT '' AS to_timestamp_21, to_timestamp('2005364', 'IYYYIDDD');
+SELECT to_timestamp('2005364', 'IYYYIDDD');
 
-SELECT '' AS to_char_12, to_char(d, 'FF1 FF2 FF3 FF4 FF5 FF6  ff1 ff2 ff3 ff4 ff5 ff6  MS US')
-=======
 SELECT to_char(d, 'FF1 FF2 FF3 FF4 FF5 FF6  ff1 ff2 ff3 ff4 ff5 ff6  MS US')
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
    FROM (VALUES
        ('2018-11-02 12:34:56'::timestamp),
        ('2018-11-02 12:34:56.78'),
