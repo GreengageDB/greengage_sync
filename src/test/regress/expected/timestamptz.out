@@ -2815,13 +2815,21 @@ create temp table tmptz (f1 timestamptz primary key);
 insert into tmptz values ('2017-01-18 00:00+00');
 explain (costs off)
 select * from tmptz where f1 at time zone 'utc' = '2017-01-18 00:00';
-                                                QUERY PLAN                                                 
------------------------------------------------------------------------------------------------------------
+<<<<<<< HEAD
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on tmptz
-         Filter: ((f1 AT TIME ZONE 'utc'::text) = 'Wed Jan 18 00:00:00 2017'::timestamp without time zone)
+         Filter: (timezone('utc'::text, f1) = 'Wed Jan 18 00:00:00 2017'::timestamp without time zone)
  Optimizer: Postgres query optimizer
 (4 rows)
+=======
+                                             QUERY PLAN                                              
+-----------------------------------------------------------------------------------------------------
+ Seq Scan on tmptz
+   Filter: ((f1 AT TIME ZONE 'utc'::text) = 'Wed Jan 18 00:00:00 2017'::timestamp without time zone)
+(2 rows)
+>>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 select * from tmptz where f1 at time zone 'utc' = '2017-01-18 00:00';
               f1              
