@@ -5252,6 +5252,7 @@ _outCreateTrigStmt(StringInfo str, const CreateTrigStmt *node)
 	WRITE_BOOL_FIELD(deferrable);
 	WRITE_BOOL_FIELD(initdeferred);
 	WRITE_NODE_FIELD(constrrel);
+	WRITE_BOOL_FIELD(replace);
 }
 
 static void
