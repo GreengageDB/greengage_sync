@@ -1022,6 +1022,12 @@ CopyFrom(CopyFromState cstate)
 
 		ExecClearTuple(myslot);
 
+#if 0 /* GPDB: replaced by the dispatch_mode-aware calls below */
+		/* Directly store the values/nulls array in the slot */
+		if (!NextCopyFrom(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
+			break;
+#endif
+
 		if (cstate->dispatch_mode == COPY_EXECUTOR)
 		{
 			if (!NextCopyFromExecute(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
