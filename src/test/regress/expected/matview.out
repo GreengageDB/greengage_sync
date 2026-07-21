@@ -629,7 +629,6 @@ SELECT * FROM mvtest2;
 ERROR:  materialized view "mvtest2" has not been populated
 HINT:  Use the REFRESH MATERIALIZED VIEW command.
 ROLLBACK;
-<<<<<<< HEAD
 -- make sure refresh mat view will dispatch oid at the final
 -- execution of the mat view's body query. See Github Issue
 -- https://github.com/greenplum-db/gpdb/issues/11956 for details.
@@ -647,7 +646,6 @@ distributed randomly;
 refresh materialized view mat_view_github_issue_11956;
 drop materialized view mat_view_github_issue_11956;
 drop table t_github_issue_11956;
-=======
 -- INSERT privileges if relation owner is not allowed to insert.
 CREATE SCHEMA matview_schema;
 CREATE USER regress_matview_user;
@@ -727,4 +725,3 @@ NOTICE:  relation "matview_ine_tab" already exists, skipping
 (0 rows)
 
 DROP MATERIALIZED VIEW matview_ine_tab;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
