@@ -1163,11 +1163,12 @@ _readFuncCall(void)
 	READ_NODE_FIELD(args);
 	READ_NODE_FIELD(agg_order);
 	READ_NODE_FIELD(agg_filter);
+	READ_NODE_FIELD(over);
 	READ_BOOL_FIELD(agg_within_group);
 	READ_BOOL_FIELD(agg_star);
 	READ_BOOL_FIELD(agg_distinct);
 	READ_BOOL_FIELD(func_variadic);
-	READ_NODE_FIELD(over);
+	READ_ENUM_FIELD(funcformat, CoercionForm);
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();
