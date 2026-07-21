@@ -13,12 +13,8 @@ SELECT min(ctid) FROM tid_tab;
 SELECT max(ctid) FROM tid_tab;
 TRUNCATE tid_tab;
 
-<<<<<<< HEAD
--- Tests for currtid() and currtid2() with various relation kinds
--- Not supported in GPDB
-=======
 -- Tests for currtid2() with various relation kinds
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+-- Not supported in GPDB
 
 -- Materialized view
 CREATE MATERIALIZED VIEW tid_matview AS SELECT a FROM tid_tab;
