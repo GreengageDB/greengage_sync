@@ -1599,7 +1599,6 @@ BeginCopyFrom(ParseState *pstate,
 
 	/* process commmon options or initialization */
 
-	cstate->attnamelist = attnamelist;
 	/* Generate or convert list of attributes to process */
 	cstate->attnumlist = CopyGetAttnums(tupDesc, cstate->rel, attnamelist);
 

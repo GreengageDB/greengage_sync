@@ -68,7 +68,6 @@ typedef struct CopyFromStateData
 	/* parameters from the COPY command */
 	Relation	rel;			/* relation to copy from */
 	List	   *attnumlist;		/* integer list of attnums to copy */
-	List	   *attnamelist;	/* list of attributes by name */
 	char	   *filename;		/* filename, or NULL for STDIN */
 	bool		is_program;		/* is 'filename' a program to popen? */
 	copy_data_source_cb data_source_cb; /* function for reading data */
@@ -170,7 +169,7 @@ typedef struct CopyFromStateData
 	/* Information on the connections to QEs. */
 	CdbCopy    *cdbCopy;
 
-/* end GPDB specific variables */
+	/* end GPDB specific variables */
 } CopyFromStateData;
 
 /*

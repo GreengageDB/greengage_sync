@@ -78,7 +78,7 @@ typedef struct CopyToStateData
 	/* Information on the connections to QEs. */
 	CdbCopy    *cdbCopy;
 
-/* end GPDB specific variables */
+	/* end GPDB specific variables */
 } CopyToStateData;
 
 /*
