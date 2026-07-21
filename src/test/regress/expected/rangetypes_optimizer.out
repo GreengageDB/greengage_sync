@@ -1396,15 +1396,15 @@ select count(*) from test_range_spgist where ir -|- int4range(100,500);
 -- test index-only scans
 explain (costs off)
 select ir from test_range_spgist where ir -|- int4range(10,20) order by ir;
-                     QUERY PLAN                      
------------------------------------------------------
+                      QUERY PLAN
+------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: ir
    ->  Sort
          Sort Key: ir
          ->  Seq Scan on test_range_spgist
                Filter: (ir -|- '[10,20)'::int4range)
- Optimizer: Pivotal Optimizer (GPORCA)
+ Optimizer: Pivotal Optimizer (GPORCA) version 3.44.0
 (7 rows)
 
 select ir from test_range_spgist where ir -|- int4range(10,20) order by ir;
