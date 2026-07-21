@@ -67,10 +67,6 @@ typedef struct CopyToStateData
 	/* GPDB specific variables */
 	FmgrInfo   *enc_conversion_proc; /* conv proc from exttbl encoding to
 										server or the other way around */
-	int			first_qe_processed_field;
-	List	   *qd_attnumlist;
-	List	   *qe_attnumlist;
-	bool		stopped_processing_at_delim;
 
 	ProgramPipes	*program_pipes; /* COPY PROGRAM pipes for data and stderr */
 
