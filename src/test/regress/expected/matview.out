@@ -629,7 +629,6 @@ SELECT * FROM mvtest2;
 ERROR:  materialized view "mvtest2" has not been populated
 HINT:  Use the REFRESH MATERIALIZED VIEW command.
 ROLLBACK;
-<<<<<<< HEAD
 -- make sure refresh mat view will dispatch oid at the final
 -- execution of the mat view's body query. See Github Issue
 -- https://github.com/greenplum-db/gpdb/issues/11956 for details.
@@ -647,7 +646,6 @@ distributed randomly;
 refresh materialized view mat_view_github_issue_11956;
 drop materialized view mat_view_github_issue_11956;
 drop table t_github_issue_11956;
-=======
 -- INSERT privileges if relation owner is not allowed to insert.
 CREATE SCHEMA matview_schema;
 CREATE USER regress_matview_user;
@@ -660,11 +658,14 @@ CREATE MATERIALIZED VIEW matview_schema.mv_withdata1 (a) AS
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE MATERIALIZED VIEW matview_schema.mv_withdata2 (a) AS
   SELECT generate_series(1, 10) WITH DATA;
-              QUERY PLAN              
---------------------------------------
- ProjectSet (actual rows=10 loops=1)
-   ->  Result (actual rows=1 loops=1)
-(2 rows)
+                               QUERY PLAN                               
+------------------------------------------------------------------------
+ Redistribute Motion 1:3  (slice1; segments: 1) (actual rows=5 loops=1)
+   Hash Key: (generate_series(1, 10))
+   ->  ProjectSet (actual rows=10 loops=1)
+         ->  Result (actual rows=1 loops=1)
+ Optimizer: Postgres query optimizer
+(5 rows)
 
 REFRESH MATERIALIZED VIEW matview_schema.mv_withdata2;
 CREATE MATERIALIZED VIEW matview_schema.mv_nodata1 (a) AS
@@ -672,11 +673,14 @@ CREATE MATERIALIZED VIEW matview_schema.mv_nodata1 (a) AS
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE MATERIALIZED VIEW matview_schema.mv_nodata2 (a) AS
   SELECT generate_series(1, 10) WITH NO DATA;
-          QUERY PLAN           
--------------------------------
- ProjectSet (never executed)
-   ->  Result (never executed)
-(2 rows)
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Redistribute Motion 1:3  (slice1; segments: 1) (never executed)
+   Hash Key: (generate_series(1, 10))
+   ->  ProjectSet (never executed)
+         ->  Result (never executed)
+ Optimizer: Postgres query optimizer
+(5 rows)
 
 REFRESH MATERIALIZED VIEW matview_schema.mv_nodata2;
 RESET SESSION AUTHORIZATION;
@@ -727,4 +731,3 @@ NOTICE:  relation "matview_ine_tab" already exists, skipping
 (0 rows)
 
 DROP MATERIALIZED VIEW matview_ine_tab;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
