@@ -20,11 +20,7 @@ use Time::HiRes qw(usleep);
 
 if ($ENV{with_gssapi} eq 'yes')
 {
-<<<<<<< HEAD
-	plan tests => 19;
-=======
-	plan tests => 34;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+	plan tests => 35;
 }
 else
 {
@@ -215,7 +211,7 @@ sub test_access
 	{
 		my $current_logfiles = slurp_file($node->data_dir . '/current_logfiles');
 		note "current_logfiles = $current_logfiles";
-		like($current_logfiles, qr|^stderr log/postgresql-.*log$|,
+		like($current_logfiles, qr|^stderr log/gpdb-.*csv$|,
 			 'current_logfiles is sane');
 
 		my $lfname = $current_logfiles;
