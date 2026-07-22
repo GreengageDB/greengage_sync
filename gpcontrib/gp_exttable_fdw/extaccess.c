@@ -58,14 +58,11 @@
 #include "utils/memutils.h"
 
 static HeapTuple externalgettup(FileScanDesc scan, ScanDirection dir);
-static void InitToParseState(CopyToState pstate, Relation relation,
-			   char fmtType,
-			   char *uri, int rejectlimit,
-			   bool islimitinrows, char logerrors);
+static void InitToParseState(CopyToState pstate);
 static void InitFromParseState(CopyFromState pstate, Relation relation,
-			   char fmtType,
-			   char *uri, int rejectlimit,
-			   bool islimitinrows, char logerrors);
+							   char fmtType,
+							   char *uri, int rejectlimit,
+							   bool islimitinrows, char logerrors);
 
 static void FunctionCallPrepareFormatter(FunctionCallInfoBaseData *fcinfo,
 							 int nArgs,
@@ -618,13 +615,7 @@ external_insert_init(Relation rel)
 	copyFmtOpts = appendCopyEncodingOption(list_copy(extentry->options), extentry->encoding);
 
 	extInsertDesc->ext_pstate = BeginCopyToForeignTable(rel, (fmttype_is_custom(extentry->fmtcode) ? NIL : copyFmtOpts));
-	InitToParseState(extInsertDesc->ext_pstate,
-					 rel,
-					 extentry->fmtcode,
-					 extInsertDesc->ext_uri,
-					 extentry->rejectlimit,
-					 (extentry->rejectlimittype == 'r'),
-					 extentry->logerrors);
+	InitToParseState(extInsertDesc->ext_pstate);
 
 	if (fmttype_is_custom(extentry->fmtcode))
 	{
@@ -1174,10 +1165,7 @@ lookupCustomFormatter(List **options, bool iswritable)
  * (text, csv), etc...
  */
 static void
-InitToParseState(CopyToState pstate, Relation relation,
-				 char fmtType,
-				 char *uri, int rejectlimit,
-				 bool islimitinrows, char logerrors)
+InitToParseState(CopyToState pstate)
 {
 	/* Initialize 'out_functions', like CopyTo() would. */
 	CopyToState cstate = pstate;
@@ -1227,9 +1215,9 @@ InitToParseState(CopyToState pstate, Relation relation,
  */
 static void
 InitFromParseState(CopyFromState pstate, Relation relation,
-			   char fmtType,
-			   char *uri, int rejectlimit,
-			   bool islimitinrows, char logerrors)
+				   char fmtType,
+				   char *uri, int rejectlimit,
+				   bool islimitinrows, char logerrors)
 {
 	/*
 	 * Error handling setup
