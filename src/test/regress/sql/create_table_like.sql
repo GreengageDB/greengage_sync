@@ -175,9 +175,6 @@ CREATE TABLE pg_attrdef (LIKE ctlt1 INCLUDING ALL);
 \d+ public.pg_attrdef
 DROP TABLE public.pg_attrdef;
 
-<<<<<<< HEAD
-DROP TABLE ctlt12_storage, ctlt12_comments, ctlt1_inh, ctlt13_inh, ctlt13_like, ctlt_all, ctlb, ctla, ctlt1, ctlt2, ctlt3, ctlt4 CASCADE;
-=======
 -- Check that LIKE isn't confused when new table masks the old, either
 BEGIN;
 CREATE SCHEMA ctl_schema;
@@ -187,7 +184,6 @@ CREATE TABLE ctlt1 (LIKE ctlt1 INCLUDING ALL);
 ROLLBACK;
 
 DROP TABLE ctlt1, ctlt2, ctlt3, ctlt4, ctlt12_storage, ctlt12_comments, ctlt1_inh, ctlt13_inh, ctlt13_like, ctlt_all, ctla, ctlb CASCADE;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 -- LIKE must respect NO INHERIT property of constraints
 CREATE TABLE noinh_con_copy (a int CHECK (a > 0) NO INHERIT);
