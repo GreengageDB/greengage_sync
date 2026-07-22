@@ -28,14 +28,16 @@ ERROR:  permission denied for table tbl_withdata1
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE TABLE selinto_schema.tbl_withdata2 (a) AS
   SELECT generate_series(1,3) WITH DATA;
-                               QUERY PLAN                               
-------------------------------------------------------------------------
- Redistribute Motion 1:3  (slice1; segments: 1) (actual rows=2 loops=1)
-   Hash Key: (generate_series(1, 3))
-   ->  ProjectSet (actual rows=3 loops=1)
-         ->  Result (actual rows=1 loops=1)
- Optimizer: Postgres query optimizer
-(5 rows)
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
+ Result (actual rows=2 loops=1)
+   ->  Redistribute Motion 3:3  (slice1; segments: 3) (actual rows=2 loops=1)
+         ->  Result (actual rows=3 loops=1)
+               One-Time Filter: (gp_execution_segment() = 0)
+               ->  ProjectSet (actual rows=3 loops=1)
+                     ->  Result (actual rows=1 loops=1)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(7 rows)
 
 -- WITH NO DATA, passes.
 CREATE TABLE selinto_schema.tbl_nodata1 (a) AS
@@ -43,14 +45,16 @@ CREATE TABLE selinto_schema.tbl_nodata1 (a) AS
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE TABLE selinto_schema.tbl_nodata2 (a) AS
   SELECT generate_series(1,3) WITH NO DATA;
-                           QUERY PLAN                            
------------------------------------------------------------------
- Redistribute Motion 1:3  (slice1; segments: 1) (never executed)
-   Hash Key: (generate_series(1, 3))
-   ->  ProjectSet (never executed)
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
+ Result (never executed)
+   ->  Redistribute Motion 3:3  (slice1; segments: 3) (never executed)
          ->  Result (never executed)
- Optimizer: Postgres query optimizer
-(5 rows)
+               One-Time Filter: (gp_execution_segment() = 2)
+               ->  ProjectSet (never executed)
+                     ->  Result (never executed)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(7 rows)
 
 -- EXECUTE and WITH DATA, passes.
 PREPARE data_sel AS SELECT generate_series(1,3);
@@ -59,14 +63,16 @@ CREATE TABLE selinto_schema.tbl_withdata3 (a) AS
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE TABLE selinto_schema.tbl_withdata4 (a) AS
   EXECUTE data_sel WITH DATA;
-                               QUERY PLAN                               
-------------------------------------------------------------------------
- Redistribute Motion 1:3  (slice1; segments: 1) (actual rows=2 loops=1)
-   Hash Key: (generate_series(1, 3))
-   ->  ProjectSet (actual rows=3 loops=1)
-         ->  Result (actual rows=1 loops=1)
- Optimizer: Postgres query optimizer
-(5 rows)
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
+ Result (actual rows=2 loops=1)
+   ->  Redistribute Motion 3:3  (slice1; segments: 3) (actual rows=2 loops=1)
+         ->  Result (actual rows=3 loops=1)
+               One-Time Filter: (gp_execution_segment() = 2)
+               ->  ProjectSet (actual rows=3 loops=1)
+                     ->  Result (actual rows=1 loops=1)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(7 rows)
 
 -- EXECUTE and WITH NO DATA, passes.
 CREATE TABLE selinto_schema.tbl_nodata3 (a) AS
@@ -74,14 +80,16 @@ CREATE TABLE selinto_schema.tbl_nodata3 (a) AS
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE TABLE selinto_schema.tbl_nodata4 (a) AS
   EXECUTE data_sel WITH NO DATA;
-                           QUERY PLAN                            
------------------------------------------------------------------
- Redistribute Motion 1:3  (slice1; segments: 1) (never executed)
-   Hash Key: (generate_series(1, 3))
-   ->  ProjectSet (never executed)
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
+ Result (never executed)
+   ->  Redistribute Motion 3:3  (slice1; segments: 3) (never executed)
          ->  Result (never executed)
- Optimizer: Postgres query optimizer
-(5 rows)
+               One-Time Filter: (gp_execution_segment() = 1)
+               ->  ProjectSet (never executed)
+                     ->  Result (never executed)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(7 rows)
 
 RESET SESSION AUTHORIZATION;
 ALTER DEFAULT PRIVILEGES FOR ROLE regress_selinto_user
