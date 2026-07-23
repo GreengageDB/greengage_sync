@@ -1,3 +1,7 @@
+-- start_matchsubs
+-- m/ERROR:  could not serialize current snapshot, ActiveSnapshot not set \(cdbdisp_dtx\.c\:\d+\)/
+-- s/ \(cdbdisp_dtx\.c:\d+\)//
+-- end_matchsubs
 --
 -- CREATE_INDEX
 -- Create ancillary data structures (i.e. indices)
