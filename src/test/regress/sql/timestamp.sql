@@ -246,7 +246,7 @@ SELECT to_timestamp('1,582nd VIII 21', 'Y,YYYth FMRM DD');
 SELECT to_timestamp('15 "text between quote marks" 98 54 45', 
                     E'HH "\\text between quote marks\\"" YY MI SS');
     
-SELECT ('05121445482000', 'MMDDHHMISSYYYY');    
+SELECT to_timestamp('05121445482000', 'MMDDHHMISSYYYY');
 
 SELECT to_timestamp('2000January09Sunday', 'YYYYFMMonthDDFMDay');
 

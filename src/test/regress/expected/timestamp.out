@@ -1730,10 +1730,12 @@ HINT:  Use the 24-hour clock, or give an hour between 1 and 12.
 (1 row)
 
     
-SELECT ('05121445482000', 'MMDDHHMISSYYYY');    
-               row               
----------------------------------
- (05121445482000,MMDDHHMISSYYYY)
+SELECT to_timestamp('05121445482000', 'MMDDHHMISSYYYY');
+WARNING:  hour "14" is invalid for the 12-hour clock
+HINT:  Use the 24-hour clock, or give an hour between 1 and 12.
+         to_timestamp         
+------------------------------
+ Fri May 12 14:45:48 2000 PDT
 (1 row)
 
 SELECT to_timestamp('2000January09Sunday', 'YYYYFMMonthDDFMDay');
