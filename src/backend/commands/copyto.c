@@ -375,23 +375,15 @@ CopySendInt16(CopyToState cstate, int16 val)
 static void
 ClosePipeToProgram(CopyToState cstate)
 {
-	int			pclose_rc;
-
 	Assert(cstate->is_program);
 
-	pclose_rc = ClosePipeStream(cstate->copy_file);
-	if (pclose_rc == -1)
-		ereport(ERROR,
-				(errcode_for_file_access(),
-				 errmsg("could not close pipe to external command: %m")));
-	else if (pclose_rc != 0)
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_EXTERNAL_ROUTINE_EXCEPTION),
-				 errmsg("program \"%s\" failed",
-						cstate->filename),
-				 errdetail_internal("%s", wait_result_to_str(pclose_rc))));
-	}
+	/*
+	 * GGDB: the pipe was set up with open_program_pipes(), not upstream's
+	 * OpenPipeStream(), so it must be torn down with close_program_pipes(),
+	 * which fclose()s the stream, reaps the child and reports the program's
+	 * stderr on failure.
+	 */
+	close_program_pipes(cstate->program_pipes, &cstate->copy_file, true);
 }
 
 /*
@@ -739,31 +731,28 @@ BeginCopyToCommon(ParseState *pstate,
 	}
 
 	/* Use client encoding when ENCODING option is not specified. */
-	if (cstate->file_encoding < 0)
+	if (cstate->opts.file_encoding < 0)
 		cstate->file_encoding = pg_get_client_encoding();
+	else
+		cstate->file_encoding = cstate->opts.file_encoding;
 
 	/*
 	 * Set up encoding conversion info.  Even if the file and server encodings
 	 * are the same, we must apply pg_any_to_server() to validate data in
 	 * multibyte encodings.
 	 *
-	 * In COPY_EXECUTE mode, the dispatcher has already done the conversion.
+	 * GGDB: dispatch_mode is determined by the callers only after this
+	 * function returns, so this runs the same way in every mode.  The QD
+	 * needs these settings despite delegating the data conversion to the
+	 * QEs: CopyToDispatch uses them to convert the header line.
 	 */
-	if (cstate->dispatch_mode != COPY_DISPATCH)
-	{
-		cstate->need_transcoding =
-			((cstate->file_encoding != GetDatabaseEncoding() ||
-			  pg_database_encoding_max_length() > 1));
-		/* See Multibyte encoding comment above */
-		cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
-		setEncodingConversionProc(&cstate->enc_conversion_proc,
-								  cstate->file_encoding, true);
-	}
-	else
-	{
-		cstate->need_transcoding = false;
-		cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
-	}
+	cstate->need_transcoding =
+		((cstate->file_encoding != GetDatabaseEncoding() ||
+		  pg_database_encoding_max_length() > 1));
+	/* See Multibyte encoding comment above */
+	cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
+	setEncodingConversionProc(&cstate->enc_conversion_proc,
+							  cstate->file_encoding, true);
 
 	cstate->copy_dest = COPY_FILE;	/* default */
 

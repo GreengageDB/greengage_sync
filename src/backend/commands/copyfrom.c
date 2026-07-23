@@ -1022,7 +1022,7 @@ CopyFrom(CopyFromState cstate)
 
 		ExecClearTuple(myslot);
 
-#if 0 /* GPDB: replaced by the dispatch_mode-aware calls below */
+#if 0 /* GGDB: replaced by the dispatch_mode-aware calls below */
 		/* Directly store the values/nulls array in the slot */
 		if (!NextCopyFrom(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
 			break;
@@ -1379,6 +1379,12 @@ CopyFrom(CopyFromState cstate)
 			 * MPP: incrementing this counter here only matters for utility
 			 * mode. in dispatch mode only the dispatcher COPY collects row
 			 * count, so this counter is meaningless.
+			 *
+			 * Note that NextCopyFrom() also increments cdbsreh->processed on
+			 * every successfully parsed row.  That covers the QD, which
+			 * dispatches rows without inserting them and so never reaches
+			 * this spot; the QE receives pre-parsed rows through
+			 * NextCopyFromExecute() and counts them only here.
 			 */
 			pgstat_progress_update_param(PROGRESS_COPY_LINES_PROCESSED, ++processed);
 			if (cstate->cdbsreh)
@@ -1985,33 +1991,17 @@ EndCopyFrom(CopyFromState cstate)
 static void
 ClosePipeFromProgram(CopyFromState cstate)
 {
-	int			pclose_rc;
-
 	Assert(cstate->is_program);
 
-	pclose_rc = ClosePipeStream(cstate->copy_file);
-	if (pclose_rc == -1)
-		ereport(ERROR,
-				(errcode_for_file_access(),
-				 errmsg("could not close pipe to external command: %m")));
-	else if (pclose_rc != 0)
-	{
-		/*
-		 * If we ended a COPY FROM PROGRAM before reaching EOF, then it's
-		 * expectable for the called program to fail with SIGPIPE, and we
-		 * should not report that as an error.  Otherwise, SIGPIPE indicates a
-		 * problem.
-		 */
-		if (!cstate->reached_eof &&
-			wait_result_is_signal(pclose_rc, SIGPIPE))
-			return;
-
-		ereport(ERROR,
-				(errcode(ERRCODE_EXTERNAL_ROUTINE_EXCEPTION),
-				 errmsg("program \"%s\" failed",
-						cstate->filename),
-				 errdetail_internal("%s", wait_result_to_str(pclose_rc))));
-	}
+	/*
+	 * GGDB: the pipe was set up with open_program_pipes(), not upstream's
+	 * OpenPipeStream(), so it must be torn down with close_program_pipes(),
+	 * which fclose()s the stream, reaps the child and reports the program's
+	 * stderr on failure.  Signal-terminated programs (including SIGPIPE
+	 * when we stop reading before EOF) are tolerated there, as in the
+	 * pre-split GGDB code.
+	 */
+	close_program_pipes(cstate->program_pipes, &cstate->copy_file, true);
 }
 
 /*
