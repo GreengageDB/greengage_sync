@@ -2126,7 +2126,8 @@ ORDER BY 1, 2, 3;
        4000 |           26 | >>
        4000 |           27 | >>=
        4000 |           28 | ^@
-<<<<<<< HEAD
+       4000 |           29 | <^
+       4000 |           30 | >^
        7013 |            1 | *<
        7013 |            1 | <
        7013 |            1 | <<
@@ -2146,11 +2147,6 @@ ORDER BY 1, 2, 3;
        7013 |            5 | >>
        7013 |            5 | ~>~
 (145 rows)
-=======
-       4000 |           29 | <^
-       4000 |           30 | >^
-(123 rows)
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 -- Check that all opclass search operators have selectivity estimators.
 -- This is not absolutely required, but it seems a reasonable thing
@@ -2279,7 +2275,7 @@ ORDER BY 1, 2, 3;
                     | record_ops       | record_ops       | record
                     | tsquery_ops      | tsquery_ops      | tsquery
                     | tsvector_ops     | tsvector_ops     | tsvector
-(15 rows)
+(16 rows)
 
 -- **************** pg_index ****************
 -- Look for illegal values in pg_index fields.

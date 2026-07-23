@@ -257,14 +257,10 @@ SELECT to_char(d1, 'YYYYTH YYYYth Jth')
 SELECT to_char(d1, 'YYYY A.D. YYYY a.d. YYYY bc HH:MI:SS P.M. HH:MI:SS p.m. HH:MI:SS pm')
    FROM TIMESTAMPTZ_TBL;
 
-<<<<<<< HEAD
-SELECT '' AS to_char_10, to_char(d1, 'YYYY WW IYYY IYY IY I IW') 
+SELECT to_char(d1, 'YYYY WW IYYY IYY IY I IW') 
    FROM TIMESTAMPTZ_TBL;
 
-SELECT '' AS to_char_10, to_char(d1, 'IYYY IYY IY I IW IDDD ID')
-=======
 SELECT to_char(d1, 'IYYY IYY IY I IW IDDD ID')
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
    FROM TIMESTAMPTZ_TBL;
 
 SELECT to_char(d1, 'FMIYYY FMIYY FMIY FMI FMIW FMIDDD FMID')
