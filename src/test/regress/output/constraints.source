@@ -149,23 +149,13 @@ ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_
 DETAIL:  Failing row contains (5, check failed, -5).
 INSERT INTO INSERT_TBL VALUES (7, '!check failed', -7);
 INSERT INTO INSERT_TBL(y) VALUES ('-!NULL-');
-<<<<<<< HEAD
-SELECT '' AS four, * FROM INSERT_TBL;
- four | x |       y       | z  
-------+---+---------------+----
-      | 4 | Y             | -4
-      | 7 | -NULL-        | -7
-      | 7 | !check failed | -7
-      | 6 | -!NULL-       | -6
-=======
 SELECT * FROM INSERT_TBL;
  x |       y       | z  
 ---+---------------+----
- 3 | Y             | -3
  7 | -NULL-        | -7
  7 | !check failed | -7
- 4 | -!NULL-       | -4
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+ 6 | -!NULL-       | -6
+ 4 | Y             | -4
 (4 rows)
 
 -- GPDB: reset the table contents to match upstream.
@@ -186,7 +176,6 @@ INSERT INTO INSERT_TBL(x,y) VALUES (5, '!check failed');
 ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"
 DETAIL:  Failing row contains (5, !check failed, -9).
 INSERT INTO INSERT_TBL(y) VALUES ('-!NULL-');
-<<<<<<< HEAD
 ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
 DETAIL:  Failing row contains (11, -!NULL-, -11).
 -- GPDB: fix the table contents to match upstream again, so that the subsequent
@@ -194,16 +183,6 @@ DETAIL:  Failing row contains (11, -!NULL-, -11).
 insert into insert_tbl values
   (5, '!check failed', -5),
   (6, '-!NULL-', -6);
-SELECT '' AS six, * FROM INSERT_TBL;
- six | x |       y       | z  
------+---+---------------+----
-     | 3 | Y             | -3
-     | 7 | -NULL-        | -7
-     | 7 | !check failed | -7
-     | 4 | -!NULL-       | -4
-     | 5 | !check failed | -5
-     | 6 | -!NULL-       | -6
-=======
 SELECT * FROM INSERT_TBL;
  x |       y       | z  
 ---+---------------+----
@@ -213,7 +192,6 @@ SELECT * FROM INSERT_TBL;
  4 | -!NULL-       | -4
  5 | !check failed | -5
  6 | -!NULL-       | -6
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 (6 rows)
 
 SELECT 'seven' AS one, nextval('insert_seq');
@@ -338,7 +316,6 @@ CREATE TEMP TABLE tmp (xd INT, yd TEXT, zd INT);
 INSERT INTO tmp VALUES (null, 'Y', null);
 INSERT INTO tmp VALUES (5, '!check failed', null);
 INSERT INTO tmp VALUES (null, 'try again', null);
-<<<<<<< HEAD
 -- GPDB: This INSERT  doesn't work in GPDB, because the default is
 -- different. Fix the table contents again for the next test.
 --
@@ -347,21 +324,12 @@ INSERT INTO INSERT_TBL VALUES
   (4, 'Y', -4),
   (5, '!check failed', -5),
   (6, 'try again', -6);
-SELECT '' AS three, * FROM INSERT_TBL;
- three | x |       y       | z  
--------+---+---------------+----
-       | 4 | Y             | -4
-       | 5 | !check failed | -5
-       | 6 | try again     | -6
-=======
-INSERT INTO INSERT_TBL(y) select yd from tmp;
 SELECT * FROM INSERT_TBL;
  x |       y       | z  
 ---+---------------+----
  4 | Y             | -4
  5 | !check failed | -5
  6 | try again     | -6
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 (3 rows)
 
 INSERT INTO INSERT_TBL SELECT * FROM tmp WHERE yd = 'try again';
@@ -369,31 +337,18 @@ INSERT INTO INSERT_TBL(y,z) SELECT yd, -7 FROM tmp WHERE yd = 'try again';
 ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"
 DETAIL:  Failing row contains (4, try again, -7).
 INSERT INTO INSERT_TBL(y,z) SELECT yd, -8 FROM tmp WHERE yd = 'try again';
-<<<<<<< HEAD
 ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"
 DETAIL:  Failing row contains (5, try again, -8).
 -- GPDB: Fixup
 INSERT INTO INSERT_TBL VALUES (7, 'try again', -7);
-SELECT '' AS four, * FROM INSERT_TBL;
- four | x |       y       | z  
-------+---+---------------+----
-      | 4 | Y             | -4
-      | 5 | !check failed | -5
-      | 6 | try again     | -6
-      |   | try again     |   
-      | 7 | try again     | -7
-=======
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
-DETAIL:  Failing row contains (8, try again, -8).
 SELECT * FROM INSERT_TBL;
  x |       y       | z  
 ---+---------------+----
  4 | Y             | -4
- 5 | !check failed | -5
  6 | try again     | -6
    | try again     |   
  7 | try again     | -7
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+ 5 | !check failed | -5
 (5 rows)
 
 DROP TABLE tmp;
