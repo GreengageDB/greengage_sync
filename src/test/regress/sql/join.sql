@@ -714,11 +714,8 @@ explain (costs off)
 select a.idv, b.idv from tidv a, tidv b where a.idv = b.idv;
 
 set enable_mergejoin = 0;
-<<<<<<< HEAD
 set enable_nestloop = 1;
-=======
 set enable_hashjoin = 0;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 
 explain (costs off)
 select a.idv, b.idv from tidv a, tidv b where a.idv = b.idv;
@@ -959,8 +956,8 @@ where i41.f1 > 0;
 --
 -- test the corner cases FULL JOIN ON TRUE and FULL JOIN ON FALSE
 --
-select * from int4_tbl a full join int4_tbl b on true;
-select * from int4_tbl a full join int4_tbl b on false;
+select * from int4_tbl a full join int4_tbl b on true order by 1, 2;
+select * from int4_tbl a full join int4_tbl b on false order by 1, 2;
 
 --
 -- test for ability to use a cartesian join when necessary

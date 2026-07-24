@@ -2759,37 +2759,31 @@ create temp table tidv (idv mycomptype);
 create index on tidv (idv);
 explain (costs off)
 select a.idv, b.idv from tidv a, tidv b where a.idv = b.idv;
-                          QUERY PLAN                           
----------------------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Merge Join
-         Merge Cond: (a.idv = b.idv)
-         ->  Index Only Scan using tidv_idv_idx on tidv a
-         ->  Sort
-               Sort Key: b.idv
-               ->  Broadcast Motion 3:3  (slice2; segments: 3)
-                     ->  Seq Scan on tidv b
+   ->  Hash Join
+         Hash Cond: (a.idv = b.idv)
+         ->  Seq Scan on tidv a
+         ->  Hash
+               ->  Seq Scan on tidv b
  Optimizer: Postgres query optimizer
-(9 rows)
+(7 rows)
 
 set enable_mergejoin = 0;
-<<<<<<< HEAD
 set enable_nestloop = 1;
-=======
 set enable_hashjoin = 0;
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
 explain (costs off)
 select a.idv, b.idv from tidv a, tidv b where a.idv = b.idv;
                         QUERY PLAN                        
 ----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Nested Loop
-         ->  Broadcast Motion 3:3  (slice2; segments: 3)
-               ->  Seq Scan on tidv a
+         ->  Seq Scan on tidv a
          ->  Index Only Scan using tidv_idv_idx on tidv b
                Index Cond: (idv = a.idv)
  Optimizer: Postgres query optimizer
-(7 rows)
+(6 rows)
 
 rollback;
 --
@@ -3126,22 +3120,7 @@ select * from
       right join int4_tbl as i43 on (i43.f1 > 1)
       where ss1.loc = ss1.lat) as ss2
 where i41.f1 > 0;
-                    QUERY PLAN                    
---------------------------------------------------
- Nested Loop
-   ->  Nested Loop
-         ->  Seq Scan on int4_tbl i41
-               Filter: (f1 > 0)
-         ->  Nested Loop
-               Join Filter: (i41.f1 = i42.f1)
-               ->  Seq Scan on int8_tbl i81
-               ->  Materialize
-                     ->  Seq Scan on int4_tbl i42
-   ->  Materialize
-         ->  Seq Scan on int4_tbl i43
-               Filter: (f1 > 1)
-(12 rows)
-
+ERROR:  could not devise a query plan for the given query
 select * from
   int4_tbl as i41,
   lateral
@@ -3152,76 +3131,53 @@ select * from
       right join int4_tbl as i43 on (i43.f1 > 1)
       where ss1.loc = ss1.lat) as ss2
 where i41.f1 > 0;
-     f1     | x 
-------------+---
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
-(20 rows)
-
+ERROR:  could not devise a query plan for the given query
 --
 -- test the corner cases FULL JOIN ON TRUE and FULL JOIN ON FALSE
 --
-select * from int4_tbl a full join int4_tbl b on true;
+select * from int4_tbl a full join int4_tbl b on true order by 1, 2;
      f1      |     f1      
 -------------+-------------
-           0 |           0
-           0 |      123456
-           0 |     -123456
-           0 |  2147483647
-           0 | -2147483647
-      123456 |           0
-      123456 |      123456
-      123456 |     -123456
-      123456 |  2147483647
-      123456 | -2147483647
-     -123456 |           0
-     -123456 |      123456
-     -123456 |     -123456
-     -123456 |  2147483647
-     -123456 | -2147483647
-  2147483647 |           0
-  2147483647 |      123456
-  2147483647 |     -123456
-  2147483647 |  2147483647
-  2147483647 | -2147483647
+ -2147483647 | -2147483647
+ -2147483647 |     -123456
  -2147483647 |           0
  -2147483647 |      123456
- -2147483647 |     -123456
  -2147483647 |  2147483647
- -2147483647 | -2147483647
+     -123456 | -2147483647
+     -123456 |     -123456
+     -123456 |           0
+     -123456 |      123456
+     -123456 |  2147483647
+           0 | -2147483647
+           0 |     -123456
+           0 |           0
+           0 |      123456
+           0 |  2147483647
+      123456 | -2147483647
+      123456 |     -123456
+      123456 |           0
+      123456 |      123456
+      123456 |  2147483647
+  2147483647 | -2147483647
+  2147483647 |     -123456
+  2147483647 |           0
+  2147483647 |      123456
+  2147483647 |  2147483647
 (25 rows)
 
-select * from int4_tbl a full join int4_tbl b on false;
+select * from int4_tbl a full join int4_tbl b on false order by 1, 2;
      f1      |     f1      
 -------------+-------------
-             |           0
-             |      123456
-             |     -123456
-             |  2147483647
-             | -2147483647
+ -2147483647 |            
+     -123456 |            
            0 |            
       123456 |            
-     -123456 |            
   2147483647 |            
- -2147483647 |            
+             | -2147483647
+             |     -123456
+             |           0
+             |      123456
+             |  2147483647
 (10 rows)
 
 --
@@ -3482,15 +3438,17 @@ select * from
            union all
            select a as b) as t3
 where b;
-              QUERY PLAN               
----------------------------------------
+                 QUERY PLAN                  
+---------------------------------------------
  Nested Loop
    ->  Result
-   ->  Append
-         ->  Result
-         ->  Result
-               One-Time Filter: (true)
-(6 rows)
+   ->  Materialize
+         ->  Append
+               ->  Result
+               ->  Result
+                     One-Time Filter: (true)
+ Optimizer: Postgres query optimizer
+(8 rows)
 
 select * from
   (select 0 as z) as t1
