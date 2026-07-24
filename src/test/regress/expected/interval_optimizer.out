@@ -77,28 +77,28 @@ SELECT * FROM INTERVAL_TBL;
        f1        
 -----------------
  00:01:00
- 3 mons
- 5 mons
- 5 mons 12:00:00
  05:00:00
  10 days
  34 years
+ 3 mons
+ -00:00:14
  1 day 02:03:04
  6 years
- -00:00:14
+ 5 mons
+ 5 mons 12:00:00
 (10 rows)
 
 SELECT * FROM INTERVAL_TBL
    WHERE INTERVAL_TBL.f1 <> interval '@ 10 days';
        f1        
 -----------------
- -00:00:14
+ 00:01:00
  05:00:00
  34 years
+ 3 mons
+ -00:00:14
  1 day 02:03:04
  6 years
- 00:01:00
- 3 mons
  5 mons
  5 mons 12:00:00
 (9 rows)
@@ -107,18 +107,18 @@ SELECT * FROM INTERVAL_TBL
    WHERE INTERVAL_TBL.f1 <= interval '@ 5 hours';
     f1     
 -----------
- -00:00:14
  00:01:00
  05:00:00
+ -00:00:14
 (3 rows)
 
 SELECT * FROM INTERVAL_TBL
    WHERE INTERVAL_TBL.f1 < interval '@ 1 day';
     f1     
 -----------
+ 00:01:00
  05:00:00
  -00:00:14
- 00:01:00
 (3 rows)
 
 SELECT * FROM INTERVAL_TBL
@@ -133,8 +133,8 @@ SELECT * FROM INTERVAL_TBL
        f1        
 -----------------
  34 years
- 6 years
  3 mons
+ 6 years
  5 mons
  5 mons 12:00:00
 (5 rows)
@@ -143,13 +143,13 @@ SELECT * FROM INTERVAL_TBL
    WHERE INTERVAL_TBL.f1 > interval '@ 3 seconds ago';
        f1        
 -----------------
+ 00:01:00
  05:00:00
  10 days
  34 years
+ 3 mons
  1 day 02:03:04
  6 years
- 00:01:00
- 3 mons
  5 mons
  5 mons 12:00:00
 (9 rows)
@@ -351,15 +351,15 @@ SELECT * FROM INTERVAL_TBL;
               f1               
 -------------------------------
  @ 1 min
- @ 3 mons
- @ 5 mons
- @ 5 mons 12 hours
  @ 5 hours
  @ 10 days
  @ 34 years
+ @ 3 mons
+ @ 14 secs ago
  @ 1 day 2 hours 3 mins 4 secs
  @ 6 years
- @ 14 secs ago
+ @ 5 mons
+ @ 5 mons 12 hours
 (10 rows)
 
 -- test avg(interval), which is somewhat fragile since people have been
