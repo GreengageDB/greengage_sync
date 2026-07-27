@@ -2857,20 +2857,32 @@ GetSnapshotData(Snapshot snapshot, DtxContext distributedTransactionContext)
 	 */
 	LWLockAcquire(ProcArrayLock, LW_SHARED);
 
-#ifdef FAULT_INJECTOR
-	if (!IS_QUERY_DISPATCHER() && snapshot->haveDistribSnapshot &&
-		FaultInjector_InjectFaultIfSet("distributed_snapshot_skip_data_reuse",
-										DDLNotSpecified,
-										MyProcPort ? MyProcPort->database_name: "",
-										"") == FaultInjectorTypeSkip)
-	{
-		/* Skip snapshot data reuse */
-	}
-	else
-#endif
-
-	if ((distributedTransactionContext != DTX_CONTEXT_QD_DISTRIBUTED_CAPABLE ||
-		snapshot->haveDistribSnapshot) && GetSnapshotDataReuse(snapshot))
+	/*
+	 * GPDB: never reuse a cached snapshot for a call that carries (or, for
+	 * the QD, would need to create) a distributed snapshot.
+	 *
+	 * GetSnapshotDataReuse()'s premise is that if xactCompletionCount hasn't
+	 * moved, recomputing would yield the same result. That premise does not
+	 * hold for the distributed pieces we compute below: xactCompletionCount
+	 * only tracks local commits, but whether we call
+	 * DistributedLog_AdvanceOldestXmin() (and what xminAllDistributedSnapshots
+	 * we pass it) depends on snapshot->haveDistribSnapshot, which can flip
+	 * from call to call on the very same backend without any local commit in
+	 * between (e.g. an earlier DTX_CONTEXT_LOCAL_ONLY call on this connection
+	 * stamps snapXactCompletionCount, and the next call is the first one that
+	 * actually needs a distributed snapshot). Reusing in that case skips
+	 * DistributedLog_AdvanceOldestXmin() entirely, so a QE can permanently
+	 * stop advancing/truncating its idea of the distributed oldestXmin for
+	 * the lifetime of the backend.
+	 *
+	 * On the QD, snapshot->haveDistribSnapshot is always false here (it's
+	 * only set true by CreateDistributedSnapshot(), further below, after
+	 * this check), so this already disabled reuse unconditionally for
+	 * DTX_CONTEXT_QD_DISTRIBUTED_CAPABLE. Apply the same rule to QE contexts.
+	 */
+	if (!snapshot->haveDistribSnapshot &&
+		distributedTransactionContext != DTX_CONTEXT_QD_DISTRIBUTED_CAPABLE &&
+		GetSnapshotDataReuse(snapshot))
 	{
 		LWLockRelease(ProcArrayLock);
 		goto ret;
