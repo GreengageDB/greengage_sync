@@ -1993,6 +1993,34 @@ ClosePipeFromProgram(CopyFromState cstate)
 {
 	Assert(cstate->is_program);
 
+#if 0 /* GGDB: replaced by the close_program_pipes() call below */
+	int			pclose_rc;
+
+	pclose_rc = ClosePipeStream(cstate->copy_file);
+	if (pclose_rc == -1)
+		ereport(ERROR,
+				(errcode_for_file_access(),
+				 errmsg("could not close pipe to external command: %m")));
+	else if (pclose_rc != 0)
+	{
+		/*
+		 * If we ended a COPY FROM PROGRAM before reaching EOF, then it's
+		 * expectable for the called program to fail with SIGPIPE, and we
+		 * should not report that as an error.  Otherwise, SIGPIPE indicates a
+		 * problem.
+		 */
+		if (!cstate->reached_eof &&
+			wait_result_is_signal(pclose_rc, SIGPIPE))
+			return;
+
+		ereport(ERROR,
+				(errcode(ERRCODE_EXTERNAL_ROUTINE_EXCEPTION),
+				 errmsg("program \"%s\" failed",
+						cstate->filename),
+				 errdetail_internal("%s", wait_result_to_str(pclose_rc))));
+	}
+#endif
+
 	/*
 	 * GGDB: the pipe was set up with open_program_pipes(), not upstream's
 	 * OpenPipeStream(), so it must be torn down with close_program_pipes(),
