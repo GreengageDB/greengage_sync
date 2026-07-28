@@ -2819,8 +2819,8 @@ select * from tmptz where f1 at time zone 'utc' = '2017-01-18 00:00';
 -----------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on tmptz
-         Filter: ((f1 AT TIME ZONE 'utc'::text) = 'Wed Jan 18 00:00:00 2017'::timestamp without time zone)
- Optimizer: Postgres query optimizer
+         Filter: (timezone('utc'::text, f1) = 'Wed Jan 18 00:00:00 2017'::timestamp without time zone)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 select * from tmptz where f1 at time zone 'utc' = '2017-01-18 00:00';
