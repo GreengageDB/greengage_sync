@@ -70,10 +70,14 @@ s/\(cdbendpointretrieve\.c:\d+\)/\(cdbendpointretrieve\.c:LINE_NUM\)/
 
 # Newer libpq prefixes connection failures with "could not connect to
 # host ..., port ...:" even when the failure is a FATAL from the server
-# during startup. libpq shows the resolved IP address in parentheses
-# after the hostname; that IP is environment-dependent, so strip it.
-m/could not connect to host "[^"]*" \(\d+\.\d+\.\d+\.\d+\)/
-s/(could not connect to host "[^"]*") \(\d+\.\d+\.\d+\.\d+\)/$1/
+# during startup. Mask both fields unconditionally with wildcards (rather
+# than matching the literal host_id/port_id placeholder text) since this
+# static init file's rules run before the per-test dynamic host_id/port_id
+# substitution, so the real hostname/IP/port is still what's on the line
+# at this point. libpq also sometimes shows the resolved IP in parens
+# after the hostname; that's covered by the same optional group.
+m/could not connect to host "[^"]*"(?: \(\d+\.\d+\.\d+\.\d+\))?, port [^:]*:/
+s/could not connect to host "[^"]*"(?: \(\d+\.\d+\.\d+\.\d+\))?, port [^:]*:/could not connect to host "HOST", port PORT:/
 
 # skip specific PID in: ERROR:  another session (pid: 46988) used the
 # endpoint and completed retrieving
