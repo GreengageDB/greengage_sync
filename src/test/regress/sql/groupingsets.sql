@@ -489,11 +489,15 @@ select a, b, grouping(a,b), sum(v), count(*), max(v)
 explain (costs off)
   select a, b, grouping(a,b), sum(v), count(*), max(v)
     from gstest1 group by grouping sets ((a,b),(a+1,b+1),(a+2,b+2)) order by 3,6;
+
+set gp_eager_two_phase_agg = on;
 select a, b, sum(c), sum(sum(c)) over (order by a,b) as rsum
   from gstest2 group by cube (a,b) order by rsum, a, b;
 explain (costs off)
   select a, b, sum(c), sum(sum(c)) over (order by a,b) as rsum
     from gstest2 group by cube (a,b) order by rsum, a, b;
+reset gp_eager_two_phase_agg;
+
 select a, b, sum(v.x)
   from (values (1),(2)) v(x), gstest_data(v.x)
  group by cube (a,b) order by a,b;
@@ -568,7 +572,9 @@ select v||'a', case when grouping(v||'a') = 1 then 1 else 0 end, count(*)
 create table bug_16784(i int, j int);
 analyze bug_16784;
 alter table bug_16784 set (autovacuum_enabled = 'false');
+set allow_system_table_mods=true;
 update pg_class set reltuples = 10 where relname='bug_16784';
+reset allow_system_table_mods;
 
 insert into bug_16784 select g/10, g from generate_series(1,40) g;
 
