@@ -14,4 +14,11 @@ s/\(pid: \d+\)/\(pid: PID\)/
 m/\(cdbendpointretrieve\.c\:\d+\)/
 s/\(cdbendpointretrieve\.c:\d+\)/\(cdbendpointretrieve\.c:LINE_NUM\)/
 
+# Newer libpq prefixes connection failures with "could not connect to
+# host ..., port ...:" even when the failure is a FATAL from the server
+# during startup. libpq shows the resolved IP address in parentheses
+# after the hostname; that IP is environment-dependent, so strip it.
+m/could not connect to host "[^"]*" \(\d+\.\d+\.\d+\.\d+\)/
+s/(could not connect to host "[^"]*") \(\d+\.\d+\.\d+\.\d+\)/$1/
+
 -- end_matchsubs

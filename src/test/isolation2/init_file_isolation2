@@ -60,4 +60,24 @@ s/available \d+ MB//
 m/ \(cdbdisp_async\.c.*\)/
 s/ \(cdbdisp_async\.c.*\)//
 
+# Ignore session id in fatal error message
+m/for session id -?[0-9]+/
+s/for session id -?[0-9]+/for session id xxx/
+
+# line number in error message
+m/\(cdbendpointretrieve\.c\:\d+\)/
+s/\(cdbendpointretrieve\.c:\d+\)/\(cdbendpointretrieve\.c:LINE_NUM\)/
+
+# Newer libpq prefixes connection failures with "could not connect to
+# host ..., port ...:" even when the failure is a FATAL from the server
+# during startup. libpq shows the resolved IP address in parentheses
+# after the hostname; that IP is environment-dependent, so strip it.
+m/could not connect to host "[^"]*" \(\d+\.\d+\.\d+\.\d+\)/
+s/(could not connect to host "[^"]*") \(\d+\.\d+\.\d+\.\d+\)/$1/
+
+# skip specific PID in: ERROR:  another session (pid: 46988) used the
+# endpoint and completed retrieving
+m/^ERROR:.*\(pid: \d+\)/
+s/\(pid: \d+\)/\(pid: PID\)/
+
 -- end_matchsubs
