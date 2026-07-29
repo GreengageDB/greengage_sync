@@ -1415,6 +1415,17 @@ _readAlterEnumStmt(void)
 	READ_DONE();
 }
 
+static AlterTypeStmt *
+_readAlterTypeStmt(void)
+{
+	READ_LOCALS(AlterTypeStmt);
+
+	READ_NODE_FIELD(typeName);
+	READ_NODE_FIELD(options);
+
+	READ_DONE();
+}
+
 static CreateFdwStmt *
 _readCreateFdwStmt(void)
 {
@@ -2169,6 +2180,9 @@ readNodeBinary(void)
 				break;
 			case T_AlterEnumStmt:
 				return_value = _readAlterEnumStmt();
+				break;
+			case T_AlterTypeStmt:
+				return_value = _readAlterTypeStmt();
 				break;
 			case T_CreateCastStmt:
 				return_value = _readCreateCastStmt();
