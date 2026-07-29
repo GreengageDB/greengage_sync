@@ -572,7 +572,9 @@ DELETE FROM brintest_3;
 -- vacuum actually removes the TOAST rows. Creating an index concurrently
 -- is a one way to achieve that, because it does exactly such wait.
 CREATE INDEX CONCURRENTLY brin_test_temp_idx ON brintest_3(a);
+ERROR:  CREATE INDEX CONCURRENTLY is not supported
 DROP INDEX brin_test_temp_idx;
+ERROR:  index "brin_test_temp_idx" does not exist
 -- vacuum the table, to discard TOAST data
 VACUUM brintest_3;
 -- retry insert with a different random-looking (but deterministic) value
@@ -585,13 +587,15 @@ SELECT val, val, val, val FROM rand_value;
 SET enable_seqscan = off;
 EXPLAIN (COSTS OFF)
 SELECT * FROM brintest_3 WHERE b < '0';
-                   QUERY PLAN                   
-------------------------------------------------
- Bitmap Heap Scan on brintest_3
-   Recheck Cond: (b < '0'::text)
-   ->  Bitmap Index Scan on brin_test_toast_idx
-         Index Cond: (b < '0'::text)
-(4 rows)
+                      QUERY PLAN                      
+------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Bitmap Heap Scan on brintest_3
+         Recheck Cond: (b < '0'::text)
+         ->  Bitmap Index Scan on brin_test_toast_idx
+               Index Cond: (b < '0'::text)
+ Optimizer: Postgres query optimizer
+(6 rows)
 
 SELECT * FROM brintest_3 WHERE b < '0';
  a | b | c | d 
