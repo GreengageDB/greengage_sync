@@ -666,6 +666,13 @@ GRANT ALL ON SCHEMA matview_schema TO public;
 SET SESSION AUTHORIZATION regress_matview_user;
 CREATE MATERIALIZED VIEW matview_schema.mv_withdata1 (a) AS
   SELECT generate_series(1, 10) WITH DATA;
+-- GGDB: the row count a Motion instance reports in EXPLAIN ANALYZE depends
+-- on how the redistributed rows landed on the segments, which is not
+-- deterministic for ORCA's plan of the CTAS below. Mask the actual counts.
+-- start_matchsubs
+-- m/\(actual rows=\d+ loops=\d+\)/
+-- s/actual rows=\d+/actual rows=###/
+-- end_matchsubs
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
   CREATE MATERIALIZED VIEW matview_schema.mv_withdata2 (a) AS
   SELECT generate_series(1, 10) WITH DATA;
