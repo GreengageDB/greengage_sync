@@ -76,8 +76,8 @@ s/\(cdbendpointretrieve\.c:\d+\)/\(cdbendpointretrieve\.c:LINE_NUM\)/
 # substitution, so the real hostname/IP/port is still what's on the line
 # at this point. libpq also sometimes shows the resolved IP in parens
 # after the hostname; that's covered by the same optional group.
-m/could not connect to host "[^"]*"(?: \(\d+\.\d+\.\d+\.\d+\))?, port [^:]*:/
-s/could not connect to host "[^"]*"(?: \(\d+\.\d+\.\d+\.\d+\))?, port [^:]*:/could not connect to host "HOST", port PORT:/
+m/could not connect to host "[^"]*"(?: \([^)]*\))?, port \d+:/
+s/could not connect to host "[^"]*"(?: \([^)]*\))?, port \d+:/could not connect to host "HOST", port PORT:/
 
 # skip specific PID in: ERROR:  another session (pid: 46988) used the
 # endpoint and completed retrieving
