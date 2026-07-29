@@ -1516,6 +1516,7 @@ explain (costs off)
          ->  Values Scan on "*VALUES*"
 (7 rows)
 
+set gp_eager_two_phase_agg = on;
 select a, b, sum(c), sum(sum(c)) over (order by a,b) as rsum
   from gstest2 group by cube (a,b) order by rsum, a, b;
  a | b | sum | rsum 
@@ -1556,6 +1557,7 @@ explain (costs off)
  Optimizer: Postgres query optimizer
 (17 rows)
 
+reset gp_eager_two_phase_agg;
 select a, b, sum(v.x)
   from (values (1),(2)) v(x), gstest_data(v.x)
  group by cube (a,b) order by a,b;
@@ -1894,9 +1896,13 @@ select v||'a', case when grouping(v||'a') = 1 then 1 else 0 end, count(*)
 create table bug_16784(i int, j int);
 analyze bug_16784;
 alter table bug_16784 set (autovacuum_enabled = 'false');
+WARNING:  autovacuum is not supported in Greenplum
+set allow_system_table_mods=true;
 update pg_class set reltuples = 10 where relname='bug_16784';
+reset allow_system_table_mods;
 insert into bug_16784 select g/10, g from generate_series(1,40) g;
 set work_mem='64kB';
+WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 set enable_sort = false;
 select * from
   (values (1),(2)) v(a),
@@ -2092,13 +2098,9 @@ alter table gs_data_1 set (autovacuum_enabled = 'false');
 WARNING:  autovacuum is not supported in Greenplum
 SET allow_system_table_mods = true;
 update pg_class set reltuples = 10 where relname='gs_data_1';
-<<<<<<< HEAD
 RESET allow_system_table_mods;
-SET work_mem='64kB';
-WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
-=======
 set work_mem='64kB';
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 -- Produce results with sorting.
 set enable_sort = true;
 set enable_hashagg = false;
