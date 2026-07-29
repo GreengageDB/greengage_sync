@@ -6,13 +6,14 @@ select * from (select * from tenk1 order by four) t order by four, ten;
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: tenk1.four, tenk1.ten
-   ->  Sort
+   ->  Incremental Sort
          Sort Key: tenk1.four, tenk1.ten
+         Presorted Key: tenk1.four
          ->  Sort
                Sort Key: tenk1.four
                ->  Seq Scan on tenk1
  Optimizer: Postgres query optimizer
-(8 rows)
+(9 rows)
 
 -- When there is a LIMIT clause, incremental sort is beneficial because
 -- it only has to sort some of the groups, and not the entire table.
@@ -1534,6 +1535,21 @@ explain (costs off) select * from t union select * from t order by 1,3;
  Optimizer: Postgres query optimizer
 (15 rows)
 
+-- Full sort, not just incremental sort can be pushed below a gather merge path
+-- by generate_useful_gather_paths.
+explain (costs off) select distinct a,b from t;
+                QUERY PLAN                
+------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: a, b
+   ->  Unique
+         Group Key: a, b
+         ->  Sort
+               Sort Key: a, b
+               ->  Seq Scan on t
+ Optimizer: Postgres query optimizer
+(8 rows)
+
 drop table t;
 -- Incremental sort shall not be an input for redistribute motion
 create table t1 (a int, b int) distributed randomly;
@@ -1601,19 +1617,6 @@ select a, b from t where t.a = (select b from cte where cte.b >= t.b order by a,
  0 | 0
 (1 row)
 
--- Full sort, not just incremental sort can be pushed below a gather merge path
--- by generate_useful_gather_paths.
-explain (costs off) select distinct a,b from t;
-                QUERY PLAN                
-------------------------------------------
- Unique
-   ->  Gather Merge
-         Workers Planned: 2
-         ->  Sort
-               Sort Key: a, b
-               ->  Parallel Seq Scan on t
-(6 rows)
-
 drop table t;
 -- Sort pushdown can't go below where expressions are part of the rel target.
 -- In particular this is interesting for volatile expressions which have to
@@ -1629,8 +1632,8 @@ set min_parallel_index_scan_size = 0;
 -- Parallel sort below join.
 explain (costs off) select distinct sub.unique1, stringu1
 from tenk1, lateral (select tenk1.unique1 from generate_series(1, 1000)) as sub;
-                           QUERY PLAN                            
------------------------------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: tenk1.unique1, tenk1.stringu1
    ->  Unique
@@ -1638,25 +1641,27 @@ from tenk1, lateral (select tenk1.unique1 from generate_series(1, 1000)) as sub;
          ->  Sort
                Sort Key: tenk1.unique1, tenk1.stringu1
                ->  Nested Loop
-                     ->  Index Scan using tenk1_unique1 on tenk1
                      ->  Function Scan on generate_series
+                     ->  Materialize
+                           ->  Seq Scan on tenk1
  Optimizer: Postgres query optimizer
-(10 rows)
+(11 rows)
 
 explain (costs off) select sub.unique1, stringu1
 from tenk1, lateral (select tenk1.unique1 from generate_series(1, 1000)) as sub
 order by 1, 2;
-                        QUERY PLAN                         
------------------------------------------------------------
+                     QUERY PLAN                     
+----------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: tenk1.unique1, tenk1.stringu1
    ->  Sort
          Sort Key: tenk1.unique1, tenk1.stringu1
          ->  Nested Loop
-               ->  Index Scan using tenk1_unique1 on tenk1
                ->  Function Scan on generate_series
+               ->  Materialize
+                     ->  Seq Scan on tenk1
  Optimizer: Postgres query optimizer
-(8 rows)
+(9 rows)
 
 -- Parallel sort but with expression that can be safely generated at the base rel.
 explain (costs off) select distinct sub.unique1, md5(stringu1)
@@ -1670,10 +1675,11 @@ from tenk1, lateral (select tenk1.unique1 from generate_series(1, 1000)) as sub;
          ->  Sort
                Sort Key: tenk1.unique1, (md5((tenk1.stringu1)::text)) COLLATE "C"
                ->  Nested Loop
-                     ->  Index Scan using tenk1_unique1 on tenk1
                      ->  Function Scan on generate_series
+                     ->  Materialize
+                           ->  Seq Scan on tenk1
  Optimizer: Postgres query optimizer
-(10 rows)
+(11 rows)
 
 explain (costs off) select sub.unique1, md5(stringu1)
 from tenk1, lateral (select tenk1.unique1 from generate_series(1, 1000)) as sub
@@ -1685,10 +1691,11 @@ order by 1, 2;
    ->  Sort
          Sort Key: tenk1.unique1, (md5((tenk1.stringu1)::text)) COLLATE "C"
          ->  Nested Loop
-               ->  Index Scan using tenk1_unique1 on tenk1
                ->  Function Scan on generate_series
+               ->  Materialize
+                     ->  Seq Scan on tenk1
  Optimizer: Postgres query optimizer
-(8 rows)
+(9 rows)
 
 -- Parallel sort but with expression (correlated subquery) that
 -- is prohibited in parallel plans.
@@ -1696,39 +1703,50 @@ explain (costs off) select distinct
   unique1,
   (select t.unique1 from tenk1 where tenk1.unique1 = t.unique1)
 from tenk1 t, generate_series(1, 1000);
-                                   QUERY PLAN                                    
----------------------------------------------------------------------------------
- Unique
-   ->  Sort
-         Sort Key: t.unique1, ((SubPlan 1))
-         ->  Gather
-               Workers Planned: 2
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: t.unique1, ((SubPlan 1))
+   ->  Unique
+         Group Key: t.unique1, ((SubPlan 1))
+         ->  Sort
+               Sort Key: t.unique1, ((SubPlan 1))
                ->  Nested Loop
-                     ->  Parallel Index Only Scan using tenk1_unique1 on tenk1 t
                      ->  Function Scan on generate_series
-               SubPlan 1
-                 ->  Index Only Scan using tenk1_unique1 on tenk1
-                       Index Cond: (unique1 = t.unique1)
-(11 rows)
+                     ->  Materialize
+                           ->  Seq Scan on tenk1 t
+                     SubPlan 1
+                       ->  Result
+                             Filter: (tenk1.unique1 = t.unique1)
+                             ->  Materialize
+                                   ->  Broadcast Motion 3:3  (slice2; segments: 3)
+                                         ->  Seq Scan on tenk1
+ Optimizer: Postgres query optimizer
+(17 rows)
 
 explain (costs off) select
   unique1,
   (select t.unique1 from tenk1 where tenk1.unique1 = t.unique1)
 from tenk1 t, generate_series(1, 1000)
 order by 1, 2;
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
- Sort
-   Sort Key: t.unique1, ((SubPlan 1))
-   ->  Gather
-         Workers Planned: 2
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: t.unique1, ((SubPlan 1))
+   ->  Sort
+         Sort Key: t.unique1, ((SubPlan 1))
          ->  Nested Loop
-               ->  Parallel Index Only Scan using tenk1_unique1 on tenk1 t
                ->  Function Scan on generate_series
-         SubPlan 1
-           ->  Index Only Scan using tenk1_unique1 on tenk1
-                 Index Cond: (unique1 = t.unique1)
-(10 rows)
+               ->  Materialize
+                     ->  Seq Scan on tenk1 t
+               SubPlan 1
+                 ->  Result
+                       Filter: (tenk1.unique1 = t.unique1)
+                       ->  Materialize
+                             ->  Broadcast Motion 3:3  (slice2; segments: 3)
+                                   ->  Seq Scan on tenk1
+ Optimizer: Postgres query optimizer
+(15 rows)
 
 -- Parallel sort but with expression not available until the upper rel.
 explain (costs off) select distinct sub.unique1, stringu1 || random()::text
@@ -1742,10 +1760,11 @@ from tenk1, lateral (select tenk1.unique1 from generate_series(1, 1000)) as sub;
          ->  Sort
                Sort Key: tenk1.unique1, (((tenk1.stringu1)::text || (random())::text)) COLLATE "C"
                ->  Nested Loop
-                     ->  Index Scan using tenk1_unique1 on tenk1
                      ->  Function Scan on generate_series
+                     ->  Materialize
+                           ->  Seq Scan on tenk1
  Optimizer: Postgres query optimizer
-(10 rows)
+(11 rows)
 
 explain (costs off) select sub.unique1, stringu1 || random()::text
 from tenk1, lateral (select tenk1.unique1 from generate_series(1, 1000)) as sub
@@ -1757,20 +1776,22 @@ order by 1, 2;
    ->  Sort
          Sort Key: tenk1.unique1, (((tenk1.stringu1)::text || (random())::text)) COLLATE "C"
          ->  Nested Loop
-               ->  Index Scan using tenk1_unique1 on tenk1
                ->  Function Scan on generate_series
+               ->  Materialize
+                     ->  Seq Scan on tenk1
  Optimizer: Postgres query optimizer
-(8 rows)
+(9 rows)
 
 -- Disallow pushing down sort when pathkey is an SRF.
 explain (costs off) select unique1 from tenk1 order by unnest('{1,2}'::int[]);
-                               QUERY PLAN                                
--------------------------------------------------------------------------
- Sort
-   Sort Key: (unnest('{1,2}'::integer[]))
-   ->  Gather
-         Workers Planned: 2
+                  QUERY PLAN                   
+-----------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: (unnest('{1,2}'::anyarray))
+   ->  Sort
+         Sort Key: (unnest('{1,2}'::anyarray))
          ->  ProjectSet
-               ->  Parallel Index Only Scan using tenk1_unique1 on tenk1
-(6 rows)
+               ->  Seq Scan on tenk1
+ Optimizer: Postgres query optimizer
+(7 rows)
 
