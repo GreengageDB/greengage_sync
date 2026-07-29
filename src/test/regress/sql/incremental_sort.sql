@@ -1,5 +1,6 @@
 -- When we have to sort the entire table, incremental sort will
 -- be slower than plain sort, so it should not be used.
+-- GG note: due to different costs on segments incremental sort is used anyway
 explain (costs off)
 select * from (select * from tenk1 order by four) t order by four, ten;
 
