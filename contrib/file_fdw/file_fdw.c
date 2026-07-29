@@ -317,7 +317,7 @@ file_fdw_validator(PG_FUNCTION_ARGS)
 	/*
 	 * Now apply the core COPY code's validation logic for more checks.
 	 */
-	ProcessCopyOptions(NULL, NULL, true, other_options);
+	ProcessCopyOptions(NULL, NULL, true, other_options, false);
 
 	/*
 	 * Either filename or program option is required for file_fdw foreign
@@ -663,7 +663,7 @@ fileExplainForeignScan(ForeignScanState *node, ExplainState *es)
 
 /*
  * fileBeginForeignScan
- *		Initiate access to the file by creating CopyState
+ *		Initiate access to the file by creating CopyFromState
  */
 static void
 fileBeginForeignScan(ForeignScanState *node, int eflags)
@@ -689,7 +689,7 @@ fileBeginForeignScan(ForeignScanState *node, int eflags)
 	options = list_concat(options, plan->fdw_private);
 
 	/*
-	 * Create CopyState from FDW options.  We always acquire all columns, so
+	 * Create CopyFromState from FDW options.  We always acquire all columns, so
 	 * as to match the expected ScanTupleSlot signature.
 	 */
 	cstate = BeginCopyFrom(NULL,
@@ -1142,13 +1142,9 @@ file_acquire_sample_rows(Relation onerel, int elevel,
 	fileGetOptions(RelationGetRelid(onerel), &filename, &is_program, &options);
 
 	/*
-	 * Create CopyState from FDW options.
+	 * Create CopyFromState from FDW options.
 	 */
-<<<<<<< HEAD
-	cstate = BeginCopyFrom(NULL, onerel, filename, is_program, NULL, NULL, NIL,
-=======
-	cstate = BeginCopyFrom(NULL, onerel, NULL, filename, is_program, NULL, NIL,
->>>>>>> f315205f3fafd6f6c7c479f480289fcf45700310
+	cstate = BeginCopyFrom(NULL, onerel, NULL, filename, is_program, NULL, NULL, NIL,
 						   options);
 
 	/*
