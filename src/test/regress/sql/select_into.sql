@@ -2,6 +2,14 @@
 -- SELECT_INTO
 --
 
+-- GPDB: the row count a Motion instance reports in EXPLAIN ANALYZE depends
+-- on how the redistributed rows landed on the segments, which is not
+-- deterministic for ORCA's plans of the CTAS/SELECT INTO statements below.
+-- Mask the actual counts for the rest of this file.
+-- start_matchsubs
+-- m/\(actual rows=\d+ loops=\d+\)/
+-- s/actual rows=\d+/actual rows=###/
+-- end_matchsubs
 SELECT *
    INTO TABLE sitmp1
    FROM onek
