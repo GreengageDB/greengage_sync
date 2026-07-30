@@ -738,6 +738,15 @@ _outAlterEnumStmt(StringInfo str, AlterEnumStmt *node)
 }
 
 static void
+_outAlterTypeStmt(StringInfo str, AlterTypeStmt *node)
+{
+	WRITE_NODE_TYPE("ALTERTYPESTMT");
+
+	WRITE_NODE_FIELD(typeName);
+	WRITE_NODE_FIELD(options);
+}
+
+static void
 _outCreateFdwStmt(StringInfo str, CreateFdwStmt *node)
 {
 	WRITE_NODE_TYPE("CREATEFDWSTMT");
@@ -1378,6 +1387,9 @@ _outNode(StringInfo str, void *obj)
 				break;
 			case T_AlterEnumStmt:
 				_outAlterEnumStmt(str, obj);
+				break;
+			case T_AlterTypeStmt:
+				_outAlterTypeStmt(str, obj);
 				break;
 
 			case T_CreateCastStmt:

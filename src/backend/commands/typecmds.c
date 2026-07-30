@@ -4502,6 +4502,14 @@ AlterType(AlterTypeStmt *stmt)
 
 	table_close(catalog, RowExclusiveLock);
 
+	if (Gp_role == GP_ROLE_DISPATCH)
+		CdbDispatchUtilityStatement((Node *) stmt,
+									DF_CANCEL_ON_ERROR|
+									DF_WITH_SNAPSHOT|
+									DF_NEED_TWO_PHASE,
+									NIL,
+									NULL);
+
 	ObjectAddressSet(address, TypeRelationId, typeOid);
 
 	return address;
