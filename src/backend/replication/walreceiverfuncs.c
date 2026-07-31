@@ -23,6 +23,7 @@
 #include <signal.h>
 
 #include "access/xlog_internal.h"
+#include "pgstat.h"
 #include "postmaster/startup.h"
 #include "replication/walreceiver.h"
 #include "storage/pmsignal.h"
@@ -67,7 +68,9 @@ WalRcvShmemInit(void)
 		/* First time through, so initialize */
 		MemSet(WalRcv, 0, WalRcvShmemSize());
 		WalRcv->walRcvState = WALRCV_STOPPED;
+		ConditionVariableInit(&WalRcv->walRcvStoppedCV);
 		SpinLockInit(&WalRcv->mutex);
+		pg_atomic_init_u64(&WalRcv->writtenUpto, 0);
 		WalRcv->latch = NULL;
 
 		*pm_launch_walreceiver = false;
@@ -101,11 +104,13 @@ WalRcvRunning(void)
 
 		if ((now - startTime) > WALRCV_STARTUP_TIMEOUT)
 		{
-			SpinLockAcquire(&walrcv->mutex);
+			bool		stopped = false;
 
+			SpinLockAcquire(&walrcv->mutex);
 			if (walrcv->walRcvState == WALRCV_STARTING)
 			{
 				state = walrcv->walRcvState = WALRCV_STOPPED;
+<<<<<<< HEAD
 
 				elogif(debug_xlog_record_read, LOG,
 					   "Set walreceiver state to %s as it has taken too"
@@ -113,7 +118,14 @@ WalRcvRunning(void)
 					   WalRcvGetStateString(walrcv->walRcvState));
 			}
 
+=======
+				stopped = true;
+			}
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			SpinLockRelease(&walrcv->mutex);
+
+			if (stopped)
+				ConditionVariableBroadcast(&walrcv->walRcvStoppedCV);
 		}
 	}
 
@@ -153,12 +165,18 @@ WalRcvStreaming(void)
 
 		if ((now - startTime) > WALRCV_STARTUP_TIMEOUT)
 		{
+			bool		stopped = false;
+
 			SpinLockAcquire(&walrcv->mutex);
-
 			if (walrcv->walRcvState == WALRCV_STARTING)
+			{
 				state = walrcv->walRcvState = WALRCV_STOPPED;
-
+				stopped = true;
+			}
 			SpinLockRelease(&walrcv->mutex);
+
+			if (stopped)
+				ConditionVariableBroadcast(&walrcv->walRcvStoppedCV);
 		}
 	}
 
@@ -178,6 +196,7 @@ ShutdownWalRcv(void)
 {
 	WalRcvData *walrcv = WalRcv;
 	pid_t		walrcvpid = 0;
+	bool		stopped = false;
 
 	elogif(debug_xlog_record_read, LOG,
 		   "walrcv shutdown -- Shutdown request with current walrcv state %s",
@@ -195,6 +214,7 @@ ShutdownWalRcv(void)
 			break;
 		case WALRCV_STARTING:
 			walrcv->walRcvState = WALRCV_STOPPED;
+			stopped = true;
 			break;
 
 		case WALRCV_STREAMING:
@@ -208,6 +228,10 @@ ShutdownWalRcv(void)
 	}
 	SpinLockRelease(&walrcv->mutex);
 
+	/* Unnecessary but consistent. */
+	if (stopped)
+		ConditionVariableBroadcast(&walrcv->walRcvStoppedCV);
+
 	/*
 	 * Signal walreceiver process if it was still running.
 	 */
@@ -218,7 +242,9 @@ ShutdownWalRcv(void)
 	 * Wait for walreceiver to acknowledge its death by setting state to
 	 * WALRCV_STOPPED.
 	 */
+	ConditionVariablePrepareToSleep(&walrcv->walRcvStoppedCV);
 	while (WalRcvRunning())
+<<<<<<< HEAD
 	{
 		/*
 		 * This possibly-long loop needs to handle interrupts of startup
@@ -232,6 +258,11 @@ ShutdownWalRcv(void)
 	elogif(debug_xlog_record_read, LOG,
 		   "walrcv shutdown -- Shutdown performed with current walrcv state %s",
 		   WalRcvGetStateString(walrcv->walRcvState));
+=======
+		ConditionVariableSleep(&walrcv->walRcvStoppedCV,
+							   WAIT_EVENT_WALRCV_EXIT);
+	ConditionVariableCancelSleep();
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
 
 /*

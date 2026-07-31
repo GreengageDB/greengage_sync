@@ -239,7 +239,11 @@ ExecuteQuery(ParseState *pstate,
 									   entry->plansource->query_string);
 
 	/* Replan if needed, and increment plan refcount for portal */
+<<<<<<< HEAD
 	cplan = GetCachedPlan(entry->plansource, paramLI, false, NULL, intoClause);
+=======
+	cplan = GetCachedPlan(entry->plansource, paramLI, NULL, NULL);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	plan_list = cplan->stmt_list;
 
 	/*
@@ -696,7 +700,12 @@ ExplainExecuteQuery(ExecuteStmt *execstmt, IntoClause *into, ExplainState *es,
 	}
 
 	/* Replan if needed, and acquire a transient refcount */
+<<<<<<< HEAD
 	cplan = GetCachedPlan(entry->plansource, paramLI, true, queryEnv, into);
+=======
+	cplan = GetCachedPlan(entry->plansource, paramLI,
+						  CurrentResourceOwner, queryEnv);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	INSTR_TIME_SET_CURRENT(planduration);
 	INSTR_TIME_SUBTRACT(planduration, planstart);
@@ -752,7 +761,7 @@ ExplainExecuteQuery(ExecuteStmt *execstmt, IntoClause *into, ExplainState *es,
 	if (estate)
 		FreeExecutorState(estate);
 
-	ReleaseCachedPlan(cplan, true);
+	ReleaseCachedPlan(cplan, CurrentResourceOwner);
 }
 
 /*

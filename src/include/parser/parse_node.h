@@ -79,9 +79,13 @@ typedef enum ParseExprKind
 	EXPR_KIND_CALL_ARGUMENT,	/* procedure argument in CALL */
 	EXPR_KIND_COPY_WHERE,		/* WHERE condition in COPY FROM */
 	EXPR_KIND_GENERATED_COLUMN, /* generation expression for a column */
+<<<<<<< HEAD
 
 	/* GPDB additions */
 	EXPR_KIND_SCATTER_BY		/* SCATTER BY expression */
+=======
+	EXPR_KIND_CYCLE_MARK,		/* cycle mark value */
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 } ParseExprKind;
 
 
@@ -307,6 +311,7 @@ struct ParseNamespaceColumn
 	Oid			p_varcollid;	/* OID of collation, or InvalidOid */
 	Index		p_varnosyn;		/* rangetable index of syntactic referent */
 	AttrNumber	p_varattnosyn;	/* attribute number of syntactic referent */
+	bool		p_dontexpand;	/* not included in star expansion */
 };
 
 /* Support for parser_errposition_callback function */

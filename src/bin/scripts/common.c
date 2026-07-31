@@ -22,8 +22,10 @@
 #include "common/logging.h"
 #include "common/string.h"
 #include "fe_utils/cancel.h"
+#include "fe_utils/query_utils.h"
 #include "fe_utils/string_utils.h"
 
+<<<<<<< HEAD
 #define ERRCODE_UNDEFINED_TABLE  "42P01"
 
 /*
@@ -342,6 +344,8 @@ processQueryResult(PGconn *conn, PGresult *result)
 }
 
 
+=======
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 /*
  * Split TABLE[(COLUMNS)] into TABLE and [(COLUMNS)] portions.  When you
  * finish using them, pg_free(*table).  *columns is a pointer into "spec",

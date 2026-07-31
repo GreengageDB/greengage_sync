@@ -56,7 +56,11 @@ install: all installdirs
 	  cp $(srcdir)/$$dir/*.h '$(DESTDIR)$(includedir_server)'/$$dir/ || exit; \
 	done
 ifeq ($(vpath_build),yes)
+<<<<<<< HEAD
 	for file in catalog/schemapg.h catalog/pg_*_d.h catalog/gp_*_d.h parser/gram.h storage/lwlocknames.h utils/probes.h; do \
+=======
+	for file in catalog/schemapg.h catalog/system_fk_info.h catalog/pg_*_d.h parser/gram.h storage/lwlocknames.h utils/probes.h; do \
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	  cp $$file '$(DESTDIR)$(includedir_server)'/$$file || exit; \
 	done
 endif
@@ -83,7 +87,12 @@ check_oids:
 clean:
 	rm -f utils/fmgroids.h utils/fmgrprotos.h utils/errcodes.h utils/header-stamp
 	rm -f parser/gram.h storage/lwlocknames.h utils/probes.h
+<<<<<<< HEAD
 	rm -f catalog/schemapg.h catalog/pg_*_d.h catalog/gp_*_d.h catalog/header-stamp
+=======
+	rm -f catalog/schemapg.h catalog/system_fk_info.h
+	rm -f catalog/pg_*_d.h catalog/header-stamp
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 distclean maintainer-clean: clean
 	rm -f pg_config.h pg_config_ext.h pg_config_os.h stamp-h stamp-ext-h

@@ -71,7 +71,6 @@ typedef struct PartitionPruneContext
 extern PartitionPruneInfo *make_partition_pruneinfo(struct PlannerInfo *root,
 													struct RelOptInfo *parentrel,
 													List *subpaths,
-													List *partitioned_rels,
 													List *prunequal);
 extern PartitionPruneInfo *make_partition_pruneinfo_ext(struct PlannerInfo *root,
 														struct RelOptInfo *parentrel,

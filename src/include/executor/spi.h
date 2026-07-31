@@ -42,6 +42,25 @@ typedef struct SPIPrepareOptions
 	int			cursorOptions;
 } SPIPrepareOptions;
 
+/* Optional arguments for SPI_execute[_plan]_extended */
+typedef struct SPIExecuteOptions
+{
+	ParamListInfo params;
+	bool		read_only;
+	bool		no_snapshots;
+	uint64		tcount;
+	DestReceiver *dest;
+	ResourceOwner owner;
+} SPIExecuteOptions;
+
+/* Optional arguments for SPI_cursor_parse_open */
+typedef struct SPIParseOpenOptions
+{
+	ParamListInfo params;
+	int			cursorOptions;
+	bool		read_only;
+} SPIParseOpenOptions;
+
 /* Plans are opaque structs for standard users of SPI */
 typedef struct _SPI_plan *SPIPlanPtr;
 
@@ -93,6 +112,7 @@ extern PGDLLIMPORT int SPI_result;
 extern int	SPI_connect(void);
 extern int	SPI_connect_ext(int options);
 extern int	SPI_finish(void);
+<<<<<<< HEAD
 extern int	SPI_execute(const char *src, bool read_only, int64 tcount);
 extern int	SPI_execute_plan(SPIPlanPtr plan, Datum *Values, const char *Nulls,
 							 bool read_only, int64 tcount);
@@ -104,6 +124,19 @@ extern int	SPI_execute_plan_with_receiver(SPIPlanPtr plan,
 										   bool read_only, int64 tcount,
 										   DestReceiver *dest);
 extern int	SPI_exec(const char *src, int64 tcount);
+=======
+extern int	SPI_execute(const char *src, bool read_only, long tcount);
+extern int	SPI_execute_extended(const char *src,
+								 const SPIExecuteOptions *options);
+extern int	SPI_execute_plan(SPIPlanPtr plan, Datum *Values, const char *Nulls,
+							 bool read_only, long tcount);
+extern int	SPI_execute_plan_extended(SPIPlanPtr plan,
+									  const SPIExecuteOptions *options);
+extern int	SPI_execute_plan_with_paramlist(SPIPlanPtr plan,
+											ParamListInfo params,
+											bool read_only, long tcount);
+extern int	SPI_exec(const char *src, long tcount);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 extern int	SPI_execp(SPIPlanPtr plan, Datum *Values, const char *Nulls,
 					  int64 tcount);
 extern int	SPI_execute_snapshot(SPIPlanPtr plan,
@@ -114,11 +147,15 @@ extern int	SPI_execute_snapshot(SPIPlanPtr plan,
 extern int	SPI_execute_with_args(const char *src,
 								  int nargs, Oid *argtypes,
 								  Datum *Values, const char *Nulls,
+<<<<<<< HEAD
 								  bool read_only, int64 tcount);
 extern int	SPI_execute_with_receiver(const char *src,
 									  ParamListInfo params,
 									  bool read_only, int64 tcount,
 									  DestReceiver *dest);
+=======
+								  bool read_only, long tcount);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 extern SPIPlanPtr SPI_prepare(const char *src, int nargs, Oid *argtypes);
 extern SPIPlanPtr SPI_prepare_cursor(const char *src, int nargs, Oid *argtypes,
 									 int cursorOptions);
@@ -169,11 +206,9 @@ extern Portal SPI_cursor_open_with_args(const char *name,
 										bool read_only, int cursorOptions);
 extern Portal SPI_cursor_open_with_paramlist(const char *name, SPIPlanPtr plan,
 											 ParamListInfo params, bool read_only);
-extern Portal SPI_cursor_parse_open_with_paramlist(const char *name,
-												   const char *src,
-												   ParamListInfo params,
-												   bool read_only,
-												   int cursorOptions);
+extern Portal SPI_cursor_parse_open(const char *name,
+									const char *src,
+									const SPIParseOpenOptions *options);
 extern Portal SPI_cursor_find(const char *name);
 extern void SPI_cursor_fetch(Portal portal, bool forward, long count);
 extern void SPI_cursor_move(Portal portal, bool forward, long count);

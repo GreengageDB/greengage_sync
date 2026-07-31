@@ -175,6 +175,15 @@ static relopt_bool boolRelOpts[] =
 		},
 		true
 	},
+	{
+		{
+			"parallel_insert_enabled",
+			"Enables \"parallel insert\" feature for this table",
+			RELOPT_KIND_HEAP | RELOPT_KIND_PARTITIONED,
+			ShareUpdateExclusiveLock
+		},
+		true
+	},
 	/* list terminator */
 	{{NULL}}
 };
@@ -471,7 +480,7 @@ static relopt_real realRelOpts[] =
 	{
 		{
 			"vacuum_cleanup_index_scale_factor",
-			"Number of tuple inserts prior to index cleanup as a fraction of reltuples.",
+			"Deprecated B-Tree parameter.",
 			RELOPT_KIND_BTREE,
 			ShareUpdateExclusiveLock
 		},
@@ -1876,9 +1885,14 @@ default_reloptions(Datum reloptions, bool validate, relopt_kind kind)
 		offsetof(StdRdOptions, vacuum_index_cleanup)},
 		{"vacuum_truncate", RELOPT_TYPE_BOOL,
 		offsetof(StdRdOptions, vacuum_truncate)},
+<<<<<<< HEAD
 		{SOPT_ANALYZEHLL, RELOPT_TYPE_BOOL,
 		offsetof(StdRdOptions, analyze_hll_non_part_table)}
 
+=======
+		{"parallel_insert_enabled", RELOPT_TYPE_BOOL,
+		offsetof(StdRdOptions, parallel_insert_enabled)}
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate, kind,
@@ -1987,11 +2001,23 @@ build_local_reloptions(local_relopts *relopts, Datum options, bool validate)
 bytea *
 partitioned_table_reloptions(Datum reloptions, bool validate)
 {
+<<<<<<< HEAD
 	/*
 	 * GPDB: we maintain reloptions for partition roots to support reloption
 	 * inheritance and hierarchy wide ALTER TABLE SET().
 	 */
 	return default_reloptions(reloptions, validate, RELOPT_KIND_HEAP);
+=======
+	static const relopt_parse_elt tab[] = {
+		{"parallel_insert_enabled", RELOPT_TYPE_BOOL,
+		offsetof(PartitionedTableRdOptions, parallel_insert_enabled)}
+	};
+
+	return (bytea *) build_reloptions(reloptions, validate,
+									  RELOPT_KIND_PARTITIONED,
+									  sizeof(PartitionedTableRdOptions),
+									  tab, lengthof(tab));
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
 
 /*

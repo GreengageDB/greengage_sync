@@ -164,7 +164,11 @@ main(int argc, char **argv)
 		if (PQstatus(conns[i].conn) != CONNECTION_OK)
 		{
 			fprintf(stderr, "Connection %d failed: %s",
+<<<<<<< HEAD
 					i, PQerrorMessage(conns[i].conn));
+=======
+					i, PQerrorMessage(conns[i]));
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			exit(1);
 		}
 

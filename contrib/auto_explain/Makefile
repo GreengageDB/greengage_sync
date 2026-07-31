@@ -6,8 +6,12 @@ OBJS = \
 	auto_explain.o
 PGFILEDESC = "auto_explain - logging facility for execution plans"
 
+<<<<<<< HEAD
 REGRESS = auto_explain bfv_preload_auto_explain
 REGRESS_OPTS = --init-file=init_file
+=======
+TAP_TESTS = 1
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

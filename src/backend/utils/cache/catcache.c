@@ -1129,6 +1129,7 @@ IndexScanOK(CatCache *cache, ScanKey cur_skey)
 }
 
 /*
+<<<<<<< HEAD
  * This function performs checks for certain system tables to validate tuple
  * fetched from table has the key, using which it was fetched from index.
  */
@@ -1181,6 +1182,9 @@ CrossCheckTuple(int cacheId,
 
 /*
  *	SearchCatCacheInternal
+=======
+ *	SearchCatCache
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
  *
  *		This call searches a system cache for a tuple, opening the relation
  *		if necessary (on the first access to a particular cache).
@@ -1560,7 +1564,7 @@ GetCatCacheHashValue(CatCache *cache,
  *		It doesn't make any sense to specify all of the cache's key columns
  *		here: since the key is unique, there could be at most one match, so
  *		you ought to use SearchCatCache() instead.  Hence this function takes
- *		one less Datum argument than SearchCatCache() does.
+ *		one fewer Datum argument than SearchCatCache() does.
  *
  *		The caller must not modify the list object or the pointed-to tuples,
  *		and must call ReleaseCatCacheList() when done with the list.

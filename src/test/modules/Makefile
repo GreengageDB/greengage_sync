@@ -10,6 +10,7 @@ SUBDIRS = \
 		  delay_execution \
 		  dummy_index_am \
 		  dummy_seclabel \
+		  libpq_pipeline \
 		  plsample \
 		  snapshot_too_old \
 		  test_bloomfilter \
@@ -28,10 +29,14 @@ SUBDIRS = \
 		  unsafe_tests \
 		  worker_spi
 
+<<<<<<< HEAD
 # GPDB subdirs
 SUBDIRS += test_planner
 
 ifeq ($(with_openssl),yes)
+=======
+ifeq ($(with_ssl),openssl)
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 SUBDIRS += ssl_passphrase_callback
 else
 ALWAYS_SUBDIRS += ssl_passphrase_callback

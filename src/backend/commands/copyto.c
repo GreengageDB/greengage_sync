@@ -46,7 +46,19 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
+<<<<<<< HEAD
 #include "libpq-fe.h"
+=======
+/*
+ * Represents the different dest cases we need to worry about at
+ * the bottom level
+ */
+typedef enum CopyDest
+{
+	COPY_FILE,					/* to file (or a piped program) */
+	COPY_FRONTEND,				/* to frontend */
+} CopyDest;
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 #include "access/external.h"
 #include "access/url.h"
@@ -75,9 +87,13 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 /* non-export function prototypes */
 static void EndCopy(CopyToState cstate);
 static void ClosePipeToProgram(CopyToState cstate);
+<<<<<<< HEAD
 static uint64 CopyTo(CopyToState cstate);
 static uint64 CopyToDispatch(CopyToState cstate);
 static void CopyToDispatchFlush(CopyToState cstate);
+=======
+static void CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 static void CopyAttributeOutText(CopyToState cstate, char *string);
 static void CopyAttributeOutCSV(CopyToState cstate, char *string,
 								bool use_quote, bool single_attr);
@@ -101,53 +117,27 @@ static CopyIntoClause* MakeCopyIntoClause(CopyStmt *stmt);
 static void
 SendCopyBegin(CopyToState cstate)
 {
-	if (PG_PROTOCOL_MAJOR(FrontendProtocol) >= 3)
-	{
-		/* new way */
-		StringInfoData buf;
-		int			natts = list_length(cstate->attnumlist);
-		int16		format = (cstate->opts.binary ? 1 : 0);
-		int			i;
+	StringInfoData buf;
+	int			natts = list_length(cstate->attnumlist);
+	int16		format = (cstate->opts.binary ? 1 : 0);
+	int			i;
 
-		pq_beginmessage(&buf, 'H');
-		pq_sendbyte(&buf, format);	/* overall format */
-		pq_sendint16(&buf, natts);
-		for (i = 0; i < natts; i++)
-			pq_sendint16(&buf, format); /* per-column formats */
-		pq_endmessage(&buf);
-		cstate->copy_dest = COPY_NEW_FE;
-	}
-	else
-	{
-		/* old way */
-		if (cstate->opts.binary)
-			ereport(ERROR,
-					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-					 errmsg("COPY BINARY is not supported to stdout or from stdin")));
-		pq_putemptymessage('H');
-		/* grottiness needed for old COPY OUT protocol */
-		pq_startcopyout();
-		cstate->copy_dest = COPY_OLD_FE;
-	}
+	pq_beginmessage(&buf, 'H');
+	pq_sendbyte(&buf, format);	/* overall format */
+	pq_sendint16(&buf, natts);
+	for (i = 0; i < natts; i++)
+		pq_sendint16(&buf, format); /* per-column formats */
+	pq_endmessage(&buf);
+	cstate->copy_dest = COPY_FRONTEND;
 }
 
 static void
 SendCopyEnd(CopyToState cstate)
 {
-	if (cstate->copy_dest == COPY_NEW_FE)
-	{
-		/* Shouldn't have any unsent data */
-		Assert(cstate->fe_msgbuf->len == 0);
-		/* Send Copy Done message */
-		pq_putemptymessage('c');
-	}
-	else
-	{
-		CopySendData(cstate, "\\.", 2);
-		/* Need to flush out the trailer (this also appends a newline) */
-		CopySendEndOfRow(cstate);
-		pq_endcopyout(false);
-	}
+	/* Shouldn't have any unsent data */
+	Assert(cstate->fe_msgbuf->len == 0);
+	/* Send Copy Done message */
+	pq_putemptymessage('c');
 }
 
 /*----------
@@ -235,20 +225,7 @@ CopySendEndOfRow(CopyToState cstate)
 							 errmsg("could not write to COPY file: %m")));
 			}
 			break;
-		case COPY_OLD_FE:
-			/* The FE/BE protocol uses \n as newline for all platforms */
-			if (!cstate->opts.binary)
-				CopySendChar(cstate, '\n');
-
-			if (pq_putbytes(fe_msgbuf->data, fe_msgbuf->len))
-			{
-				/* no hope of recovering connection sync, so FATAL */
-				ereport(FATAL,
-						(errcode(ERRCODE_CONNECTION_FAILURE),
-						 errmsg("connection lost during COPY to stdout")));
-			}
-			break;
-		case COPY_NEW_FE:
+		case COPY_FRONTEND:
 			/* The FE/BE protocol uses \n as newline for all platforms */
 			if (!cstate->opts.binary)
 				CopySendChar(cstate, '\n');
@@ -441,7 +418,57 @@ BeginCopyToCommon(ParseState *pstate,
 	CopyToState	cstate;
 	int			num_phys_attrs;
 	MemoryContext oldcontext;
+<<<<<<< HEAD
 	bool		is_external_table;
+=======
+	const int	progress_cols[] = {
+		PROGRESS_COPY_COMMAND,
+		PROGRESS_COPY_TYPE
+	};
+	int64		progress_vals[] = {
+		PROGRESS_COPY_COMMAND_TO,
+		0
+	};
+
+	if (rel != NULL && rel->rd_rel->relkind != RELKIND_RELATION)
+	{
+		if (rel->rd_rel->relkind == RELKIND_VIEW)
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("cannot copy from view \"%s\"",
+							RelationGetRelationName(rel)),
+					 errhint("Try the COPY (SELECT ...) TO variant.")));
+		else if (rel->rd_rel->relkind == RELKIND_MATVIEW)
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("cannot copy from materialized view \"%s\"",
+							RelationGetRelationName(rel)),
+					 errhint("Try the COPY (SELECT ...) TO variant.")));
+		else if (rel->rd_rel->relkind == RELKIND_FOREIGN_TABLE)
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("cannot copy from foreign table \"%s\"",
+							RelationGetRelationName(rel)),
+					 errhint("Try the COPY (SELECT ...) TO variant.")));
+		else if (rel->rd_rel->relkind == RELKIND_SEQUENCE)
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("cannot copy from sequence \"%s\"",
+							RelationGetRelationName(rel))));
+		else if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("cannot copy from partitioned table \"%s\"",
+							RelationGetRelationName(rel)),
+					 errhint("Try the COPY (SELECT ...) TO variant.")));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("cannot copy from non-table relation \"%s\"",
+							RelationGetRelationName(rel))));
+	}
+
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/* Allocate workspace and zero all fields */
 	cstate = (CopyToStateData *) palloc0(sizeof(CopyToStateData));
@@ -828,6 +855,7 @@ BeginCopyToOnSegment(QueryDesc *queryDesc)
 
 	if (cstate->is_program)
 	{
+<<<<<<< HEAD
 		cstate->program_pipes = open_program_pipes(cstate->filename, true);
 		cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_W);
 
@@ -1031,6 +1059,11 @@ BeginCopyTo(ParseState *pstate,
 	else if (pipe)
 	{
 		Assert(!is_program || Gp_role == GP_ROLE_EXECUTE);	/* the grammar does not allow this */
+=======
+		progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
+
+		Assert(!is_program);	/* the grammar does not allow this */
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		if (whereToSendOutput != DestRemote)
 			cstate->copy_file = stdout;
 	}
@@ -1045,9 +1078,14 @@ BeginCopyTo(ParseState *pstate,
 
 		if (is_program)
 		{
+<<<<<<< HEAD
 			cstate->program_pipes = open_program_pipes(cstate->filename, true);
 			cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_W);
 
+=======
+			progress_vals[1] = PROGRESS_COPY_TYPE_PROGRAM;
+			cstate->copy_file = OpenPipeStream(cstate->filename, PG_BINARY_W);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			if (cstate->copy_file == NULL)
 				ereport(ERROR,
 						(errcode_for_file_access(),
@@ -1058,6 +1096,8 @@ BeginCopyTo(ParseState *pstate,
 		{
 			mode_t		oumask; /* Pre-existing umask value */
 			struct stat st;
+
+			progress_vals[1] = PROGRESS_COPY_TYPE_FILE;
 
 			/*
 			 * Prevent write to relative path ... too easy to shoot oneself in
@@ -1111,6 +1151,8 @@ BeginCopyTo(ParseState *pstate,
 	/* initialize progress */
 	pgstat_progress_start_command(PROGRESS_COMMAND_COPY,
 								  cstate->rel ? RelationGetRelid(cstate->rel) : InvalidOid);
+	pgstat_progress_update_multi_param(2, progress_cols, progress_vals);
+
 	cstate->bytes_processed = 0;
 
 	MemoryContextSwitchTo(oldcontext);
@@ -1119,6 +1161,7 @@ BeginCopyTo(ParseState *pstate,
 }
 
 /*
+<<<<<<< HEAD
  * Set up CopyToState for writing to a foreign or external table.
  */
 CopyToState
@@ -1237,6 +1280,8 @@ void EndCopyToOnSegment(CopyToState cstate)
 }
 
 /*
+=======
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
  * Clean up storage and release resources for COPY TO.
  */
 void
@@ -1430,13 +1475,18 @@ CopyToQueryOnSegment(CopyToState cstate)
 /*
  * Copy from relation or query TO file.
  */
-static uint64
-CopyTo(CopyToState cstate)
+uint64
+DoCopyTo(CopyToState cstate)
 {
+	bool		pipe = (cstate->filename == NULL);
+	bool		fe_copy = (pipe && whereToSendOutput == DestRemote);
 	TupleDesc	tupDesc;
 	int			num_phys_attrs;
 	ListCell   *cur;
 	uint64		processed = 0;
+
+	if (fe_copy)
+		SendCopyBegin(cstate);
 
 	if (cstate->rel)
 		tupDesc = RelationGetDescr(cstate->rel);
@@ -1554,8 +1604,12 @@ CopyTo(CopyToState cstate)
 			/* Format and send the data */
 			CopyOneRowTo(cstate, slot);
 
-			/* Increment amount of processed tuples and update the progress */
-			pgstat_progress_update_param(PROGRESS_COPY_LINES_PROCESSED, ++processed);
+			/*
+			 * Increment the number of processed tuples, and report the
+			 * progress.
+			 */
+			pgstat_progress_update_param(PROGRESS_COPY_TUPLES_PROCESSED,
+										 ++processed);
 		}
 
 		ExecDropSingleTupleTableSlot(slot);
@@ -1590,11 +1644,14 @@ CopyTo(CopyToState cstate)
 
 	MemoryContextDelete(cstate->rowcontext);
 
+	if (fe_copy)
+		SendCopyEnd(cstate);
+
 	return processed;
 }
 
 /*
- * Emit one row during CopyTo().
+ * Emit one row during DoCopyTo().
  */
 void
 CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot)
@@ -2024,8 +2081,9 @@ copy_dest_receive(TupleTableSlot *slot, DestReceiver *self)
 	/* Send the data */
 	CopyOneRowTo(cstate, slot);
 
-	/* Increment amount of processed tuples and update the progress */
-	pgstat_progress_update_param(PROGRESS_COPY_LINES_PROCESSED, ++myState->processed);
+	/* Increment the number of processed tuples, and report the progress */
+	pgstat_progress_update_param(PROGRESS_COPY_TUPLES_PROCESSED,
+								 ++myState->processed);
 
 	return true;
 }

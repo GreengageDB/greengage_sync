@@ -401,6 +401,7 @@ typedef struct _tableInfo
 	char	*parttemplate;	/* subpartition template */
 } TableInfo;
 
+<<<<<<< HEAD
 /* AO auxilliary table metadata */
 typedef struct _aotableInfo
 {
@@ -415,6 +416,8 @@ typedef struct _aotableInfo
 	Oid 	visimapidxid;
 } AOTableInfo;
 
+=======
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 typedef struct _tableAttachInfo
 {
 	DumpableObject dobj;
@@ -451,7 +454,7 @@ typedef struct _indxInfo
 	int			indnattrs;		/* total number of index attributes */
 	Oid		   *indkeys;		/* In spite of the name 'indkeys' this field
 								 * contains both key and nonkey attributes */
-	char	   *inddependcollnames;	/* FQ names of depended-on collations */
+	char	   *inddependcollnames; /* FQ names of depended-on collations */
 	char	   *inddependcollversions;	/* versions of the above */
 	bool		indisclustered;
 	bool		indisreplident;
@@ -736,7 +739,10 @@ extern CollInfo *findCollationByOid(Oid oid);
 extern NamespaceInfo *findNamespaceByOid(Oid oid);
 extern ExtensionInfo *findExtensionByOid(Oid oid);
 extern PublicationInfo *findPublicationByOid(Oid oid);
+<<<<<<< HEAD
 extern IndxInfo	*findIndexByOid(Oid oid);
+=======
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 extern void recordExtensionMembership(CatalogId catId, ExtensionInfo *ext);
 extern ExtensionInfo *findOwningExtension(CatalogId catalogId);

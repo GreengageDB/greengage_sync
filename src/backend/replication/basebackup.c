@@ -330,6 +330,7 @@ perform_base_backup(basebackup_options *opt)
 								 PROGRESS_BASEBACKUP_PHASE_WAIT_CHECKPOINT);
 	startptr = do_pg_start_backup(opt->label, opt->fastcheckpoint, &starttli,
 								  labelfile, &tablespaces,
+<<<<<<< HEAD
 								  tblspc_map_file, opt->sendtblspcmapfile);
 	Assert(!XLogRecPtrIsInvalid(startptr));
 
@@ -345,6 +346,9 @@ perform_base_backup(basebackup_options *opt)
 	WalSndSetXLogCleanUpTo(startptr);
 
 	SIMPLE_FAULT_INJECTOR("base_backup_post_create_checkpoint");
+=======
+								  tblspc_map_file);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/*
 	 * Once do_pg_start_backup has been called, ensure that any failure causes
@@ -1227,7 +1231,7 @@ SendXlogRecPtrResult(XLogRecPtr ptr, TimeLineID tli)
 	pq_sendint16(&buf, 2);		/* number of columns */
 
 	len = snprintf(str, sizeof(str),
-				   "%X/%X", (uint32) (ptr >> 32), (uint32) ptr);
+				   "%X/%X", LSN_FORMAT_ARGS(ptr));
 	pq_sendint32(&buf, len);
 	pq_sendbytes(&buf, str, len);
 

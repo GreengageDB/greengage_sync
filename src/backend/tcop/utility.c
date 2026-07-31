@@ -1086,6 +1086,7 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			break;
 
 		case T_ReindexStmt:
+<<<<<<< HEAD
 			{
 				ReindexStmt *stmt = (ReindexStmt *) parsetree;
 				int			options;
@@ -1126,6 +1127,9 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 						break;
 				}
 			}
+=======
+			ExecReindex(pstate, (ReindexStmt *) parsetree, isTopLevel);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			break;
 
 			/*
@@ -2211,7 +2215,8 @@ ProcessUtilitySlow(ParseState *pstate,
 				break;
 
 			case T_AlterSubscriptionStmt:
-				address = AlterSubscription((AlterSubscriptionStmt *) parsetree);
+				address = AlterSubscription((AlterSubscriptionStmt *) parsetree,
+											isTopLevel);
 				break;
 
 			case T_DropSubscriptionStmt:

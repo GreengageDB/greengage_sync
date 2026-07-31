@@ -393,8 +393,8 @@ CopyMultiInsertBufferFlush(CopyMultiInsertInfo *miinfo,
 			cstate->cur_lineno = buffer->linenos[i];
 			recheckIndexes =
 				ExecInsertIndexTuples(resultRelInfo,
-									  buffer->slots[i], estate, false, NULL,
-									  NIL);
+									  buffer->slots[i], estate, false, false,
+									  NULL, NIL);
 			ExecARInsertTriggers(estate, resultRelInfo,
 								 slots[i], recheckIndexes,
 								 cstate->transition_capture);
@@ -590,7 +590,8 @@ CopyFrom(CopyFromState cstate)
 	BulkInsertState bistate = NULL;
 	CopyInsertMethod insertMethod;
 	CopyMultiInsertInfo multiInsertInfo = {0};	/* pacify compiler */
-	uint64		processed = 0;
+	int64		processed = 0;
+	int64		excluded = 0;
 	bool		has_before_insert_row_trig;
 	bool		has_instead_insert_row_trig;
 	bool		leafpart_use_multi_insert = false;
@@ -721,6 +722,7 @@ CopyFrom(CopyFromState cstate)
 	mtstate->ps.state = estate;
 	mtstate->operation = CMD_INSERT;
 	mtstate->resultRelInfo = resultRelInfo;
+	mtstate->rootResultRelInfo = resultRelInfo;
 
 	if (resultRelInfo->ri_FdwRoutine != NULL &&
 		resultRelInfo->ri_FdwRoutine->BeginForeignInsert != NULL)
@@ -1063,7 +1065,15 @@ CopyFrom(CopyFromState cstate)
 			econtext->ecxt_scantuple = myslot;
 			/* Skip items that don't match COPY's WHERE clause */
 			if (!ExecQual(cstate->qualexpr, econtext))
+			{
+				/*
+				 * Report that this tuple was filtered out by the WHERE
+				 * clause.
+				 */
+				pgstat_progress_update_param(PROGRESS_COPY_TUPLES_EXCLUDED,
+											 ++excluded);
 				continue;
+			}
 		}
 
 		if (cstate->dispatch_mode != COPY_DISPATCH && is_check_distkey)
@@ -1358,6 +1368,7 @@ CopyFrom(CopyFromState cstate)
 																   myslot,
 																   estate,
 																   false,
+																   false,
 																   NULL,
 																   NIL);
 					}
@@ -1373,7 +1384,7 @@ CopyFrom(CopyFromState cstate)
 			/*
 			 * We count only tuples not suppressed by a BEFORE INSERT trigger
 			 * or FDW; this is the same definition used by nodeModifyTable.c
-			 * for counting tuples inserted by an INSERT command. Update
+			 * for counting tuples inserted by an INSERT command.  Update
 			 * progress of the COPY command as well.
 			 *
 			 * MPP: incrementing this counter here only matters for utility
@@ -1386,9 +1397,14 @@ CopyFrom(CopyFromState cstate)
 			 * this spot; the QE receives pre-parsed rows through
 			 * NextCopyFromExecute() and counts them only here.
 			 */
+<<<<<<< HEAD
 			pgstat_progress_update_param(PROGRESS_COPY_LINES_PROCESSED, ++processed);
 			if (cstate->cdbsreh)
 				cstate->cdbsreh->processed++;
+=======
+			pgstat_progress_update_param(PROGRESS_COPY_TUPLES_PROCESSED,
+										 ++processed);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		}
 	}
 
@@ -1408,6 +1424,7 @@ CopyFrom(CopyFromState cstate)
 
 	MemoryContextSwitchTo(oldcontext);
 
+<<<<<<< HEAD
 	/*
 	 * Done reading input data and sending it off to the segment
 	 * databases Now we would like to end the copy command on
@@ -1466,6 +1483,8 @@ CopyFrom(CopyFromState cstate)
 	if (cstate->copy_src == COPY_OLD_FE)
 		pq_endmsgread();
 
+=======
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	/* Execute AFTER STATEMENT insertion triggers */
 	ExecASInsertTriggers(estate, target_resultRelInfo, cstate->transition_capture);
 
@@ -1547,7 +1566,20 @@ BeginCopyFrom(ParseState *pstate,
 	ExprState **defexprs;
 	MemoryContext oldcontext;
 	bool		volatile_defexprs;
+<<<<<<< HEAD
 	bool		is_external_table;
+=======
+	const int	progress_cols[] = {
+		PROGRESS_COPY_COMMAND,
+		PROGRESS_COPY_TYPE,
+		PROGRESS_COPY_BYTES_TOTAL
+	};
+	int64		progress_vals[] = {
+		PROGRESS_COPY_COMMAND_FROM,
+		0,
+		0
+	};
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/* Allocate workspace and zero all fields */
 	cstate = (CopyFromStateData *) palloc0(sizeof(CopyFromStateData));
@@ -1844,13 +1876,19 @@ BeginCopyFrom(ParseState *pstate,
 	}
 	else if (data_source_cb)
 	{
+		progress_vals[1] = PROGRESS_COPY_TYPE_CALLBACK;
 		cstate->copy_src = COPY_CALLBACK;
 		cstate->data_source_cb = data_source_cb;
 		cstate->data_source_cb_extra = data_source_cb_extra;
 	}
 	else if (pipe)
 	{
+<<<<<<< HEAD
 		Assert(!is_program || cstate->dispatch_mode == COPY_EXECUTOR);	/* the grammar does not allow this */
+=======
+		progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
+		Assert(!is_program);	/* the grammar does not allow this */
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		if (whereToSendOutput == DestRemote)
 			ReceiveCopyBegin(cstate);
 		else
@@ -1865,8 +1903,13 @@ BeginCopyFrom(ParseState *pstate,
 
 		if (cstate->is_program)
 		{
+<<<<<<< HEAD
 			cstate->program_pipes = open_program_pipes(cstate->filename, false);
 			cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_R);
+=======
+			progress_vals[1] = PROGRESS_COPY_TYPE_PROGRAM;
+			cstate->copy_file = OpenPipeStream(cstate->filename, PG_BINARY_R);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			if (cstate->copy_file == NULL)
 				ereport(ERROR,
 						(errcode_for_file_access(),
@@ -1878,7 +1921,12 @@ BeginCopyFrom(ParseState *pstate,
 			struct stat st;
 			char	   *filename = cstate->filename;
 
+<<<<<<< HEAD
 			cstate->copy_file = AllocateFile(filename, PG_BINARY_R);
+=======
+			progress_vals[1] = PROGRESS_COPY_TYPE_FILE;
+			cstate->copy_file = AllocateFile(cstate->filename, PG_BINARY_R);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			if (cstate->copy_file == NULL)
 			{
 				/* copy errno because ereport subfunctions might change it */
@@ -1907,10 +1955,11 @@ BeginCopyFrom(ParseState *pstate,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 						 errmsg("\"%s\" is a directory", filename)));
 
-			pgstat_progress_update_param(PROGRESS_COPY_BYTES_TOTAL, st.st_size);
+			progress_vals[2] = st.st_size;
 		}
 	}
 
+<<<<<<< HEAD
 	if (cstate->opts.on_segment && Gp_role == GP_ROLE_DISPATCH)
 	{
 		/* nothing to do */
@@ -1936,6 +1985,11 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->first_qe_processed_field = header_frame.first_qe_processed_field;
 	}
 	else if (cstate->opts.binary)
+=======
+	pgstat_progress_update_multi_param(3, progress_cols, progress_vals);
+
+	if (cstate->opts.binary)
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	{
 		/* Read and verify binary header */
 		ReceiveCopyBinaryHeader(cstate);

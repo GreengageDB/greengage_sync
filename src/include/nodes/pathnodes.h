@@ -175,6 +175,8 @@ typedef struct PlannerGlobal
 
 	List	   *relationOids;	/* OIDs of relations the plan depends on */
 
+	List	   *partitionOids;	/* OIDs of partitions the plan depends on */
+
 	List	   *invalItems;		/* other dependencies, as PlanInvalItems */
 
 	List	   *paramExecTypes; /* type OIDs for PARAM_EXEC Params */
@@ -796,6 +798,10 @@ static inline void planner_subplan_put_plan(struct PlannerInfo *root, SubPlan *s
  * sizes of a distributed scan node.
  *----------
  */
+
+/* Bitmask of flags supported by table AMs */
+#define AMFLAG_HAS_TID_RANGE (1 << 0)
+
 typedef enum RelOptKind
 {
 	RELOPT_BASEREL,
@@ -887,6 +893,8 @@ typedef struct RelOptInfo
 	PlannerInfo *subroot;		/* if subquery (in GPDB: or CTE) */
 	List	   *subplan_params; /* if subquery */
 	int			rel_parallel_workers;	/* wanted number of parallel workers */
+	uint32		amflags;		/* Bitmask of optional features supported by
+								 * the table AM */
 
 	/* Information about foreign tables and foreign joins */
 	Oid			serverid;		/* identifies server for the table or join */
@@ -1625,6 +1633,7 @@ typedef struct TidPath
 } TidPath;
 
 /*
+<<<<<<< HEAD
  * CdbMotionPath represents transmission of the child Path results
  * from a set of sending processes to a set of receiving processes.
  *
@@ -1641,6 +1650,18 @@ typedef struct CdbMotionPath
 
 	GpPolicy   *policy;
 } CdbMotionPath;
+=======
+ * TidRangePath represents a scan by a continguous range of TIDs
+ *
+ * tidrangequals is an implicitly AND'ed list of qual expressions of the form
+ * "CTID relop pseudoconstant", where relop is one of >,>=,<,<=.
+ */
+typedef struct TidRangePath
+{
+	Path		path;
+	List	   *tidrangequals;
+} TidRangePath;
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 /*
  * SubqueryScanPath represents a scan of an unflattened subquery-in-FROM
@@ -1737,9 +1758,6 @@ typedef struct CustomPath
 typedef struct AppendPath
 {
 	Path		path;
-	List	   *partitioned_rels;	/* List of Relids containing RT indexes of
-									 * non-leaf tables for each partition
-									 * hierarchy whose paths are in 'subpaths' */
 	List	   *subpaths;		/* list of component Paths */
 	/* Index of first partial path in subpaths; list_length(subpaths) if none */
 	int			first_partial_path;
@@ -1764,9 +1782,6 @@ extern bool is_dummy_rel(RelOptInfo *rel);
 typedef struct MergeAppendPath
 {
 	Path		path;
-	List	   *partitioned_rels;	/* List of Relids containing RT indexes of
-									 * non-leaf tables for each partition
-									 * hierarchy whose paths are in 'subpaths' */
 	List	   *subpaths;		/* list of component Paths */
 	double		limit_tuples;	/* hard limit on output tuples, or -1 */
 } MergeAppendPath;

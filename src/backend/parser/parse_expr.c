@@ -527,7 +527,11 @@ transformColumnRef(ParseState *pstate, ColumnRef *cref)
 		case EXPR_KIND_CALL_ARGUMENT:
 		case EXPR_KIND_COPY_WHERE:
 		case EXPR_KIND_GENERATED_COLUMN:
+<<<<<<< HEAD
 		case EXPR_KIND_SCATTER_BY:
+=======
+		case EXPR_KIND_CYCLE_MARK:
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			/* okay */
 			break;
 
@@ -1792,6 +1796,7 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 		case EXPR_KIND_RETURNING:
 		case EXPR_KIND_VALUES:
 		case EXPR_KIND_VALUES_SINGLE:
+		case EXPR_KIND_CYCLE_MARK:
 			/* okay */
 			break;
 		case EXPR_KIND_CHECK_CONSTRAINT:
@@ -2664,7 +2669,7 @@ transformWholeRowRef(ParseState *pstate, ParseNamespaceItem *nsitem,
 	result->location = location;
 
 	/* mark relation as requiring whole-row SELECT access */
-	markVarForSelectPriv(pstate, result, nsitem->p_rte);
+	markVarForSelectPriv(pstate, result);
 
 	return (Node *) result;
 }
@@ -3185,8 +3190,13 @@ ParseExprKindName(ParseExprKind exprKind)
 			return "WHERE";
 		case EXPR_KIND_GENERATED_COLUMN:
 			return "GENERATED AS";
+<<<<<<< HEAD
 		case EXPR_KIND_SCATTER_BY:
 			return "SCATTER BY";
+=======
+		case EXPR_KIND_CYCLE_MARK:
+			return "CYCLE";
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 			/*
 			 * There is intentionally no default: case here, so that the

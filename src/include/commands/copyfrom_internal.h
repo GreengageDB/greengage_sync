@@ -18,6 +18,31 @@
 #include "commands/trigger.h"
 
 /*
+<<<<<<< HEAD
+=======
+ * Represents the different source cases we need to worry about at
+ * the bottom level
+ */
+typedef enum CopySource
+{
+	COPY_FILE,					/* from file (or a piped program) */
+	COPY_FRONTEND,				/* from frontend */
+	COPY_CALLBACK				/* from callback function */
+} CopySource;
+
+/*
+ *	Represents the end-of-line terminator type of the input
+ */
+typedef enum EolType
+{
+	EOL_UNKNOWN,
+	EOL_NL,
+	EOL_CR,
+	EOL_CRNL
+} EolType;
+
+/*
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
  * Represents the heap insert method to be used during COPY FROM.
  */
 typedef enum CopyInsertMethod

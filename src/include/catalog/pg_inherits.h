@@ -31,8 +31,8 @@
  */
 CATALOG(pg_inherits,2611,InheritsRelationId)
 {
-	Oid			inhrelid;
-	Oid			inhparent;
+	Oid			inhrelid BKI_LOOKUP(pg_class);
+	Oid			inhparent BKI_LOOKUP(pg_class);
 	int32		inhseqno;
 } FormData_pg_inherits;
 
@@ -47,7 +47,7 @@ FOREIGN_KEY(inhparent REFERENCES pg_class(oid));
  */
 typedef FormData_pg_inherits *Form_pg_inherits;
 
-DECLARE_UNIQUE_INDEX(pg_inherits_relid_seqno_index, 2680, on pg_inherits using btree(inhrelid oid_ops, inhseqno int4_ops));
+DECLARE_UNIQUE_INDEX_PKEY(pg_inherits_relid_seqno_index, 2680, on pg_inherits using btree(inhrelid oid_ops, inhseqno int4_ops));
 #define InheritsRelidSeqnoIndexId  2680
 DECLARE_INDEX(pg_inherits_parent_index, 2187, on pg_inherits using btree(inhparent oid_ops));
 #define InheritsParentIndexId  2187

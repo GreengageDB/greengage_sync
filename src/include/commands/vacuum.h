@@ -184,6 +184,7 @@ typedef struct VacAttrStats
 	bool		merge_stats;
 } VacAttrStats;
 
+<<<<<<< HEAD
 typedef enum VacuumOption
 {
 	VACOPT_VACUUM = 1 << 0,		/* do VACUUM */
@@ -205,6 +206,17 @@ typedef enum VacuumOption
 	VACOPT_AO_COMPACT_PHASE = 1 << 13,
 	VACOPT_AO_POST_CLEANUP_PHASE = 1 << 14
 } VacuumOption;
+=======
+/* flag bits for VacuumParams->options */
+#define VACOPT_VACUUM 0x01		/* do VACUUM */
+#define VACOPT_ANALYZE 0x02		/* do ANALYZE */
+#define VACOPT_VERBOSE 0x04		/* print progress info */
+#define VACOPT_FREEZE 0x08		/* FREEZE option */
+#define VACOPT_FULL 0x10		/* FULL (non-concurrent) vacuum */
+#define VACOPT_SKIP_LOCKED 0x20 /* skip if cannot get lock */
+#define VACOPT_PROCESS_TOAST 0x40	/* process the TOAST table, if any */
+#define VACOPT_DISABLE_PAGE_SKIPPING 0x80	/* don't skip any pages */
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 #define VACUUM_AO_PHASE_MASK (VACOPT_AO_PRE_CLEANUP_PHASE | \
 							  VACOPT_AO_COMPACT_PHASE | \
@@ -268,7 +280,7 @@ typedef struct VPgClassStatsCombo
  */
 typedef struct VacuumParams
 {
-	int			options;		/* bitmask of VacuumOption */
+	bits32		options;		/* bitmask of VACOPT_* */
 	int			freeze_min_age; /* min freeze age, -1 to use default */
 	int			freeze_table_age;	/* age at which to scan whole table */
 	int			multixact_freeze_min_age;	/* min multixact freeze age, -1 to
@@ -371,9 +383,10 @@ extern void vacuum_set_xid_limits(Relation rel,
 extern void vac_update_datfrozenxid(void);
 extern void vacuum_delay_point(void);
 extern bool vacuum_is_relation_owner(Oid relid, Form_pg_class reltuple,
-									 int options);
+									 bits32 options);
 extern Relation vacuum_open_relation(Oid relid, RangeVar *relation,
-									 int options, bool verbose, LOCKMODE lmode);
+									 bits32 options, bool verbose,
+									 LOCKMODE lmode);
 
 extern bool vacuumStatement_IsTemporary(Relation onerel);
 

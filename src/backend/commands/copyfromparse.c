@@ -128,35 +128,19 @@ static int	CopyReadBinaryData(CopyFromState cstate, char *dest, int nbytes);
 void
 ReceiveCopyBegin(CopyFromState cstate)
 {
-	if (PG_PROTOCOL_MAJOR(FrontendProtocol) >= 3)
-	{
-		/* new way */
-		StringInfoData buf;
-		int			natts = list_length(cstate->attnumlist);
-		int16		format = (cstate->opts.binary ? 1 : 0);
-		int			i;
+	StringInfoData buf;
+	int			natts = list_length(cstate->attnumlist);
+	int16		format = (cstate->opts.binary ? 1 : 0);
+	int			i;
 
-		pq_beginmessage(&buf, 'G');
-		pq_sendbyte(&buf, format);	/* overall format */
-		pq_sendint16(&buf, natts);
-		for (i = 0; i < natts; i++)
-			pq_sendint16(&buf, format); /* per-column formats */
-		pq_endmessage(&buf);
-		cstate->copy_src = COPY_NEW_FE;
-		cstate->fe_msgbuf = makeStringInfo();
-	}
-	else
-	{
-		/* old way */
-		if (cstate->opts.binary)
-			ereport(ERROR,
-					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-					 errmsg("COPY BINARY is not supported to stdout or from stdin")));
-		pq_putemptymessage('G');
-		/* any error in old protocol will make us lose sync */
-		pq_startmsgread();
-		cstate->copy_src = COPY_OLD_FE;
-	}
+	pq_beginmessage(&buf, 'G');
+	pq_sendbyte(&buf, format);	/* overall format */
+	pq_sendint16(&buf, natts);
+	for (i = 0; i < natts; i++)
+		pq_sendint16(&buf, format); /* per-column formats */
+	pq_endmessage(&buf);
+	cstate->copy_src = COPY_FRONTEND;
+	cstate->fe_msgbuf = makeStringInfo();
 	/* We *must* flush here to ensure FE knows it can send. */
 	pq_flush();
 }
@@ -253,6 +237,7 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 							 errmsg("could not read from COPY file: %m")));
 			}
 			break;
+<<<<<<< HEAD
 		case COPY_OLD_FE:
 			if (pq_getbytes((char *) databuf, datasize))
 			{
@@ -266,6 +251,10 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 			break;
 		case COPY_NEW_FE:
 			while (datasize > 0 && !cstate->reached_eof)
+=======
+		case COPY_FRONTEND:
+			while (maxread > 0 && bytesread < minread && !cstate->reached_eof)
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			{
 				int			avail;
 
@@ -406,7 +395,7 @@ CopyLoadRawBuf(CopyFromState cstate)
 	cstate->raw_buf[nbytes] = '\0';
 	cstate->raw_buf_index = 0;
 	cstate->raw_buf_len = nbytes;
-	cstate->bytes_processed += nbytes;
+	cstate->bytes_processed += inbytes;
 	pgstat_progress_update_param(PROGRESS_COPY_BYTES_PROCESSED, cstate->bytes_processed);
 	return (inbytes > 0);
 }
@@ -854,21 +843,16 @@ NextCopyFromX(CopyFromState cstate, ExprContext *econtext,
 		if (fld_count == -1)
 		{
 			/*
-			 * Received EOF marker.  In a V3-protocol copy, wait for the
-			 * protocol-level EOF, and complain if it doesn't come
-			 * immediately.  This ensures that we correctly handle CopyFail,
-			 * if client chooses to send that now.
-			 *
-			 * Note that we MUST NOT try to read more data in an old-protocol
-			 * copy, since there is no protocol-level EOF marker then.  We
-			 * could go either way for copy from file, but choose to throw
-			 * error if there's data after the EOF marker, for consistency
-			 * with the new-protocol case.
+			 * Received EOF marker.  Wait for the protocol-level EOF, and
+			 * complain if it doesn't come immediately.  In COPY FROM STDIN,
+			 * this ensures that we correctly handle CopyFail, if client
+			 * chooses to send that now.  When copying from file, we could
+			 * ignore the rest of the file like in text mode, but we choose to
+			 * be consistent with the COPY FROM STDIN case.
 			 */
 			char		dummy;
 
-			if (cstate->copy_src != COPY_OLD_FE &&
-				CopyReadBinaryData(cstate, &dummy, 1) > 0)
+			if (CopyReadBinaryData(cstate, &dummy, 1) > 0)
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 						 errmsg("received copy data after EOF marker")));
@@ -1256,7 +1240,7 @@ CopyReadLine(CopyFromState cstate)
 		 * after \. up to the protocol end of copy data.  (XXX maybe better
 		 * not to treat \. as special?)
 		 */
-		if (cstate->copy_src == COPY_NEW_FE)
+		if (cstate->copy_src == COPY_FRONTEND)
 		{
 			do
 			{
@@ -1740,8 +1724,18 @@ CopyReadLineText(CopyFromState cstate)
 				 * backslashes are not special, so we want to process the
 				 * character after the backslash just like a normal character,
 				 * so we don't increment in those cases.
+				 *
+				 * Set 'c' to skip whole character correctly in multi-byte
+				 * encodings.  If we don't have the whole character in the
+				 * buffer yet, we might loop back to process it, after all,
+				 * but that's OK because multi-byte characters cannot have any
+				 * special meaning.
 				 */
 				raw_buf_ptr++;
+<<<<<<< HEAD
+=======
+				c = c2;
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			}
 		}
 

@@ -128,9 +128,23 @@ int			max_stack_depth = 100;
 /* wait N seconds to allow attach from a debugger */
 int			PostAuthDelay = 0;
 
+<<<<<<< HEAD
 /* Time between checks that the client is still connected. */
 int         client_connection_check_interval = 0;
+=======
+/* ----------------
+ *		private typedefs etc
+ * ----------------
+ */
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
+/* type of argument for bind_param_error_callback */
+typedef struct BindParamCbData
+{
+	const char *portalName;
+	int			paramno;		/* zero-based param number, or -1 initially */
+	const char *paramval;		/* textual input string, if available */
+} BindParamCbData;
 
 /*
  * Hook for extensions, to get notified when query cancel or DIE signal is
@@ -242,6 +256,7 @@ static int	errdetail_execute(List *raw_parsetree_list);
 static int	errdetail_params(ParamListInfo params);
 static int	errdetail_abort(void);
 static int	errdetail_recovery_conflict(void);
+static void bind_param_error_callback(void *arg);
 static void start_xact_command(void);
 static void finish_xact_command(void);
 static bool IsTransactionExitStmt(Node *parsetree);
@@ -453,7 +468,7 @@ SocketBackend(StringInfo inBuf)
 			whereToSendOutput = DestNone;
 			ereport(DEBUG1,
 					(errcode(ERRCODE_CONNECTION_DOES_NOT_EXIST),
-					 errmsg("unexpected EOF on client connection")));
+					 errmsg_internal("unexpected EOF on client connection")));
 		}
 		return qtype;
 	}
@@ -470,30 +485,6 @@ SocketBackend(StringInfo inBuf)
 	{
 		case 'Q':				/* simple query */
 			doing_extended_query_message = false;
-			if (PG_PROTOCOL_MAJOR(FrontendProtocol) < 3)
-			{
-				/* old style without length word; convert */
-				if (pq_getstring(inBuf))
-				{
-					if (IsTransactionState())
-						ereport(COMMERROR,
-								(errcode(ERRCODE_CONNECTION_FAILURE),
-								 errmsg("unexpected EOF on client connection with an open transaction")));
-					else
-					{
-						/*
-						 * Can't send DEBUG log messages to client at this
-						 * point. Since we're disconnecting right away, we
-						 * don't need to restore whereToSendOutput.
-						 */
-						whereToSendOutput = DestNone;
-						ereport(DEBUG1,
-								(errcode(ERRCODE_CONNECTION_DOES_NOT_EXIST),
-								 errmsg("unexpected EOF on client connection")));
-					}
-					return EOF;
-				}
-			}
 			break;
 
 		case 'M':				/* Greenplum Database dispatched statement from QD */
@@ -524,29 +515,6 @@ SocketBackend(StringInfo inBuf)
 
 		case 'F':				/* fastpath function call */
 			doing_extended_query_message = false;
-			if (PG_PROTOCOL_MAJOR(FrontendProtocol) < 3)
-			{
-				if (GetOldFunctionMessage(inBuf))
-				{
-					if (IsTransactionState())
-						ereport(COMMERROR,
-								(errcode(ERRCODE_CONNECTION_FAILURE),
-								 errmsg("unexpected EOF on client connection with an open transaction")));
-					else
-					{
-						/*
-						 * Can't send DEBUG log messages to client at this
-						 * point. Since we're disconnecting right away, we
-						 * don't need to restore whereToSendOutput.
-						 */
-						whereToSendOutput = DestNone;
-						ereport(DEBUG1,
-								(errcode(ERRCODE_CONNECTION_DOES_NOT_EXIST),
-								 errmsg("unexpected EOF on client connection")));
-					}
-					return EOF;
-				}
-			}
 			break;
 
 		case 'X':				/* terminate */
@@ -561,11 +529,6 @@ SocketBackend(StringInfo inBuf)
 		case 'H':				/* flush */
 		case 'P':				/* parse */
 			doing_extended_query_message = true;
-			/* these are only legal in protocol 3 */
-			if (PG_PROTOCOL_MAJOR(FrontendProtocol) < 3)
-				ereport(FATAL,
-						(errcode(ERRCODE_PROTOCOL_VIOLATION),
-						 errmsg("invalid frontend message type %d", qtype)));
 			break;
 
 		case 'S':				/* sync */
@@ -573,11 +536,6 @@ SocketBackend(StringInfo inBuf)
 			ignore_till_sync = false;
 			/* mark not-extended, so that a new error doesn't begin skip */
 			doing_extended_query_message = false;
-			/* only legal in protocol 3 */
-			if (PG_PROTOCOL_MAJOR(FrontendProtocol) < 3)
-				ereport(FATAL,
-						(errcode(ERRCODE_PROTOCOL_VIOLATION),
-						 errmsg("invalid frontend message type %d", qtype)));
 			break;
 
 		case 'd':				/* copy data */
@@ -585,11 +543,6 @@ SocketBackend(StringInfo inBuf)
 		case 'f':				/* copy fail */
 		case '?':				/* Greenplum sequence response */
 			doing_extended_query_message = false;
-			/* these are only legal in protocol 3 */
-			if (PG_PROTOCOL_MAJOR(FrontendProtocol) < 3)
-				ereport(FATAL,
-						(errcode(ERRCODE_PROTOCOL_VIOLATION),
-						 errmsg("invalid frontend message type %d", qtype)));
 			break;
 
 		default:
@@ -610,13 +563,8 @@ SocketBackend(StringInfo inBuf)
 	 * after the type code; we can read the message contents independently of
 	 * the type.
 	 */
-	if (PG_PROTOCOL_MAJOR(FrontendProtocol) >= 3)
-	{
-		if (pq_getmessage(inBuf, 0))
-			return EOF;			/* suitable message already logged */
-	}
-	else
-		pq_endmsgread();
+	if (pq_getmessage(inBuf, 0))
+		return EOF;			/* suitable message already logged */
 	RESUME_CANCEL_INTERRUPTS();
 
 	return qtype;
@@ -2092,7 +2040,7 @@ exec_parse_message(const char *query_string,	/* string to execute */
 		ResetUsage();
 
 	ereport(DEBUG2,
-			(errmsg("parse %s: %s",
+			(errmsg_internal("parse %s: %s",
 					*stmt_name ? stmt_name : "<unnamed>",
 					query_string)));
 
@@ -2372,7 +2320,7 @@ exec_bind_message(StringInfo input_message)
 	elog((Debug_print_full_dtm ? LOG : DEBUG5), "Bind: portal %s stmt_name %s", portal_name, stmt_name);
 
 	ereport(DEBUG2,
-			(errmsg("bind %s to %s",
+			(errmsg_internal("bind %s to %s",
 					*portal_name ? portal_name : "<unnamed>",
 					*stmt_name ? stmt_name : "<unnamed>")));
 
@@ -2508,6 +2456,19 @@ exec_bind_message(StringInfo input_message)
 	if (numParams > 0)
 	{
 		char	  **knownTextValues = NULL; /* allocate on first use */
+		BindParamCbData one_param_data;
+
+		/*
+		 * Set up an error callback so that if there's an error in this phase,
+		 * we can report the specific parameter causing the problem.
+		 */
+		one_param_data.portalName = portal->name;
+		one_param_data.paramno = -1;
+		one_param_data.paramval = NULL;
+		params_errcxt.previous = error_context_stack;
+		params_errcxt.callback = bind_param_error_callback;
+		params_errcxt.arg = (void *) &one_param_data;
+		error_context_stack = &params_errcxt;
 
 		params = makeParamList(numParams);
 
@@ -2520,6 +2481,9 @@ exec_bind_message(StringInfo input_message)
 			StringInfoData pbuf;
 			char		csave;
 			int16		pformat;
+
+			one_param_data.paramno = paramno;
+			one_param_data.paramval = NULL;
 
 			plength = pq_getmsgint(input_message, 4);
 			isNull = (plength == -1);
@@ -2574,7 +2538,12 @@ exec_bind_message(StringInfo input_message)
 				else
 					pstring = pg_client_to_server(pbuf.data, plength);
 
+				/* Now we can log the input string in case of error */
+				one_param_data.paramval = pstring;
+
 				pval = OidInputFunctionCall(typinput, pstring, typioparam, -1);
+
+				one_param_data.paramval = NULL;
 
 				/*
 				 * If we might need to log parameters later, save a copy of
@@ -2665,10 +2634,13 @@ exec_bind_message(StringInfo input_message)
 			params->params[paramno].ptype = ptype;
 		}
 
+		/* Pop the per-parameter error callback */
+		error_context_stack = error_context_stack->previous;
+
 		/*
 		 * Once all parameters have been received, prepare for printing them
-		 * in errors, if configured to do so.  (This is saved in the portal,
-		 * so that they'll appear when the query is executed later.)
+		 * in future errors, if configured to do so.  (This is saved in the
+		 * portal, so that they'll appear when the query is executed later.)
 		 */
 		if (log_parameter_max_length_on_error != 0)
 			params->paramValuesStr =
@@ -2682,7 +2654,10 @@ exec_bind_message(StringInfo input_message)
 	/* Done storing stuff in portal's context */
 	MemoryContextSwitchTo(oldContext);
 
-	/* Set the error callback so that parameters are logged, as needed  */
+	/*
+	 * Set up another error callback so that all the parameters are logged if
+	 * we get an error during the rest of the BIND processing.
+	 */
 	params_data.portalName = portal->name;
 	params_data.params = params;
 	params_errcxt.previous = error_context_stack;
@@ -2706,7 +2681,11 @@ exec_bind_message(StringInfo input_message)
 	 * will be generated in MessageContext.  The plan refcount will be
 	 * assigned to the Portal, so it will be released at portal destruction.
 	 */
+<<<<<<< HEAD
 	cplan = GetCachedPlan(psrc, params, false, NULL, NULL);
+=======
+	cplan = GetCachedPlan(psrc, params, NULL, NULL);
+>>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/*
 	 * Now we can define the portal.
@@ -3248,6 +3227,55 @@ errdetail_recovery_conflict(void)
 }
 
 /*
+ * bind_param_error_callback
+ *
+ * Error context callback used while parsing parameters in a Bind message
+ */
+static void
+bind_param_error_callback(void *arg)
+{
+	BindParamCbData *data = (BindParamCbData *) arg;
+	StringInfoData buf;
+	char	   *quotedval;
+
+	if (data->paramno < 0)
+		return;
+
+	/* If we have a textual value, quote it, and trim if necessary */
+	if (data->paramval)
+	{
+		initStringInfo(&buf);
+		appendStringInfoStringQuoted(&buf, data->paramval,
+									 log_parameter_max_length_on_error);
+		quotedval = buf.data;
+	}
+	else
+		quotedval = NULL;
+
+	if (data->portalName && data->portalName[0] != '\0')
+	{
+		if (quotedval)
+			errcontext("portal \"%s\" parameter $%d = %s",
+					   data->portalName, data->paramno + 1, quotedval);
+		else
+			errcontext("portal \"%s\" parameter $%d",
+					   data->portalName, data->paramno + 1);
+	}
+	else
+	{
+		if (quotedval)
+			errcontext("unnamed portal parameter $%d = %s",
+					   data->paramno + 1, quotedval);
+		else
+			errcontext("unnamed portal parameter $%d",
+					   data->paramno + 1);
+	}
+
+	if (quotedval)
+		pfree(quotedval);
+}
+
+/*
  * exec_describe_statement_message
  *
  * Process a "Describe" message for a prepared statement
@@ -3653,6 +3681,9 @@ die(SIGNAL_ARGS)
 		ProcDiePending = true;
 	}
 
+	/* for the statistics collector */
+	pgStatSessionEndCause = DISCONNECT_KILLED;
+
 	/* If we're still here, waken anything waiting on the process latch */
 	SetLatch(MyLatch);
 
@@ -3934,7 +3965,7 @@ ProcessInterrupts(const char* filename, int lineno)
 		else if (IsLogicalLauncher())
 		{
 			ereport(DEBUG1,
-					(errmsg("logical replication launcher shutting down")));
+					(errmsg_internal("logical replication launcher shutting down")));
 
 			/*
 			 * The logical replication launcher can be stopped at any time.
@@ -5912,8 +5943,14 @@ PostgresMain(int argc, char *argv[],
 				 * means unexpected loss of frontend connection. Either way,
 				 * perform normal shutdown.
 				 */
-			case 'X':
 			case EOF:
+
+				/* for the statistics collector */
+				pgStatSessionEndCause = DISCONNECT_CLIENT_EOF;
+
+				/* FALLTHROUGH */
+
+			case 'X':
 
 				/*
 				 * Reset whereToSendOutput to prevent ereport from attempting
