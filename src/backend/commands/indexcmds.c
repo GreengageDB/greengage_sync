@@ -105,9 +105,14 @@ static Oid	ReindexTable(RangeVar *relation, ReindexParams *params,
 						 bool isTopLevel);
 static void ReindexMultipleTables(const char *objectName, ReindexParams *params);
 static void reindex_error_callback(void *args);
-static void ReindexPartitions(Oid relid, ReindexParams *params, bool isTopLevel, ReindexStmt *parent_stmt);
-static void ReindexMultipleInternal(List *relids, ReindexParams *params, ReindexStmt *parent_stmt);
-static bool ReindexRelationConcurrently(Oid relationOid, ReindexParams *params);
+static void ReindexPartitions(Oid relid, ReindexParams *params,
+							  bool isTopLevel,
+							  ReindexStmt *parent_stmt);
+static void ReindexMultipleInternal(List *relids,
+									ReindexParams *params,
+									ReindexStmt *parent_stmt);
+static bool ReindexRelationConcurrently(Oid relationOid,
+										ReindexParams *params);
 static void update_relispartition(Oid relationId, bool newval);
 static inline void set_indexsafe_procflags(void);
 
