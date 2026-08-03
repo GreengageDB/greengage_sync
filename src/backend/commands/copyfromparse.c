@@ -237,24 +237,8 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 							 errmsg("could not read from COPY file: %m")));
 			}
 			break;
-<<<<<<< HEAD
-		case COPY_OLD_FE:
-			if (pq_getbytes((char *) databuf, datasize))
-			{
-				/* Only a \. terminator is legal EOF in old protocol */
-				ereport(ERROR,
-						(errcode(ERRCODE_CONNECTION_FAILURE),
-						 errmsg("unexpected EOF on client connection with an open transaction")));
-			}
-			bytesread += datasize;		/* update the count of bytes that were
-										 * read so far */
-			break;
-		case COPY_NEW_FE:
-			while (datasize > 0 && !cstate->reached_eof)
-=======
 		case COPY_FRONTEND:
 			while (maxread > 0 && bytesread < minread && !cstate->reached_eof)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			{
 				int			avail;
 
@@ -1732,10 +1716,7 @@ CopyReadLineText(CopyFromState cstate)
 				 * special meaning.
 				 */
 				raw_buf_ptr++;
-<<<<<<< HEAD
-=======
 				c = c2;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			}
 		}
 

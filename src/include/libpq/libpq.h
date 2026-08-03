@@ -70,13 +70,9 @@ extern int	pq_getmessage(StringInfo s, int maxlen);
 extern int	pq_getbyte(void);
 extern int	pq_peekbyte(void);
 extern int	pq_getbyte_if_available(unsigned char *c);
-<<<<<<< HEAD
-extern int	pq_putbytes(const char *s, size_t len);
+extern int	pq_putmessage_v2(char msgtype, const char *s, size_t len);
 extern bool pq_waitForDataUsingSelect(void);                /* GPDB only */
 extern bool pq_check_connection(void);
-=======
-extern int	pq_putmessage_v2(char msgtype, const char *s, size_t len);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 /*
  * prototypes for functions in be-secure.c
