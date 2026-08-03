@@ -1400,7 +1400,6 @@ if test "$with_gssapi" = yes ; then
   fi
 fi
 
-<<<<<<< HEAD
 AC_DEFUN([CHECK_APR], [
   GPAC_PATH_APR_1_CONFIG
   # If the 'apr-1-config --link-ld' produced correct output, -lapr-1 is already
@@ -1434,7 +1433,6 @@ if test "$enable_mapreduce" = yes ; then
   LIBS="$_LIBS"
 fi
 
-=======
 #
 # SSL Library
 #
@@ -1445,7 +1443,6 @@ if test x"$with_ssl" = x"" ; then
   with_ssl=no
 fi
 PGAC_ARG_BOOL(with, openssl, no, [obsolete spelling of --with-ssl=openssl])
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 if test "$with_openssl" = yes ; then
   with_ssl=openssl
 fi
