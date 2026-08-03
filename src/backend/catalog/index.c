@@ -3774,13 +3774,8 @@ reindex_index(Oid indexId, bool skip_constraint_checks, char persistence,
 	if (!OidIsValid(heapId))
 		return;
 
-<<<<<<< HEAD
-	if ((options & REINDEXOPT_MISSING_OK) != 0)
-		heapRelation = try_table_open(heapId, ShareLock, false);
-=======
 	if ((params->options & REINDEXOPT_MISSING_OK) != 0)
-		heapRelation = try_table_open(heapId, ShareLock);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+		heapRelation = try_table_open(heapId, ShareLock, false);
 	else
 		heapRelation = table_open(heapId, ShareLock);
 
@@ -3846,7 +3841,6 @@ reindex_index(Oid indexId, bool skip_constraint_checks, char persistence,
 				 errmsg("cannot reindex invalid index on TOAST table")));
 
 	/*
-<<<<<<< HEAD
 	 * Two-phase commit is not supported for transactions that change
 	 * relfilenode mappings. We can get away without two-phase commit, if
 	 * we're not already running in a transaction block, but if we are,
@@ -3855,7 +3849,8 @@ reindex_index(Oid indexId, bool skip_constraint_checks, char persistence,
 	 */
 	if (Gp_role == GP_ROLE_DISPATCH && RelationIsMapped(heapRelation))
 		PreventInTransactionBlock(true, "REINDEX of a catalog table");
-=======
+
+	/*
 	 * System relations cannot be moved even if allow_system_table_mods is
 	 * enabled to keep things consistent with the concurrent case where all
 	 * the indexes of a relation are processed in series, including indexes of
@@ -3876,7 +3871,6 @@ reindex_index(Oid indexId, bool skip_constraint_checks, char persistence,
 	if (OidIsValid(params->tablespaceOid) &&
 		CheckRelationTableSpaceMove(iRel, params->tablespaceOid))
 		set_tablespace = true;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/*
 	 * Also check for active uses of the index in the current transaction; we
@@ -4126,13 +4120,8 @@ reindex_relation(Oid relid, int flags, ReindexParams *params)
 	 * to prevent schema and data changes in it.  The lock level used here
 	 * should match ReindexTable().
 	 */
-<<<<<<< HEAD
-	if ((options & REINDEXOPT_MISSING_OK) != 0)
-		rel = try_table_open(relid, ShareLock, false);
-=======
 	if ((params->options & REINDEXOPT_MISSING_OK) != 0)
-		rel = try_table_open(relid, ShareLock);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+		rel = try_table_open(relid, ShareLock, false);
 	else
 		rel = table_open(relid, ShareLock);
 
@@ -4260,21 +4249,21 @@ reindex_relation(Oid relid, int flags, ReindexParams *params)
 	 * still hold the lock on the master table.
 	 */
 	if (OidIsValid(aoseg_relid))
-		result |= reindex_relation(aoseg_relid, 0, options);
+		result |= reindex_relation(aoseg_relid, 0, params);
 
 	/*
 	 * If an AO rel has a secondary block directory rel, reindex that too while we
 	 * still hold the lock on the master table.
 	 */
 	if (OidIsValid(aoblkdir_relid))
-		result |= reindex_relation(aoblkdir_relid, 0, options);
+		result |= reindex_relation(aoblkdir_relid, 0, params);
 
 	/*
 	 * If an AO rel has a secondary visibility map rel, reindex that too while we
 	 * still hold the lock on the master table.
 	 */
 	if (OidIsValid(aovisimap_relid))
-		result |= reindex_relation(aovisimap_relid, 0, options);
+		result |= reindex_relation(aovisimap_relid, 0, params);
 
 	return result;
 }

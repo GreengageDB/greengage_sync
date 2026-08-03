@@ -209,8 +209,7 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 		table_close(rel, NoLock);
 
 		/* Do the job. */
-<<<<<<< HEAD
-		cluster_rel(tableOid, indexOid, options, true /* printError */);
+		cluster_rel(tableOid, indexOid, &params, true /* printError */);
 
 		if (Gp_role == GP_ROLE_DISPATCH)
 		{
@@ -221,9 +220,6 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 										GetAssignedOidsForDispatch(),
 										NULL);
 		}
-=======
-		cluster_rel(tableOid, indexOid, &params);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	}
 	else
 	{
@@ -265,20 +261,17 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 		foreach(rv, rvs)
 		{
 			RelToCluster *rvtc = (RelToCluster *) lfirst(rv);
-<<<<<<< HEAD
 			bool		dispatch;
-=======
 			ClusterParams cluster_params = params;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 			/* Start a new transaction for each relation. */
 			StartTransactionCommand();
 			/* functions in indexes may want a snapshot set */
 			PushActiveSnapshot(GetTransactionSnapshot());
 			/* Do the job. */
-<<<<<<< HEAD
+			cluster_params.options |= CLUOPT_RECHECK;
 			dispatch = cluster_rel(rvtc->tableOid, rvtc->indexOid,
-								   options | CLUOPT_RECHECK,
+								   &cluster_params,
 								   false /* printError */);
 
 			if (Gp_role == GP_ROLE_DISPATCH && dispatch)
@@ -293,11 +286,6 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 											NULL);
 			}
 
-=======
-			cluster_params.options |= CLUOPT_RECHECK;
-			cluster_rel(rvtc->tableOid, rvtc->indexOid,
-						&cluster_params);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			PopActiveSnapshot();
 			CommitTransactionCommand();
 		}
@@ -331,13 +319,8 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
  * this function errors out when the relation is an AO table. Otherwise, this
  * functions prints out a warning message when the relation is an AO table.
  */
-<<<<<<< HEAD
 bool
-cluster_rel(Oid tableOid, Oid indexOid, int options, bool printError)
-=======
-void
-cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 {
 	Relation	OldHeap;
 	bool		verbose = ((params->options & CLUOPT_VERBOSE) != 0);

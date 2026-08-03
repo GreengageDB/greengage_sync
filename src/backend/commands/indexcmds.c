@@ -97,31 +97,17 @@ static void ComputeIndexAttrs(IndexInfo *indexInfo,
 				  bool amcanorder,
 				  bool isconstraint);
 static char *ChooseIndexNameAddition(List *colnames);
-<<<<<<< HEAD
-=======
-static List *ChooseIndexColumnNames(List *indexElems);
 static void ReindexIndex(RangeVar *indexRelation, ReindexParams *params,
 						 bool isTopLevel);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 static void RangeVarCallbackForReindexIndex(const RangeVar *relation,
 											Oid relId, Oid oldRelId, void *arg);
 static Oid	ReindexTable(RangeVar *relation, ReindexParams *params,
 						 bool isTopLevel);
-static void ReindexMultipleTables(const char *objectName,
-								  ReindexObjectType objectKind, ReindexParams *params);
+static void ReindexMultipleTables(const char *objectName, ReindexParams *params);
 static void reindex_error_callback(void *args);
-<<<<<<< HEAD
-static void ReindexPartitions(Oid relid, int options, bool isTopLevel, ReindexStmt *parent_stmt);
-static void ReindexMultipleInternal(List *relids, int options, ReindexStmt *parent_stmt);
-static bool ReindexRelationConcurrently(Oid relationOid, int options);
-=======
-static void ReindexPartitions(Oid relid, ReindexParams *params,
-							  bool isTopLevel);
-static void ReindexMultipleInternal(List *relids,
-									ReindexParams *params);
-static bool ReindexRelationConcurrently(Oid relationOid,
-										ReindexParams *params);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+static void ReindexPartitions(Oid relid, ReindexParams *params, bool isTopLevel, ReindexStmt *parent_stmt);
+static void ReindexMultipleInternal(List *relids, ReindexParams *params, ReindexStmt *parent_stmt);
+static bool ReindexRelationConcurrently(Oid relationOid, ReindexParams *params);
 static void update_relispartition(Oid relationId, bool newval);
 static inline void set_indexsafe_procflags(void);
 
@@ -2890,11 +2876,12 @@ ExecReindex(ParseState *pstate, ReindexStmt *stmt, bool isTopLevel)
 			 * start-transaction-command calls would not have the intended
 			 * effect!
 			 */
-			PreventInTransactionBlock(isTopLevel,
-									  (stmt->kind == REINDEX_OBJECT_SCHEMA) ? "REINDEX SCHEMA" :
-									  (stmt->kind == REINDEX_OBJECT_SYSTEM) ? "REINDEX SYSTEM" :
-									  "REINDEX DATABASE");
-			ReindexMultipleTables(stmt->name, stmt->kind, &params);
+			if (Gp_role == GP_ROLE_DISPATCH)
+				PreventInTransactionBlock(isTopLevel,
+										  (stmt->kind == REINDEX_OBJECT_SCHEMA) ? "REINDEX SCHEMA" :
+										  (stmt->kind == REINDEX_OBJECT_SYSTEM) ? "REINDEX SYSTEM" :
+										  "REINDEX DATABASE");
+			ReindexMultipleTables(stmt, &params);
 			break;
 		default:
 			elog(ERROR, "unrecognized object type: %d",
@@ -2907,13 +2894,8 @@ ExecReindex(ParseState *pstate, ReindexStmt *stmt, bool isTopLevel)
  * ReindexIndex
  *		Recreate a specific index.
  */
-<<<<<<< HEAD
-void
-ReindexIndex(ReindexStmt *stmt, int options, bool isTopLevel)
-=======
 static void
-ReindexIndex(RangeVar *indexRelation, ReindexParams *params, bool isTopLevel)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+ReindexIndex(ReindexStmt *stmt, ReindexParams *params, bool isTopLevel)
 {
 	RangeVar   *indexRelation = stmt->relation;
 	struct ReindexIndexCallbackState state;
@@ -2928,14 +2910,14 @@ ReindexIndex(RangeVar *indexRelation, ReindexParams *params, bool isTopLevel)
 	 */
 	if (Gp_role == GP_ROLE_EXECUTE)
 	{
-		Assert(OidIsValid(stmt->relid) && (options & REINDEXOPT_CONCURRENTLY) == 0);
+		Assert(OidIsValid(stmt->relid) && (params->options & REINDEXOPT_CONCURRENTLY) == 0);
 
 		LockRelationOid(stmt->relid, AccessExclusiveLock);
 		persistence = get_rel_persistence(stmt->relid);
 
 		Assert(get_rel_relkind(stmt->relid) == RELKIND_INDEX);
 
-		reindex_index(stmt->relid, false, persistence, options);
+		reindex_index(stmt->relid, false, persistence, params);
 		return;
 	}
 
@@ -2966,19 +2948,17 @@ ReindexIndex(RangeVar *indexRelation, ReindexParams *params, bool isTopLevel)
 	relkind = get_rel_relkind(indOid);
 
 	if (relkind == RELKIND_PARTITIONED_INDEX)
-<<<<<<< HEAD
-		ReindexPartitions(indOid, options, isTopLevel, stmt);
-	else if ((options & REINDEXOPT_CONCURRENTLY) != 0 &&
-=======
-		ReindexPartitions(indOid, params, isTopLevel);
+		ReindexPartitions(indOid, params, isTopLevel, stmt);
 	else if ((params->options & REINDEXOPT_CONCURRENTLY) != 0 &&
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			 persistence != RELPERSISTENCE_TEMP)
 		ReindexRelationConcurrently(indOid, params);
 	else
-<<<<<<< HEAD
-		reindex_index(indOid, false, persistence,
-					  options | REINDEXOPT_REPORT_PROGRESS);
+	{
+		ReindexParams newparams = *params;
+
+		newparams.options |= REINDEXOPT_REPORT_PROGRESS;
+		reindex_index(indOid, false, persistence, &newparams);
+	}
 
 	/*
 	 * Reindex on partitioned index will do the reindex for each index in
@@ -2999,13 +2979,6 @@ ReindexIndex(RangeVar *indexRelation, ReindexParams *params, bool isTopLevel)
 									DF_WITH_SNAPSHOT,
 									GetAssignedOidsForDispatch(),
 									NULL);
-=======
-	{
-		ReindexParams newparams = *params;
-
-		newparams.options |= REINDEXOPT_REPORT_PROGRESS;
-		reindex_index(indOid, false, persistence, &newparams);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	}
 }
 
@@ -3084,13 +3057,8 @@ RangeVarCallbackForReindexIndex(const RangeVar *relation,
  * ReindexTable
  *		Recreate all indexes of a table (and of its toast table, if any)
  */
-<<<<<<< HEAD
-Oid
-ReindexTable(ReindexStmt *stmt, int options, bool isTopLevel)
-=======
 static Oid
-ReindexTable(RangeVar *relation, ReindexParams *params, bool isTopLevel)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+ReindexTable(ReindexStmt *stmt, ReindexParams *params, bool isTopLevel)
 {
 	RangeVar   *relation = stmt->relation;
 	Oid			heapOid;
@@ -3106,7 +3074,7 @@ ReindexTable(RangeVar *relation, ReindexParams *params, bool isTopLevel)
 		reindex_relation(stmt->relid,
 						 REINDEX_REL_PROCESS_TOAST |
 						 REINDEX_REL_CHECK_CONSTRAINTS,
-						 options);
+						 params->options);
 		return stmt->relid;
 	}
 
@@ -3125,13 +3093,8 @@ ReindexTable(RangeVar *relation, ReindexParams *params, bool isTopLevel)
 									   RangeVarCallbackOwnsTable, NULL);
 
 	if (get_rel_relkind(heapOid) == RELKIND_PARTITIONED_TABLE)
-<<<<<<< HEAD
-		ReindexPartitions(heapOid, options, isTopLevel, stmt);
-	else if ((options & REINDEXOPT_CONCURRENTLY) != 0 &&
-=======
-		ReindexPartitions(heapOid, params, isTopLevel);
+		ReindexPartitions(heapOid, params, isTopLevel, stmt);
 	else if ((params->options & REINDEXOPT_CONCURRENTLY) != 0 &&
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			 get_rel_persistence(heapOid) != RELPERSISTENCE_TEMP)
 	{
 		result = ReindexRelationConcurrently(heapOid, params);
@@ -3188,14 +3151,8 @@ ReindexTable(RangeVar *relation, ReindexParams *params, bool isTopLevel)
  * separate transaction, so we can release the lock on it right away.
  * That means this must not be called within a user transaction block!
  */
-<<<<<<< HEAD
-void
-ReindexMultipleTables(ReindexStmt *parent_stmt, int options)
-=======
 static void
-ReindexMultipleTables(const char *objectName, ReindexObjectType objectKind,
-					  ReindexParams *params)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+ReindexMultipleTables(ReindexStmt *parent_stmt, ReindexParams *params)
 {
 	Oid			objectOid;
 	Relation	relationRelation;
@@ -3207,12 +3164,9 @@ ReindexMultipleTables(const char *objectName, ReindexObjectType objectKind,
 	List	   *relids = NIL;
 	int			num_keys;
 	bool		concurrent_warning = false;
-<<<<<<< HEAD
 	const char *objectName = parent_stmt->name;
 	ReindexObjectType objectKind = parent_stmt->kind;
-=======
 	bool		tablespace_warning = false;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	Assert(Gp_role != GP_ROLE_EXECUTE);
 	AssertArg(objectName);
@@ -3400,11 +3354,7 @@ ReindexMultipleTables(const char *objectName, ReindexObjectType objectKind,
 	 * Process each relation listed in a separate transaction.  Note that this
 	 * commits and then starts a new transaction immediately.
 	 */
-<<<<<<< HEAD
-	ReindexMultipleInternal(relids, options, parent_stmt);
-=======
-	ReindexMultipleInternal(relids, params);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+	ReindexMultipleInternal(relids, params, parent_stmt);
 
 	MemoryContextDelete(private_context);
 }
@@ -3435,11 +3385,7 @@ reindex_error_callback(void *arg)
  * by the caller.
  */
 static void
-<<<<<<< HEAD
-ReindexPartitions(Oid relid, int options, bool isTopLevel, ReindexStmt *parent_stmt)
-=======
-ReindexPartitions(Oid relid, ReindexParams *params, bool isTopLevel)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+ReindexPartitions(Oid relid, ReindexParams *params, bool isTopLevel, ReindexStmt *parent_stmt)
 {
 	List	   *partitions = NIL;
 	char		relkind = get_rel_relkind(relid);
@@ -3516,11 +3462,7 @@ ReindexPartitions(Oid relid, ReindexParams *params, bool isTopLevel)
 	 * Process each partition listed in a separate transaction.  Note that
 	 * this commits and then starts a new transaction immediately.
 	 */
-<<<<<<< HEAD
-	ReindexMultipleInternal(partitions, options, parent_stmt);
-=======
-	ReindexMultipleInternal(partitions, params);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+	ReindexMultipleInternal(partitions, params, parent_stmt);
 
 	/*
 	 * Clean up working storage --- note we must do this after
@@ -3538,11 +3480,7 @@ ReindexPartitions(Oid relid, ReindexParams *params, bool isTopLevel)
  * and starts a new transaction when finished.
  */
 static void
-<<<<<<< HEAD
-ReindexMultipleInternal(List *relids, int options, ReindexStmt *parent_stmt)
-=======
-ReindexMultipleInternal(List *relids, ReindexParams *params)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+ReindexMultipleInternal(List *relids, ReindexParams *params, ReindexStmt *parent_stmt)
 {
 	ListCell   *l;
 
@@ -3591,7 +3529,7 @@ ReindexMultipleInternal(List *relids, ReindexParams *params)
 
 		relkind = get_rel_relkind(relid);
 		relpersistence = get_rel_persistence(relid);
-		lockmode = (options & REINDEXOPT_CONCURRENTLY) != 0 ? ShareUpdateExclusiveLock :
+		lockmode = (params->options & REINDEXOPT_CONCURRENTLY) != 0 ? ShareUpdateExclusiveLock :
 			   (relkind == RELKIND_INDEX ? AccessExclusiveLock : ShareLock);
 		/*
  		 * If the relation is index, lock the table first to prevent dead lock.
@@ -3629,16 +3567,10 @@ ReindexMultipleInternal(List *relids, ReindexParams *params)
 		if ((params->options & REINDEXOPT_CONCURRENTLY) != 0 &&
 			relpersistence != RELPERSISTENCE_TEMP)
 		{
-<<<<<<< HEAD
-			result = ReindexRelationConcurrently(relid,
-												 options |
-												 REINDEXOPT_MISSING_OK);
-=======
 			ReindexParams newparams = *params;
 
 			newparams.options |= REINDEXOPT_MISSING_OK;
-			(void) ReindexRelationConcurrently(relid, &newparams);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+			result = ReindexRelationConcurrently(relid, &newparams);
 			/* ReindexRelationConcurrently() does the verbose output */
 		}
 		else if (relkind == RELKIND_INDEX)
@@ -3654,14 +3586,11 @@ ReindexMultipleInternal(List *relids, ReindexParams *params)
 		}
 		else
 		{
-<<<<<<< HEAD
-=======
 			bool		result;
 			ReindexParams newparams = *params;
 
 			newparams.options |=
 				REINDEXOPT_REPORT_PROGRESS | REINDEXOPT_MISSING_OK;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			result = reindex_relation(relid,
 									  REINDEX_REL_PROCESS_TOAST |
 									  REINDEX_REL_CHECK_CONSTRAINTS,
