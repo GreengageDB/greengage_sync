@@ -79,13 +79,10 @@ typedef enum ParseExprKind
 	EXPR_KIND_CALL_ARGUMENT,	/* procedure argument in CALL */
 	EXPR_KIND_COPY_WHERE,		/* WHERE condition in COPY FROM */
 	EXPR_KIND_GENERATED_COLUMN, /* generation expression for a column */
-<<<<<<< HEAD
+	EXPR_KIND_CYCLE_MARK,		/* cycle mark value */
 
 	/* GPDB additions */
 	EXPR_KIND_SCATTER_BY		/* SCATTER BY expression */
-=======
-	EXPR_KIND_CYCLE_MARK,		/* cycle mark value */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 } ParseExprKind;
 
 
