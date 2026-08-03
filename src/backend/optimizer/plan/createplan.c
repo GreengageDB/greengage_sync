@@ -6609,9 +6609,6 @@ make_tidscan(List *qptlist,
 	return node;
 }
 
-<<<<<<< HEAD
-SubqueryScan *
-=======
 static TidRangeScan *
 make_tidrangescan(List *qptlist,
 				  List *qpqual,
@@ -6631,8 +6628,7 @@ make_tidrangescan(List *qptlist,
 	return node;
 }
 
-static SubqueryScan *
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+SubqueryScan *
 make_subqueryscan(List *qptlist,
 				  List *qpqual,
 				  Index scanrelid,
