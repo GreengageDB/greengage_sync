@@ -345,14 +345,9 @@ extern int64 VacuumPageDirty;
 extern int	VacuumCostBalance;
 extern bool VacuumCostActive;
 
-<<<<<<< HEAD
-extern double vacuum_cleanup_index_scale_factor;
-
 extern int gp_vmem_protect_limit;
 extern int gp_vmem_protect_gang_cache_limit;
 extern int gp_max_parallel_cursors;
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 /* in tcop/postgres.c */
 

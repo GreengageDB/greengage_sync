@@ -172,9 +172,6 @@ int64		VacuumPageDirty = 0;
 
 int			VacuumCostBalance = 0;	/* working state for vacuum */
 bool		VacuumCostActive = false;
-<<<<<<< HEAD
-
-double		vacuum_cleanup_index_scale_factor;
 
 /* for pljava */
 char*	pljava_vmoptions = NULL;
@@ -191,5 +188,3 @@ int gp_vmem_protect_gang_cache_limit = 500;
 
 /* Parallel cursor concurrency limit */
 int	gp_max_parallel_cursors = -1;
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
