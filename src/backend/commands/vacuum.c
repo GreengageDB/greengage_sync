@@ -136,13 +136,10 @@ ExecVacuum(ParseState *pstate, VacuumStmt *vacstmt, bool isTopLevel, bool auto_s
 	bool		freeze = false;
 	bool		full = false;
 	bool		disable_page_skipping = false;
-<<<<<<< HEAD
 	bool		rootonly = false;
 	bool		fullscan = false;
 	int			ao_phase = 0;
-=======
 	bool		process_toast = true;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	ListCell   *lc;
 
 	/* Set default value */
