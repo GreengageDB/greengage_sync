@@ -2922,11 +2922,7 @@ exec_stmt_forc(PLpgSQL_execstate *estate, PLpgSQL_stmt_forc *stmt)
 	Assert(query);
 
 	if (query->plan == NULL)
-<<<<<<< HEAD
-		exec_prepare_plan(estate, query, curvar->cursor_options | CURSOR_OPT_UPDATABLE, true);
-=======
-		exec_prepare_plan(estate, query, curvar->cursor_options);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+		exec_prepare_plan(estate, query, curvar->cursor_options | CURSOR_OPT_UPDATABLE);
 
 	/*
 	 * Set up ParamListInfo for this query
@@ -4664,11 +4660,7 @@ exec_stmt_open(PLpgSQL_execstate *estate, PLpgSQL_stmt_open *stmt)
 		 */
 		query = stmt->query;
 		if (query->plan == NULL)
-<<<<<<< HEAD
-			exec_prepare_plan(estate, query, stmt->cursor_options | CURSOR_OPT_UPDATABLE, true);
-=======
-			exec_prepare_plan(estate, query, stmt->cursor_options);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+			exec_prepare_plan(estate, query, stmt->cursor_options | CURSOR_OPT_UPDATABLE);
 	}
 	else if (stmt->dynquery != NULL)
 	{
@@ -4739,11 +4731,7 @@ exec_stmt_open(PLpgSQL_execstate *estate, PLpgSQL_stmt_open *stmt)
 
 		query = curvar->cursor_explicit_expr;
 		if (query->plan == NULL)
-<<<<<<< HEAD
-			exec_prepare_plan(estate, query, curvar->cursor_options | CURSOR_OPT_UPDATABLE, true);
-=======
-			exec_prepare_plan(estate, query, curvar->cursor_options);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+			exec_prepare_plan(estate, query, curvar->cursor_options | CURSOR_OPT_UPDATABLE);
 	}
 
 	/*

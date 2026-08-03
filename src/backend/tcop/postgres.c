@@ -2681,11 +2681,7 @@ exec_bind_message(StringInfo input_message)
 	 * will be generated in MessageContext.  The plan refcount will be
 	 * assigned to the Portal, so it will be released at portal destruction.
 	 */
-<<<<<<< HEAD
-	cplan = GetCachedPlan(psrc, params, false, NULL, NULL);
-=======
-	cplan = GetCachedPlan(psrc, params, NULL, NULL);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+	cplan = GetCachedPlan(psrc, params, NULL, NULL, NULL);
 
 	/*
 	 * Now we can define the portal.
