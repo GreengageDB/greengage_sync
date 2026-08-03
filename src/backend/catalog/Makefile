@@ -170,11 +170,8 @@ installdirs:
 
 .PHONY: uninstall-data
 uninstall-data:
-<<<<<<< HEAD
-	rm -f $(addprefix '$(DESTDIR)$(datadir)'/, postgres.bki system_views.sql information_schema.sql cdb_init.d/cdb_schema.sql sql_features.txt)
-=======
-	rm -f $(addprefix '$(DESTDIR)$(datadir)'/, postgres.bki system_constraints.sql system_views.sql information_schema.sql sql_features.txt)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+
+	rm -f $(addprefix '$(DESTDIR)$(datadir)'/, postgres.bki system_constraints.sql  system_views.sql information_schema.sql cdb_init.d/cdb_schema.sql sql_features.txt)
 
 # postgres.bki, system_constraints.sql, and the generated headers are
 # in the distribution tarball, so they are not cleaned here.
