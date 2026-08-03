@@ -72,36 +72,6 @@ ItemPointerCompare(ItemPointer arg1, ItemPointer arg2)
 		return 0;
 }
 
-<<<<<<< HEAD
-static char *
-ItemPointerToBuffer(char *buffer, ItemPointer tid)
-{
-	// Do not assert valid ItemPointer -- it is ok if it is (0,0)...
-	BlockNumber blockNumber = BlockIdGetBlockNumber(&tid->ip_blkid);
-	OffsetNumber offsetNumber = tid->ip_posid;
-	
-	sprintf(buffer,
-		    "(%u,%u)",
-		    blockNumber, 
-		    offsetNumber);
-
-	return buffer;
-}
-
-static char itemPointerBuffer[50];
-static char itemPointerBuffer2[50];
-
-char *
-ItemPointerToString(ItemPointer tid)
-{
-	return ItemPointerToBuffer(itemPointerBuffer, tid);
-}
-
-char *
-ItemPointerToString2(ItemPointer tid)
-{
-	return ItemPointerToBuffer(itemPointerBuffer2, tid);
-=======
 /*
  * ItemPointerInc
  *		Increment 'pointer' by 1 only paying attention to the ItemPointer's
@@ -159,5 +129,34 @@ ItemPointerDec(ItemPointer pointer)
 		off--;
 
 	ItemPointerSet(pointer, blk, off);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+}
+
+static char *
+ItemPointerToBuffer(char *buffer, ItemPointer tid)
+{
+	// Do not assert valid ItemPointer -- it is ok if it is (0,0)...
+	BlockNumber blockNumber = BlockIdGetBlockNumber(&tid->ip_blkid);
+	OffsetNumber offsetNumber = tid->ip_posid;
+	
+	sprintf(buffer,
+		    "(%u,%u)",
+		    blockNumber, 
+		    offsetNumber);
+
+	return buffer;
+}
+
+static char itemPointerBuffer[50];
+static char itemPointerBuffer2[50];
+
+char *
+ItemPointerToString(ItemPointer tid)
+{
+	return ItemPointerToBuffer(itemPointerBuffer, tid);
+}
+
+char *
+ItemPointerToString2(ItemPointer tid)
+{
+	return ItemPointerToBuffer(itemPointerBuffer2, tid);
 }
