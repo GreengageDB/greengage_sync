@@ -30,24 +30,12 @@ CATALOG(pg_foreign_data_wrapper,2328,ForeignDataWrapperRelationId)
 {
 	Oid			oid;			/* oid */
 	NameData	fdwname;		/* foreign-data wrapper name */
-<<<<<<< HEAD
-
-	/* FDW owner */
-	Oid			fdwowner BKI_DEFAULT(PGUID);
-
-	/* handler function, or 0 if none */
-	Oid			fdwhandler BKI_DEFAULT(0) BKI_LOOKUP(pg_proc);
-
-	/* option validation function, or 0 if none */
-	Oid			fdwvalidator BKI_DEFAULT(0) BKI_LOOKUP(pg_proc);
-=======
 	Oid			fdwowner BKI_LOOKUP(pg_authid); /* FDW owner */
 	Oid			fdwhandler BKI_LOOKUP_OPT(pg_proc); /* handler function, or 0
 													 * if none */
 	Oid			fdwvalidator BKI_LOOKUP_OPT(pg_proc);	/* option validation
 														 * function, or 0 if
 														 * none */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */
 
