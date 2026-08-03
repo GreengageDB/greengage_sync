@@ -1086,50 +1086,7 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			break;
 
 		case T_ReindexStmt:
-<<<<<<< HEAD
-			{
-				ReindexStmt *stmt = (ReindexStmt *) parsetree;
-				int			options;
-
-				options = ReindexParseOptions(pstate, stmt);
-				if ((options & REINDEXOPT_CONCURRENTLY) != 0)
-					PreventInTransactionBlock(isTopLevel,
-											  "REINDEX CONCURRENTLY");
-
-				switch (stmt->kind)
-				{
-					case REINDEX_OBJECT_INDEX:
-						ReindexIndex(stmt, options, isTopLevel);
-						break;
-					case REINDEX_OBJECT_TABLE:
-						ReindexTable(stmt, options, isTopLevel);
-						break;
-					case REINDEX_OBJECT_SCHEMA:
-					case REINDEX_OBJECT_SYSTEM:
-					case REINDEX_OBJECT_DATABASE:
-
-						/*
-						 * This cannot run inside a user transaction block; if
-						 * we were inside a transaction, then its commit- and
-						 * start-transaction-command calls would not have the
-						 * intended effect!
-						 */
-						if (Gp_role == GP_ROLE_DISPATCH)
-							PreventInTransactionBlock(isTopLevel,
-												  (stmt->kind == REINDEX_OBJECT_SCHEMA) ? "REINDEX SCHEMA" :
-												  (stmt->kind == REINDEX_OBJECT_SYSTEM) ? "REINDEX SYSTEM" :
-												  "REINDEX DATABASE");
-						ReindexMultipleTables(stmt, options);
-						break;
-					default:
-						elog(ERROR, "unrecognized object type: %d",
-							 (int) stmt->kind);
-						break;
-				}
-			}
-=======
 			ExecReindex(pstate, (ReindexStmt *) parsetree, isTopLevel);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			break;
 
 			/*

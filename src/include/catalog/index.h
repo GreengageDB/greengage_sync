@@ -170,14 +170,10 @@ extern void reindex_index(Oid indexId, bool skip_constraint_checks,
 #define REINDEX_REL_FORCE_INDEXES_UNLOGGED	0x08
 #define REINDEX_REL_FORCE_INDEXES_PERMANENT 0x10
 
-<<<<<<< HEAD
 /* GPDB: set when recursing on a partitioned table */
 #define REINDEX_REL_RECURSING_PARTITIONED_TABLE 0x80
 
-extern bool reindex_relation(Oid relid, int flags, int options);
-=======
 extern bool reindex_relation(Oid relid, int flags, ReindexParams *params);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 extern bool ReindexIsProcessingHeap(Oid heapOid);
 extern bool ReindexIsProcessingIndex(Oid indexOid);

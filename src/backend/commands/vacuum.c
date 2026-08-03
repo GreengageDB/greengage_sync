@@ -2438,11 +2438,7 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 			cluster_params.options |= CLUOPT_VERBOSE;
 
 		/* VACUUM FULL is now a variant of CLUSTER; see cluster.c */
-<<<<<<< HEAD
-		cluster_rel(relid, InvalidOid, cluster_options, true);
-=======
-		cluster_rel(relid, InvalidOid, &cluster_params);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+		cluster_rel(relid, InvalidOid, &cluster_params, true);
 	}
 	else /* Heap vacuum or AO/CO vacuum in specific phase */
 		table_relation_vacuum(onerel, params, vac_strategy);
