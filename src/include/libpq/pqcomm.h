@@ -114,18 +114,14 @@ is_unixsock_path(const char *path)
 #define PG_PROTOCOL_MINOR(v)	((v) & 0x0000ffff)
 #define PG_PROTOCOL(m,n)	(((m) << 16) | (n))
 
-<<<<<<< HEAD
 /* GPDB specific */
 #define GPDB_INTERNAL_PROTOCOL(m, n)    PG_PROTOCOL((m) | 0x7000, (n))
 #define IS_GPDB_INTERNAL_PROTOCOL(v)    (((v) >> 28) == 7)
 
-/* The earliest and latest frontend/backend protocol version supported. */
-=======
 /*
  * The earliest and latest frontend/backend protocol version supported.
  * (Only protocol version 3 is currently supported)
  */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 #define PG_PROTOCOL_EARLIEST	PG_PROTOCOL(3,0)
 #define PG_PROTOCOL_LATEST		PG_PROTOCOL(3,0)
