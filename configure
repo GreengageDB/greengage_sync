@@ -658,7 +658,6 @@ LIBOBJS
 UUID_LIBS
 LDAP_LIBS_BE
 LDAP_LIBS_FE
-<<<<<<< HEAD
 CURL_LIBS
 CURL_CFLAGS
 CURL_CONFIG
@@ -670,9 +669,7 @@ apr_cflags
 apr_link_ld_libs
 apr_includes
 APR_1_CONFIG
-=======
 with_ssl
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 PTHREAD_CFLAGS
 PTHREAD_LIBS
 PTHREAD_CC
@@ -13574,7 +13571,6 @@ fi
   fi
 fi
 
-<<<<<<< HEAD
 
 
 if test "$enable_gpfdist" = yes ; then
@@ -13907,7 +13903,6 @@ fi
   LIBS="$_LIBS"
 fi
 
-=======
 #
 # SSL Library
 #
@@ -13961,7 +13956,6 @@ else
 fi
 
 
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 if test "$with_openssl" = yes ; then
   with_ssl=openssl
 fi
@@ -14234,7 +14228,6 @@ elif test "$with_ssl" != no ; then
   as_fn_error $? "--with-ssl must specify openssl" "$LINENO" 5
 fi
 
-<<<<<<< HEAD
 if test "$with_rt" = yes ; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for clock_gettime in -lrt" >&5
 $as_echo_n "checking for clock_gettime in -lrt... " >&6; }
@@ -14285,8 +14278,6 @@ $as_echo "$as_me: WARNING: Realtime library not found" >&2;}
 fi
 
 fi
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 if test "$with_pam" = yes ; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pam_start in -lpam" >&5
