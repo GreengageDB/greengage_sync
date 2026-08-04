@@ -170,7 +170,6 @@ installdirs:
 
 .PHONY: uninstall-data
 uninstall-data:
-
 	rm -f $(addprefix '$(DESTDIR)$(datadir)'/, postgres.bki system_constraints.sql  system_views.sql information_schema.sql cdb_init.d/cdb_schema.sql sql_features.txt)
 
 # postgres.bki, system_constraints.sql, and the generated headers are
