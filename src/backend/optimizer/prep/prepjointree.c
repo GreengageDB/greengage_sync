@@ -88,12 +88,6 @@ static void pull_up_union_leaf_queries(Node *setOp, PlannerInfo *root,
 									   int childRToffset);
 static void make_setop_translation_list(Query *query, Index newvarno,
 										AppendRelInfo *appinfo);
-<<<<<<< HEAD
-=======
-static bool is_simple_subquery(PlannerInfo *root, Query *subquery,
-							   RangeTblEntry *rte,
-							   JoinExpr *lowest_outer_join);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 static Node *pull_up_simple_values(PlannerInfo *root, Node *jtnode,
 								   RangeTblEntry *rte);
 static bool is_simple_values(PlannerInfo *root, RangeTblEntry *rte);
@@ -915,10 +909,7 @@ pull_up_subqueries_recurse(PlannerInfo *root, Node *jtnode,
 		 * unless is_safe_append_member says so.
 		 */
 		if (rte->rtekind == RTE_SUBQUERY &&
-<<<<<<< HEAD
 			!rte->forceDistRandom &&
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			is_simple_subquery(root, rte->subquery, rte, lowest_outer_join) &&
 			(containing_appendrel == NULL ||
 			 is_safe_append_member(rte->subquery)))
@@ -1595,11 +1586,7 @@ make_setop_translation_list(Query *query, Index newvarno,
  * In GPDB, 'rte' can be passed as NULL, if this is a sublink, rather
  * than a subselect in the FROM list, that we are trying to pull up.
  */
-<<<<<<< HEAD
 bool
-=======
-static bool
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 is_simple_subquery(PlannerInfo *root, Query *subquery, RangeTblEntry *rte,
 				   JoinExpr *lowest_outer_join)
 {
