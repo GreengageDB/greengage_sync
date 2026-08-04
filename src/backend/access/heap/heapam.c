@@ -2099,8 +2099,9 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 	Buffer		vmbuffer = InvalidBuffer;
 	bool		starting_with_empty_page;
 	bool		all_visible_cleared = false;
-<<<<<<< HEAD
 	bool		needwal;
+	bool		all_frozen_set = false;
+	uint8		vmstatus = 0;
 
 	needwal = RelationNeedsWAL(relation);
 	gp_expand_protect_catalog_changes(relation);
@@ -2109,10 +2110,6 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 	FaultInjector_InjectFaultIfSet("heap_insert", DDLNotSpecified, "",
 								   RelationGetRelationName(relation));
 #endif
-=======
-	bool		all_frozen_set = false;
-	uint8		vmstatus = 0;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/*
 	 * Fill in tuple header fields and toast the tuple if necessary.
