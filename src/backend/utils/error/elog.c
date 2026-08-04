@@ -707,25 +707,12 @@ errfinish(const char *filename, int lineno, const char *funcname)
 		PG_RE_THROW();
 	}
 
-<<<<<<< HEAD
-	/*
-	 * If we are doing FATAL or PANIC, abort any old-style COPY OUT in
-	 * progress, so that we can report the message before dying.  (Without
-	 * this, pq_putmessage will refuse to send the message at all, which is
-	 * what we want for NOTICE messages, but not for fatal exits.) This hack
-	 * is necessary because of poor design of old-style copy protocol.
-	 */
-	if (elevel >= FATAL && whereToSendOutput == DestRemote)
-		pq_endcopyout(true);
-
 	/* CDB: If fatal internal error, linger so user can attach a debugger. */
 	if (elevel == FATAL &&
 		edata->sqlerrcode == ERRCODE_INTERNAL_ERROR &&
 		gp_debug_linger > 0)
 		elog_debug_linger(edata);
 
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	/* Emit the message to the right places */
 	else
 		EmitErrorReport();
@@ -1512,29 +1499,7 @@ errhidecontext(bool hide_ctx)
 	edata->hide_ctx = hide_ctx;
 }
 
-<<<<<<< HEAD
 
-/*
- * errfunction --- add reporting function name to the current error
- *
- * This is used when backwards compatibility demands that the function
- * name appear in messages sent to old-protocol clients.  Note that the
- * passed string is expected to be a non-freeable constant string.
- */
-void
-errfunction(const char *funcname)
-{
-	ErrorData  *edata = &errordata[errordata_stack_depth];
-
-	/* we don't bother incrementing recursion_depth */
-	CHECK_STACK_DEPTH();
-
-	edata->funcname = funcname;
-	edata->show_funcname = true;
-}
-
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 /*
  * errposition --- add cursor position to the current error
  */
@@ -4169,7 +4134,6 @@ write_message_to_server_log(int elevel,
 							const char *internalquery,
 							const char *context,
 							const char *funcname,
-							bool show_funcname,
 							const char *filename,
 							int lineno,
 							int stacktracesize,
@@ -4276,10 +4240,7 @@ write_message_to_server_log(int elevel,
 		append_string_to_pipe_chunk(&buffer, NULL);
 
 	/* error_func_name */
-	if (show_funcname)
-		append_string_to_pipe_chunk(&buffer, funcname);
-	else
-		append_string_to_pipe_chunk(&buffer, NULL);
+	append_string_to_pipe_chunk(&buffer, funcname);
 
 	/* error_filename */
 	append_string_to_pipe_chunk(&buffer, filename);
@@ -4334,7 +4295,6 @@ send_message_to_server_log(ErrorData *edata)
 												edata->internalquery,
 												edata->hide_ctx ? NULL : edata->context,
 												edata->funcname,
-												edata->show_funcname,
 												edata->filename,
 												edata->lineno,
 												edata->stacktracesize,
@@ -5013,7 +4973,6 @@ write_stderr(const char *fmt,...)
 										NULL,
 										NULL,
 										NULL,
-										false,
 										NULL,
 										0,
 										0,
