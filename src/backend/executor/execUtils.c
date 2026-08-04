@@ -2327,7 +2327,6 @@ ExecGetReturningSlot(EState *estate, ResultRelInfo *relInfo)
 	return relInfo->ri_ReturningSlot;
 }
 
-<<<<<<< HEAD
 /*
  * During attribute re-mapping for heterogeneous partitions, we use
  * this struct to identify which varno's attributes will be re-mapped.
@@ -2387,7 +2386,8 @@ change_varattnos_of_a_varno(Node *node, const AttrMap *newattno, Index varno)
 	attrMapCxt.varno = varno;
 
 	(void) change_varattnos_varno_walker(node, &attrMapCxt);
-=======
+}
+
 /* Return a bitmap representing columns being inserted */
 Bitmapset *
 ExecGetInsertedCols(ResultRelInfo *relinfo, EState *estate)
@@ -2485,5 +2485,4 @@ ExecGetAllUpdatedCols(ResultRelInfo *relinfo, EState *estate)
 {
 	return bms_union(ExecGetUpdatedCols(relinfo, estate),
 					 ExecGetExtraUpdatedCols(relinfo, estate));
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
