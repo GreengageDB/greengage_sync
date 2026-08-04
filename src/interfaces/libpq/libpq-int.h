@@ -434,17 +434,12 @@ struct pg_conn
 								 * "sspi") */
 	char	   *ssl_min_protocol_version;	/* minimum TLS protocol version */
 	char	   *ssl_max_protocol_version;	/* maximum TLS protocol version */
-<<<<<<< HEAD
 
     char       *gpconntype; /* type of connection */
     char       *gpqeid;        /* MPP: session id & startup info for qExec */
     char       *diffoptions;  /* MPP: transfer changed GUCs(require sync) from QD to QEs */
 
-	/* Type of connection to make.  Possible values: any, read-write. */
-	char	   *target_session_attrs;
-=======
 	char	   *target_session_attrs;	/* desired session properties */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/* Optional file to write trace info to */
 	FILE	   *Pfdebug;
@@ -714,11 +709,8 @@ extern void pqSaveMessageField(PGresult *res, char code,
 extern void pqSaveParameterStatus(PGconn *conn, const char *name,
 								  const char *value);
 extern int	pqRowProcessor(PGconn *conn, const char **errmsgp);
-<<<<<<< HEAD
 extern bool PQsendQueryStart(PGconn *conn, bool newQuery);
-=======
 extern void pqCommandQueueAdvance(PGconn *conn);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 extern int	PQsendQueryContinue(PGconn *conn, const char *query);
 
 /* === in fe-protocol3.c === */
