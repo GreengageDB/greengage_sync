@@ -8501,21 +8501,14 @@ apply_scanjoin_target_to_paths(PlannerInfo *root,
 	 * variations.  So we drop old paths and thereby force the work to be done
 	 * below the Append, except in the case of a non-parallel-safe target.
 	 *
-<<<<<<< HEAD
-	 * Some care is needed, because we have to allow generate_gather_paths to
-	 * see the old partial paths in the next stanza.  Hence, zap the main
-	 * pathlist here, then allow generate_gather_paths to add path(s) to the
-	 * main list, and finally zap the partial pathlist.
-	 *
-	 * GPDB: We cannot do that if this is a correlated subquery, and we need
-	 * to evaluate the correlation qual on top of the Append.
-=======
 	 * Some care is needed, because we have to allow
 	 * generate_useful_gather_paths to see the old partial paths in the next
 	 * stanza.  Hence, zap the main pathlist here, then allow
 	 * generate_useful_gather_paths to add path(s) to the main list, and
 	 * finally zap the partial pathlist.
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+	 *
+	 * GPDB: We cannot do that if this is a correlated subquery, and we need
+	 * to evaluate the correlation qual on top of the Append.
 	 */
 	if (rel_is_partitioned && !rel->upperrestrictinfo)
 		rel->pathlist = NIL;
