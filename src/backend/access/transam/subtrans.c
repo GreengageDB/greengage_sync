@@ -371,17 +371,10 @@ SubTransPagePrecedes(int page1, int page2)
 	TransactionId xid1;
 	TransactionId xid2;
 
-<<<<<<< HEAD
-	xid1 = ((uint32) page1) * SUBTRANS_XACTS_PER_PAGE;
-	xid1 += FirstNormalTransactionId;
-	xid2 = ((uint32) page2) * SUBTRANS_XACTS_PER_PAGE;
-	xid2 += FirstNormalTransactionId;
-=======
 	xid1 = ((TransactionId) page1) * SUBTRANS_XACTS_PER_PAGE;
 	xid1 += FirstNormalTransactionId + 1;
 	xid2 = ((TransactionId) page2) * SUBTRANS_XACTS_PER_PAGE;
 	xid2 += FirstNormalTransactionId + 1;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	return (TransactionIdPrecedes(xid1, xid2) &&
 			TransactionIdPrecedes(xid1, xid2 + SUBTRANS_XACTS_PER_PAGE - 1));
