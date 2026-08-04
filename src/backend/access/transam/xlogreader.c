@@ -1615,17 +1615,10 @@ RestoreBlockImage(XLogReaderState *record, uint8 block_id, char *page)
 										 BLCKSZ - bkpb->hole_length,
 										 errormessage))
 		{
-<<<<<<< HEAD
 			report_invalid_record(record, "invalid compressed image at %X/%X, block %d (%s)",
-								  (uint32) (record->ReadRecPtr >> 32),
-								  (uint32) record->ReadRecPtr,
+								  LSN_FORMAT_ARGS(record->ReadRecPtr),
 								  block_id,
 								  errormessage);
-=======
-			report_invalid_record(record, "invalid compressed image at %X/%X, block %d",
-								  LSN_FORMAT_ARGS(record->ReadRecPtr),
-								  block_id);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			return false;
 		}
 		ptr = tmp.data;
