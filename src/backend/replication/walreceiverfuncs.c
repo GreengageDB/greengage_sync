@@ -110,18 +110,16 @@ WalRcvRunning(void)
 			if (walrcv->walRcvState == WALRCV_STARTING)
 			{
 				state = walrcv->walRcvState = WALRCV_STOPPED;
-<<<<<<< HEAD
 
 				elogif(debug_xlog_record_read, LOG,
 					   "Set walreceiver state to %s as it has taken too"
 					   "long to start up",
 					   WalRcvGetStateString(walrcv->walRcvState));
-			}
 
-=======
 				stopped = true;
 			}
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+
+
 			SpinLockRelease(&walrcv->mutex);
 
 			if (stopped)
@@ -244,7 +242,6 @@ ShutdownWalRcv(void)
 	 */
 	ConditionVariablePrepareToSleep(&walrcv->walRcvStoppedCV);
 	while (WalRcvRunning())
-<<<<<<< HEAD
 	{
 		/*
 		 * This possibly-long loop needs to handle interrupts of startup
@@ -252,17 +249,14 @@ ShutdownWalRcv(void)
 		 */
 		HandleStartupProcInterrupts();
 
-		pg_usleep(100000);		/* 100ms */
+		ConditionVariableTimedSleep(&walrcv->walRcvStoppedCV, 100 /* ms */,
+									WAIT_EVENT_WALRCV_EXIT);
 	}
+	ConditionVariableCancelSleep();
 
 	elogif(debug_xlog_record_read, LOG,
 		   "walrcv shutdown -- Shutdown performed with current walrcv state %s",
 		   WalRcvGetStateString(walrcv->walRcvState));
-=======
-		ConditionVariableSleep(&walrcv->walRcvStoppedCV,
-							   WAIT_EVENT_WALRCV_EXIT);
-	ConditionVariableCancelSleep();
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
 
 /*
