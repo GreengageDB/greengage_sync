@@ -477,17 +477,14 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 	Oid			save_userid;
 	int			save_sec_context;
 	int			save_nestlevel;
-<<<<<<< HEAD
 	Bitmapset **colLargeRowIndexes;
 	double     *colLargeRowLength;
 	bool		sample_needed;
-=======
 	int64		AnalyzePageHit = VacuumPageHit;
 	int64		AnalyzePageMiss = VacuumPageMiss;
 	int64		AnalyzePageDirty = VacuumPageDirty;
 	PgStat_Counter startreadtime = 0;
 	PgStat_Counter startwritetime = 0;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	if (inh)
 		ereport(elevel,
@@ -979,18 +976,8 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 								 PROGRESS_ANALYZE_PHASE_FINALIZE_ANALYZE);
 
 	/*
-<<<<<<< HEAD
 	 * Update pages/tuples stats in pg_class ... but not if we're doing
 	 * inherited stats.
-	 *
-	 * GPDB_92_MERGE_FIXME: In postgres it is sufficient to check the number of
-	 * pages that are visible with visibilitymap_count(), but in GPDB this
-	 * needs to be the count of all pages marked all visible across the all the
-	 * QEs. We need to gather this information from the segments and then update
-	 * it here.
-=======
-	 * Update pages/tuples stats in pg_class, and report ANALYZE to the stats
-	 * collector ... but not if we're doing inherited stats.
 	 *
 	 * We assume that VACUUM hasn't set pg_class.reltuples already, even
 	 * during a VACUUM ANALYZE.  Although VACUUM often updates pg_class,
@@ -999,7 +986,12 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 	 * possible that an individual index's pg_class entry won't be updated
 	 * during VACUUM if the index AM returns NULL from its amvacuumcleanup()
 	 * routine.
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+	 *
+	 * GPDB_92_MERGE_FIXME: In postgres it is sufficient to check the number of
+	 * pages that are visible with visibilitymap_count(), but in GPDB this
+	 * needs to be the count of all pages marked all visible across the all the
+	 * QEs. We need to gather this information from the segments and then update
+	 * it here.
 	 */
 	if (!inh)
 	{
@@ -1018,13 +1010,8 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 							hasindex,
 							InvalidTransactionId,
 							InvalidMultiXactId,
-<<<<<<< HEAD
 							in_outer_xact,
 							false /* isVacuum */);
-	}
-=======
-							in_outer_xact);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 		/* Same for indexes */
 		for (ind = 0; ind < nindexes; ind++)
