@@ -147,25 +147,9 @@ static char *ExecBuildSlotValueDescription(Oid reloid,
 										   int maxfieldlen);
 static void EvalPlanQualStart(EPQState *epqstate, Plan *planTree);
 
-<<<<<<< HEAD
 static void AdjustReplicatedTableCounts(EState *estate);
 
-/*
- * Note that GetAllUpdatedColumns() also exists in commands/trigger.c.  There does
- * not appear to be any good header to put it into, given the structures that
- * it uses, so we let them be duplicated.  Be sure to update both if one needs
- * to be changed, however.
- */
-#define GetInsertedColumns(relinfo, estate) \
-	(exec_rt_fetch((relinfo)->ri_RangeTableIndex, estate)->insertedCols)
-#define GetUpdatedColumns(relinfo, estate) \
-	(exec_rt_fetch((relinfo)->ri_RangeTableIndex, estate)->updatedCols)
-#define GetAllUpdatedColumns(relinfo, estate) \
-	(bms_union(exec_rt_fetch((relinfo)->ri_RangeTableIndex, estate)->updatedCols, \
-			   exec_rt_fetch((relinfo)->ri_RangeTableIndex, estate)->extraUpdatedCols))
 
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 /* end of local decls */
 
 
