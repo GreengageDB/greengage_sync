@@ -1970,13 +1970,10 @@ expression_tree_walker(Node *node,
 		case T_NextValueExpr:
 		case T_RangeTblRef:
 		case T_SortGroupClause:
-<<<<<<< HEAD
 		case T_DMLActionExpr:
 		case T_AggExprId:
 		case T_RowIdExpr:
-=======
 		case T_CTESearchClause:
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			/* primitive node types with no expression subnodes */
 			break;
 		case T_WithCheckOption:
@@ -2205,22 +2202,6 @@ expression_tree_walker(Node *node,
 		case T_Query:
 			/* Do nothing with a sub-Query, per discussion above */
 			break;
-<<<<<<< HEAD
-=======
-		case T_WindowClause:
-			{
-				WindowClause *wc = (WindowClause *) node;
-
-				if (walker(wc->partitionClause, context))
-					return true;
-				if (walker(wc->orderClause, context))
-					return true;
-				if (walker(wc->startOffset, context))
-					return true;
-				if (walker(wc->endOffset, context))
-					return true;
-			}
-			break;
 		case T_CTECycleClause:
 			{
 				CTECycleClause *cc = (CTECycleClause *) node;
@@ -2231,7 +2212,6 @@ expression_tree_walker(Node *node,
 					return true;
 			}
 			break;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		case T_CommonTableExpr:
 			{
 				CommonTableExpr *cte = (CommonTableExpr *) node;
@@ -2818,13 +2798,9 @@ expression_tree_mutator(Node *node,
 		case T_CurrentOfExpr:
 		case T_NextValueExpr:
 		case T_RangeTblRef:
-<<<<<<< HEAD
 		case T_String:
 		case T_Null:
-=======
-		case T_SortGroupClause:
 		case T_CTESearchClause:
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			return (Node *) copyObject(node);
 		case T_WithCheckOption:
 			{
@@ -3271,8 +3247,6 @@ expression_tree_mutator(Node *node,
 				return (Node *) newnode;
 
 			}
-<<<<<<< HEAD
-=======
 			break;
 		case T_CTECycleClause:
 			{
@@ -3285,7 +3259,6 @@ expression_tree_mutator(Node *node,
 				return (Node *) newnode;
 			}
 			break;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		case T_CommonTableExpr:
 			{
 				CommonTableExpr *cte = (CommonTableExpr *) node;
