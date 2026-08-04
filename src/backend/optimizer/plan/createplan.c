@@ -6628,7 +6628,7 @@ make_tidrangescan(List *qptlist,
 	return node;
 }
 
-SubqueryScan *
+static SubqueryScan *
 make_subqueryscan(List *qptlist,
 				  List *qpqual,
 				  Index scanrelid,
