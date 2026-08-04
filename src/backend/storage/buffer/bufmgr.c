@@ -3297,23 +3297,15 @@ DropRelFileNodesAllBuffers(SMgrRelation *smgr_reln, int nnodes)
 	/* If it's a local relation, it's localbuf.c's problem. */
 	for (i = 0; i < nnodes; i++)
 	{
-<<<<<<< HEAD
 #if 0
-		if (RelFileNodeBackendIsTemp(rnodes[i]))
-=======
 		if (RelFileNodeBackendIsTemp(smgr_reln[i]->smgr_rnode))
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		{
 			if (smgr_reln[i]->smgr_rnode.backend == MyBackendId)
 				DropRelFileNodeAllLocalBuffers(smgr_reln[i]->smgr_rnode.node);
 		}
 		else
-<<<<<<< HEAD
 #endif
-			nodes[n++] = rnodes[i].node;
-=======
 			rels[n++] = smgr_reln[i];
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	}
 
 	/*
@@ -4583,16 +4575,12 @@ TerminateBufferIO(BufferDesc *buf, bool clear_dirty, uint32 set_flag_bits)
 
 	InProgressBuf = NULL;
 
-<<<<<<< HEAD
 #ifdef MPROTECT_BUFFERS
 	/* XXX: should this be PROT_NONE if called from AbortBufferIO? */
 	if (!LWLockHeldByMe(BufferDescriptorGetContentLock(buf)))
 		BufferMProtect(buf, PROT_READ);
 #endif
-	LWLockRelease(BufferDescriptorGetIOLock(buf));
-=======
 	ConditionVariableBroadcast(BufferDescriptorGetIOCV(buf));
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
 
 /*
