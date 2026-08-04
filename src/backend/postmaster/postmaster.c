@@ -4487,14 +4487,12 @@ PostmasterStateMachine(void)
 		ereport(LOG,
 				(errmsg("all server processes terminated; reinitializing")));
 
-<<<<<<< HEAD
 		/* CDB: reload all auxiliary workers like FTS and DTX recover or GDD */
 		load_auxiliary_libraries();
-=======
+
 		/* remove leftover temporary files after a crash */
 		if (remove_temp_files_after_crash)
 			RemovePgTempFiles();
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 		/* allow background workers to immediately restart */
 		ResetBackgroundWorkerCrashTimes();
