@@ -2515,12 +2515,9 @@ _readPlannedStmt(void)
 	READ_BITMAPSET_FIELD(rewindPlanIDs);
 	READ_NODE_FIELD(rowMarks);
 	READ_NODE_FIELD(relationOids);
-<<<<<<< HEAD
+	READ_NODE_FIELD(partitionOids);
 	/* invalItems not serialized in binary mode */
 #ifndef COMPILING_BINARY_FUNCS
-=======
-	READ_NODE_FIELD(partitionOids);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	READ_NODE_FIELD(invalItems);
 #endif /* COMPILING_BINARY_FUNCS */
 	READ_NODE_FIELD(paramExecTypes);
