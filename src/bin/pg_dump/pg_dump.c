@@ -210,13 +210,8 @@ static void dumpSecLabel(Archive *fout, const char *type, const char *name,
 						 CatalogId catalogId, int subid, DumpId dumpId);
 static int	findSecLabels(Archive *fout, Oid classoid, Oid objoid,
 						  SecLabelItem **items);
-<<<<<<< HEAD
 static void collectSecLabels(Archive *fout);
 static void dumpDumpableObject(Archive *fout, DumpableObject *dobj);
-=======
-static int	collectSecLabels(Archive *fout, SecLabelItem **items);
-static void dumpDumpableObject(Archive *fout, const DumpableObject *dobj);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 static void dumpNamespace(Archive *fout, const NamespaceInfo *nspinfo);
 static void dumpExtension(Archive *fout, const ExtensionInfo *extinfo);
 static void dumpType(Archive *fout, const TypeInfo *tyinfo);
@@ -286,14 +281,6 @@ static void buildMatViewRefreshDependencies(Archive *fout);
 static void getTableDataFKConstraints(void);
 static char *format_function_arguments(const FuncInfo *finfo, const char *funcargs,
 									   bool is_agg);
-<<<<<<< HEAD
-=======
-static char *format_function_arguments_old(Archive *fout,
-										   const FuncInfo *finfo, int nallargs,
-										   char **allargtypes,
-										   char **argmodes,
-										   char **argnames);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 static char *format_function_signature(Archive *fout,
 									   const FuncInfo *finfo, bool honor_quotes);
 static char *convertRegProcReference(const char *proc);
@@ -4394,12 +4381,9 @@ dumpPublicationTable(Archive *fout, const PublicationRelInfo *pubrinfo)
 	PQExpBuffer query;
 	char	   *tag;
 
-<<<<<<< HEAD
-=======
 	if (!(pubrinfo->dobj.dump & DUMP_COMPONENT_DEFINITION))
 		return;
 
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	tag = psprintf("%s %s", pubinfo->dobj.name, tbinfo->dobj.name);
 
 	query = createPQExpBuffer();
@@ -4416,16 +4400,6 @@ dumpPublicationTable(Archive *fout, const PublicationRelInfo *pubrinfo)
 	 * owner field anyway to ensure that the command is run by the correct
 	 * role at restore time.
 	 */
-<<<<<<< HEAD
-	if (pubrinfo->dobj.dump & DUMP_COMPONENT_DEFINITION)
-		ArchiveEntry(fout, pubrinfo->dobj.catId, pubrinfo->dobj.dumpId,
-					 ARCHIVE_OPTS(.tag = tag,
-								  .namespace = tbinfo->dobj.namespace->dobj.name,
-								  .owner = pubinfo->rolname,
-								  .description = "PUBLICATION TABLE",
-								  .section = SECTION_POST_DATA,
-								  .createStmt = query->data));
-=======
 	ArchiveEntry(fout, pubrinfo->dobj.catId, pubrinfo->dobj.dumpId,
 				 ARCHIVE_OPTS(.tag = tag,
 							  .namespace = tbinfo->dobj.namespace->dobj.name,
@@ -4433,7 +4407,6 @@ dumpPublicationTable(Archive *fout, const PublicationRelInfo *pubrinfo)
 							  .description = "PUBLICATION TABLE",
 							  .section = SECTION_POST_DATA,
 							  .createStmt = query->data));
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	free(tag);
 	destroyPQExpBuffer(query);
@@ -9175,69 +9148,10 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			else if (tbinfo->relkind == RELKIND_VIEW)
 			{
 				/*
-<<<<<<< HEAD
 				 * Defaults on a VIEW must always be dumped as separate ALTER
 				 * TABLE commands.
 				 */
 				attrdefs[j].separate = true;
-=======
-				 * Figure out whether the default/generation expression should
-				 * be dumped as part of the main CREATE TABLE (or similar)
-				 * command or as a separate ALTER TABLE (or similar) command.
-				 * The preference is to put it into the CREATE command, but in
-				 * some cases that's not possible.
-				 */
-				if (tbinfo->attgenerated[adnum - 1])
-				{
-					/*
-					 * Column generation expressions cannot be dumped
-					 * separately, because there is no syntax for it.  The
-					 * !shouldPrintColumn case below will be tempted to set
-					 * them to separate if they are attached to an inherited
-					 * column without a local definition, but that would be
-					 * wrong and unnecessary, because generation expressions
-					 * are always inherited, so there is no need to set them
-					 * again in child tables, and there is no syntax for it
-					 * either.  By setting separate to false here we prevent
-					 * the "default" from being processed as its own dumpable
-					 * object, and flagInhAttrs() will remove it from the
-					 * table when it detects that it belongs to an inherited
-					 * column.
-					 */
-					attrdefs[j].separate = false;
-				}
-				else if (tbinfo->relkind == RELKIND_VIEW)
-				{
-					/*
-					 * Defaults on a VIEW must always be dumped as separate
-					 * ALTER TABLE commands.
-					 */
-					attrdefs[j].separate = true;
-				}
-				else if (!shouldPrintColumn(dopt, tbinfo, adnum - 1))
-				{
-					/* column will be suppressed, print default separately */
-					attrdefs[j].separate = true;
-				}
-				else
-				{
-					attrdefs[j].separate = false;
-				}
-
-				if (!attrdefs[j].separate)
-				{
-					/*
-					 * Mark the default as needing to appear before the table,
-					 * so that any dependencies it has must be emitted before
-					 * the CREATE TABLE.  If this is not possible, we'll
-					 * change to "separate" mode while sorting dependencies.
-					 */
-					addObjectDependency(&tbinfo->dobj,
-										attrdefs[j].dobj.dumpId);
-				}
-
-				tbinfo->attrdefs[adnum - 1] = &attrdefs[j];
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			}
 			else if (!shouldPrintColumn(dopt, tbinfo, adnum - 1))
 			{
@@ -10656,7 +10570,7 @@ collectComments(Archive *fout)
  * ArchiveEntries (TOC objects) for each object to be dumped.
  */
 static void
-dumpDumpableObject(Archive *fout, const DumpableObject *dobj)
+dumpDumpableObject(Archive *fout, DumpableObject *dobj)
 {
 	/*
 	 * Clear any dump-request bits for components that don't exist for this
@@ -10688,12 +10602,9 @@ dumpDumpableObject(Archive *fout, const DumpableObject *dobj)
 			break;
 		case DO_AGG:
 			dumpAgg(fout, (const AggInfo *) dobj);
-<<<<<<< HEAD
 			break;
 		case DO_EXTPROTOCOL:
 			dumpExtProtocol(fout, (ExtProtInfo *) dobj);
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			break;
 		case DO_OPERATOR:
 			dumpOpr(fout, (const OprInfo *) dobj);
@@ -11810,15 +11721,9 @@ dumpDomain(Archive *fout, const TypeInfo *tyinfo)
 
 	if (dopt->binary_upgrade)
 		binary_upgrade_set_type_oids_by_type_oid(fout, q,
-<<<<<<< HEAD
 												 tyinfo,
-												 true, /* force array type */
-												 false); /* force multirange type */
-=======
-												 tyinfo->dobj.catId.oid,
 												 true,	/* force array type */
 												 false);	/* force multirange type */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	qtypname = pg_strdup(fmtId(tyinfo->dobj.name));
 	qualtypname = pg_strdup(fmtQualifiedDumpable(tyinfo));
@@ -12483,12 +12388,7 @@ is_returns_table_function(int nallargs, char **argmodes)
  * table functions.
  */
 static char *
-<<<<<<< HEAD
 format_table_function_columns(Archive *fout, const FuncInfo *finfo, int nallargs,
-=======
-format_function_arguments_old(Archive *fout,
-							  const FuncInfo *finfo, int nallargs,
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 							  char **allargtypes,
 							  char **argmodes,
 							  char **argnames)
@@ -17560,10 +17460,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 								  qualrelname,
 								  tbinfo->reloftype);
 			}
-<<<<<<< HEAD
 			appendPQExpBuffer(q, "RESET allow_system_table_mods;\n");
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		}
 
 		/*
@@ -17832,10 +17729,7 @@ dumpTableAttach(Archive *fout, const TableAttachInfo *attachinfo)
 	DumpOptions *dopt = fout->dopt;
 	PQExpBuffer q;
 
-<<<<<<< HEAD
 	/* Do nothing in data-only dump */
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	if (dopt->dataOnly)
 		return;
 
