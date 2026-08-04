@@ -28,6 +28,7 @@
 #include "access/transam.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"
+#include "commands/vacuum.h"
 #include "miscadmin.h"
 #include "storage/indexfsm.h"
 #include "storage/lmgr.h"
@@ -181,6 +182,10 @@ _bt_vacuum_needs_cleanup(Relation rel)
 	BTMetaPageData *metad;
 	uint32		btm_version;
 	BlockNumber prev_num_delpages;
+
+	/* Return true directly on QE for stats collection from QD. */
+	if (gp_vacuum_needs_update_stats())
+		return true;
 
 	/*
 	 * Copy details from metapage to local variables quickly.
