@@ -278,8 +278,7 @@ ExecCloseIndices(ResultRelInfo *resultRelInfo)
  *
  *		If 'arbiterIndexes' is nonempty, noDupErr applies only to
  *		those indexes.  NIL means noDupErr applies to all indexes.
-<<<<<<< HEAD
- *
+
  *		GPDB: gp_bypass_unique_check is introduced so that routines
  *		such as AO vacuum which don't need to run uniqueness checks
  *		while inserting tuples can do so.
@@ -287,8 +286,6 @@ ExecCloseIndices(ResultRelInfo *resultRelInfo)
  *		CAUTION: this must not be called for a HOT update.
  *		We can't defend against that here for lack of info.
  *		Should we change the API to make it safer?
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
  * ----------------------------------------------------------------
  */
 List *
