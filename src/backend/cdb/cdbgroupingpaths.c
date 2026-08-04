@@ -87,6 +87,18 @@ typedef struct
 {
 	/* From the Query */
 	bool		hasAggs;
+
+	/*
+	 * DISTINCT-qualified Aggrefs that this planning stage has to deal with.
+	 *
+	 * This is normally root->distinctAggrefs, but it is deliberately left NIL
+	 * when we are planning the DISTINCT (i.e. SELECT DISTINCT) stage: the
+	 * aggregates have already been computed by the grouping stage below us,
+	 * so from this stage's point of view there are no aggregates at all.
+	 * Consulting root->distinctAggrefs here would make us treat the DISTINCT
+	 * stage as a DQA stage and mangle the input path's target list.
+	 */
+	List	   *distinctAggrefs;
 	List	   *groupClause;	/* a list of SortGroupClause's */
 	List	   *groupingSets;	/* a list of GroupingSet's if present */
 	List	   *group_tles;
@@ -314,6 +326,7 @@ cdb_create_multistage_grouping_paths(PlannerInfo *root,
 	ctx.strat = strat;
 
 	ctx.hasAggs = parse->hasAggs;
+	ctx.distinctAggrefs = root->distinctAggrefs;
 	ctx.groupClause = parse->groupClause;
 	ctx.groupingSets = parse->groupingSets;
 	ctx.havingQual = havingQual;
@@ -448,7 +461,7 @@ cdb_create_multistage_grouping_paths(PlannerInfo *root,
 	 */
 	if ((can_hash || parse->groupClause == NIL) &&
 		!parse->groupingSets &&
-		list_length(root->distinctAggrefs) > 0)
+		list_length(ctx.distinctAggrefs) > 0)
 	{
 		/*
 		 * Try possible plans for DISTINCT-qualified aggregate.
@@ -567,6 +580,7 @@ cdb_create_twostage_distinct_paths(PlannerInfo *root,
 	 * handled in the grouping stage.
 	 */
 	ctx.hasAggs = false;
+	ctx.distinctAggrefs = NIL;
 	ctx.groupingSets = NIL;
 	ctx.havingQual = NULL;
 	ctx.groupClause = parse->distinctClause;
@@ -670,7 +684,7 @@ create_two_stage_paths(PlannerInfo *root, cdb_agg_planning_context *ctx,
 	 * Hashing is not possible with DQAs.
 	 */
 	if (ctx->can_hash &&
-		list_length(root->distinctAggrefs) == 0)
+		list_length(ctx->distinctAggrefs) == 0)
 	{
 		/*
 		 * If the input is neatly distributed along the GROUP BY columns,
@@ -717,7 +731,7 @@ create_two_stage_paths(PlannerInfo *root, cdb_agg_planning_context *ctx,
 			}
 		}
 
-		if (ctx->can_hash && list_length(root->distinctAggrefs) == 0)
+		if (ctx->can_hash && list_length(ctx->distinctAggrefs) == 0)
 			add_second_stage_hash_agg_path(root, cheapest_first_stage_path,
 										   ctx, output_rel);
 	}
@@ -825,7 +839,7 @@ static void
 	 * case that the input happens to be collocated with the DISTINCT
 	 * argument.
 	 */
-	if (root->distinctAggrefs)
+	if (ctx->distinctAggrefs)
 	{
 		cdb_multi_dqas_info info = {};
 		List	   *dqa_group_tles;
@@ -2056,7 +2070,7 @@ recognize_dqa_type(PlannerInfo *root, cdb_agg_planning_context *ctx)
 	List        *dqaArgs = NIL;
 	ctx->type = INVALID_DQA;
 
-	foreach (lc, root->distinctAggrefs)
+	foreach (lc, ctx->distinctAggrefs)
 	{
 		Aggref *aggref = (Aggref *) lfirst(lc);
 		SortGroupClause *arg_sortcl;
@@ -2335,11 +2349,11 @@ fetch_multi_dqas_info(PlannerInfo *root,
 
 	/*
 	 * Strip the filter from the final-phase (and HAVING) DQA Aggrefs. These are
-	 * the canonical nodes shared with processed_tlist, so root->distinctAggrefs
+	 * the canonical nodes shared with processed_tlist, so ctx->distinctAggrefs
 	 * reaches them; the filter now lives on the TupleSplit path. Unconditional,
 	 * so no key is needed.
 	 */
-	foreach(lc, root->distinctAggrefs)
+	foreach(lc, ctx->distinctAggrefs)
 		((Aggref *) lfirst(lc))->aggfilter = NULL;
 
 	info->input_proj_target = proj_target;
@@ -2403,7 +2417,7 @@ fetch_single_dqa_info(PlannerInfo *root,
 	dqa_group_exprs = get_sortgrouplist_exprs(ctx->groupClause,
 											  make_tlist_from_pathtarget(path->pathtarget));
 
-	Aggref	   *aggref = list_nth(root->distinctAggrefs, 0);
+	Aggref	   *aggref = list_nth(ctx->distinctAggrefs, 0);
 	SortGroupClause *arg_sortcl;
 	SortGroupClause *sortcl = NULL;
 	TargetEntry *arg_tle;
