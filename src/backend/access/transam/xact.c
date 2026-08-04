@@ -7310,7 +7310,6 @@ xact_redo_commit(xl_xact_parsed_commit *parsed,
  * dtx recovery.
  */
 static void
-<<<<<<< HEAD
 xact_redo_distributed_commit(xl_xact_parsed_commit *parsed,
 							 TransactionId xid,
 							 XLogRecPtr lsn,
@@ -7323,11 +7322,8 @@ xact_redo_distributed_commit(xl_xact_parsed_commit *parsed,
 }
 
 static void
-xact_redo_abort(xl_xact_parsed_abort *parsed, TransactionId xid)
-=======
 xact_redo_abort(xl_xact_parsed_abort *parsed, TransactionId xid,
 				XLogRecPtr lsn, RepOriginId origin_id)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 {
 	TransactionId max_xid;
 
