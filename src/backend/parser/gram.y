@@ -562,12 +562,9 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 %type <list>	row explicit_row implicit_row type_list array_expr_list
 %type <node>	case_expr case_arg when_clause when_operand case_default
 %type <list>	when_clause_list
-<<<<<<< HEAD
 %type <node>	decode_expr search_result decode_default
 %type <list>	search_result_list
-=======
 %type <node>	opt_search_clause opt_cycle_clause
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 %type <ival>	sub_type opt_materialized
 %type <value>	NumericOnly
 %type <list>	NumericOnly_list
