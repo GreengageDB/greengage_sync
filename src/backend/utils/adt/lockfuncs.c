@@ -75,11 +75,7 @@ typedef struct
 } PG_Lock_Status;
 
 /* Number of columns in pg_locks output */
-<<<<<<< HEAD
-#define NUM_LOCK_STATUS_COLUMNS		18
-=======
-#define NUM_LOCK_STATUS_COLUMNS		16
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+#define NUM_LOCK_STATUS_COLUMNS		19
 
 /*
  * VXIDGetDatum - Construct a text representation of a VXID
@@ -158,20 +154,17 @@ pg_lock_status(PG_FUNCTION_ARGS)
 						   BOOLOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 15, "fastpath",
 						   BOOLOID, -1, 0);
-<<<<<<< HEAD
+		TupleDescInitEntry(tupdesc, (AttrNumber) 16, "waitstart",
+						   TIMESTAMPTZOID, -1, 0);
 		/*
 		 * These next columns are specific to GPDB
 		 */
-		TupleDescInitEntry(tupdesc, (AttrNumber) 16, "mppSessionId",
+		TupleDescInitEntry(tupdesc, (AttrNumber) 17, "mppSessionId",
 						   INT4OID, -1, 0);
-		TupleDescInitEntry(tupdesc, (AttrNumber) 17, "mppIsWriter",
+		TupleDescInitEntry(tupdesc, (AttrNumber) 18, "mppIsWriter",
 						   BOOLOID, -1, 0);
-		TupleDescInitEntry(tupdesc, (AttrNumber) 18, "gp_segment_id",
+		TupleDescInitEntry(tupdesc, (AttrNumber) 19, "gp_segment_id",
 						   INT4OID, -1, 0);
-=======
-		TupleDescInitEntry(tupdesc, (AttrNumber) 16, "waitstart",
-						   TIMESTAMPTZOID, -1, 0);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 		funcctx->tuple_desc = BlessTupleDesc(tupdesc);
 
@@ -501,13 +494,16 @@ pg_lock_status(PG_FUNCTION_ARGS)
 		values[12] = CStringGetTextDatum(GetLockmodeName(instance->locktag.locktag_lockmethodid, mode));
 		values[13] = BoolGetDatum(granted);
 		values[14] = BoolGetDatum(instance->fastpath);
-<<<<<<< HEAD
-		
-		values[15] = Int32GetDatum(instance->mppSessionId);
+		if (!granted && instance->waitStart != 0)
+			values[15] = TimestampTzGetDatum(instance->waitStart);
+		else
+			nulls[15] = true;
 
-		values[16] = BoolGetDatum(instance->mppIsWriter);
+		values[16] = Int32GetDatum(instance->mppSessionId);
 
-		values[17] = Int32GetDatum(GpIdentity.segindex);
+		values[17] = BoolGetDatum(instance->mppIsWriter);
+
+		values[18] = Int32GetDatum(GpIdentity.segindex);
 
 		tuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);
 		result = HeapTupleGetDatum(tuple);
@@ -571,7 +567,8 @@ pg_lock_status(PG_FUNCTION_ARGS)
 		 * "   (locktype text, database oid, relation oid, page int4, tuple int2,"
 		 *	"   transactionid xid, classid oid, objid oid, objsubid int2,"
 		 *	"    transaction xid, pid int4, mode text, granted boolean, "
-		 *	"    mppSessionId int4, mppIsWriter boolean, gp_segment_id int4) ,"
+		 *	"    fastpath boolean, waitstart timestamptz, mppSessionId int4,"
+		 *	"    mppIsWriter boolean, gp_segment_id int4) ,"
 		 */
 
 		values[0] = CStringGetTextDatum(PQgetvalue(mystatus->segresults[whichresultset], whichrow, 0));
@@ -591,9 +588,14 @@ pg_lock_status(PG_FUNCTION_ARGS)
 		values[12] = CStringGetTextDatum(PQgetvalue(mystatus->segresults[whichresultset], whichrow, 12));
 		values[13] = BoolGetDatum(strncmp(PQgetvalue(mystatus->segresults[whichresultset], whichrow,13),"t",1)==0);
 		values[14] = BoolGetDatum(strncmp(PQgetvalue(mystatus->segresults[whichresultset], whichrow,14),"t",1)==0);
-		values[15] = Int32GetDatum(atoi(PQgetvalue(mystatus->segresults[whichresultset], whichrow,15)));
-		values[16] = BoolGetDatum(strncmp(PQgetvalue(mystatus->segresults[whichresultset], whichrow,16),"t",1)==0);
-		values[17] = Int32GetDatum(atoi(PQgetvalue(mystatus->segresults[whichresultset], whichrow,17)));
+		if (!PQgetisnull(mystatus->segresults[whichresultset], whichrow, 15))
+			values[15] = DirectFunctionCall3(timestamptz_in,
+											  CStringGetDatum(PQgetvalue(mystatus->segresults[whichresultset], whichrow, 15)),
+											  ObjectIdGetDatum(InvalidOid),
+											  Int32GetDatum(-1));
+		values[16] = Int32GetDatum(atoi(PQgetvalue(mystatus->segresults[whichresultset], whichrow,16)));
+		values[17] = BoolGetDatum(strncmp(PQgetvalue(mystatus->segresults[whichresultset], whichrow,17),"t",1)==0);
+		values[18] = Int32GetDatum(atoi(PQgetvalue(mystatus->segresults[whichresultset], whichrow,18)));
 
 		/*
 		 * Copy the null info over.  It should all match properly.
@@ -602,12 +604,6 @@ pg_lock_status(PG_FUNCTION_ARGS)
 		{
 			nulls[i] = PQgetisnull(mystatus->segresults[whichresultset], whichrow, i);
 		}
-=======
-		if (!granted && instance->waitStart != 0)
-			values[15] = TimestampTzGetDatum(instance->waitStart);
-		else
-			nulls[15] = true;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 		tuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);
 		result = HeapTupleGetDatum(tuple);
