@@ -253,13 +253,8 @@ pq_init(void)
 static void
 socket_comm_reset(void)
 {
-<<<<<<< HEAD
-	/* We can abort any old-style COPY OUT, too */
-	pq_endcopyout(true);
-=======
 	/* Do not throw away pending data, but do reset the busy flag */
 	PqCommBusy = false;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
 
 /* --------------------------------
@@ -1594,29 +1589,6 @@ socket_is_send_pending(void)
 static int
 socket_putmessage(char msgtype, const char *s, size_t len)
 {
-<<<<<<< HEAD
-	if (DoingCopyOut || PqCommBusy)
-	{
-		return EOF;
-	}
-	PqCommBusy = true;
-
-	if (msgtype)
-	{
-		if (internal_putbytes(&msgtype, 1))
-			goto fail;
-	}
-
-	if (PG_PROTOCOL_MAJOR(FrontendProtocol) >= 3)
-	{
-		uint32		n32;
-
-		n32 = pg_hton32((uint32) (len + 4));
-		if (internal_putbytes((char *) &n32, 4))
-			goto fail;
-	}
-
-=======
 	uint32		n32;
 
 	Assert(msgtype != 0);
@@ -1631,7 +1603,6 @@ socket_putmessage(char msgtype, const char *s, size_t len)
 	if (internal_putbytes((char *) &n32, 4))
 		goto fail;
 
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	if (internal_putbytes(s, len))
 		goto fail;
 	PqCommBusy = false;
