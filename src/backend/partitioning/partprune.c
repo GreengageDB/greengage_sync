@@ -141,21 +141,14 @@ typedef struct PruneStepResult
 	bool		scan_null;		/* Scan the partition for NULL values? */
 } PruneStepResult;
 
-<<<<<<< HEAD
-=======
 
 static List *add_part_relids(List *allpartrelids, Bitmapset *partrelids);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 static List *make_partitionedrel_pruneinfo(PlannerInfo *root,
 										   RelOptInfo *parentrel,
 										   List *prunequal,
 										   Bitmapset *partrelids,
 										   int *relid_subplan_map,
-<<<<<<< HEAD
 										   Relids available_relids,
-										   Relids partrelids, List *prunequal,
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 										   Bitmapset **matchedsubplans);
 static void gen_partprune_steps(RelOptInfo *rel, List *clauses,
 								Relids available_relids,
@@ -342,11 +335,7 @@ make_partition_pruneinfo_ext(PlannerInfo *root, RelOptInfo *parentrel,
 												  prunequal,
 												  partrelids,
 												  relid_subplan_map,
-<<<<<<< HEAD
 												  available_relids,
-												  partrelids, prunequal,
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 												  &matchedsubplans);
 
 		/* When pruning is possible, record the matched subplans */
@@ -474,11 +463,7 @@ make_partitionedrel_pruneinfo(PlannerInfo *root, RelOptInfo *parentrel,
 							  List *prunequal,
 							  Bitmapset *partrelids,
 							  int *relid_subplan_map,
-<<<<<<< HEAD
 							  Relids available_relids,
-							  Relids partrelids, List *prunequal,
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 							  Bitmapset **matchedsubplans)
 {
 	RelOptInfo *targetpart = NULL;
