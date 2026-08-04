@@ -15536,12 +15536,7 @@ ATExecSetRelOptions(Relation rel, List *defList, AlterTableType operation,
 static void
 ATExecSetTableSpace(Oid tableOid, Oid newTableSpace, LOCKMODE lockmode)
 {
-<<<<<<< HEAD
-	Relation    rel;
-	Oid			oldTableSpace;
-=======
 	Relation	rel;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	Oid			reltoastrelid;
 	Oid			relaosegrelid = InvalidOid;
 	Oid			relaoblkdirrelid = InvalidOid;
@@ -15552,6 +15547,9 @@ ATExecSetTableSpace(Oid tableOid, Oid newTableSpace, LOCKMODE lockmode)
 	Oid			relbmidxid = InvalidOid;
 	Oid			newrelfilenode;
 	RelFileNode newrnode;
+	Relation	pg_class;
+	HeapTuple	tuple;
+	Form_pg_class rd_rel;
 	List	   *reltoastidxids = NIL;
 	ListCell   *lc;
 
@@ -15579,7 +15577,6 @@ ATExecSetTableSpace(Oid tableOid, Oid newTableSpace, LOCKMODE lockmode)
 		relation_close(toastRel, lockmode);
 	}
 
-<<<<<<< HEAD
 	/* Get the ao sub objects */
 	if (RelationIsAppendOptimized(rel))
 		GetAppendOnlyEntryAuxOids(tableOid, NULL,
@@ -15599,8 +15596,6 @@ ATExecSetTableSpace(Oid tableOid, Oid newTableSpace, LOCKMODE lockmode)
 		elog(ERROR, "cache lookup failed for relation %u", tableOid);
 	rd_rel = (Form_pg_class) GETSTRUCT(tuple);
 
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	/*
 	 * Relfilenodes are not unique in databases across tablespaces, so we need
 	 * to allocate a new one in the new tablespace.
