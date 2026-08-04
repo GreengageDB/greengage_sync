@@ -313,17 +313,14 @@ typedef struct StdRdOptions
 	int			parallel_workers;	/* max number of parallel workers */
 	bool		vacuum_index_cleanup;	/* enables index vacuuming and cleanup */
 	bool		vacuum_truncate;	/* enables vacuum to truncate a relation */
-<<<<<<< HEAD
 	bool		analyze_hll_non_part_table; 		/* force hll statistics collection on relation */
 
 	int			blocksize;		/* max varblock size (AO rels only) */
 	int			compresslevel;  /* compression level (AO rels only) */
 	char		compresstype[NAMEDATALEN]; /* compression type (AO rels only) */
 	bool		checksum;		/* checksum (AO rels only) */
-=======
 	bool		parallel_insert_enabled;	/* enables planner's use of
 											 * parallel insert */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 } StdRdOptions;
 
 #define HEAP_MIN_FILLFACTOR			10
@@ -445,26 +442,17 @@ typedef struct ViewOptions
 	  VIEW_OPTION_CHECK_OPTION_CASCADED)
 
 /*
- * PartitionedTableRdOptions
- *		Contents of rd_options for partitioned tables
- */
-typedef struct PartitionedTableRdOptions
-{
-	int32		vl_len_;		/* varlena header (do not touch directly!) */
-	bool		parallel_insert_enabled;	/* enables planner's use of
-											 * parallel insert */
-} PartitionedTableRdOptions;
-
-/*
  * RelationGetParallelInsert
  *		Returns the relation's parallel_insert_enabled reloption setting.
  *		Note multiple eval of argument!
+ *
+ * GPDB: partitioned tables use the same StdRdOptions layout as regular
+ * heap tables (see partitioned_table_reloptions()), not a dedicated
+ * struct, so no relkind-based branch is needed here.
  */
 #define RelationGetParallelInsert(relation, defaultpd) 						\
 	((relation)->rd_options ?												\
-	 (relation->rd_rel->relkind == RELKIND_PARTITIONED_TABLE ?				\
-	 ((PartitionedTableRdOptions *) (relation)->rd_options)->parallel_insert_enabled : \
-	 ((StdRdOptions *) (relation)->rd_options)->parallel_insert_enabled) :		\
+	 ((StdRdOptions *) (relation)->rd_options)->parallel_insert_enabled :		\
 	 (defaultpd))
 
 /*
