@@ -527,11 +527,8 @@ transformColumnRef(ParseState *pstate, ColumnRef *cref)
 		case EXPR_KIND_CALL_ARGUMENT:
 		case EXPR_KIND_COPY_WHERE:
 		case EXPR_KIND_GENERATED_COLUMN:
-<<<<<<< HEAD
 		case EXPR_KIND_SCATTER_BY:
-=======
 		case EXPR_KIND_CYCLE_MARK:
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			/* okay */
 			break;
 
@@ -3190,13 +3187,10 @@ ParseExprKindName(ParseExprKind exprKind)
 			return "WHERE";
 		case EXPR_KIND_GENERATED_COLUMN:
 			return "GENERATED AS";
-<<<<<<< HEAD
 		case EXPR_KIND_SCATTER_BY:
 			return "SCATTER BY";
-=======
 		case EXPR_KIND_CYCLE_MARK:
 			return "CYCLE";
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 			/*
 			 * There is intentionally no default: case here, so that the
