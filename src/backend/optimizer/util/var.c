@@ -187,26 +187,7 @@ cdb_walk_vars(Node                         *node,
 Relids
 pull_varnos(PlannerInfo *root, Node *node)
 {
-<<<<<<< HEAD
-	return pull_varnos_of_level(node, 0);
-=======
-	pull_varnos_context context;
-
-	context.varnos = NULL;
-	context.root = root;
-	context.sublevels_up = 0;
-
-	/*
-	 * Must be prepared to start with a Query or a bare expression tree; if
-	 * it's a Query, we don't want to increment sublevels_up.
-	 */
-	query_or_expression_tree_walker(node,
-									pull_varnos_walker,
-									(void *) &context,
-									0);
-
-	return context.varnos;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+	return pull_varnos_of_level(root, node, 0);
 }
 
 /*
