@@ -44,7 +44,7 @@ OBJS += fe-protocol3.o fe-connect.o \
         $(filter getpeereid.o, $(LIBOBJS))
 
 # Greenplum OpenSSL objects follow
-ifeq ($(with_openssl),yes)
+ifeq ($(with_ssl),openssl)
 OBJS += fe-secure-common.o fe-secure-openssl.o
 endif
 
