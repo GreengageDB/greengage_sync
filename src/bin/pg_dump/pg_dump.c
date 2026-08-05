@@ -8794,9 +8794,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	for (int i = 0; i < numTables; i++)
 	{
 		TableInfo  *tbinfo = &tblinfo[i];
-		PGresult   *res;
-		int			ntups;
-		bool		hasdefaults;
 
 		/* Don't bother to collect info for sequences */
 		if (tbinfo->relkind == RELKIND_SEQUENCE)
