@@ -257,6 +257,7 @@
 		"huge_pages",
 		"ident_file",
 		"idle_in_transaction_session_timeout",
+		"idle_session_timeout",
 		"in_hot_standby",
 		"integer_datetimes",
 		"is_superuser",

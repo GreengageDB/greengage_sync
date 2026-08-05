@@ -5341,8 +5341,22 @@ PostgresMain(int argc, char *argv[],
 				set_ps_display(activity);
 				pgstat_report_activity(STATE_IDLE, NULL);
 
-				/* Start the idle-session timer */
-				if (IdleSessionTimeout > 0)
+				/*
+				 * Start the idle-session timer.
+				 *
+				 * GPDB: never on a QE.  A QE is idle whenever it is not
+				 * executing a slice, which is an artifact of gang caching
+				 * rather than an idle client, and the writer gang is
+				 * deliberately never reaped by gp_vmem_idle_resource_timeout
+				 * (see DisconnectAndDestroyUnusedQEs()).  Letting a QE
+				 * terminate itself here would tear down exactly the gang the
+				 * dispatcher keeps alive on purpose.  Utility mode
+				 * connections to a segment are real client sessions, so they
+				 * keep honouring the timeout, hence GP_ROLE_EXECUTE rather
+				 * than IS_QUERY_DISPATCHER().  Same reasoning as the
+				 * idle-in-transaction timer above.
+				 */
+				if (IdleSessionTimeout > 0 && Gp_role != GP_ROLE_EXECUTE)
 				{
 					idle_session_timeout_enabled = true;
 					enable_timeout_after(IDLE_SESSION_TIMEOUT,

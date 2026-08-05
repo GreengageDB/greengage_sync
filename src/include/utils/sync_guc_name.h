@@ -97,7 +97,6 @@
 		"gp_workfile_limit_files_per_query",
 		"gp_workfile_limit_per_query",
 		"gp_write_shared_snapshot",
-		"idle_session_timeout",
 		"ignore_checksum_failure",
 		"ignore_system_indexes",
 		"IntervalStyle",
