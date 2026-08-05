@@ -6790,7 +6790,6 @@ find_em_expr_for_input_target(PlannerInfo *root,
 	return NULL;				/* keep compiler quiet */
 }
 
-<<<<<<< HEAD
 static int
 greenplumCheckIsGreenplum(UserMapping *user)
 {
@@ -6815,7 +6814,8 @@ greenplumCheckIsGreenplum(UserMapping *user)
 	ReleaseConnection(conn);
 
 	return ret;
-=======
+}
+
 /*
  * Determine batch size for a given foreign table. The option specified for
  * a table has precedence.
@@ -6856,5 +6856,4 @@ get_batch_size_option(Relation rel)
 	}
 
 	return batch_size;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
