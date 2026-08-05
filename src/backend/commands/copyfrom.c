@@ -1397,14 +1397,10 @@ CopyFrom(CopyFromState cstate)
 			 * this spot; the QE receives pre-parsed rows through
 			 * NextCopyFromExecute() and counts them only here.
 			 */
-<<<<<<< HEAD
-			pgstat_progress_update_param(PROGRESS_COPY_LINES_PROCESSED, ++processed);
-			if (cstate->cdbsreh)
-				cstate->cdbsreh->processed++;
-=======
 			pgstat_progress_update_param(PROGRESS_COPY_TUPLES_PROCESSED,
 										 ++processed);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+			if (cstate->cdbsreh)
+				cstate->cdbsreh->processed++;
 		}
 	}
 
@@ -1424,7 +1420,6 @@ CopyFrom(CopyFromState cstate)
 
 	MemoryContextSwitchTo(oldcontext);
 
-<<<<<<< HEAD
 	/*
 	 * Done reading input data and sending it off to the segment
 	 * databases Now we would like to end the copy command on
@@ -1483,8 +1478,6 @@ CopyFrom(CopyFromState cstate)
 	if (cstate->copy_src == COPY_OLD_FE)
 		pq_endmsgread();
 
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	/* Execute AFTER STATEMENT insertion triggers */
 	ExecASInsertTriggers(estate, target_resultRelInfo, cstate->transition_capture);
 
@@ -1566,9 +1559,7 @@ BeginCopyFrom(ParseState *pstate,
 	ExprState **defexprs;
 	MemoryContext oldcontext;
 	bool		volatile_defexprs;
-<<<<<<< HEAD
 	bool		is_external_table;
-=======
 	const int	progress_cols[] = {
 		PROGRESS_COPY_COMMAND,
 		PROGRESS_COPY_TYPE,
@@ -1579,7 +1570,6 @@ BeginCopyFrom(ParseState *pstate,
 		0,
 		0
 	};
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/* Allocate workspace and zero all fields */
 	cstate = (CopyFromStateData *) palloc0(sizeof(CopyFromStateData));
@@ -1883,12 +1873,8 @@ BeginCopyFrom(ParseState *pstate,
 	}
 	else if (pipe)
 	{
-<<<<<<< HEAD
-		Assert(!is_program || cstate->dispatch_mode == COPY_EXECUTOR);	/* the grammar does not allow this */
-=======
 		progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
-		Assert(!is_program);	/* the grammar does not allow this */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+		Assert(!is_program || cstate->dispatch_mode == COPY_EXECUTOR);	/* the grammar does not allow this */
 		if (whereToSendOutput == DestRemote)
 			ReceiveCopyBegin(cstate);
 		else
@@ -1903,13 +1889,9 @@ BeginCopyFrom(ParseState *pstate,
 
 		if (cstate->is_program)
 		{
-<<<<<<< HEAD
+			progress_vals[1] = PROGRESS_COPY_TYPE_PROGRAM;
 			cstate->program_pipes = open_program_pipes(cstate->filename, false);
 			cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_R);
-=======
-			progress_vals[1] = PROGRESS_COPY_TYPE_PROGRAM;
-			cstate->copy_file = OpenPipeStream(cstate->filename, PG_BINARY_R);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			if (cstate->copy_file == NULL)
 				ereport(ERROR,
 						(errcode_for_file_access(),
@@ -1921,12 +1903,8 @@ BeginCopyFrom(ParseState *pstate,
 			struct stat st;
 			char	   *filename = cstate->filename;
 
-<<<<<<< HEAD
-			cstate->copy_file = AllocateFile(filename, PG_BINARY_R);
-=======
 			progress_vals[1] = PROGRESS_COPY_TYPE_FILE;
-			cstate->copy_file = AllocateFile(cstate->filename, PG_BINARY_R);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+			cstate->copy_file = AllocateFile(filename, PG_BINARY_R);
 			if (cstate->copy_file == NULL)
 			{
 				/* copy errno because ereport subfunctions might change it */
@@ -1959,7 +1937,8 @@ BeginCopyFrom(ParseState *pstate,
 		}
 	}
 
-<<<<<<< HEAD
+	pgstat_progress_update_multi_param(3, progress_cols, progress_vals);
+
 	if (cstate->opts.on_segment && Gp_role == GP_ROLE_DISPATCH)
 	{
 		/* nothing to do */
@@ -1985,11 +1964,6 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->first_qe_processed_field = header_frame.first_qe_processed_field;
 	}
 	else if (cstate->opts.binary)
-=======
-	pgstat_progress_update_multi_param(3, progress_cols, progress_vals);
-
-	if (cstate->opts.binary)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	{
 		/* Read and verify binary header */
 		ReceiveCopyBinaryHeader(cstate);

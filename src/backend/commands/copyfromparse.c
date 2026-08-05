@@ -139,7 +139,7 @@ ReceiveCopyBegin(CopyFromState cstate)
 	for (i = 0; i < natts; i++)
 		pq_sendint16(&buf, format); /* per-column formats */
 	pq_endmessage(&buf);
-	cstate->copy_src = COPY_FRONTEND;
+	cstate->copy_src = COPY_NEW_FE;
 	cstate->fe_msgbuf = makeStringInfo();
 	/* We *must* flush here to ensure FE knows it can send. */
 	pq_flush();
@@ -237,8 +237,8 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 							 errmsg("could not read from COPY file: %m")));
 			}
 			break;
-		case COPY_FRONTEND:
-			while (maxread > 0 && bytesread < minread && !cstate->reached_eof)
+		case COPY_NEW_FE:
+			while (datasize > 0 && !cstate->reached_eof)
 			{
 				int			avail;
 
@@ -1224,7 +1224,7 @@ CopyReadLine(CopyFromState cstate)
 		 * after \. up to the protocol end of copy data.  (XXX maybe better
 		 * not to treat \. as special?)
 		 */
-		if (cstate->copy_src == COPY_FRONTEND)
+		if (cstate->copy_src == COPY_NEW_FE)
 		{
 			do
 			{

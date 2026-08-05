@@ -46,19 +46,7 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
-<<<<<<< HEAD
 #include "libpq-fe.h"
-=======
-/*
- * Represents the different dest cases we need to worry about at
- * the bottom level
- */
-typedef enum CopyDest
-{
-	COPY_FILE,					/* to file (or a piped program) */
-	COPY_FRONTEND,				/* to frontend */
-} CopyDest;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 #include "access/external.h"
 #include "access/url.h"
@@ -87,13 +75,9 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 /* non-export function prototypes */
 static void EndCopy(CopyToState cstate);
 static void ClosePipeToProgram(CopyToState cstate);
-<<<<<<< HEAD
 static uint64 CopyTo(CopyToState cstate);
 static uint64 CopyToDispatch(CopyToState cstate);
 static void CopyToDispatchFlush(CopyToState cstate);
-=======
-static void CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 static void CopyAttributeOutText(CopyToState cstate, char *string);
 static void CopyAttributeOutCSV(CopyToState cstate, char *string,
 								bool use_quote, bool single_attr);
@@ -128,7 +112,7 @@ SendCopyBegin(CopyToState cstate)
 	for (i = 0; i < natts; i++)
 		pq_sendint16(&buf, format); /* per-column formats */
 	pq_endmessage(&buf);
-	cstate->copy_dest = COPY_FRONTEND;
+	cstate->copy_dest = COPY_NEW_FE;
 }
 
 static void
@@ -225,7 +209,7 @@ CopySendEndOfRow(CopyToState cstate)
 							 errmsg("could not write to COPY file: %m")));
 			}
 			break;
-		case COPY_FRONTEND:
+		case COPY_NEW_FE:
 			/* The FE/BE protocol uses \n as newline for all platforms */
 			if (!cstate->opts.binary)
 				CopySendChar(cstate, '\n');
@@ -409,57 +393,8 @@ BeginCopyToCommon(ParseState *pstate,
 	CopyToState	cstate;
 	int			num_phys_attrs;
 	MemoryContext oldcontext;
-<<<<<<< HEAD
 	bool		is_external_table;
-=======
-	const int	progress_cols[] = {
-		PROGRESS_COPY_COMMAND,
-		PROGRESS_COPY_TYPE
-	};
-	int64		progress_vals[] = {
-		PROGRESS_COPY_COMMAND_TO,
-		0
-	};
 
-	if (rel != NULL && rel->rd_rel->relkind != RELKIND_RELATION)
-	{
-		if (rel->rd_rel->relkind == RELKIND_VIEW)
-			ereport(ERROR,
-					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-					 errmsg("cannot copy from view \"%s\"",
-							RelationGetRelationName(rel)),
-					 errhint("Try the COPY (SELECT ...) TO variant.")));
-		else if (rel->rd_rel->relkind == RELKIND_MATVIEW)
-			ereport(ERROR,
-					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-					 errmsg("cannot copy from materialized view \"%s\"",
-							RelationGetRelationName(rel)),
-					 errhint("Try the COPY (SELECT ...) TO variant.")));
-		else if (rel->rd_rel->relkind == RELKIND_FOREIGN_TABLE)
-			ereport(ERROR,
-					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-					 errmsg("cannot copy from foreign table \"%s\"",
-							RelationGetRelationName(rel)),
-					 errhint("Try the COPY (SELECT ...) TO variant.")));
-		else if (rel->rd_rel->relkind == RELKIND_SEQUENCE)
-			ereport(ERROR,
-					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-					 errmsg("cannot copy from sequence \"%s\"",
-							RelationGetRelationName(rel))));
-		else if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
-			ereport(ERROR,
-					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-					 errmsg("cannot copy from partitioned table \"%s\"",
-							RelationGetRelationName(rel)),
-					 errhint("Try the COPY (SELECT ...) TO variant.")));
-		else
-			ereport(ERROR,
-					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-					 errmsg("cannot copy from non-table relation \"%s\"",
-							RelationGetRelationName(rel))));
-	}
-
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/* Allocate workspace and zero all fields */
 	cstate = (CopyToStateData *) palloc0(sizeof(CopyToStateData));
@@ -846,7 +781,6 @@ BeginCopyToOnSegment(QueryDesc *queryDesc)
 
 	if (cstate->is_program)
 	{
-<<<<<<< HEAD
 		cstate->program_pipes = open_program_pipes(cstate->filename, true);
 		cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_W);
 
@@ -979,6 +913,14 @@ BeginCopyTo(ParseState *pstate,
 {
 	CopyToState	cstate;
 	MemoryContext oldcontext;
+	const int	progress_cols[] = {
+		PROGRESS_COPY_COMMAND,
+		PROGRESS_COPY_TYPE
+	};
+	int64		progress_vals[] = {
+		PROGRESS_COPY_COMMAND_TO,
+		0
+	};
 
 	if (rel != NULL && rel->rd_rel->relkind != RELKIND_RELATION)
 	{
@@ -1049,12 +991,8 @@ BeginCopyTo(ParseState *pstate,
 	}
 	else if (pipe)
 	{
-		Assert(!is_program || Gp_role == GP_ROLE_EXECUTE);	/* the grammar does not allow this */
-=======
 		progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
-
-		Assert(!is_program);	/* the grammar does not allow this */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+		Assert(!is_program || Gp_role == GP_ROLE_EXECUTE);	/* the grammar does not allow this */
 		if (whereToSendOutput != DestRemote)
 			cstate->copy_file = stdout;
 	}
@@ -1069,14 +1007,10 @@ BeginCopyTo(ParseState *pstate,
 
 		if (is_program)
 		{
-<<<<<<< HEAD
+			progress_vals[1] = PROGRESS_COPY_TYPE_PROGRAM;
 			cstate->program_pipes = open_program_pipes(cstate->filename, true);
 			cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_W);
 
-=======
-			progress_vals[1] = PROGRESS_COPY_TYPE_PROGRAM;
-			cstate->copy_file = OpenPipeStream(cstate->filename, PG_BINARY_W);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			if (cstate->copy_file == NULL)
 				ereport(ERROR,
 						(errcode_for_file_access(),
@@ -1152,7 +1086,6 @@ BeginCopyTo(ParseState *pstate,
 }
 
 /*
-<<<<<<< HEAD
  * Set up CopyToState for writing to a foreign or external table.
  */
 CopyToState
@@ -1271,8 +1204,6 @@ void EndCopyToOnSegment(CopyToState cstate)
 }
 
 /*
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
  * Clean up storage and release resources for COPY TO.
  */
 void
@@ -1466,8 +1397,8 @@ CopyToQueryOnSegment(CopyToState cstate)
 /*
  * Copy from relation or query TO file.
  */
-uint64
-DoCopyTo(CopyToState cstate)
+static uint64
+CopyTo(CopyToState cstate)
 {
 	bool		pipe = (cstate->filename == NULL);
 	bool		fe_copy = (pipe && whereToSendOutput == DestRemote);
@@ -1642,7 +1573,7 @@ DoCopyTo(CopyToState cstate)
 }
 
 /*
- * Emit one row during DoCopyTo().
+ * Emit one row during CopyTo().
  */
 void
 CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot)
