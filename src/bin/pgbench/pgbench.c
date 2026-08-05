@@ -274,20 +274,13 @@ bool		is_connect;			/* establish connection for each transaction */
 bool		report_per_command; /* report per-command latencies */
 int			main_pid;			/* main process id used in log filename */
 
-<<<<<<< HEAD
 int			use_unique_key=1;	/* indexes will be primary key if set, otherwise non-unique indexes */
 
-char	   *pghost = "";
-char	   *pgport = "";
-char	   *storage_clause = "appendonly=false";
-char	   *login = NULL;
-char	   *dbName;
-=======
 const char *pghost = NULL;
 const char *pgport = NULL;
 const char *username = NULL;
+char	   *storage_clause = "appendonly=false";
 const char *dbName = NULL;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 char	   *logfile_prefix = NULL;
 const char *progname;
 
