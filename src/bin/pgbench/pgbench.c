@@ -275,11 +275,11 @@ bool		report_per_command; /* report per-command latencies */
 int			main_pid;			/* main process id used in log filename */
 
 int			use_unique_key=1;	/* indexes will be primary key if set, otherwise non-unique indexes */
+char	   *storage_clause = "appendonly=false";
 
 const char *pghost = NULL;
 const char *pgport = NULL;
 const char *username = NULL;
-char	   *storage_clause = "appendonly=false";
 const char *dbName = NULL;
 char	   *logfile_prefix = NULL;
 const char *progname;
