@@ -1583,6 +1583,15 @@ LANGUAGE plpgSQL READS SQL DATA;
 
 SET gp_log_gang TO DEBUG;
 
+-- The FOR loop below runs its query through a cursor, so SPI_cursor_open_internal()
+-- has _SPI_error_callback() installed while it calls PortalStart().  Whether the QD
+-- notices the segment's error while still inside PortalStart(), or only at the first
+-- fetch after the callback has been popped, depends on dispatch timing.  In the
+-- former case the error context gains an extra "SQL statement" line.  Under load
+-- either outcome is possible, so ignore that line.
+-- start_matchignore
+-- m/^SQL statement "SELECT c2 from exttab_error_context_callback"$/
+-- end_matchignore
 SELECT * FROM exttab_error_context_callback_func();
 
 SET gp_log_gang TO DEFAULT;
