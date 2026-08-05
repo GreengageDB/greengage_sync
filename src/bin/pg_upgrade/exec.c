@@ -259,17 +259,12 @@ verify_directories(void)
 
 	check_bin_dir(&old_cluster, false);
 	check_data_dir(&old_cluster);
-<<<<<<< HEAD
 
 	if(!is_skip_target_check())
 	{
-	  check_bin_dir(&new_cluster);
+	  check_bin_dir(&new_cluster, true);
 	  check_data_dir(&new_cluster);
 	}
-=======
-	check_bin_dir(&new_cluster, true);
-	check_data_dir(&new_cluster);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
 
 
