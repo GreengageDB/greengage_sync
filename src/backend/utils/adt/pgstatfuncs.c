@@ -575,11 +575,7 @@ pg_stat_get_progress_info(PG_FUNCTION_ARGS)
 Datum
 pg_stat_get_activity(PG_FUNCTION_ARGS)
 {
-<<<<<<< HEAD
-#define PG_STAT_GET_ACTIVITY_COLS	33
-=======
-#define PG_STAT_GET_ACTIVITY_COLS	29
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+#define PG_STAT_GET_ACTIVITY_COLS	32
 	int			num_backends = pgstat_fetch_stat_numbackends();
 	int			curr_backend;
 	int			pid = PG_ARGISNULL(0) ? -1 : PG_GETARG_INT32(0);
@@ -953,17 +949,17 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 													 * use */
 			}
 
-			values[30] = Int32GetDatum(beentry->st_session_id);  /* GPDB */
+			values[29] = Int32GetDatum(beentry->st_session_id);  /* GPDB */
 
 			{
 				char *groupName = GetResGroupNameForId(beentry->st_rsgid);
 
-				values[31] = ObjectIdGetDatum(beentry->st_rsgid);
+				values[30] = ObjectIdGetDatum(beentry->st_rsgid);
 
 				if (groupName != NULL)
-					values[32] = CStringGetTextDatum(groupName);
+					values[31] = CStringGetTextDatum(groupName);
 				else
-					nulls[32] = true;
+					nulls[31] = true;
 			}
 		}
 		else
@@ -992,13 +988,9 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 			nulls[26] = true;
 			nulls[27] = true;
 			nulls[28] = true;
-<<<<<<< HEAD
-			nulls[29] = true;
-			values[30] = Int32GetDatum(beentry->st_session_id);
+			values[29] = Int32GetDatum(beentry->st_session_id);
+			nulls[30] = true;
 			nulls[31] = true;
-			nulls[32] = true;
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		}
 
 		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
