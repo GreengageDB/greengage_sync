@@ -96,7 +96,6 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 {
 	TableInfo  *tblinfo;
 	ExtensionInfo *extinfo;
-	PublicationInfo *pubinfo;
 	InhInfo    *inhinfo;
 	int			numTables;
 	int			numTypes;
