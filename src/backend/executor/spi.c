@@ -659,7 +659,7 @@ SPI_execute_plan_extended(SPIPlanPtr plan,
 /* Execute a previously prepared plan */
 int
 SPI_execute_plan_with_paramlist(SPIPlanPtr plan, ParamListInfo params,
-								bool read_only, long tcount)
+								bool read_only, int64 tcount)
 {
 	int			res;
 
