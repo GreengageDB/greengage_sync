@@ -1801,6 +1801,9 @@ readNodeBinary(void)
 			case T_TidScan:
 				return_value = _readTidScan();
 				break;
+			case T_TidRangeScan:
+				return_value = _readTidRangeScan();
+				break;
 			case T_SubqueryScan:
 				return_value = _readSubqueryScan();
 				break;

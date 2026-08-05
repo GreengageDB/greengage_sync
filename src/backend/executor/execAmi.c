@@ -803,6 +803,7 @@ ExecSquelchNode(PlanState *node)
 		case T_TableFuncScanState:
 		case T_ValuesScanState:
 		case T_TidScanState:
+		case T_TidRangeScanState:
 		case T_TableFunctionState:
 		case T_SampleScanState:
 			break;
