@@ -654,15 +654,7 @@ smgrnblocks_cached(SMgrRelation reln, ForkNumber forknum)
 	if (InRecovery && reln->smgr_cached_nblocks[forknum] != InvalidBlockNumber)
 		return reln->smgr_cached_nblocks[forknum];
 
-<<<<<<< HEAD
-	result = (*reln->storageManager).smgr_nblocks(reln, forknum);
-
-	reln->smgr_cached_nblocks[forknum] = result;
-
-	return result;
-=======
 	return InvalidBlockNumber;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
 
 /*

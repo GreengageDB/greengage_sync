@@ -682,15 +682,10 @@ report_json_context(JsonLexContext *lex)
 	prefix = (context_start > line_start) ? "..." : "";
 	suffix = (lex->token_type != JSON_TOKEN_END && context_end - lex->input < lex->input_length && *context_end != '\n' && *context_end != '\r') ? "..." : "";
 
-<<<<<<< HEAD
 	errcontext("JSON data, line %d: %s%s%s",
-			   line_number, prefix, ctxt, suffix);
+			   lex->line_number, prefix, ctxt, suffix);
 
 	return 0;
-=======
-	return errcontext("JSON data, line %d: %s%s%s",
-					  lex->line_number, prefix, ctxt, suffix);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 }
 
 

@@ -262,11 +262,7 @@ static void setup_run_file(FILE *cmdfd, const char *filename);
 static void setup_description(FILE *cmdfd);
 #if 0
 static void setup_collation(FILE *cmdfd);
-<<<<<<< HEAD
 #endif
-static void setup_dictionary(FILE *cmdfd);
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 static void setup_privileges(FILE *cmdfd);
 static void set_info_version(void);
 static void setup_schema(FILE *cmdfd);

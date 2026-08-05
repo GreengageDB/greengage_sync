@@ -1263,13 +1263,8 @@ XLogInsertRecord(XLogRecData *rdata,
 		oldCxt = MemoryContextSwitchTo(walDebugCxt);
 
 		initStringInfo(&buf);
-<<<<<<< HEAD
 		appendStringInfo(&buf, "INSERT @ %X/%X, LSN %X/%X: ",
-						 (uint32) (StartPos >> 32), (uint32) StartPos,
-						 (uint32) (EndPos >> 32), (uint32) EndPos);
-=======
-		appendStringInfo(&buf, "INSERT @ %X/%X: ", LSN_FORMAT_ARGS(EndPos));
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+						 LSN_FORMAT_ARGS(StartPos), LSN_FORMAT_ARGS(EndPos));
 
 		/*
 		 * We have to piece together the WAL record data from the XLogRecData
@@ -8395,13 +8390,11 @@ StartupXLOG(void)
 	 * timestamps are started below, if necessary.)
 	 */
 	if (standbyState == STANDBY_DISABLED)
+	{
 		StartupSUBTRANS(oldestActiveXID);
-<<<<<<< HEAD
 		DistributedLog_Startup(oldestActiveXID,
 							   XidFromFullTransactionId(ShmemVariableCache->nextXid));
 	}
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	/*
 	 * Perform end of recovery actions for any SLRUs that need it.

@@ -1129,7 +1129,6 @@ IndexScanOK(CatCache *cache, ScanKey cur_skey)
 }
 
 /*
-<<<<<<< HEAD
  * This function performs checks for certain system tables to validate tuple
  * fetched from table has the key, using which it was fetched from index.
  */
@@ -1181,10 +1180,7 @@ CrossCheckTuple(int cacheId,
 }
 
 /*
- *	SearchCatCacheInternal
-=======
  *	SearchCatCache
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
  *
  *		This call searches a system cache for a tuple, opening the relation
  *		if necessary (on the first access to a particular cache).
