@@ -617,12 +617,8 @@ sub backup
 	TestLib::system_or_bail(
 		'pg_basebackup', '-D', $backup_path, '-h',
 		$self->host,     '-p', $self->port,  '--checkpoint',
-<<<<<<< HEAD
-		'fast',          '--no-sync', '--target-gp-dbid', 99);
-=======
-		'fast',          '--no-sync',
+		'fast',          '--no-sync', '--target-gp-dbid', 99,
 		@{ $params{backup_options} });
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	print "# Backup finished\n";
 	return;
 }
