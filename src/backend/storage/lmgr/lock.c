@@ -4076,13 +4076,11 @@ GetLockStatusData(void)
 			instance->pid = proc->pid;
 			instance->leaderPid = proc->pid;
 			instance->fastpath = true;
-<<<<<<< HEAD
 			instance->databaseId = proc->databaseId;
 			instance->mppSessionId = proc->mppSessionId;
 			instance->mppIsWriter = proc->mppIsWriter;
 			instance->distribXid = distribXid;
 			instance->holdTillEndXact = (holdTillEndXactBits > 0);
-=======
 
 			/*
 			 * Successfully taking fast path lock means there were no
@@ -4090,7 +4088,6 @@ GetLockStatusData(void)
 			 */
 			instance->waitStart = 0;
 
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			el++;
 		}
 
@@ -4118,16 +4115,13 @@ GetLockStatusData(void)
 			instance->pid = proc->pid;
 			instance->leaderPid = proc->pid;
 			instance->fastpath = true;
-<<<<<<< HEAD
 			instance->databaseId = proc->databaseId;
 			instance->mppSessionId = proc->mppSessionId;
 			instance->mppIsWriter = proc->mppIsWriter;
 			instance->distribXid = distribXid;
 			instance->holdTillEndXact = false;
-=======
 			instance->waitStart = 0;
 
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 			el++;
 		}
 
@@ -4180,7 +4174,6 @@ GetLockStatusData(void)
 		instance->pid = proc->pid;
 		instance->leaderPid = proclock->groupLeader->pid;
 		instance->fastpath = false;
-<<<<<<< HEAD
 		instance->databaseId = proc->databaseId;
 		instance->mppSessionId = proc->mppSessionId;
 		instance->mppIsWriter = proc->mppIsWriter;
@@ -4188,10 +4181,8 @@ GetLockStatusData(void)
 							   tmGxact->gxid :
 							   proc->localDistribXactData.distribXid;
 		instance->holdTillEndXact = proclock->tag.myLock->holdTillEndXact;
-=======
 		instance->waitStart = (TimestampTz) pg_atomic_read_u64(&proc->waitStart);
 
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 		el++;
 	}
 

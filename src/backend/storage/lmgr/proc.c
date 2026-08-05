@@ -478,7 +478,7 @@ InitProcess(void)
 	MyProc->lwWaitMode = 0;
 	MyProc->waitLock = NULL;
 	MyProc->waitProcLock = NULL;
-<<<<<<< HEAD
+	pg_atomic_write_u64(&MyProc->waitStart, 0);
 	MyProc->resSlot = NULL;
 	MyProc->movetoResSlot = NULL;
 	MyProc->movetoGroupId = InvalidOid;
@@ -528,9 +528,6 @@ InitProcess(void)
 	}
     
 	/* Initialise for sync rep */
-=======
-	pg_atomic_write_u64(&MyProc->waitStart, 0);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 #ifdef USE_ASSERT_CHECKING
 	{
 		int			i;
