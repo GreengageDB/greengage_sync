@@ -23,12 +23,8 @@
 
 #include "access/genam.h"
 #include "access/htup_details.h"
-<<<<<<< HEAD
-#include "catalog/oid_dispatch.h"
-=======
 #include "access/table.h"
 #include "access/xact.h"
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 #include "catalog/pg_aggregate.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_constraint.h"
@@ -68,6 +64,8 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+
+#include "catalog/oid_dispatch.h"
 
 typedef struct
 {
