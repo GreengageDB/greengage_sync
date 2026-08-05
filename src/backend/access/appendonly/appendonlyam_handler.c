@@ -763,9 +763,8 @@ appendonly_tuple_satisfies_snapshot(Relation rel, TupleTableSlot *slot,
 }
 
 static TransactionId
-appendonly_compute_xid_horizon_for_tuples(Relation rel,
-										  ItemPointerData *tids,
-										  int nitems)
+appendonly_index_delete_tuples(Relation rel,
+										  TM_IndexDeleteOp *delstate)
 {
 	// GPDB_12_MERGE_FIXME: vacuum related call back.
 	elog(ERROR, "not implemented yet");
@@ -2168,7 +2167,7 @@ static const TableAmRoutine ao_row_methods = {
 	.tuple_get_latest_tid = appendonly_get_latest_tid,
 	.tuple_tid_valid = appendonly_tuple_tid_valid,
 	.tuple_satisfies_snapshot = appendonly_tuple_satisfies_snapshot,
-	.compute_xid_horizon_for_tuples = appendonly_compute_xid_horizon_for_tuples,
+	.index_delete_tuples = appendonly_index_delete_tuples,
 
 	.relation_set_new_filenode = appendonly_relation_set_new_filenode,
 	.relation_nontransactional_truncate = appendonly_relation_nontransactional_truncate,
