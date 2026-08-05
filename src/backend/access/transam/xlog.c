@@ -1263,7 +1263,8 @@ XLogInsertRecord(XLogRecData *rdata,
 		oldCxt = MemoryContextSwitchTo(walDebugCxt);
 
 		initStringInfo(&buf);
-		appendStringInfo(&buf, "INSERT @ %X/%X: ", LSN_FORMAT_ARGS(EndPos));
+		appendStringInfo(&buf, "INSERT @ %X/%X, LSN %X/%X: ",
+						 LSN_FORMAT_ARGS(StartPos), LSN_FORMAT_ARGS(EndPos));
 
 		/*
 		 * We have to piece together the WAL record data from the XLogRecData
