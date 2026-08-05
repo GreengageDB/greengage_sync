@@ -144,7 +144,6 @@ submake-contrib-spi: | submake-libpgport submake-generated-headers
 
 .PHONY: submake-contrib-spi
 
-<<<<<<< HEAD
 # Tablespace setup
 
 .PHONY: tablespace-setup
@@ -169,8 +168,6 @@ tablespace-setup:
 	./testtablespace_mytempsp4 \
 	./testtablespace_database_tablespace
 
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 .PHONY: hooktest
 hooktest:
@@ -192,7 +189,6 @@ check: all
 check-tests: all | temp-install
 	$(pg_regress_check) $(REGRESS_OPTS) $(MAXCONNOPT) $(TESTS) $(EXTRA_TESTS)
 
-<<<<<<< HEAD
 #installcheck: all tablespace-setup
 #	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/serial_schedule $(EXTRA_TESTS)
 installcheck: installcheck-good
@@ -202,10 +198,6 @@ installcheck-small: all tablespace-setup
 
 installcheck-good: all tablespace-setup twophase_pqexecparams hooktest query_info_hook_test
 	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule --schedule=$(srcdir)/greenplum_schedule $(EXTRA_TESTS)
-=======
-installcheck: all
-	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/serial_schedule $(EXTRA_TESTS)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 installcheck-parallel: all
 	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
