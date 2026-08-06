@@ -238,7 +238,7 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 			}
 			break;
 		case COPY_FRONTEND:
-			while (maxread > 0 && bytesread < minread && !cstate->reached_eof)
+			while (datasize > 0 && !cstate->reached_eof)
 			{
 				int			avail;
 
@@ -1354,12 +1354,8 @@ CopyReadLineText(CopyFromState cstate)
 		/*
 		 * Load more data if needed.  Ideally we would just force four bytes
 		 * of read-ahead and avoid the many calls to
-		 * IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(), but the COPY_OLD_FE protocol
-		 * does not allow us to read too far ahead or we might read into the
-		 * next data, so we read-ahead only as far we know we can.  One
-		 * optimization would be to read-ahead four byte here if
-		 * cstate->copy_src != COPY_OLD_FE, but it hardly seems worth it,
-		 * considering the size of the buffer.
+		 * IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(), but it hardly seems worth
+		 * it, considering the size of the buffer.
 		 */
 		if (raw_buf_ptr >= copy_buf_len || need_data)
 		{
