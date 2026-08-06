@@ -1633,7 +1633,6 @@ typedef struct TidPath
 } TidPath;
 
 /*
-<<<<<<< HEAD
  * CdbMotionPath represents transmission of the child Path results
  * from a set of sending processes to a set of receiving processes.
  *
@@ -1650,7 +1649,8 @@ typedef struct CdbMotionPath
 
 	GpPolicy   *policy;
 } CdbMotionPath;
-=======
+
+/*
  * TidRangePath represents a scan by a continguous range of TIDs
  *
  * tidrangequals is an implicitly AND'ed list of qual expressions of the form
@@ -1661,7 +1661,6 @@ typedef struct TidRangePath
 	Path		path;
 	List	   *tidrangequals;
 } TidRangePath;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 /*
  * SubqueryScanPath represents a scan of an unflattened subquery-in-FROM
