@@ -1170,14 +1170,12 @@ DoCopyTo(CopyToState cstate)
 	PG_CATCH();
 	{
 		/*
-		 * Make sure we turn off old-style COPY OUT mode upon error. It is
-		 * okay to do this in all cases, since it does nothing if the mode is
-		 * not on.
+		 * For COPY ON SEGMENT, switch back to sending errors to the
+		 * frontend normally, rather than leaving cstate in file-write mode.
 		 */
 		if (Gp_role == GP_ROLE_EXECUTE && cstate->opts.on_segment)
 			cstate->copy_dest = COPY_FRONTEND;
 
-		pq_endcopyout(true);
 		PG_RE_THROW();
 	}
 	PG_END_TRY();
