@@ -68,8 +68,6 @@ PQsendGpQuery_shared(PGconn *conn, char *shared_query, int query_len, bool nonbl
 	}
 
 	pqAppendCmdQueueEntry(conn, entry);
-	if (conn->pipelineStatus == PQ_PIPELINE_OFF)
-		conn->asyncStatus = PGASYNC_BUSY;
 
 	/* OK, it's launched! */
 	conn->asyncStatus = PGASYNC_BUSY;
