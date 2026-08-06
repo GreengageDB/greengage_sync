@@ -112,7 +112,7 @@ SendCopyBegin(CopyToState cstate)
 	for (i = 0; i < natts; i++)
 		pq_sendint16(&buf, format); /* per-column formats */
 	pq_endmessage(&buf);
-	cstate->copy_dest = COPY_NEW_FE;
+	cstate->copy_dest = COPY_FRONTEND;
 }
 
 static void
@@ -209,7 +209,7 @@ CopySendEndOfRow(CopyToState cstate)
 							 errmsg("could not write to COPY file: %m")));
 			}
 			break;
-		case COPY_NEW_FE:
+		case COPY_FRONTEND:
 			/* The FE/BE protocol uses \n as newline for all platforms */
 			if (!cstate->opts.binary)
 				CopySendChar(cstate, '\n');
@@ -281,7 +281,7 @@ CopyToDispatchFlush(CopyToState cstate)
 							 errmsg("could not write to COPY file: %m")));
 			}
 			break;
-		case COPY_NEW_FE:
+		case COPY_FRONTEND:
 			/* Dump the accumulated row as one CopyData message */
 			(void) pq_putmessage('d', fe_msgbuf->data, fe_msgbuf->len);
 			break;
@@ -1163,7 +1163,7 @@ DoCopyTo(CopyToState cstate)
 			 * For COPY ON SEGMENT command, switch back to front end
 			 * before sending copy end which is "\."
 			 */
-			cstate->copy_dest = COPY_NEW_FE;
+			cstate->copy_dest = COPY_FRONTEND;
 			SendCopyEnd(cstate);
 		}
 	}
@@ -1175,7 +1175,7 @@ DoCopyTo(CopyToState cstate)
 		 * not on.
 		 */
 		if (Gp_role == GP_ROLE_EXECUTE && cstate->opts.on_segment)
-			cstate->copy_dest = COPY_NEW_FE;
+			cstate->copy_dest = COPY_FRONTEND;
 
 		pq_endcopyout(true);
 		PG_RE_THROW();
