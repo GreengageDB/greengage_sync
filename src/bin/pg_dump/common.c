@@ -61,7 +61,6 @@ typedef struct _catalogIdMapEntry
 	ExtensionInfo *ext;			/* owning extension, if any */
 } CatalogIdMapEntry;
 
-<<<<<<< HEAD
 #define SH_PREFIX		catalogid
 #define SH_ELEMENT_TYPE	CatalogIdMapEntry
 #define SH_KEY_TYPE		CatalogId
@@ -75,32 +74,6 @@ typedef struct _catalogIdMapEntry
 #define SH_DECLARE
 #define SH_DEFINE
 #include "lib/simplehash.h"
-=======
-/*
- * These variables are static to avoid the notational cruft of having to pass
- * them into findTableByOid() and friends.  For each of these arrays, we build
- * a sorted-by-OID index array immediately after the objects are fetched,
- * and then we use binary search in findTableByOid() and friends.  (qsort'ing
- * the object arrays themselves would be simpler, but it doesn't work because
- * pg_dump.c may have already established pointers between items.)
- */
-static DumpableObject **tblinfoindex;
-static DumpableObject **typinfoindex;
-static DumpableObject **funinfoindex;
-static DumpableObject **oprinfoindex;
-static DumpableObject **collinfoindex;
-static DumpableObject **nspinfoindex;
-static DumpableObject **extinfoindex;
-static DumpableObject **pubinfoindex;
-static int	numTables;
-static int	numTypes;
-static int	numFuncs;
-static int	numOperators;
-static int	numCollations;
-static int	numNamespaces;
-static int	numExtensions;
-static int	numPublications;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 #define CATALOGIDHASH_INITIAL_SIZE	10000
 
@@ -123,7 +96,6 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 {
 	TableInfo  *tblinfo;
 	ExtensionInfo *extinfo;
-	PublicationInfo *pubinfo;
 	InhInfo    *inhinfo;
 	int			numTables;
 	int			numTypes;
@@ -300,13 +272,7 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 	getPolicies(fout, tblinfo, numTables);
 
 	pg_log_info("reading publications");
-<<<<<<< HEAD
 	(void) getPublications(fout, &numPublications);
-=======
-	pubinfo = getPublications(fout, &numPublications);
-	pubinfoindex = buildIndexArray(pubinfo, numPublications,
-								   sizeof(PublicationInfo));
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 	pg_log_info("reading publication membership");
 	getPublicationTables(fout, tblinfo, numTables);
@@ -649,11 +615,8 @@ AssignDumpId(DumpableObject *dobj)
 	dobj->namespace = NULL;		/* may be set later */
 	dobj->dump = DUMP_COMPONENT_ALL;	/* default assumption */
 	dobj->dump_contains = DUMP_COMPONENT_ALL;	/* default assumption */
-<<<<<<< HEAD
 	/* All objects have definitions; we may set more components bits later */
 	dobj->components = DUMP_COMPONENT_DEFINITION;
-=======
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 	dobj->ext_member = false;	/* default assumption */
 	dobj->depends_on_ext = false;	/* default assumption */
 	dobj->dependencies = NULL;
@@ -973,26 +936,8 @@ findExtensionByOid(Oid oid)
 
 /*
  * findPublicationByOid
-<<<<<<< HEAD
  *	  finds the DumpableObject for the publication with the given oid
  *	  returns NULL if not found
-=======
- *	  finds the entry (in pubinfo) of the publication with the given oid
- *	  returns NULL if not found
- */
-PublicationInfo *
-findPublicationByOid(Oid oid)
-{
-	return (PublicationInfo *) findObjectByOid(oid, pubinfoindex, numPublications);
-}
-
-/*
- * findIndexByOid
- *		find the entry of the index with the given oid
- *
- * This one's signature is different from the previous ones because we lack a
- * global array of all indexes, so caller must pass their array as argument.
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
  */
 PublicationInfo *
 findPublicationByOid(Oid oid)
