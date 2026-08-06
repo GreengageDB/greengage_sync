@@ -764,7 +764,7 @@ appendonly_tuple_satisfies_snapshot(Relation rel, TupleTableSlot *slot,
 
 static TransactionId
 appendonly_index_delete_tuples(Relation rel,
-										  TM_IndexDeleteOp *delstate)
+							   TM_IndexDeleteOp *delstate)
 {
 	// GPDB_12_MERGE_FIXME: vacuum related call back.
 	elog(ERROR, "not implemented yet");
