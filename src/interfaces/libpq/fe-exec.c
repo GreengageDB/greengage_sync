@@ -1228,7 +1228,7 @@ pqRowProcessor(PGconn *conn, const char **errmsgp)
  *
  * If allocation fails, sets the error message and returns NULL.
  */
-static PGcmdQueueEntry *
+PGcmdQueueEntry *
 pqAllocCmdQueueEntry(PGconn *conn)
 {
 	PGcmdQueueEntry *entry;
@@ -1261,7 +1261,7 @@ pqAllocCmdQueueEntry(PGconn *conn)
  * The query itself must already have been put in the output buffer by the
  * caller.
  */
-static void
+void
 pqAppendCmdQueueEntry(PGconn *conn, PGcmdQueueEntry *entry)
 {
 	Assert(entry->next == NULL);
@@ -1278,7 +1278,7 @@ pqAppendCmdQueueEntry(PGconn *conn, PGcmdQueueEntry *entry)
  * pqRecycleCmdQueueEntry
  *		Push a command queue entry onto the freelist.
  */
-static void
+void
 pqRecycleCmdQueueEntry(PGconn *conn, PGcmdQueueEntry *entry)
 {
 	if (entry == NULL)
