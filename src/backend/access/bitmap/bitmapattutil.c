@@ -341,8 +341,8 @@ _bitmap_insert_lov(Relation lovHeap, Relation lovIndex, Datum *datum,
 	memcpy(indexDatum, datum, (tupDesc->natts - 2) * sizeof(Datum));
 	memcpy(indexNulls, nulls, (tupDesc->natts - 2) * sizeof(bool));
 	result = index_insert(lovIndex, indexDatum, indexNulls,
-					 	  &(tuple->t_self), lovHeap, UNIQUE_CHECK_YES,
-					 	  false, NULL);
+						  &(tuple->t_self), lovHeap, UNIQUE_CHECK_YES,
+						  indexUnchanged, NULL);
 
 	pfree(indexDatum);
 	pfree(indexNulls);
