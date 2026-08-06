@@ -1123,8 +1123,10 @@ BeginCopyToForeignTable(Relation forrel, List *options)
 }
 
 /*
- * This intermediate routine exists mainly to localize the effects of setjmp
- * so we don't need to plaster a lot of variables with "volatile".
+ * This intermediate routine decides whether to dispatch the COPY TO to the
+ * segments (CopyToDispatch) or run it directly (CopyTo), and localizes the
+ * effects of setjmp so we don't need to plaster a lot of variables with
+ * "volatile".
  */
 uint64
 DoCopyTo(CopyToState cstate)
