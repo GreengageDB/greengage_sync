@@ -234,7 +234,7 @@ fetch_multi_dqas_info(PlannerInfo *root,
 					  cdb_multi_dqas_info *info);
 
 static DQAType
-recognize_dqa_type(PlannerInfo *root, cdb_agg_planning_context *ctx);
+recognize_dqa_type(cdb_agg_planning_context *ctx);
 
 static PathTarget *
 strip_aggdistinct(PathTarget *target);
@@ -467,7 +467,7 @@ cdb_create_multistage_grouping_paths(PlannerInfo *root,
 		 * Try possible plans for DISTINCT-qualified aggregate.
 		 */
 		cdb_multi_dqas_info info = {};
-		DQAType type = recognize_dqa_type(root, &ctx);
+		DQAType type = recognize_dqa_type(&ctx);
 		switch (type)
 		{
 		case SINGLE_DQA:
@@ -844,7 +844,7 @@ static void
 		cdb_multi_dqas_info info = {};
 		List	   *dqa_group_tles;
 
-		dqa_type = recognize_dqa_type(root, ctx);
+		dqa_type = recognize_dqa_type(ctx);
 
 		/* For the query:
 		 *     select count(distinct a), sum(b), sum(c) from t;
@@ -1892,7 +1892,7 @@ choose_grouping_locus(PlannerInfo *root, Path *path,
 }
 
 static DQAType
-recognize_dqa_type(PlannerInfo *root, cdb_agg_planning_context *ctx)
+recognize_dqa_type(cdb_agg_planning_context *ctx)
 {
 	ListCell    *lc, *lcc;
 	List        *dqaArgs = NIL;
