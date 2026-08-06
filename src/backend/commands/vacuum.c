@@ -2857,11 +2857,6 @@ vacuum_params_to_options_list(VacuumParams *params)
 		options = lappend(options, makeDefElem("skip_locked", (Node *) makeInteger(1), -1));
 		optmask &= ~VACOPT_SKIP_LOCKED;
 	}
-	if (optmask & VACOPT_SKIPTOAST)
-	{
-		options = lappend(options, makeDefElem("skip_toast", (Node *) makeInteger(1), -1));
-		optmask &= ~VACOPT_SKIPTOAST;
-	}
 	if (optmask & VACOPT_DISABLE_PAGE_SKIPPING)
 	{
 		options = lappend(options, makeDefElem("disable_page_skipping", (Node *) makeInteger(1), -1));
