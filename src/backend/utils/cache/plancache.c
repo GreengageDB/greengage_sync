@@ -1266,11 +1266,7 @@ cached_plan_cost(CachedPlan *plan, bool include_planner)
  */
 CachedPlan *
 GetCachedPlan(CachedPlanSource *plansource, ParamListInfo boundParams,
-<<<<<<< HEAD
-			  bool useResOwner, QueryEnvironment *queryEnv, IntoClause *intoClause)
-=======
-			  ResourceOwner owner, QueryEnvironment *queryEnv)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+			  ResourceOwner owner, QueryEnvironment *queryEnv, IntoClause *intoClause)
 {
 	CachedPlan *plan = NULL;
 	List	   *qlist;

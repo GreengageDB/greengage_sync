@@ -128,15 +128,13 @@ int			max_stack_depth = 100;
 /* wait N seconds to allow attach from a debugger */
 int			PostAuthDelay = 0;
 
-<<<<<<< HEAD
 /* Time between checks that the client is still connected. */
 int         client_connection_check_interval = 0;
-=======
+
 /* ----------------
  *		private typedefs etc
  * ----------------
  */
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 /* type of argument for bind_param_error_callback */
 typedef struct BindParamCbData
@@ -2681,11 +2679,7 @@ exec_bind_message(StringInfo input_message)
 	 * will be generated in MessageContext.  The plan refcount will be
 	 * assigned to the Portal, so it will be released at portal destruction.
 	 */
-<<<<<<< HEAD
-	cplan = GetCachedPlan(psrc, params, false, NULL, NULL);
-=======
-	cplan = GetCachedPlan(psrc, params, NULL, NULL);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+	cplan = GetCachedPlan(psrc, params, NULL, NULL, NULL);
 
 	/*
 	 * Now we can define the portal.

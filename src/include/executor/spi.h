@@ -112,31 +112,17 @@ extern PGDLLIMPORT int SPI_result;
 extern int	SPI_connect(void);
 extern int	SPI_connect_ext(int options);
 extern int	SPI_finish(void);
-<<<<<<< HEAD
 extern int	SPI_execute(const char *src, bool read_only, int64 tcount);
-extern int	SPI_execute_plan(SPIPlanPtr plan, Datum *Values, const char *Nulls,
-							 bool read_only, int64 tcount);
-extern int	SPI_execute_plan_with_paramlist(SPIPlanPtr plan,
-											ParamListInfo params,
-											bool read_only, int64 tcount);
-extern int	SPI_execute_plan_with_receiver(SPIPlanPtr plan,
-										   ParamListInfo params,
-										   bool read_only, int64 tcount,
-										   DestReceiver *dest);
-extern int	SPI_exec(const char *src, int64 tcount);
-=======
-extern int	SPI_execute(const char *src, bool read_only, long tcount);
 extern int	SPI_execute_extended(const char *src,
 								 const SPIExecuteOptions *options);
 extern int	SPI_execute_plan(SPIPlanPtr plan, Datum *Values, const char *Nulls,
-							 bool read_only, long tcount);
+							 bool read_only, int64 tcount);
 extern int	SPI_execute_plan_extended(SPIPlanPtr plan,
 									  const SPIExecuteOptions *options);
 extern int	SPI_execute_plan_with_paramlist(SPIPlanPtr plan,
 											ParamListInfo params,
-											bool read_only, long tcount);
-extern int	SPI_exec(const char *src, long tcount);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+											bool read_only, int64 tcount);
+extern int	SPI_exec(const char *src, int64 tcount);
 extern int	SPI_execp(SPIPlanPtr plan, Datum *Values, const char *Nulls,
 					  int64 tcount);
 extern int	SPI_execute_snapshot(SPIPlanPtr plan,
@@ -147,15 +133,7 @@ extern int	SPI_execute_snapshot(SPIPlanPtr plan,
 extern int	SPI_execute_with_args(const char *src,
 								  int nargs, Oid *argtypes,
 								  Datum *Values, const char *Nulls,
-<<<<<<< HEAD
 								  bool read_only, int64 tcount);
-extern int	SPI_execute_with_receiver(const char *src,
-									  ParamListInfo params,
-									  bool read_only, int64 tcount,
-									  DestReceiver *dest);
-=======
-								  bool read_only, long tcount);
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 extern SPIPlanPtr SPI_prepare(const char *src, int nargs, Oid *argtypes);
 extern SPIPlanPtr SPI_prepare_cursor(const char *src, int nargs, Oid *argtypes,
 									 int cursorOptions);
