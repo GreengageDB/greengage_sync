@@ -1138,9 +1138,8 @@ aoco_tuple_satisfies_snapshot(Relation rel, TupleTableSlot *slot,
 }
 
 static TransactionId
-aoco_compute_xid_horizon_for_tuples(Relation rel,
-                                          ItemPointerData *tids,
-                                          int nitems)
+aoco_index_delete_tuples(Relation rel,
+						 TM_IndexDeleteOp *delstate)
 {
 	// GPDB_12_MERGE_FIXME: vacuum related call back.
 	elog(ERROR, "not implemented yet");
@@ -2157,7 +2156,7 @@ static const TableAmRoutine ao_column_methods = {
 	.tuple_get_latest_tid = aoco_get_latest_tid,
 	.tuple_tid_valid = aoco_tuple_tid_valid,
 	.tuple_satisfies_snapshot = aoco_tuple_satisfies_snapshot,
-	.compute_xid_horizon_for_tuples = aoco_compute_xid_horizon_for_tuples,
+	.index_delete_tuples = aoco_index_delete_tuples,
 
 	.relation_set_new_filenode = aoco_relation_set_new_filenode,
 	.relation_nontransactional_truncate = aoco_relation_nontransactional_truncate,
