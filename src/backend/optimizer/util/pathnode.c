@@ -1902,7 +1902,8 @@ set_append_path_locus(PlannerInfo *root, Path *pathnode, RelOptInfo *rel,
 				else
 					numsegments = subpath->locus.numsegments;
 
-				restrict_info = make_restrictinfo((Expr *) makeSegmentFilterExpr(
+				restrict_info = make_restrictinfo(root,
+												  (Expr *) makeSegmentFilterExpr(
 													  gp_session_id % numsegments),
 												  true,		/* is_pushed_down */
 												  false,	/* outerjoin_delayed */
