@@ -97,13 +97,14 @@ static void ComputeIndexAttrs(IndexInfo *indexInfo,
 				  bool amcanorder,
 				  bool isconstraint);
 static char *ChooseIndexNameAddition(List *colnames);
-static void ReindexIndex(RangeVar *indexRelation, ReindexParams *params,
+static void ReindexIndex(ReindexStmt *stmt, ReindexParams *params,
 						 bool isTopLevel);
 static void RangeVarCallbackForReindexIndex(const RangeVar *relation,
 											Oid relId, Oid oldRelId, void *arg);
-static Oid	ReindexTable(RangeVar *relation, ReindexParams *params,
+static Oid	ReindexTable(ReindexStmt *stmt, ReindexParams *params,
 						 bool isTopLevel);
-static void ReindexMultipleTables(const char *objectName, ReindexParams *params);
+static void ReindexMultipleTables(ReindexStmt *parent_stmt,
+								  ReindexParams *params);
 static void reindex_error_callback(void *args);
 static void ReindexPartitions(Oid relid, ReindexParams *params,
 							  bool isTopLevel,
@@ -2866,10 +2867,10 @@ ExecReindex(ParseState *pstate, ReindexStmt *stmt, bool isTopLevel)
 	switch (stmt->kind)
 	{
 		case REINDEX_OBJECT_INDEX:
-			ReindexIndex(stmt->relation, &params, isTopLevel);
+			ReindexIndex(stmt, &params, isTopLevel);
 			break;
 		case REINDEX_OBJECT_TABLE:
-			ReindexTable(stmt->relation, &params, isTopLevel);
+			ReindexTable(stmt, &params, isTopLevel);
 			break;
 		case REINDEX_OBJECT_SCHEMA:
 		case REINDEX_OBJECT_SYSTEM:
@@ -3079,7 +3080,7 @@ ReindexTable(ReindexStmt *stmt, ReindexParams *params, bool isTopLevel)
 		reindex_relation(stmt->relid,
 						 REINDEX_REL_PROCESS_TOAST |
 						 REINDEX_REL_CHECK_CONSTRAINTS,
-						 params->options);
+						 params);
 		return stmt->relid;
 	}
 
