@@ -1003,7 +1003,6 @@ BeginCopyTo(ParseState *pstate,
 
 		if (cstate->opts.on_segment)
 			MangleCopyFileName(&cstate->filename, NULL);
-		filename = cstate->filename;
 
 		if (is_program)
 		{
@@ -1028,7 +1027,7 @@ BeginCopyTo(ParseState *pstate,
 			 * Prevent write to relative path ... too easy to shoot oneself in
 			 * the foot by overwriting a database file ...
 			 */
-			if (!is_absolute_path(filename))
+			if (!is_absolute_path(cstate->filename))
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_NAME),
 						 errmsg("relative path not allowed for COPY to file")));
@@ -1069,7 +1068,7 @@ BeginCopyTo(ParseState *pstate,
 			if (S_ISDIR(st.st_mode))
 				ereport(ERROR,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-						 errmsg("\"%s\" is a directory", filename)));
+						 errmsg("\"%s\" is a directory", cstate->filename)));
 		}
 	}
 

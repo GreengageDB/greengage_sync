@@ -1894,10 +1894,9 @@ BeginCopyFrom(ParseState *pstate,
 		else
 		{
 			struct stat st;
-			char	   *filename = cstate->filename;
 
 			progress_vals[1] = PROGRESS_COPY_TYPE_FILE;
-			cstate->copy_file = AllocateFile(filename, PG_BINARY_R);
+			cstate->copy_file = AllocateFile(cstate->filename, PG_BINARY_R);
 			if (cstate->copy_file == NULL)
 			{
 				/* copy errno because ereport subfunctions might change it */
@@ -1924,7 +1923,7 @@ BeginCopyFrom(ParseState *pstate,
 			if (S_ISDIR(st.st_mode))
 				ereport(ERROR,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-						 errmsg("\"%s\" is a directory", filename)));
+						 errmsg("\"%s\" is a directory", cstate->filename)));
 
 			progress_vals[2] = st.st_size;
 		}
