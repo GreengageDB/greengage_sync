@@ -231,7 +231,7 @@ make_partition_pruneinfo(PlannerInfo *root, RelOptInfo *parentrel,
 						 List *prunequal)
 {
 	return make_partition_pruneinfo_ext(root, parentrel,
-										subpaths, NIL,
+										subpaths,
 										prunequal, NULL);
 }
 
@@ -241,7 +241,7 @@ make_partition_pruneinfo(PlannerInfo *root, RelOptInfo *parentrel,
  */
 PartitionPruneInfo *
 make_partition_pruneinfo_ext(PlannerInfo *root, RelOptInfo *parentrel,
-							 List *subpaths, List *partitioned_rels,
+							 List *subpaths,
 							 List *prunequal, Relids available_relids)
 {
 	PartitionPruneInfo *pruneinfo;
