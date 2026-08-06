@@ -1449,7 +1449,7 @@ cost_tidrangescan(Path *path, PlannerInfo *root,
 
 	/* Count how many tuples and pages we expect to scan */
 	selectivity = clauselist_selectivity(root, tidrangequals, baserel->relid,
-										 JOIN_INNER, NULL);
+										 JOIN_INNER, NULL, false);
 	pages = ceil(selectivity * baserel->pages);
 
 	if (pages <= 0.0)
