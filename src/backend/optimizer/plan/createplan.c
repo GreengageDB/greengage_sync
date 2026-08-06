@@ -1395,8 +1395,7 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 		if (!best_path->path.param_info)
 		{
 			plan->join_prune_paramids = make_partition_join_pruneinfos(root, rel,
-																	   best_path->subpaths,
-																	   best_path->partitioned_rels);
+																	   best_path->subpaths);
 		}
 	}
 
@@ -1571,8 +1570,7 @@ create_merge_append_plan(PlannerInfo *root, MergeAppendPath *best_path,
 		if (!best_path->path.param_info)
 		{
 			node->join_prune_paramids = make_partition_join_pruneinfos(root, rel,
-																	   best_path->subpaths,
-																	   best_path->partitioned_rels);
+																	   best_path->subpaths);
 		}
 	}
 
