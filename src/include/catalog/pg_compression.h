@@ -36,7 +36,7 @@ CATALOG(pg_compression,7056,CompressionRelationId)
 	regproc		compcompressor BKI_LOOKUP(pg_proc);
 	regproc		compdecompressor BKI_LOOKUP(pg_proc);
 	regproc		compvalidator BKI_LOOKUP(pg_proc);
-	Oid			compowner BKI_DEFAULT(PGUID);
+	Oid			compowner BKI_DEFAULT(POSTGRES) BKI_LOOKUP(pg_authid);
 } FormData_pg_compression;
 
 /* GPDB added foreign key definitions for gpcheckcat. */
