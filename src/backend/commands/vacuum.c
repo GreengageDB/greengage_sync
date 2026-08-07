@@ -2832,7 +2832,7 @@ dispatchVacuum(VacuumParams *params, Oid relid, VacuumStatsContext *ctx)
 static List *
 vacuum_params_to_options_list(VacuumParams *params)
 {
-	int			optmask = params->options;
+	bits32 		optmask = params->options;
 	List	   *options = NIL;
 
 	/* VACOPT_VACUUM and ANALYZE are derived from the VacuumStmt */
@@ -2870,6 +2870,14 @@ vacuum_params_to_options_list(VacuumParams *params)
 											   -1));
 		optmask &= ~VACUUM_AO_PHASE_MASK;
 	}
+
+	if (optmask & VACOPT_PROCESS_TOAST)
+	{
+		options = lappend(options, makeDefElem("process_toast",
+											   (Node *) makeInteger(1), -1));
+		optmask &= ~VACOPT_PROCESS_TOAST;
+	}
+
 	if (optmask != 0)
 		elog(ERROR, "unrecognized vacuum option %x", optmask);
 
