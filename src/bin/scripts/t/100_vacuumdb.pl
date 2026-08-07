@@ -60,13 +60,6 @@ $node->issues_sql_like(
 	qr/statement: VACUUM \(TRUNCATE FALSE\).*;/,
 	'vacuumdb --no-truncate');
 $node->command_fails(
-<<<<<<< HEAD
-    [ 'vacuumdb', '--analyze-only', '--no-truncate', 'postgres' ],
-    '--analyze-only and --no-truncate specified together');
-# GPDB: VACUUM (PARALLEL ...) doesn't work on GPDB, skip.
-SKIP: {
-	skip "VACUUM (PARALLEL ...) not implemented on GPDB", 4;
-=======
 	[ 'vacuumdb', '--analyze-only', '--no-truncate', 'postgres' ],
 	'--analyze-only and --no-truncate specified together');
 $node->issues_sql_like(
@@ -76,7 +69,9 @@ $node->issues_sql_like(
 $node->command_fails(
 	[ 'vacuumdb', '--analyze-only', '--no-process-toast', 'postgres' ],
 	'--analyze-only and --no-process-toast specified together');
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+# GPDB: VACUUM (PARALLEL ...) doesn't work on GPDB, skip.
+SKIP: {
+	skip "VACUUM (PARALLEL ...) not implemented on GPDB", 4;
 $node->issues_sql_like(
 	[ 'vacuumdb', '-P', 2, 'postgres' ],
 	qr/statement: VACUUM \(PARALLEL 2\).*;/,
