@@ -256,15 +256,15 @@ create trigger check_after_tab_progress_reporting
 	execute function notice_after_tab_progress_reporting();
 -- Generate COPY FROM report with PIPE.
 copy tab_progress_reporting from stdin;
-INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 2, "has_bytes_processed": false}  (seg0 172.21.0.2:8002 pid=252965)
-INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 2, "has_bytes_processed": false}  (seg0 172.21.0.2:8002 pid=252965)
-INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}  (seg1 172.21.0.2:8003 pid=252966)
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 2, "has_bytes_processed": false}
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 2, "has_bytes_processed": false}
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}
 -- Generate COPY FROM report with FILE, with some excluded tuples.
 truncate tab_progress_reporting;
 copy tab_progress_reporting from '@abs_srcdir@/data/emp.data'
 	where (salary < 2000);
-INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}  (seg0 172.21.0.2:8002 pid=252965)
-INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}  (seg1 172.21.0.2:8003 pid=252966)
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}
 drop trigger check_after_tab_progress_reporting on tab_progress_reporting;
 drop function notice_after_tab_progress_reporting();
 drop table tab_progress_reporting;
