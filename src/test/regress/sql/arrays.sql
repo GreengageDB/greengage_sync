@@ -726,7 +726,6 @@ SELECT width_bucket('5'::text, ARRAY[3, 4]::integer[]);
 SELECT width_bucket(5, ARRAY[3, 4, NULL]);
 SELECT width_bucket(5, ARRAY[ARRAY[1, 2], ARRAY[3, 4]]);
 
-<<<<<<< HEAD
 -- Suppress NOTICE messages when users/groups don't exist
 SET client_min_messages TO 'error';
 
@@ -837,7 +836,7 @@ DROP FUNCTION int_agg_state (internal, int4);
 RESET SESSION AUTHORIZATION;
 DROP USER IF EXISTS user_internal_stype;
 -- end_ignore
-=======
+
 -- trim_array
 
 SELECT arr, trim_array(arr, 2)
@@ -850,4 +849,3 @@ FROM
 
 SELECT trim_array(ARRAY[1, 2, 3], -1); -- fail
 SELECT trim_array(ARRAY[1, 2, 3], 10); -- fail
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
