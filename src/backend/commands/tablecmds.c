@@ -17644,6 +17644,7 @@ ATExecExpandTableCTAS(AlterTableCmd *rootCmd, Relation rel, AlterTableCmd *cmd)
 	RangeVar			*tmprv;
 	Oid					tmprelid;
 	Oid					relid = RelationGetRelid(rel);
+	ReindexParams		reindex_params = {0};
 
 	/*--
 	 * a) Ensure that the proposed policy is sensible
@@ -17778,11 +17779,7 @@ ATExecExpandTableCTAS(AlterTableCmd *rootCmd, Relation rel, AlterTableCmd *cmd)
 	CommandCounterIncrement();
 
 	/* now, reindex */
-	{
-		ReindexParams reindex_params = {0};
-
-		reindex_relation(relid, 0, &reindex_params);
-	}
+	reindex_relation(relid, 0, &reindex_params);
 
 	/* Step (h) Drop the table */
 	{
@@ -17822,6 +17819,7 @@ ATExecSetDistributedBy(Relation rel, Node *node, AlterTableCmd *cmd)
 	bool 				save_optimizer_replicated_table_insert;
 	Oid					relationOid = InvalidOid;
 	AutoStatsCmdType 	cmdType = AUTOSTATS_CMDTYPE_SENTINEL;
+	ReindexParams		reindex_params = {0};
 
 	/* Can't ALTER TABLE SET system catalogs */
 	if (IsSystemRelation(rel))
@@ -18336,11 +18334,7 @@ ATExecSetDistributedBy(Relation rel, Node *node, AlterTableCmd *cmd)
 		CommandCounterIncrement();
 
 		/* now, reindex */
-		{
-			ReindexParams reindex_params = {0};
-
-			reindex_relation(tarrelid, 0, &reindex_params);
-		}
+		reindex_relation(tarrelid, 0, &reindex_params);
 	}
 
 	/* Step (g) */
