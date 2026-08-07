@@ -10875,12 +10875,9 @@ ReindexStmt:
 					n->relation = $4;
 					n->name = NULL;
 					n->params = NIL;
-
 					if ($3)
-						ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								 errmsg("REINDEX CONCURRENTLY is not supported")));
-
+						n->params = lappend(n->params,
+								makeDefElem("concurrently", NULL, @3));
 					$$ = (Node *)n;
 				}
 			| REINDEX reindex_target_multitable opt_concurrently name
@@ -10890,12 +10887,9 @@ ReindexStmt:
 					n->name = $4;
 					n->relation = NULL;
 					n->params = NIL;
-
 					if ($3)
-						ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								 errmsg("REINDEX CONCURRENTLY is not supported")));
-
+						n->params = lappend(n->params,
+								makeDefElem("concurrently", NULL, @3));
 					$$ = (Node *)n;
 				}
 			| REINDEX '(' utility_option_list ')' reindex_target_type opt_concurrently qualified_name
@@ -10905,12 +10899,9 @@ ReindexStmt:
 					n->relation = $7;
 					n->name = NULL;
 					n->params = $3;
-
 					if ($6)
-						ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								 errmsg("REINDEX CONCURRENTLY is not supported")));
-
+						n->params = lappend(n->params,
+								makeDefElem("concurrently", NULL, @6));
 					$$ = (Node *)n;
 				}
 			| REINDEX '(' utility_option_list ')' reindex_target_multitable opt_concurrently name
@@ -10920,12 +10911,9 @@ ReindexStmt:
 					n->name = $7;
 					n->relation = NULL;
 					n->params = $3;
-
 					if ($6)
-						ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								 errmsg("REINDEX CONCURRENTLY is not supported")));
-
+						n->params = lappend(n->params,
+								makeDefElem("concurrently", NULL, @6));
 					$$ = (Node *)n;
 				}
 		;

@@ -2833,6 +2833,11 @@ ExecReindex(ParseState *pstate, ReindexStmt *stmt, bool isTopLevel)
 	}
 
 	if (concurrently)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("REINDEX CONCURRENTLY is not supported")));
+
+	if (concurrently)
 		PreventInTransactionBlock(isTopLevel,
 								  "REINDEX CONCURRENTLY");
 

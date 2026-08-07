@@ -30,26 +30,26 @@ ALTER TABLESPACE regress_tblspace RESET (random_page_cost, effective_io_concurre
 REINDEX (TABLESPACE regress_tblspace) TABLE pg_am;
 ERROR:  cannot move system relation "pg_am_name_index"
 REINDEX (TABLESPACE regress_tblspace) TABLE CONCURRENTLY pg_am;
-ERROR:  cannot reindex system catalogs concurrently
+ERROR:  REINDEX CONCURRENTLY is not supported
 -- shared catalog, fail
 REINDEX (TABLESPACE regress_tblspace) TABLE pg_authid;
 ERROR:  cannot move system relation "pg_authid_rolname_index"
 REINDEX (TABLESPACE regress_tblspace) TABLE CONCURRENTLY pg_authid;
-ERROR:  cannot reindex system catalogs concurrently
+ERROR:  REINDEX CONCURRENTLY is not supported
 -- toast relations, fail
 REINDEX (TABLESPACE regress_tblspace) INDEX pg_toast.pg_toast_1260_index;
 ERROR:  cannot move system relation "pg_toast_1260_index"
 REINDEX (TABLESPACE regress_tblspace) INDEX CONCURRENTLY pg_toast.pg_toast_1260_index;
-ERROR:  cannot reindex system catalogs concurrently
+ERROR:  REINDEX CONCURRENTLY is not supported
 REINDEX (TABLESPACE regress_tblspace) TABLE pg_toast.pg_toast_1260;
 ERROR:  cannot move system relation "pg_toast_1260_index"
 REINDEX (TABLESPACE regress_tblspace) TABLE CONCURRENTLY pg_toast.pg_toast_1260;
-ERROR:  cannot reindex system catalogs concurrently
+ERROR:  REINDEX CONCURRENTLY is not supported
 -- system catalog, fail
 REINDEX (TABLESPACE pg_global) TABLE pg_authid;
 ERROR:  cannot move system relation "pg_authid_rolname_index"
 REINDEX (TABLESPACE pg_global) TABLE CONCURRENTLY pg_authid;
-ERROR:  cannot reindex system catalogs concurrently
+ERROR:  REINDEX CONCURRENTLY is not supported
 -- table with toast relation
 CREATE TABLE regress_tblspace_test_tbl (num1 bigint, num2 double precision, t text);
 INSERT INTO regress_tblspace_test_tbl (num1, num2, t)
@@ -60,7 +60,7 @@ CREATE INDEX regress_tblspace_test_tbl_idx ON regress_tblspace_test_tbl (num1);
 REINDEX (TABLESPACE pg_global) INDEX regress_tblspace_test_tbl_idx;
 ERROR:  only shared relations can be placed in pg_global tablespace
 REINDEX (TABLESPACE pg_global) INDEX CONCURRENTLY regress_tblspace_test_tbl_idx;
-ERROR:  cannot move non-shared relation to tablespace "pg_global"
+ERROR:  REINDEX CONCURRENTLY is not supported
 -- check transactional behavior of REINDEX (TABLESPACE)
 BEGIN;
 REINDEX (TABLESPACE regress_tblspace) INDEX regress_tblspace_test_tbl_idx;
@@ -114,13 +114,13 @@ SELECT c.relname FROM pg_class c, pg_tablespace s
 (0 rows)
 
 REINDEX (TABLESPACE regress_tblspace, CONCURRENTLY) TABLE regress_tblspace_test_tbl;
+ERROR:  REINDEX CONCURRENTLY is not supported
 SELECT c.relname FROM pg_class c, pg_tablespace s
   WHERE c.reltablespace = s.oid AND s.spcname = 'regress_tblspace'
   ORDER BY c.relname;
-            relname            
--------------------------------
- regress_tblspace_test_tbl_idx
-(1 row)
+ relname 
+---------
+(0 rows)
 
 SELECT relfilenode = :main_filenode AS main_same FROM pg_class
   WHERE relname = 'regress_tblspace_test_tbl_idx';
@@ -184,6 +184,7 @@ CREATE TEMP TABLE reindex_temp_before AS
   FROM pg_class
     WHERE relname ~ 'tbspace_reindex_part_index';
 REINDEX (TABLESPACE regress_tblspace, CONCURRENTLY) TABLE tbspace_reindex_part;
+ERROR:  REINDEX CONCURRENTLY is not supported
 -- REINDEX CONCURRENTLY changes the OID of the old relation, hence a check
 -- based on the relation name below.
 SELECT b.relname,
@@ -197,8 +198,8 @@ SELECT b.relname,
 --------------------------------+--------------------------+----------------------------
  tbspace_reindex_part_index     | relfilenode is unchanged | reltablespace is unchanged
  tbspace_reindex_part_index_0   | relfilenode is unchanged | reltablespace is unchanged
- tbspace_reindex_part_index_0_1 | relfilenode has changed  | reltablespace has changed
- tbspace_reindex_part_index_0_2 | relfilenode has changed  | reltablespace has changed
+ tbspace_reindex_part_index_0_1 | relfilenode is unchanged | reltablespace is unchanged
+ tbspace_reindex_part_index_0_2 | relfilenode is unchanged | reltablespace is unchanged
  tbspace_reindex_part_index_10  | relfilenode is unchanged | reltablespace is unchanged
 (5 rows)
 
@@ -934,7 +935,7 @@ ALTER TABLE testschema.tablespace_acl ALTER c TYPE bigint;
 REINDEX (TABLESPACE regress_tblspace) TABLE tablespace_table; -- fail
 ERROR:  permission denied for tablespace regress_tblspace
 REINDEX (TABLESPACE regress_tblspace, CONCURRENTLY) TABLE tablespace_table; -- fail
-ERROR:  permission denied for tablespace regress_tblspace
+ERROR:  REINDEX CONCURRENTLY is not supported
 RESET ROLE;
 ALTER TABLESPACE regress_tblspace RENAME TO regress_tblspace_renamed;
 -- Test that default_tablespace GUC is honored even after gang reset.
