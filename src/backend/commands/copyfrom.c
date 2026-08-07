@@ -2340,6 +2340,25 @@ InitCopyFromDispatchSplit(CopyFromState cstate, GpDistributionData *distData,
 				needed_cols = bms_add_member(needed_cols, distData->policy->attrs[i]);
 		}
 
+		/*
+		 * We also need every column referenced by the COPY WHERE clause,
+		 * since it's evaluated against the row in the QD before the row
+		 * is dispatched to the QE. Otherwise columns past the last one
+		 * needed for distribution would still be unparsed (NULL) at that
+		 * point, and the WHERE clause would spuriously exclude every row.
+		 */
+		if (cstate->whereClause)
+		{
+			Bitmapset  *where_cols = NULL;
+			int			attnum;
+
+			pull_varattnos(cstate->whereClause, 1, &where_cols);
+			attnum = -1;
+			while ((attnum = bms_next_member(where_cols, attnum)) >= 0)
+				needed_cols = bms_add_member(needed_cols,
+											 attnum + FirstLowInvalidHeapAttributeNumber);
+		}
+
 		/* Get the max fieldno that contains one of the needed attributes. */
 		fieldno = 0;
 		foreach(lc, cstate->attnumlist)
