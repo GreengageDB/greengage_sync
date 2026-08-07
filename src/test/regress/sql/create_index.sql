@@ -626,12 +626,7 @@ DROP TABLE syscol_table;
 --
 -- Tests for IS NULL/IS NOT NULL with b-tree indexes
 --
-
-<<<<<<< HEAD
 CREATE TABLE onek_with_null AS SELECT unique1, unique2 FROM onek DISTRIBUTED BY (unique1);
-=======
-CREATE TABLE onek_with_null AS SELECT unique1, unique2 FROM onek;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 INSERT INTO onek_with_null (unique1,unique2) VALUES (NULL, -1), (NULL, NULL);
 CREATE UNIQUE INDEX onek_nulltest ON onek_with_null (unique2,unique1);
 
@@ -1122,7 +1117,7 @@ CREATE UNIQUE INDEX concur_exprs_index_pred ON concur_exprs_tab (c1)
 CREATE UNIQUE INDEX concur_exprs_index_pred_2
   ON concur_exprs_tab (c1, (1 / c1))
   WHERE ('-H') >= (c2::TEXT) COLLATE "C";
-ALTER INDEX concur_exprs_index_expr ALTER COLUMN 1 SET STATISTICS 100;
+ALTER INDEX concur_exprs_index_expr ALTER COLUMN 2 SET STATISTICS 100;
 ANALYZE concur_exprs_tab;
 SELECT starelid::regclass, count(*) FROM pg_statistic WHERE starelid IN (
   'concur_exprs_index_expr'::regclass,
