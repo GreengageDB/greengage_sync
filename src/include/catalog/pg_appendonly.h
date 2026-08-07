@@ -57,7 +57,7 @@ FOREIGN_KEY(relid REFERENCES pg_class(oid));
 */
 typedef FormData_pg_appendonly *Form_pg_appendonly;
 
-DECLARE_UNIQUE_INDEX(pg_appendonly_relid_index, 7141, on pg_appendonly using btree(relid oid_ops));
+DECLARE_UNIQUE_INDEX_PKEY(pg_appendonly_relid_index, 7141, on pg_appendonly using btree(relid oid_ops));
 #define AppendOnlyRelidIndexId  7141
 
 /*
