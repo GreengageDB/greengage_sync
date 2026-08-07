@@ -287,7 +287,7 @@ $$ language plpgsql;
 
 create trigger check_after_tab_progress_reporting
 	after insert on tab_progress_reporting
-	for each statement
+	for each row
 	execute function notice_after_tab_progress_reporting();
 
 -- Generate COPY FROM report with PIPE.
