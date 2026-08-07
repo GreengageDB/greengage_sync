@@ -2863,6 +2863,22 @@ vacuum_params_to_options_list(VacuumParams *params)
 		optmask &= ~VACOPT_DISABLE_PAGE_SKIPPING;
 	}
 
+	/*
+	 * PROCESS_TOAST is on unless the user turned it off, so it is the absence
+	 * of the flag that has to be dispatched: the QEs would otherwise apply
+	 * their own default and process the TOAST table anyway.
+	 */
+	if (optmask & VACOPT_PROCESS_TOAST)
+		optmask &= ~VACOPT_PROCESS_TOAST;
+	else
+		options = lappend(options, makeDefElem("process_toast", (Node *) makeInteger(0), -1));
+
+	if (optmask & VACOPT_FULLSCAN)
+	{
+		options = lappend(options, makeDefElem("fullscan", (Node *) makeInteger(1), -1));
+		optmask &= ~VACOPT_FULLSCAN;
+	}
+
 	if (optmask & VACUUM_AO_PHASE_MASK)
 	{
 		options = lappend(options, makeDefElem("ao_phase",
