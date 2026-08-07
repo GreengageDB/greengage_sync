@@ -713,6 +713,11 @@ extern bool PQsendQueryStart(PGconn *conn, bool newQuery);
 extern void pqCommandQueueAdvance(PGconn *conn);
 extern int	PQsendQueryContinue(PGconn *conn, const char *query);
 
+/* Queue manipulation */
+extern PGcmdQueueEntry *pqAllocCmdQueueEntry(PGconn *conn);
+extern void pqAppendCmdQueueEntry(PGconn *conn, PGcmdQueueEntry *entry);
+extern void pqRecycleCmdQueueEntry(PGconn *conn, PGcmdQueueEntry *entry);
+
 /* === in fe-protocol3.c === */
 
 extern char *pqBuildStartupPacket3(PGconn *conn, int *packetlen,
