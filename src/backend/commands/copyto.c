@@ -1399,15 +1399,10 @@ CopyToQueryOnSegment(CopyToState cstate)
 static uint64
 CopyTo(CopyToState cstate)
 {
-	bool		pipe = (cstate->filename == NULL);
-	bool		fe_copy = (pipe && whereToSendOutput == DestRemote);
 	TupleDesc	tupDesc;
 	int			num_phys_attrs;
 	ListCell   *cur;
 	uint64		processed = 0;
-
-	if (fe_copy)
-		SendCopyBegin(cstate);
 
 	if (cstate->rel)
 		tupDesc = RelationGetDescr(cstate->rel);
@@ -1564,9 +1559,6 @@ CopyTo(CopyToState cstate)
 		SendNumRows(0, processed);
 
 	MemoryContextDelete(cstate->rowcontext);
-
-	if (fe_copy)
-		SendCopyEnd(cstate);
 
 	return processed;
 }
