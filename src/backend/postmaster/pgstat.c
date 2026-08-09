@@ -180,6 +180,7 @@ static const char *const slru_names[] = {
 	"Serial",
 	"Subtrans",
 	"Xact",
+	"DistributedLogCtl",		/* GG-specific */
 	"other"						/* has to be last */
 };
 
