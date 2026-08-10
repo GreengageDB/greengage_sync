@@ -1616,7 +1616,9 @@ insert into parted_irreg_ancestor values ('aasvogel', 3);
 drop table parted_irreg_ancestor;
 
 -- Before triggers and partitions
-create table parted (a int, b int, c text) partition by list (a);
+-- (distributed randomly: the UPDATEs below change a, and Greengage rejects
+-- updating the distribution key on a table that has update triggers)
+create table parted (a int, b int, c text) partition by list (a) distributed randomly;
 create table parted_1 partition of parted for values in (1)
   partition by list (b);
 create table parted_1_1 partition of parted_1 for values in (1);
