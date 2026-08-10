@@ -349,10 +349,11 @@ vacuum(List *relations, VacuumParams *params,
 	Assert(params != NULL);
 
 	/*
-	 * VACUUM does not support ROOTPARTITION option. Normally it's not possible
-	 * that VACOPT_VACUUM and VACOPT_ROOTONLY set at same time.
+	 * VACUUM does not support ROOTPARTITION option.
 	 */
-	Assert(!((params->options & VACOPT_VACUUM) && (params->options & VACOPT_ROOTONLY)));
+	if ((params->options & VACOPT_VACUUM) && (params->options & VACOPT_ROOTONLY))
+		ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("ANALYZE option ROOTPARTITOIN cannot be used with VACUUM")));
 
 	stmttype = (params->options & VACOPT_VACUUM) ? "VACUUM" : "ANALYZE";
 
@@ -2836,7 +2837,7 @@ vacuum_params_to_options_list(VacuumParams *params)
 	List	   *options = NIL;
 
 	/* VACOPT_VACUUM and ANALYZE are derived from the VacuumStmt */
-	optmask &= ~(VACOPT_VACUUM | VACOPT_ANALYZE);
+	optmask &= ~(VACOPT_VACUUM | VACOPT_ANALYZE | VACOPT_FULLSCAN);
 	if (optmask & VACOPT_VERBOSE)
 	{
 		options = lappend(options, makeDefElem("verbose", (Node *) makeInteger(1), -1));
