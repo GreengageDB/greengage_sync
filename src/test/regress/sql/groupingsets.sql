@@ -682,15 +682,10 @@ group by rollup(a, b), rollup(a, c)
 order by a, b, c;
 
 -- "group by distinct" behavior...
--- GPDB: ORCA doesn't dedupe grouping sets for GROUP BY DISTINCT, so it
--- would return the same (non-deduplicated) rows as the plain GROUP BY
--- case above. Disable ORCA for this query.
-SET optimizer TO off;
 select a, b, c
 from (values (1, 2, 3), (4, null, 6), (7, 8, 9)) as t (a, b, c)
 group by distinct rollup(a, b), rollup(a, c)
 order by a, b, c;
-RESET optimizer;
 
 -- ...which is not the same as "select distinct"
 select distinct a, b, c
