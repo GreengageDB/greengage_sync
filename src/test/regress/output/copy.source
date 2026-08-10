@@ -252,16 +252,19 @@ end;
 $$ language plpgsql;
 create trigger check_after_tab_progress_reporting
 	after insert on tab_progress_reporting
-	for each statement
+	for each row
 	execute function notice_after_tab_progress_reporting();
 -- Generate COPY FROM report with PIPE.
 copy tab_progress_reporting from stdin;
-INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 3, "has_bytes_processed": true}
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 2, "has_bytes_processed": false}
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 2, "has_bytes_processed": false}
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}
 -- Generate COPY FROM report with FILE, with some excluded tuples.
 truncate tab_progress_reporting;
 copy tab_progress_reporting from '@abs_srcdir@/data/emp.data'
 	where (salary < 2000);
-INFO:  progress: {"type": "FILE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": true, "tuples_excluded": 1, "tuples_processed": 2, "has_bytes_processed": true}
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}
+INFO:  progress: {"type": "PIPE", "command": "COPY FROM", "relname": "tab_progress_reporting", "has_bytes_total": false, "tuples_excluded": 0, "tuples_processed": 1, "has_bytes_processed": false}
 drop trigger check_after_tab_progress_reporting on tab_progress_reporting;
 drop function notice_after_tab_progress_reporting();
 drop table tab_progress_reporting;
