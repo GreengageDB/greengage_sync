@@ -53,7 +53,6 @@ SUBDIRS = \
 		unaccent	\
 		vacuumlo
 
-<<<<<<< HEAD
 # Greenplum-specific additions (to ease merge pain).
 SUBDIRS += \
 		formatter \
@@ -61,10 +60,7 @@ SUBDIRS += \
 		extprotocol \
 		indexscan
 
-ifeq ($(with_openssl),yes)
-=======
 ifeq ($(with_ssl),openssl)
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 SUBDIRS += sslinfo
 else
 ALWAYS_SUBDIRS += sslinfo
