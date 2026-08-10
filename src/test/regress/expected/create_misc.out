@@ -5,12 +5,8 @@
 --	(any resemblance to real life is purely coincidental)
 --
 INSERT INTO tenk2 SELECT * FROM tenk1;
-<<<<<<< HEAD
 ANALYZE tenk2;
-SELECT * INTO TABLE onek2 FROM onek;
-=======
-CREATE TABLE onek2 AS SELECT * FROM onek;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+CREATE TABLE onek2 AS SELECT * FROM onek DISTRIBUTED BY (unique1);
 INSERT INTO fast_emp4000 SELECT * FROM slow_emp4000;
 ANALYZE fast_emp4000;
 SELECT *
