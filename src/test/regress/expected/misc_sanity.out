@@ -133,11 +133,16 @@ FROM pg_class
 WHERE relnamespace = 'pg_catalog'::regnamespace AND relkind = 'r'
       AND pg_class.oid NOT IN (SELECT indrelid FROM pg_index WHERE indisprimary)
 ORDER BY 1;
-   relname   
--------------
+         relname          
+--------------------------
+ gp_configuration_history
+ gp_id
+ gp_version_at_initdb
+ pg_auth_time_constraint
  pg_depend
+ pg_resqueuecapability
  pg_shdepend
-(2 rows)
+(7 rows)
 
 -- system catalog unique indexes not wrapped in a constraint
 -- (There should be none.)
