@@ -6,11 +6,7 @@ use File::Basename qw(basename dirname);
 use File::Path qw(rmtree);
 use PostgresNode;
 use TestLib;
-<<<<<<< HEAD
-use Test::More tests => 109 + 15;
-=======
-use Test::More tests => 110;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
+use Test::More tests => 110 + 15;
 
 program_help_ok('pg_basebackup');
 program_version_ok('pg_basebackup');
@@ -251,14 +247,6 @@ my $real_tempdir = TestLib::perl2host($tempdir);
 $node->safe_psql('postgres',
 	"CREATE TABLESPACE tblspc1 LOCATION '$realTsDir';");
 $node->safe_psql('postgres',
-<<<<<<< HEAD
-	"CREATE TABLE test1 (a int) TABLESPACE tblspc1;");
-$node->command_ok(
-	[ 'pg_basebackup', '-D', "$real_tempdir/tarbackup2", '-Ft', '--target-gp-dbid', '1' ],
-	'tar format with tablespaces');
-ok(-f "$tempdir/tarbackup2/base.tar", 'backup tar was created');
-my @tblspc_tars = glob "$tempdir/tarbackup2/[0-9]*.tar";
-=======
 	    "CREATE TABLE test1 (a int) TABLESPACE tblspc1;"
 	  . "INSERT INTO test1 VALUES (1234);");
 $node->backup('tarbackup2', backup_options => ['-Ft']);
@@ -270,7 +258,6 @@ my $backupdir = $node->backup_dir . '/tarbackup2';
 ok(-f "$backupdir/base.tar",   'backup tar was created');
 ok(-f "$backupdir/pg_wal.tar", 'WAL tar was created');
 my @tblspc_tars = glob "$backupdir/[0-9]*.tar";
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 is(scalar(@tblspc_tars), 1, 'one tablespace tar was created');
 
 # Try to verify the tar-format backup by restoring it.
