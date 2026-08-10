@@ -1740,6 +1740,7 @@ where ss.stringu2 !~* ss.case1;
 rollback;
 
 -- test case to expose miscomputation of required relid set for a PHV
+set enable_hashjoin = off;
 explain (verbose, costs off)
 select i8.*, ss.v, t.unique2
   from int8_tbl i8
@@ -1754,6 +1755,8 @@ select i8.*, ss.v, t.unique2
     left join lateral (select i4.f1 + 1 as v) as ss on true
     left join tenk1 t on t.unique2 = ss.v
 where q2 = 456;
+
+reset enable_hashjoin;
 
 -- bug #8444: we've historically allowed duplicate aliases within aliased JOINs
 
