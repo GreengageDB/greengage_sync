@@ -3,11 +3,7 @@ use warnings;
 
 use PostgresNode;
 use TestLib;
-<<<<<<< HEAD
-use Test::More tests => 42;
-=======
 use Test::More tests => 58;
->>>>>>> e589c4890b05044a04207c2797e7c8af6693ea5f
 
 program_help_ok('reindexdb');
 program_version_ok('reindexdb');
@@ -78,7 +74,7 @@ $node->issues_sql_like(
 # the same with --concurrently
 # GPDB: REINDEX CONCURRENTLY doesn't work on GPDB, skip.
 SKIP: {
-	skip "REINDEX CONCURRENTLY not implemented on GPDB", 9;
+	skip "REINDEX CONCURRENTLY not implemented on GPDB", 13;
 
 $node->issues_sql_like(
 	[ 'reindexdb', '--concurrently', 'postgres' ],
@@ -99,7 +95,6 @@ $node->issues_sql_like(
 	'reindex specific schema concurrently');
 $node->command_fails([ 'reindexdb', '--concurrently', '-s', 'postgres' ],
 	'reindex system tables concurrently');
-} # end SKIP
 $node->issues_sql_like(
 	[ 'reindexdb', '--concurrently', '-v', '-t', 'test1', 'postgres' ],
 	qr/statement: REINDEX \(VERBOSE\) TABLE CONCURRENTLY public\.test1;/,
@@ -111,6 +106,7 @@ $node->issues_sql_like(
 	],
 	qr/statement: REINDEX \(VERBOSE, TABLESPACE $tbspace_name\) TABLE CONCURRENTLY public\.test1;/,
 	'reindex concurrently with verbose output and tablespace');
+} # end SKIP
 
 # REINDEX TABLESPACE on toast indexes and tables fails.  This is not
 # part of the main regression test suite as these have unpredictable
@@ -126,6 +122,9 @@ $node->command_checks_all(
 	[],
 	[qr/cannot move system relation/],
 	'reindex toast table with tablespace');
+# GPDB: REINDEX CONCURRENTLY doesn't work on GPDB, skip.
+SKIP: {
+	skip "REINDEX CONCURRENTLY not implemented on GPDB", 2;
 $node->command_checks_all(
 	[
 		'reindexdb',    '--concurrently', '-t', $toast_table,
@@ -135,6 +134,7 @@ $node->command_checks_all(
 	[],
 	[qr/cannot move system relation/],
 	'reindex toast table concurrently with tablespace');
+} # end SKIP
 $node->command_checks_all(
 	[
 		'reindexdb',   '-i', $toast_index, '--tablespace',
@@ -144,6 +144,9 @@ $node->command_checks_all(
 	[],
 	[qr/cannot move system relation/],
 	'reindex toast index with tablespace');
+# GPDB: REINDEX CONCURRENTLY doesn't work on GPDB, skip.
+SKIP: {
+	skip "REINDEX CONCURRENTLY not implemented on GPDB", 2;
 $node->command_checks_all(
 	[
 		'reindexdb',    '--concurrently', '-i', $toast_index,
@@ -153,6 +156,7 @@ $node->command_checks_all(
 	[],
 	[qr/cannot move system relation/],
 	'reindex toast index concurrently with tablespace');
+} # end SKIP
 
 # connection strings
 $node->command_ok([qw(reindexdb --echo --table=pg_am dbname=template1)],
@@ -199,7 +203,7 @@ $node->command_ok(
 	'parallel reindexdb with empty schema');
 # GPDB: REINDEX CONCURRENTLY doesn't work on GPDB, skip.
 SKIP: {
-	skip "REINDEX CONCURRENTLY not implemented on GPDB", 1;
+	skip "REINDEX CONCURRENTLY not implemented on GPDB", 3;
 $node->command_checks_all(
 	[ 'reindexdb', '-j', '2', '--concurrently', '-d', 'postgres' ],
 	0,
