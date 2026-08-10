@@ -349,10 +349,11 @@ vacuum(List *relations, VacuumParams *params,
 	Assert(params != NULL);
 
 	/*
-	 * VACUUM does not support ROOTPARTITION option. Normally it's not possible
-	 * that VACOPT_VACUUM and VACOPT_ROOTONLY set at same time.
+	 * VACUUM does not support ROOTPARTITION option.
 	 */
-	Assert(!((params->options & VACOPT_VACUUM) && (params->options & VACOPT_ROOTONLY)));
+	if ((params->options & VACOPT_VACUUM) && (params->options & VACOPT_ROOTONLY))
+		ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("ANALYZE option ROOTPARTITOIN cannot be used with VACUUM")));
 
 	stmttype = (params->options & VACOPT_VACUUM) ? "VACUUM" : "ANALYZE";
 
@@ -2832,11 +2833,11 @@ dispatchVacuum(VacuumParams *params, Oid relid, VacuumStatsContext *ctx)
 static List *
 vacuum_params_to_options_list(VacuumParams *params)
 {
-	int			optmask = params->options;
+	bits32 		optmask = params->options;
 	List	   *options = NIL;
 
 	/* VACOPT_VACUUM and ANALYZE are derived from the VacuumStmt */
-	optmask &= ~(VACOPT_VACUUM | VACOPT_ANALYZE);
+	optmask &= ~(VACOPT_VACUUM | VACOPT_ANALYZE | VACOPT_FULLSCAN);
 	if (optmask & VACOPT_VERBOSE)
 	{
 		options = lappend(options, makeDefElem("verbose", (Node *) makeInteger(1), -1));
@@ -2870,6 +2871,14 @@ vacuum_params_to_options_list(VacuumParams *params)
 											   -1));
 		optmask &= ~VACUUM_AO_PHASE_MASK;
 	}
+
+	if (optmask & VACOPT_PROCESS_TOAST)
+	{
+		options = lappend(options, makeDefElem("process_toast",
+											   (Node *) makeInteger(1), -1));
+		optmask &= ~VACOPT_PROCESS_TOAST;
+	}
+
 	if (optmask != 0)
 		elog(ERROR, "unrecognized vacuum option %x", optmask);
 
