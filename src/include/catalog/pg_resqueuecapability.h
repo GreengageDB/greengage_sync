@@ -41,6 +41,10 @@ CATALOG(pg_resqueuecapability,6060,ResQueueCapabilityRelationId) BKI_SHARED_RELA
 FOREIGN_KEY(resqueueid REFERENCES pg_resqueue(oid));
 FOREIGN_KEY(restypid REFERENCES pg_resourcetype(restypid));
 
+/* Also record them for pg_get_catalog_foreign_keys(). */
+DECLARE_FOREIGN_KEY((resqueueid), pg_resqueue, (oid));
+DECLARE_FOREIGN_KEY((restypid), pg_resourcetype, (restypid));
+
 /* ----------------
  *		Form_pg_resqueuecapability corresponds to a pointer to a tuple with
  *		the format of pg_resqueuecapability relation.

@@ -45,6 +45,10 @@ CATALOG(pg_stat_last_shoperation,6056,StatLastShOpRelationId)  BKI_SHARED_RELATI
 FOREIGN_KEY(classid REFERENCES pg_class(oid));
 FOREIGN_KEY(stasysid REFERENCES pg_authid(oid));
 
+/* Also record them for pg_get_catalog_foreign_keys(). */
+DECLARE_FOREIGN_KEY((classid), pg_class, (oid));
+DECLARE_FOREIGN_KEY((stasysid), pg_authid, (oid));
+
 #undef timestamptz
 
 /* ----------------
@@ -58,7 +62,7 @@ typedef FormData_pg_statlastshop *Form_pg_statlastshop;
 DECLARE_INDEX(pg_statlastshop_classid_objid_index, 6057, on pg_stat_last_shoperation using btree(classid oid_ops, objid oid_ops));
 #define StatLastShOpClassidObjidIndexId  6057
 
-DECLARE_UNIQUE_INDEX_PKEY(pg_statlastshop_classid_objid_staactionname_index, 6058, on pg_stat_last_shoperation using btree(classid oid_ops, objid oid_ops, staactionname name_ops));
+DECLARE_UNIQUE_INDEX(pg_statlastshop_classid_objid_staactionname_index, 6058, on pg_stat_last_shoperation using btree(classid oid_ops, objid oid_ops, staactionname name_ops));
 #define StatLastShOpClassidObjidStaactionnameIndexId  6058
 
 #endif   /* PG_STAT_LAST_SHOPERATION_H */

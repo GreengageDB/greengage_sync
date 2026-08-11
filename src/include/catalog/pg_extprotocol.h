@@ -44,6 +44,12 @@ FOREIGN_KEY(ptcreadfn REFERENCES pg_proc(oid));
 FOREIGN_KEY(ptcwritefn REFERENCES pg_proc(oid));
 FOREIGN_KEY(ptcvalidatorfn REFERENCES pg_proc(oid));
 
+/* Also record them for pg_get_catalog_foreign_keys(). */
+DECLARE_FOREIGN_KEY_OPT((ptcreadfn), pg_proc, (oid));
+DECLARE_FOREIGN_KEY_OPT((ptcwritefn), pg_proc, (oid));
+DECLARE_FOREIGN_KEY_OPT((ptcvalidatorfn), pg_proc, (oid));
+DECLARE_FOREIGN_KEY((ptcowner), pg_authid, (oid));
+
 /* ----------------
  *		Form_pg_extprotocol corresponds to a pointer to a tuple with
  *		the format of pg_extprotocol relation.
@@ -53,7 +59,7 @@ typedef FormData_pg_extprotocol *Form_pg_extprotocol;
 
 DECLARE_TOAST(pg_extprotocol, 7173, 7174);
 
-DECLARE_UNIQUE_INDEX_PKEY(pg_extprotocol_oid_index, 7156, on pg_extprotocol using btree(oid oid_ops));
+DECLARE_UNIQUE_INDEX(pg_extprotocol_oid_index, 7156, on pg_extprotocol using btree(oid oid_ops));
 #define ExtprotocolOidIndexId	7156
 DECLARE_UNIQUE_INDEX(pg_extprotocol_ptcname_index, 7177, on pg_extprotocol using btree(ptcname name_ops));
 #define ExtprotocolPtcnameIndexId	7177

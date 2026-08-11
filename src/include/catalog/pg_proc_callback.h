@@ -38,6 +38,10 @@ CATALOG(pg_proc_callback,7176,ProcCallbackRelationId)
 FOREIGN_KEY(profnoid REFERENCES pg_proc(oid));
 FOREIGN_KEY(procallback REFERENCES pg_proc(oid));
 
+/* Also record them for pg_get_catalog_foreign_keys(). */
+DECLARE_FOREIGN_KEY((profnoid), pg_proc, (oid));
+DECLARE_FOREIGN_KEY((procallback), pg_proc, (oid));
+
 /* ----------------
  *		Form_pg_proc_callback corresponds to a pointer to a tuple with
  *		the format of pg_proc_callback relation.
@@ -45,7 +49,7 @@ FOREIGN_KEY(procallback REFERENCES pg_proc(oid));
  */
 typedef FormData_pg_proc_callback *Form_pg_proc_callback;
 
-DECLARE_UNIQUE_INDEX_PKEY(pg_proc_callback_profnoid_promethod_index, 9926, on pg_proc_callback using btree(profnoid oid_ops, promethod char_ops));
+DECLARE_UNIQUE_INDEX(pg_proc_callback_profnoid_promethod_index, 9926, on pg_proc_callback using btree(profnoid oid_ops, promethod char_ops));
 #define ProcCallbackProfnoidPromethodIndexId	9926
 
 /* values for promethod */

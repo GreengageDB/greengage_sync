@@ -41,6 +41,9 @@ CATALOG(gp_distribution_policy,7142,GpPolicyRelationId)
 /* GPDB added foreign key definitions for gpcheckcat. */
 FOREIGN_KEY(localoid REFERENCES pg_class(oid));
 
+/* Also record them for pg_get_catalog_foreign_keys(). */
+DECLARE_FOREIGN_KEY((localoid), pg_class, (oid));
+
 /* ----------------
  *		Form_gp_distribution_policy corresponds to a pointer to a tuple with
  *		the format of gp_distribution_policy relation.
@@ -48,7 +51,7 @@ FOREIGN_KEY(localoid REFERENCES pg_class(oid));
  */
 typedef FormData_gp_distribution_policy *Form_gp_distribution_policy;
 
-DECLARE_UNIQUE_INDEX_PKEY(gp_distribution_policy_localoid_index, 8104, on gp_distribution_policy using btree(localoid oid_ops));
+DECLARE_UNIQUE_INDEX(gp_distribution_policy_localoid_index, 8104, on gp_distribution_policy using btree(localoid oid_ops));
 #define GpPolicyLocalOidIndexId  8104
 
 /*

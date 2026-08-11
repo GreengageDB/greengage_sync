@@ -32,6 +32,9 @@ CATALOG(pg_resgroupcapability,6439,ResGroupCapabilityRelationId) BKI_SHARED_RELA
 /* GPDB added foreign key definitions for gpcheckcat. */
 FOREIGN_KEY(resgroupid REFERENCES pg_resgroup(oid));
 
+/* Also record them for pg_get_catalog_foreign_keys(). */
+DECLARE_FOREIGN_KEY((resgroupid), pg_resgroup, (oid));
+
 /* ----------------
  *	Form_pg_resgroupcapability corresponds to a pointer to a tuple with
  *	the format of pg_resgroupcapability relation.
@@ -39,7 +42,7 @@ FOREIGN_KEY(resgroupid REFERENCES pg_resgroup(oid));
  */
 typedef FormData_pg_resgroupcapability *Form_pg_resgroupcapability;
 
-DECLARE_UNIQUE_INDEX_PKEY(pg_resgroupcapability_resgroupid_reslimittype_index, 6445, on pg_resgroupcapability using btree(resgroupid oid_ops, reslimittype int2_ops));
+DECLARE_UNIQUE_INDEX(pg_resgroupcapability_resgroupid_reslimittype_index, 6445, on pg_resgroupcapability using btree(resgroupid oid_ops, reslimittype int2_ops));
 #define ResGroupCapabilityResgroupidResLimittypeIndexId	6445
 
 DECLARE_INDEX(pg_resgroupcapability_resgroupid_index, 6446, on pg_resgroupcapability using btree(resgroupid oid_ops));
