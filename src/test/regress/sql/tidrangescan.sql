@@ -3,6 +3,18 @@
 SET enable_seqscan TO off;
 CREATE TABLE tidrangescan(id integer, data text);
 
+-- GPDB: we need some preparation, to make the output the same as in upstream.
+-- Firstly, force all the rows to the same segment, so that selecting by ctid
+-- produces the same result as in upstream.
+ALTER TABLE tidrangescan ADD COLUMN distkey int;
+ALTER TABLE tidrangescan SET DISTRIBUTED BY (distkey);
+
+-- Finally, silence NOTICEs that GPDB normally emits if you use ctid in a
+-- query:
+-- NOTICE:  SELECT uses system-defined column "tidscan.ctid" without the necessary companion column "tidscan.gp_segment_id"
+-- HINT:  To uniquely identify a row within a distributed table, use the "gp_segment_id" column together with the "ctid" column.
+set client_min_messages='warning';
+
 -- empty table
 EXPLAIN (COSTS OFF)
 SELECT ctid FROM tidrangescan WHERE ctid < '(1, 0)';
@@ -13,13 +25,14 @@ SELECT ctid FROM tidrangescan WHERE ctid > '(9, 0)';
 SELECT ctid FROM tidrangescan WHERE ctid > '(9, 0)';
 
 -- insert enough tuples to fill at least two pages
-INSERT INTO tidrangescan SELECT i,repeat('x', 100) FROM generate_series(1,200) AS s(i);
+INSERT INTO tidrangescan SELECT i,repeat('x', 100) FROM generate_series(1,2000) AS s(i);
 
 -- remove all tuples after the 10th tuple on each page.  Trying to ensure
 -- we get the same layout with all CPU architectures and smaller than standard
 -- page sizes.
 DELETE FROM tidrangescan
-WHERE substring(ctid::text FROM ',(\d+)\)')::integer > 10 OR substring(ctid::text FROM '\((\d+),')::integer > 2;
+WHERE (substring(ctid::text FROM ',(\d+)\)')::integer > 10 OR substring(ctid::text FROM '\((\d+),')::integer > 2)
+AND gp_segment_id >= 0;
 VACUUM tidrangescan;
 
 -- range scans with upper bound

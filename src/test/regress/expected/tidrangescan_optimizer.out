@@ -17,9 +17,9 @@ SELECT ctid FROM tidrangescan WHERE ctid < '(1, 0)';
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid < '(1,0)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid < '(1,0)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid < '(1, 0)';
@@ -32,9 +32,9 @@ SELECT ctid FROM tidrangescan WHERE ctid > '(9, 0)';
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid > '(9,0)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid > '(9,0)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid > '(9, 0)';
@@ -57,9 +57,9 @@ SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)';
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid < '(1,0)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid < '(1,0)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)';
@@ -82,9 +82,9 @@ SELECT ctid FROM tidrangescan WHERE ctid <= '(1,5)';
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid <= '(1,5)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid <= '(1,5)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid <= '(1,5)';
@@ -112,9 +112,9 @@ SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)';
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid < '(0,0)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid < '(0,0)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)';
@@ -128,9 +128,9 @@ SELECT ctid FROM tidrangescan WHERE ctid > '(2,8)';
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid > '(2,8)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid > '(2,8)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid > '(2,8)';
@@ -145,9 +145,9 @@ SELECT ctid FROM tidrangescan WHERE '(2,8)' < ctid;
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: ('(2,8)'::tid < ctid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid > '(2,8)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE '(2,8)' < ctid;
@@ -162,9 +162,9 @@ SELECT ctid FROM tidrangescan WHERE ctid >= '(2,8)';
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid >= '(2,8)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid >= '(2,8)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid >= '(2,8)';
@@ -177,12 +177,12 @@ SELECT ctid FROM tidrangescan WHERE ctid >= '(2,8)';
 
 EXPLAIN (COSTS OFF)
 SELECT ctid FROM tidrangescan WHERE ctid >= '(100,0)';
-                 QUERY PLAN                 
---------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid >= '(100,0)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid >= '(100,0)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid >= '(100,0)';
@@ -193,12 +193,12 @@ SELECT ctid FROM tidrangescan WHERE ctid >= '(100,0)';
 -- range scans with both bounds
 EXPLAIN (COSTS OFF)
 SELECT ctid FROM tidrangescan WHERE ctid > '(1,4)' AND '(1,7)' >= ctid;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: ((ctid > '(1,4)'::tid) AND ('(1,7)'::tid >= ctid))
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: ((ctid > '(1,4)'::tid) AND (ctid <= '(1,7)'::tid))
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE ctid > '(1,4)' AND '(1,7)' >= ctid;
@@ -211,12 +211,12 @@ SELECT ctid FROM tidrangescan WHERE ctid > '(1,4)' AND '(1,7)' >= ctid;
 
 EXPLAIN (COSTS OFF)
 SELECT ctid FROM tidrangescan WHERE '(1,7)' >= ctid AND ctid > '(1,4)';
-                              QUERY PLAN                              
-----------------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (('(1,7)'::tid >= ctid) AND (ctid > '(1,4)'::tid))
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: ((ctid <= '(1,7)'::tid) AND (ctid > '(1,4)'::tid))
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 SELECT ctid FROM tidrangescan WHERE '(1,7)' >= ctid AND ctid > '(1,4)';
@@ -299,9 +299,9 @@ DECLARE c SCROLL CURSOR FOR SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)';
                 QUERY PLAN                
 ------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid < '(1,0)'::tid)
- Optimizer: Postgres query optimizer
+   ->  Seq Scan on tidrangescan
+         Filter: (ctid < '(1,0)'::tid)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)
 
 BEGIN;
