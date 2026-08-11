@@ -1,60 +1,51 @@
 -- tests for tidrangescans
 SET enable_seqscan TO off;
-CREATE TABLE tidrangescan(id integer, data text, seg_id integer default 0) DISTRIBUTED BY (seg_id);
+CREATE TABLE tidrangescan(id integer, data text);
 -- empty table
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid < '(1, 0)' AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid < '(1,0)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid < '(1, 0)';
+            QUERY PLAN             
+-----------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid < '(1,0)'::tid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid < '(1, 0)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid < '(1, 0)';
  ctid 
 ------
 (0 rows)
 
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid > '(9, 0)' AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid > '(9,0)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid > '(9, 0)';
+            QUERY PLAN             
+-----------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid > '(9,0)'::tid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid > '(9, 0)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid > '(9, 0)';
  ctid 
 ------
 (0 rows)
 
 -- insert enough tuples to fill at least two pages
-INSERT INTO tidrangescan SELECT i,repeat('x', 100) FROM generate_series(1,2000) AS s(i);
+INSERT INTO tidrangescan SELECT i,repeat('x', 100) FROM generate_series(1,200) AS s(i);
 -- remove all tuples after the 10th tuple on each page.  Trying to ensure
 -- we get the same layout with all CPU architectures and smaller than standard
 -- page sizes.
 DELETE FROM tidrangescan
-WHERE (substring(ctid::text FROM ',(\d+)\)')::integer > 10 OR substring(ctid::text FROM '\((\d+),')::integer > 2) AND gp_segment_id >= 0;
+WHERE substring(ctid::text FROM ',(\d+)\)')::integer > 10 OR substring(ctid::text FROM '\((\d+),')::integer > 2;
 VACUUM tidrangescan;
 -- range scans with upper bound
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)' AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid < '(1,0)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)';
+            QUERY PLAN             
+-----------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid < '(1,0)'::tid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)';
   ctid  
 --------
  (0,1)
@@ -70,17 +61,14 @@ SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)' AND gp_segment_id >= 0;
 (10 rows)
 
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid <= '(1,5)' AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid <= '(1,5)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid <= '(1,5)';
+             QUERY PLAN             
+------------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid <= '(1,5)'::tid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid <= '(1,5)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid <= '(1,5)';
   ctid  
 --------
  (0,1)
@@ -101,34 +89,28 @@ SELECT ctid FROM tidrangescan WHERE ctid <= '(1,5)' AND gp_segment_id >= 0;
 (15 rows)
 
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)' AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid < '(0,0)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)';
+            QUERY PLAN             
+-----------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid < '(0,0)'::tid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)';
  ctid 
 ------
 (0 rows)
 
 -- range scans with lower bound
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid > '(2,8)' AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid > '(2,8)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid > '(2,8)';
+            QUERY PLAN             
+-----------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid > '(2,8)'::tid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid > '(2,8)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid > '(2,8)';
   ctid  
 --------
  (2,9)
@@ -136,17 +118,14 @@ SELECT ctid FROM tidrangescan WHERE ctid > '(2,8)' AND gp_segment_id >= 0;
 (2 rows)
 
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE '(2,8)' < ctid AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: ('(2,8)'::tid < ctid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE '(2,8)' < ctid;
+            QUERY PLAN             
+-----------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: ('(2,8)'::tid < ctid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE '(2,8)' < ctid AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE '(2,8)' < ctid;
   ctid  
 --------
  (2,9)
@@ -154,17 +133,14 @@ SELECT ctid FROM tidrangescan WHERE '(2,8)' < ctid AND gp_segment_id >= 0;
 (2 rows)
 
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid >= '(2,8)' AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid >= '(2,8)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid >= '(2,8)';
+             QUERY PLAN             
+------------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid >= '(2,8)'::tid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid >= '(2,8)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid >= '(2,8)';
   ctid  
 --------
  (2,8)
@@ -173,34 +149,28 @@ SELECT ctid FROM tidrangescan WHERE ctid >= '(2,8)' AND gp_segment_id >= 0;
 (3 rows)
 
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid >= '(100,0)' AND gp_segment_id >= 0;
-                 QUERY PLAN                 
---------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid >= '(100,0)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid >= '(100,0)';
+              QUERY PLAN              
+--------------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid >= '(100,0)'::tid)
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid >= '(100,0)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid >= '(100,0)';
  ctid 
 ------
 (0 rows)
 
 -- range scans with both bounds
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE ctid > '(1,4)' AND '(1,7)' >= ctid AND gp_segment_id >= 0;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: ((ctid > '(1,4)'::tid) AND ('(1,7)'::tid >= ctid))
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE ctid > '(1,4)' AND '(1,7)' >= ctid;
+                           QUERY PLAN                           
+----------------------------------------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: ((ctid > '(1,4)'::tid) AND ('(1,7)'::tid >= ctid))
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid > '(1,4)' AND '(1,7)' >= ctid AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid > '(1,4)' AND '(1,7)' >= ctid;
  ctid  
 -------
  (1,5)
@@ -209,17 +179,14 @@ SELECT ctid FROM tidrangescan WHERE ctid > '(1,4)' AND '(1,7)' >= ctid AND gp_se
 (3 rows)
 
 EXPLAIN (COSTS OFF)
-SELECT ctid FROM tidrangescan WHERE '(1,7)' >= ctid AND ctid > '(1,4)' AND gp_segment_id >= 0;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (('(1,7)'::tid >= ctid) AND (ctid > '(1,4)'::tid))
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+SELECT ctid FROM tidrangescan WHERE '(1,7)' >= ctid AND ctid > '(1,4)';
+                           QUERY PLAN                           
+----------------------------------------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (('(1,7)'::tid >= ctid) AND (ctid > '(1,4)'::tid))
+(2 rows)
 
-SELECT ctid FROM tidrangescan WHERE '(1,7)' >= ctid AND ctid > '(1,4)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE '(1,7)' >= ctid AND ctid > '(1,4)';
  ctid  
 -------
  (1,5)
@@ -228,28 +195,28 @@ SELECT ctid FROM tidrangescan WHERE '(1,7)' >= ctid AND ctid > '(1,4)' AND gp_se
 (3 rows)
 
 -- extreme offsets
-SELECT ctid FROM tidrangescan WHERE ctid > '(0,65535)' AND ctid < '(1,0)' AND gp_segment_id >= 0 LIMIT 1;
+SELECT ctid FROM tidrangescan WHERE ctid > '(0,65535)' AND ctid < '(1,0)' LIMIT 1;
  ctid 
 ------
 (0 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)' AND gp_segment_id >= 0 LIMIT 1;
+SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)' LIMIT 1;
  ctid 
 ------
 (0 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid > '(4294967295,65535)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid > '(4294967295,65535)';
  ctid 
 ------
 (0 rows)
 
-SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)' AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid < '(0,0)';
  ctid 
 ------
 (0 rows)
 
 -- NULLs in the range cannot return tuples
-SELECT ctid FROM tidrangescan WHERE ctid >= (SELECT NULL::tid) AND gp_segment_id >= 0;
+SELECT ctid FROM tidrangescan WHERE ctid >= (SELECT NULL::tid);
  ctid 
 ------
 (0 rows)
@@ -257,28 +224,21 @@ SELECT ctid FROM tidrangescan WHERE ctid >= (SELECT NULL::tid) AND gp_segment_id
 -- rescans
 EXPLAIN (COSTS OFF)
 SELECT t.ctid,t2.c FROM tidrangescan t,
-LATERAL (SELECT count(*) c FROM tidrangescan t2 WHERE t2.ctid <= t.ctid AND t2.gp_segment_id >= 0) t2
-WHERE t.ctid < '(1,0)' AND t.gp_segment_id >= 0;
-                               QUERY PLAN                               
-------------------------------------------------------------------------
+LATERAL (SELECT count(*) c FROM tidrangescan t2 WHERE t2.ctid <= t.ctid) t2
+WHERE t.ctid < '(1,0)';
+                  QUERY PLAN                   
+-----------------------------------------------
  Nested Loop
-   ->  Gather Motion 3:1  (slice1; segments: 3)
-         ->  Seq Scan on tidrangescan t
-               Filter: ((ctid < '(1,0)'::tid) AND (gp_segment_id >= 0))
-   ->  Materialize
-         ->  Aggregate
-               ->  Result
-                     Filter: (t2.ctid <= t.ctid)
-                     ->  Materialize
-                           ->  Gather Motion 3:1  (slice2; segments: 3)
-                                 ->  Seq Scan on tidrangescan t2
-                                       Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(13 rows)
+   ->  Tid Range Scan on tidrangescan t
+         TID Cond: (ctid < '(1,0)'::tid)
+   ->  Aggregate
+         ->  Tid Range Scan on tidrangescan t2
+               TID Cond: (ctid <= t.ctid)
+(6 rows)
 
 SELECT t.ctid,t2.c FROM tidrangescan t,
-LATERAL (SELECT count(*) c FROM tidrangescan t2 WHERE t2.ctid <= t.ctid AND t2.gp_segment_id >= 0) t2
-WHERE t.ctid < '(1,0)' AND t.gp_segment_id >= 0;
+LATERAL (SELECT count(*) c FROM tidrangescan t2 WHERE t2.ctid <= t.ctid) t2
+WHERE t.ctid < '(1,0)';
   ctid  | c  
 --------+----
  (0,1)  |  1
@@ -296,18 +256,15 @@ WHERE t.ctid < '(1,0)' AND t.gp_segment_id >= 0;
 -- cursors
 -- Ensure we get a TID Range scan without a Materialize node.
 EXPLAIN (COSTS OFF)
-DECLARE c SCROLL CURSOR FOR SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)' AND gp_segment_id >= 0;
-                QUERY PLAN                
-------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)
-   ->  Tid Range Scan on tidrangescan
-         TID Cond: (ctid < '(1,0)'::tid)
-         Filter: (gp_segment_id >= 0)
- Optimizer: Postgres query optimizer
-(5 rows)
+DECLARE c SCROLL CURSOR FOR SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)';
+            QUERY PLAN             
+-----------------------------------
+ Tid Range Scan on tidrangescan
+   TID Cond: (ctid < '(1,0)'::tid)
+(2 rows)
 
 BEGIN;
-DECLARE c SCROLL CURSOR FOR SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)' AND gp_segment_id >= 0;
+DECLARE c SCROLL CURSOR FOR SELECT ctid FROM tidrangescan WHERE ctid < '(1,0)';
 FETCH NEXT c;
  ctid  
 -------
@@ -321,11 +278,23 @@ FETCH NEXT c;
 (1 row)
 
 FETCH PRIOR c;
-ERROR:  backward scan is not supported in this version of Greenplum Database
+ ctid  
+-------
+ (0,1)
+(1 row)
+
 FETCH FIRST c;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ ctid  
+-------
+ (0,1)
+(1 row)
+
 FETCH LAST c;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+  ctid  
+--------
+ (0,10)
+(1 row)
+
 COMMIT;
 DROP TABLE tidrangescan;
 RESET enable_seqscan;
