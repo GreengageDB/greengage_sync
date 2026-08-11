@@ -953,7 +953,7 @@ btvacuumcleanup(IndexVacuumInfo *info, IndexBulkDeleteResult *stats)
 		stats->estimated_count = true;
 
 		/*
-		 * GPDB: on a QE the scan above was not optional - it was forced by
+		 * GGDB: on a QE the scan above was not optional - it was forced by
 		 * _bt_vacuum_needs_cleanup() precisely so that the QD can collect
 		 * this index's statistics. update_index_statistics() discards any
 		 * result flagged as an estimate, so leaving the flag set would leave
