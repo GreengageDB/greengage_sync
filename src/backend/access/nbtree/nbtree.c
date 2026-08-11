@@ -951,6 +951,17 @@ btvacuumcleanup(IndexVacuumInfo *info, IndexBulkDeleteResult *stats)
 		stats = (IndexBulkDeleteResult *) palloc0(sizeof(IndexBulkDeleteResult));
 		btvacuumscan(info, stats, NULL, NULL, 0);
 		stats->estimated_count = true;
+
+		/*
+		 * GGDB: on a QE the scan above was not optional - it was forced by
+		 * _bt_vacuum_needs_cleanup() precisely so that the QD can collect
+		 * this index's statistics. update_index_statistics() discards any
+		 * result flagged as an estimate, so leaving the flag set would leave
+		 * every segment's reltuples untouched and the QD would accumulate
+		 * nothing.
+		 */
+		if (gp_vacuum_needs_update_stats())
+			stats->estimated_count = false;
 	}
 
 	/*
