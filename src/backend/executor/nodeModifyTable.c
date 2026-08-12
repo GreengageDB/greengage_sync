@@ -429,8 +429,19 @@ ExecInsert(ModifyTableState *mtstate,
 	/*
 	 * If the input result relation is a partitioned table, find the leaf
 	 * partition to insert the tuple into.
+	 *
+	 * Only do this when 'resultRelInfo' refers to the same relation as
+	 * mtstate->rootResultRelInfo, the root of the tuple-routing structure.
+	 * ExecSplitUpdate_Insert() also calls us with 'resultRelInfo' already
+	 * resolved to the correct (non-root) leaf partition, when the split
+	 * UPDATE determined that the row doesn't need to move; in that case
+	 * 'slot' is still in that leaf's own attribute order, and routing it
+	 * again here would misinterpret its attributes using the root's
+	 * partition key positions, and search from the wrong place.
 	 */
-	if (proute)
+	if (proute &&
+		RelationGetRelid(resultRelInfo->ri_RelationDesc) ==
+		RelationGetRelid(mtstate->rootResultRelInfo->ri_RelationDesc))
 	{
 		ResultRelInfo *partRelInfo;
 
