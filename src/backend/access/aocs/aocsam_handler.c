@@ -1141,8 +1141,19 @@ static TransactionId
 aoco_index_delete_tuples(Relation rel,
 						 TM_IndexDeleteOp *delstate)
 {
-	// GPDB_12_MERGE_FIXME: vacuum related call back.
-	elog(ERROR, "not implemented yet");
+	/*
+	 * Tell the index AM that none of its TIDs can be deleted.  See the
+	 * matching comment in appendonly_index_delete_tuples(): we never set
+	 * all_dead in index_fetch_tuple() for appendoptimized tables, so no index
+	 * tuple over one is ever marked LP_DEAD, which leaves bottom-up deletion
+	 * as the only caller that can get here, and it copes with us finding
+	 * nothing deletable.
+	 */
+	Assert(delstate->bottomup);
+
+	delstate->ndeltids = 0;
+
+	return InvalidTransactionId;
 }
 
 /* ------------------------------------------------------------------------

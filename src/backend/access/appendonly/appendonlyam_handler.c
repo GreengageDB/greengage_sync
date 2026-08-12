@@ -766,8 +766,28 @@ static TransactionId
 appendonly_index_delete_tuples(Relation rel,
 							   TM_IndexDeleteOp *delstate)
 {
-	// GPDB_12_MERGE_FIXME: vacuum related call back.
-	elog(ERROR, "not implemented yet");
+	/*
+	 * Tell the index AM that none of its TIDs can be deleted.
+	 *
+	 * This callback reports which of caller's TIDs point to table tuples that
+	 * are already vacuumable.  We never set all_dead in index_fetch_tuple() for
+	 * appendoptimized tables, so an index scan never sets kill_prior_tuple and
+	 * no index tuple over such a table is ever marked LP_DEAD.  That rules out
+	 * the simple deletion caller, which only runs once a leaf page already has
+	 * LP_DEAD items, and leaves bottom-up deletion as the only way to get here.
+	 * Bottom-up deletion treats every entry as speculative and is prepared for
+	 * us to find nothing, which is why emptying the array is allowed here: it
+	 * is what a tableam that checked every entry and found none of them
+	 * deletable would return.
+	 *
+	 * Reclaiming the space held by dead tuples is the appendoptimized vacuum's
+	 * job, not this one's.
+	 */
+	Assert(delstate->bottomup);
+
+	delstate->ndeltids = 0;
+
+	return InvalidTransactionId;
 }
 
 /* ----------------------------------------------------------------------------
