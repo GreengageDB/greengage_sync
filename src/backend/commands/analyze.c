@@ -1674,7 +1674,8 @@ acquire_sample_rows(Relation onerel, int elevel,
 		 * We want to do this even if the table_scan_analyze_next_block() call
 		 * above decides against analyzing the block it picked.
 		 */
-		if (prefetch_maximum && prefetch_targblock != InvalidBlockNumber)
+		if (Gp_role == GP_ROLE_DISPATCH &&
+			prefetch_maximum && prefetch_targblock != InvalidBlockNumber)
 			PrefetchBuffer(scan->rs_rd, MAIN_FORKNUM, prefetch_targblock);
 #endif
 
