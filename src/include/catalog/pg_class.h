@@ -141,13 +141,6 @@ CATALOG(pg_class,1259,RelationRelationId) BKI_BOOTSTRAP BKI_ROWTYPE_OID(83,Relat
 #endif
 } FormData_pg_class;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(relnamespace REFERENCES pg_namespace(oid));
-FOREIGN_KEY(reltype REFERENCES pg_type(oid));
-FOREIGN_KEY(relowner REFERENCES pg_authid(oid));
-FOREIGN_KEY(relam REFERENCES pg_am(oid));
-FOREIGN_KEY(reltablespace REFERENCES pg_tablespace(oid));
-FOREIGN_KEY(reltoastrelid REFERENCES pg_class(oid));
 
 /* Size of fixed part of pg_class tuples, not counting var-length fields */
 #define CLASS_TUPLE_SIZE \

@@ -39,13 +39,6 @@ CATALOG(pg_compression,7056,CompressionRelationId)
 	Oid			compowner BKI_DEFAULT(POSTGRES) BKI_LOOKUP(pg_authid);
 } FormData_pg_compression;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(compconstructor REFERENCES pg_proc(oid));
-FOREIGN_KEY(compdestructor REFERENCES pg_proc(oid));
-FOREIGN_KEY(compcompressor REFERENCES pg_proc(oid));
-FOREIGN_KEY(compdecompressor REFERENCES pg_proc(oid));
-FOREIGN_KEY(compvalidator REFERENCES pg_proc(oid));
-FOREIGN_KEY(compowner REFERENCES pg_authid(oid));
 
 /* ----------------
  *		Form_pg_compression corresponds to a pointer to a tuple with

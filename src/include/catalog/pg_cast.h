@@ -51,10 +51,6 @@ CATALOG(pg_cast,2605,CastRelationId)
 	char		castmethod;
 } FormData_pg_cast;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(castsource REFERENCES pg_type(oid));
-FOREIGN_KEY(casttarget REFERENCES pg_type(oid));
-FOREIGN_KEY(castfunc REFERENCES pg_proc(oid));
 
 /* ----------------
  *		Form_pg_cast corresponds to a pointer to a tuple with

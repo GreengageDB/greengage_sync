@@ -41,9 +41,6 @@ CATALOG(pg_stat_last_shoperation,6056,StatLastShOpRelationId)  BKI_SHARED_RELATI
 #endif
 } FormData_pg_statlastshop;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(classid REFERENCES pg_class(oid));
-FOREIGN_KEY(stasysid REFERENCES pg_authid(oid));
 
 #undef timestamptz
 

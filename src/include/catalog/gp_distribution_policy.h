@@ -38,8 +38,6 @@ CATALOG(gp_distribution_policy,7142,GpPolicyRelationId)
 #endif
 } FormData_gp_distribution_policy;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(localoid REFERENCES pg_class(oid));
 
 /* ----------------
  *		Form_gp_distribution_policy corresponds to a pointer to a tuple with

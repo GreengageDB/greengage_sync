@@ -75,9 +75,6 @@ CATALOG(pg_opclass,2616,OperatorClassRelationId)
 	Oid			opckeytype BKI_DEFAULT(0) BKI_LOOKUP_OPT(pg_type);
 } FormData_pg_opclass;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(opcnamespace REFERENCES pg_namespace(oid));
-FOREIGN_KEY(opcowner REFERENCES pg_authid(oid));
 
 /* ----------------
  *		Form_pg_opclass corresponds to a pointer to a tuple with

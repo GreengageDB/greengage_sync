@@ -39,10 +39,6 @@ CATALOG(pg_extprotocol,7175,ExtprotocolRelationId)
 #endif
 } FormData_pg_extprotocol;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(ptcreadfn REFERENCES pg_proc(oid));
-FOREIGN_KEY(ptcwritefn REFERENCES pg_proc(oid));
-FOREIGN_KEY(ptcvalidatorfn REFERENCES pg_proc(oid));
 
 /* ----------------
  *		Form_pg_extprotocol corresponds to a pointer to a tuple with

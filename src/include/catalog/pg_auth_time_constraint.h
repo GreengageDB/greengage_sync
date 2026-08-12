@@ -45,8 +45,6 @@ CATALOG(pg_auth_time_constraint,6070,AuthTimeConstraintRelationId) BKI_SHARED_RE
 } FormData_pg_auth_time_constraint;
 
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(authid REFERENCES pg_authid(oid));
 
 #undef time
 
