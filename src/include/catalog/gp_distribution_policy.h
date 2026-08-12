@@ -29,7 +29,7 @@
  */
 CATALOG(gp_distribution_policy,7142,GpPolicyRelationId)
 {
-	Oid			localoid;
+	Oid			localoid BKI_LOOKUP(pg_class);
 	char		policytype; /* distribution policy type */
 	int32		numsegments;
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */

@@ -26,7 +26,7 @@
  */
 CATALOG(pg_appendonly,6105,AppendOnlyRelationId)
 {
-	Oid				relid;				/* relation id */
+	Oid				relid BKI_LOOKUP(pg_class); /* relation id */
 	int32			blocksize;			/* the max block size of this relation */
 	int32			safefswritesize;	/* min write size in bytes to prevent torn-write */
 	int16			compresslevel;		/* the (per seg) total number of varblocks */

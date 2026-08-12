@@ -29,9 +29,9 @@ CATALOG(pg_extprotocol,7175,ExtprotocolRelationId)
 {
 	Oid			oid;			/* oid */
 	NameData	ptcname;
-	Oid			ptcreadfn;
-	Oid			ptcwritefn;
-	Oid			ptcvalidatorfn;
+	Oid			ptcreadfn BKI_LOOKUP_OPT(pg_proc);
+	Oid			ptcwritefn BKI_LOOKUP_OPT(pg_proc);
+	Oid			ptcvalidatorfn BKI_LOOKUP_OPT(pg_proc);
 	Oid			ptcowner;
 	bool		ptctrusted;
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */

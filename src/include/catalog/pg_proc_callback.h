@@ -29,8 +29,8 @@
  */
 CATALOG(pg_proc_callback,7176,ProcCallbackRelationId)
 {
-	regproc	profnoid;		/* oid of the main function */
-	regproc	procallback;	/* oid of the callback function */
+	regproc	profnoid BKI_LOOKUP(pg_proc);		/* oid of the main function */
+	regproc	procallback BKI_LOOKUP(pg_proc);	/* oid of the callback function */
 	char	promethod;		/* role the callback function is performing */
 } FormData_pg_proc_callback;
 

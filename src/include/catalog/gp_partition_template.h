@@ -31,7 +31,7 @@
  */
 CATALOG(gp_partition_template,8022,PartitionTemplateRelationId)
 {
-	Oid			relid;		/* partitioned table oid */
+	Oid			relid BKI_LOOKUP(pg_class);		/* partitioned table oid */
 	int16       level;
 
 #ifdef CATALOG_VARLEN
