@@ -54,9 +54,6 @@ OBJS += pg_extprotocol.o \
        storage_tablespace_twophase.o storage_tablespace_xact.o \
        gp_partition_template.o
 
-
-CATALOG_JSON:= $(addprefix $(top_srcdir)/gpMgmt/bin/gppylib/data/, $(addsuffix .json,$(GP_MAJORVERSION)))
-
 include $(top_srcdir)/src/backend/common.mk
 
 # Note: the order of this list determines the order in which the catalog
@@ -121,11 +118,6 @@ all: distprep generated-header-symlinks
 distprep: bki-stamp
 
 .PHONY: generated-header-symlinks
-
-catalog_json: $(CATALOG_JSON)
-
-$(CATALOG_JSON): process_foreign_keys.pl $(POSTGRES_BKI_SRCS) $(top_srcdir)/src/include/catalog/catversion.h
-	cat $(POSTGRES_BKI_SRCS) $(top_srcdir)/src/include/catalog/catversion.h | $(PERL) process_foreign_keys.pl > $@
 
 generated-header-symlinks: $(top_builddir)/src/include/catalog/header-stamp
 

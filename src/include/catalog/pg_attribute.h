@@ -182,9 +182,6 @@ CATALOG(pg_attribute,1249,AttributeRelationId) BKI_BOOTSTRAP BKI_ROWTYPE_OID(75,
 #endif
 } FormData_pg_attribute;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(attrelid REFERENCES pg_class(oid));
-FOREIGN_KEY(atttypid REFERENCES pg_type(oid));
 
 /*
  * ATTRIBUTE_FIXED_PART_SIZE is the size of the fixed-layout,

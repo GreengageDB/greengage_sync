@@ -30,8 +30,6 @@ CATALOG(gp_fastsequence,8043,FastSequenceRelationId)
 } FormData_gp_fastsequence;
 
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(objid REFERENCES pg_class(oid));
 
 /* ----------------
 *		Form_gp_fastsequence corresponds to a pointer to a tuple with

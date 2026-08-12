@@ -48,8 +48,6 @@ CATALOG(pg_shdescription,2396,SharedDescriptionRelationId) BKI_SHARED_RELATION
 #endif
 } FormData_pg_shdescription;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(classoid REFERENCES pg_class(oid));
 
 /* ----------------
  *		Form_pg_shdescription corresponds to a pointer to a tuple with

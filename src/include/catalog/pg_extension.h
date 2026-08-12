@@ -44,9 +44,6 @@ CATALOG(pg_extension,3079,ExtensionRelationId)
 #endif
 } FormData_pg_extension;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(extowner REFERENCES pg_authid(oid));
-FOREIGN_KEY(extnamespace REFERENCES pg_namespace(oid));
 
 /* ----------------
  *		Form_pg_extension corresponds to a pointer to a tuple with

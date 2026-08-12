@@ -29,8 +29,6 @@ CATALOG(pg_resgroupcapability,6439,ResGroupCapabilityRelationId) BKI_SHARED_RELA
 } FormData_pg_resgroupcapability;
 
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(resgroupid REFERENCES pg_resgroup(oid));
 
 /* ----------------
  *	Form_pg_resgroupcapability corresponds to a pointer to a tuple with

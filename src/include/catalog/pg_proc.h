@@ -134,11 +134,6 @@ CATALOG(pg_proc,1255,ProcedureRelationId) BKI_BOOTSTRAP BKI_ROWTYPE_OID(81,Proce
 #endif
 } FormData_pg_proc;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(pronamespace REFERENCES pg_namespace(oid));
-FOREIGN_KEY(proowner REFERENCES pg_authid(oid));
-FOREIGN_KEY(prolang REFERENCES pg_language(oid));
-FOREIGN_KEY(prorettype REFERENCES pg_type(oid));
 /*   alter table pg_proc add vector_fk proargtypes on pg_type(oid); */
 /*   alter table pg_proc add vector_fk proallargtypes on pg_type(oid); */
 

@@ -31,8 +31,6 @@ CATALOG(pg_type_encoding,6220,TypeEncodingRelationId)
 #endif
 } FormData_pg_type_encoding;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(typid REFERENCES pg_type(oid));
 
 /* ----------------
  *		Form_pg_type_encoding corresponds to a pointer to a tuple with

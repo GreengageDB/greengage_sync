@@ -69,9 +69,6 @@ CATALOG(pg_authid,1260,AuthIdRelationId) BKI_SHARED_RELATION BKI_ROWTYPE_OID(284
 #endif
 } FormData_pg_authid;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(rolresqueue REFERENCES pg_resqueue(oid));
-FOREIGN_KEY(rolresgroup REFERENCES pg_resgroup(oid));
 
 /* ----------------
  *		Form_pg_authid corresponds to a pointer to a tuple with

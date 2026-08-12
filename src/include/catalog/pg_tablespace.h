@@ -41,8 +41,6 @@ CATALOG(pg_tablespace,1213,TableSpaceRelationId) BKI_SHARED_RELATION
 #endif
 } FormData_pg_tablespace;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(spcowner REFERENCES pg_authid(oid));
 
 /* ----------------
  *		Form_pg_tablespace corresponds to a pointer to a tuple with

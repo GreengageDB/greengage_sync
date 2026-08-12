@@ -128,12 +128,6 @@ CATALOG(pg_statistic,2619,StatisticRelationId)
 
 #define STATISTIC_NUM_SLOTS  5
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(starelid REFERENCES pg_attribute(attrelid));
-FOREIGN_KEY(staop1 REFERENCES pg_operator(oid));
-FOREIGN_KEY(staop2 REFERENCES pg_operator(oid));
-FOREIGN_KEY(staop3 REFERENCES pg_operator(oid));
-FOREIGN_KEY(staop4 REFERENCES pg_operator(oid));
 
 
 /* ----------------

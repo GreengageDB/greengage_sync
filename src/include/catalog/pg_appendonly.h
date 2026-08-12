@@ -40,8 +40,6 @@ CATALOG(pg_appendonly,6105,AppendOnlyRelationId)
 	Oid             visimapidxid;		/* OID of aovisimap index */
 } FormData_pg_appendonly;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(relid REFERENCES pg_class(oid));
 
 /*
  * Size of fixed part of pg_appendonly tuples, not counting var-length fields

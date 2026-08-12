@@ -34,9 +34,6 @@ CATALOG(pg_proc_callback,7176,ProcCallbackRelationId)
 	char	promethod;		/* role the callback function is performing */
 } FormData_pg_proc_callback;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(profnoid REFERENCES pg_proc(oid));
-FOREIGN_KEY(procallback REFERENCES pg_proc(oid));
 
 /* ----------------
  *		Form_pg_proc_callback corresponds to a pointer to a tuple with

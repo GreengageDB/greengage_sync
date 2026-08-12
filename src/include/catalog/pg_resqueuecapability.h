@@ -37,9 +37,6 @@ CATALOG(pg_resqueuecapability,6060,ResQueueCapabilityRelationId) BKI_SHARED_RELA
 #endif
 } FormData_pg_resqueuecapability;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(resqueueid REFERENCES pg_resqueue(oid));
-FOREIGN_KEY(restypid REFERENCES pg_resourcetype(restypid));
 
 /* ----------------
  *		Form_pg_resqueuecapability corresponds to a pointer to a tuple with

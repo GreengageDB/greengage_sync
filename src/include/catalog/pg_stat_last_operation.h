@@ -49,9 +49,6 @@ CATALOG(pg_stat_last_operation,6052,StatLastOpRelationId)
 } FormData_pg_statlastop;
 
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(classid REFERENCES pg_class(oid));
-FOREIGN_KEY(stasysid REFERENCES pg_authid(oid));
 
 #undef timestamptz
 
