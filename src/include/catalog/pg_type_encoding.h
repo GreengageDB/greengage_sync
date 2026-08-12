@@ -25,7 +25,7 @@
  */
 CATALOG(pg_type_encoding,6220,TypeEncodingRelationId)
 {
-	Oid		typid;			
+	Oid		typid BKI_LOOKUP(pg_type);
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */
 	text	typoptions[1];	
 #endif

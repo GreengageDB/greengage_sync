@@ -35,11 +35,13 @@
 CATALOG(pg_stat_last_operation,6052,StatLastOpRelationId)
 {
 	/* unique key */
-	Oid			classid;		/* OID of table containing object */
+	Oid			classid BKI_LOOKUP(pg_class);		/* OID of table containing object */
 	Oid			objid;			/* OID of object itself */
 	NameData	staactionname;	/* name of action */
 
-	/* */
+	/*
+	 * Do not mark it as a foreign key, as the user may be dropped while leaving a record in this table, which will violate the foreign key.
+	 */
 	Oid			stasysid;		/* OID of user (when action was performed) */
 	NameData	stausename;		/* name of user (when action was performed) */
 #ifdef CATALOG_VARLEN

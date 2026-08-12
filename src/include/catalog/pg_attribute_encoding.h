@@ -45,6 +45,8 @@ CATALOG(pg_attribute_encoding,6231,AttributeEncodingRelationId)
  */
 typedef FormData_pg_attribute_encoding *Form_pg_attribute_encoding;
 
+DECLARE_FOREIGN_KEY((attrelid, attnum), pg_attribute, (attrelid, attnum));
+
 DECLARE_TOAST(pg_attribute_encoding, 6233, 6234);
 
 DECLARE_INDEX(pg_attribute_encoding_attrelid_index, 6236, on pg_attribute_encoding using btree(attrelid oid_ops));

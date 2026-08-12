@@ -24,7 +24,7 @@
  */
 CATALOG(gp_fastsequence,8043,FastSequenceRelationId)
 {
-	Oid				objid;				/* object oid */
+	Oid				objid BKI_LOOKUP(pg_class); /* object oid */
 	int8			objmod;				/* object modifier */
 	int8			last_sequence;      /* the last sequence number used by the object */
 } FormData_gp_fastsequence;
