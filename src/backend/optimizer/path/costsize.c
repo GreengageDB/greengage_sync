@@ -1422,9 +1422,10 @@ cost_tidscan(Path *path, PlannerInfo *root,
  */
 void
 cost_tidrangescan(Path *path, PlannerInfo *root,
-				  RelOptInfo *baserel, List *tidrangequals,
-				  ParamPathInfo *param_info)
+				  RelOptInfo *baserel_orig, List *tidrangequals,
+				  ParamPathInfo *param_info_orig)
 {
+	ADJUST_BASESCAN(baserel_orig, baserel, param_info_orig, param_info);
 	Selectivity selectivity;
 	double		pages;
 	Cost		startup_cost = 0;
@@ -1485,7 +1486,7 @@ cost_tidrangescan(Path *path, PlannerInfo *root,
 	run_cost += spc_random_page_cost + spc_seq_page_cost * nseqpages;
 
 	/* Add scanning CPU costs */
-	get_restriction_qual_cost(root, baserel, param_info, &qpqual_cost);
+	get_restriction_qual_cost(root, baserel_orig, param_info_orig, &qpqual_cost);
 
 	/*
 	 * XXX currently we assume TID quals are a subset of qpquals at this

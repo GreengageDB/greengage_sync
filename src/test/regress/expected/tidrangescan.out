@@ -263,8 +263,8 @@ WHERE t.ctid < '(1,0)';
 ------------------------------------------------------------------------
  Nested Loop
    ->  Gather Motion 3:1  (slice1; segments: 3)
-         ->  Seq Scan on tidrangescan t
-               Filter: (ctid < '(1,0)'::tid)
+         ->  Tid Range Scan on tidrangescan t
+               TID Cond: (ctid < '(1,0)'::tid)
    ->  Materialize
          ->  Aggregate
                ->  Result
