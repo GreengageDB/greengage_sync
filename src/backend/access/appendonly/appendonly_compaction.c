@@ -132,7 +132,7 @@ AppendOnlyCompaction_ShouldCompact(Relation aoRelation,
     Oid         visimapidxid;
 
 	Assert(RelationIsAppendOptimized(aoRelation));
-    GetAppendOnlyEntryAuxOids(aoRelation->rd_id, appendOnlyMetaDataSnapshot,
+    GetAppendOnlyEntryAuxOids(aoRelation,
                               NULL, NULL, NULL,
                               &visimaprelid, &visimapidxid);
 
@@ -406,7 +406,7 @@ AppendOnlySegmentFileFullCompaction(Relation aorel,
 	}
 	relname = RelationGetRelationName(aorel);
 
-	GetAppendOnlyEntryAuxOids(aorel->rd_id, appendOnlyMetaDataSnapshot,
+	GetAppendOnlyEntryAuxOids(aorel,
 							  NULL, &blkdirrelid, NULL,
 							  &visimaprelid, &visimapidxid);
 
@@ -536,7 +536,7 @@ AppendOptimizedCollectDeadSegments(Relation aorel)
 
 	Assert(RelationIsAppendOptimized(aorel));
 
-	GetAppendOnlyEntryAuxOids(aorel->rd_id, appendOnlyMetaDataSnapshot,
+	GetAppendOnlyEntryAuxOids(aorel,
 							  &segrelid, NULL, NULL, NULL, NULL);
 	
 	pg_aoseg_rel = table_open(segrelid, AccessShareLock);
@@ -696,7 +696,7 @@ AppendOptimizedTruncateToEOF(Relation aorel)
 	 */
 	LockDatabaseObject(AppendOnlyRelationId, RelationGetRelid(aorel), 0, ExclusiveLock);
 
-	GetAppendOnlyEntryAuxOids(aorel->rd_id, appendOnlyMetaDataSnapshot,
+	GetAppendOnlyEntryAuxOids(aorel,
 							  &segrelid, NULL, NULL, NULL, NULL);
 
 	pg_aoseg_rel = table_open(segrelid, AccessShareLock);

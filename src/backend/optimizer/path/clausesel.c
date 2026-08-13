@@ -92,6 +92,37 @@ cmpSelectivity
  *	  or bare expression clauses --- the former is preferred since
  *	  it allows caching of results.
  *
+ * clauselist_selectivity is kept same as upstream here. Because this
+ * function is called by most fdw (Foreign Data Wrapper) extensions.
+ * This functions just simply call clauselist_selectivity_extended()
+ * and set use_damping to false.
+ *
+ * Greengage specific behavior:
+ * Greengage calls clauselist_selectivity_extended() directly.
+ * Function clauselist_selectivity() is kept for external fdw.
+ *
+ * See clauselist_selectivity_extended() for more information.
+ */
+Selectivity
+clauselist_selectivity(PlannerInfo *root,
+					   List *clauses,
+					   int varRelid,
+					   JoinType jointype,
+					   SpecialJoinInfo *sjinfo)
+{
+	return clauselist_selectivity_extended(root, clauses, varRelid,
+										   jointype, sjinfo,
+										   false);	/* use_damping, which is false by default */
+}
+
+/*
+ * clauselist_selectivity_extended -
+ *	  Compute the selectivity of an implicitly-ANDed list of boolean
+ *	  expression clauses.  The list can be empty, in which case 1.0
+ *	  must be returned.  List elements may be either RestrictInfos
+ *	  or bare expression clauses --- the former is preferred since
+ *	  it allows caching of results.
+ *
  * See clause_selectivity() for the meaning of the additional parameters.
  *
  * The basic approach is to apply extended statistics first, on as many
@@ -128,12 +159,12 @@ cmpSelectivity
  * selectivity functions; perhaps some day we can generalize the approach.
  */
 Selectivity
-clauselist_selectivity(PlannerInfo *root,
-					   List *clauses,
-					   int varRelid,
-					   JoinType jointype,
-					   SpecialJoinInfo *sjinfo,
-					   bool use_damping)
+clauselist_selectivity_extended(PlannerInfo *root,
+								List *clauses,
+								int varRelid,
+								JoinType jointype,
+								SpecialJoinInfo *sjinfo,
+								bool use_damping)
 {
 	return clauselist_selectivity_ext(root, clauses, varRelid,
 									  jointype, sjinfo, true, use_damping);
@@ -141,7 +172,8 @@ clauselist_selectivity(PlannerInfo *root,
 
 /*
  * clauselist_selectivity_ext -
- *	  Extended version of clauselist_selectivity().  If "use_extended_stats"
+ *	  Extended version of clauselist_selectivity_extended().  If
+ *	  "use_extended_stats"
  *	  is false, all extended statistics will be ignored, and only per-column
  *	  statistics will be used.
  */
@@ -164,6 +196,14 @@ clauselist_selectivity_ext(PlannerInfo *root,
 
 	int pos = 0;
 	int i = 0;
+
+	// if the PlannerInfo was created from Orca, we don't care about the selectivity/costing
+	// here and some of the necessary fields may not be populated (eg: glob). Instead return
+	// the default selectivity
+	if (root->is_from_orca)
+	{
+		return s1;
+	}
 
 	/* allocate array to hold all selectivity factors */
 	rgsel = (Selectivity *) palloc(sizeof(Selectivity) * list_length(clauses));

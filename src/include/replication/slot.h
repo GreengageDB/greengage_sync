@@ -76,7 +76,12 @@ typedef struct ReplicationSlotPersistentData
 	 */
 	TransactionId catalog_xmin;
 
-	/* oldest LSN that might be required by this replication slot */
+	/*
+	 * oldest LSN that might be required by this replication slot
+	 *
+	 * GPDB sets this value more conservatively for physical replication slots
+	 * than Postgres. See comments in PhysicalConfirmReceivedLocation().
+	 */
 	XLogRecPtr	restart_lsn;
 
 	/* restart_lsn is copied here when the slot is invalidated */

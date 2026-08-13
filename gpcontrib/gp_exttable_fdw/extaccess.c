@@ -115,7 +115,7 @@ elog(DEBUG2, "external_getnext returning tuple")
  */
 FileScanDesc
 external_beginscan(Relation relation, uint32 scancounter,
-				   List *uriList, char fmtType, bool isMasterOnly,
+				   List *uriList, char fmtType, bool isCoordinatorOnly,
 				   int rejLimit, bool rejLimitInRows, char logErrors, int encoding,
 				   List *extOptions)
 {
@@ -161,7 +161,7 @@ external_beginscan(Relation relation, uint32 scancounter,
 	 *
 	 * The URI assigned for this segment is normally in the uriList list at
 	 * the index of this segment id. However, if we are executing on COORDINATOR
-	 * ONLY the (one and only) entry which is destined for the master will be
+	 * ONLY the (one and only) entry which is destined for the coordinator will be
 	 * at the first entry of the uriList list.
 	 */
 	if (Gp_role == GP_ROLE_EXECUTE)
@@ -177,7 +177,7 @@ external_beginscan(Relation relation, uint32 scancounter,
 		 * ExecInitExternalScan (probably we should fix this?), then segindex
 		 * = -1 will bomb out here.
 		 */
-		if (isMasterOnly && idx == -1)
+		if (isCoordinatorOnly && idx == -1)
 			idx = 0;
 
 		if (idx >= 0)
@@ -190,9 +190,9 @@ external_beginscan(Relation relation, uint32 scancounter,
 				uri = (char *) strVal(v);
 		}
 	}
-	else if (Gp_role == GP_ROLE_DISPATCH && isMasterOnly)
+	else if (Gp_role == GP_ROLE_DISPATCH && isCoordinatorOnly)
 	{
-		/* this is a ON COORDINATOR table. Only get uri if we are the master */
+		/* this is a ON COORDINATOR table. Only get uri if we are the coordinator */
 		if (segindex == -1)
 		{
 			Value	   *v = list_nth(uriList, 0);
@@ -261,9 +261,13 @@ external_beginscan(Relation relation, uint32 scancounter,
 	/*
 	 * pass external table's encoding to copy's options
 	 *
-	 * don't append to entry->options directly, we only store the encoding in
-	 * entry->encoding (and ftoptions)
+	 * don't append to extentry->options directly, we only store the encoding in
+	 * extentry->encoding (and ftoptions)
 	 */
+	if (fmttype_is_custom(fmtType))
+	{
+		extOptions = NIL;
+	}
 	extOptions = appendCopyEncodingOption(list_copy(extOptions), encoding);
 
 	/*
@@ -274,7 +278,7 @@ external_beginscan(Relation relation, uint32 scancounter,
 									external_getdata_callback,
 									(void *) scan,
 									NIL,
-									(fmttype_is_custom(fmtType) ? NIL : extOptions));
+									extOptions);
 
 	if (scan->fs_pstate->opts.header_line && Gp_role == GP_ROLE_DISPATCH)
 	{
@@ -609,12 +613,16 @@ external_insert_init(Relation rel)
 	/*
 	 * pass external table's encoding to copy's options
 	 *
-	 * don't append to entry->options directly, we only store the encoding in
-	 * entry->encoding (and ftoptions)
+	 * don't append to extentry->options directly, we only store the encoding in
+	 * extentry->encoding (and ftoptions)
 	 */
+	if (fmttype_is_custom(extentry->fmtcode))
+	{
+		copyFmtOpts = NIL;
+	}
 	copyFmtOpts = appendCopyEncodingOption(list_copy(extentry->options), extentry->encoding);
 
-	extInsertDesc->ext_pstate = BeginCopyToForeignTable(rel, (fmttype_is_custom(extentry->fmtcode) ? NIL : copyFmtOpts));
+	extInsertDesc->ext_pstate = BeginCopyToForeignTable(rel, copyFmtOpts);
 	InitToParseState(extInsertDesc->ext_pstate);
 
 	if (fmttype_is_custom(extentry->fmtcode))

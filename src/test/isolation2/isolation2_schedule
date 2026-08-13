@@ -92,7 +92,6 @@ test: distributedlog-bug
 test: invalidated_toast_index
 test: distributed_snapshot
 test: gp_collation
-test: ao_upgrade
 test: ao_blkdir
 test: bitmap_index_concurrent
 test: bitmap_index_crash
@@ -228,6 +227,9 @@ test: pg_basebackup_large_database_oid
 test: enable_autovacuum
 test: idle_gang_cleaner
 # test idle_in_transaction_session_timeout
+test: autovacuum-temp-table
+
+test: ao_index_build_progress
 
 test: segwalrep/die_commit_pending_replication
 
@@ -243,6 +245,7 @@ test: segwalrep/twophase_tolerance_with_mirror_promotion
 test: segwalrep/failover_with_many_records
 test: segwalrep/dtm_recovery_on_standby
 test: segwalrep/commit_blocking_on_standby
+test: segwalrep/max_slot_wal_keep_size
 test: segwalrep/dtx_recovery_wait_lsn
 test: segwalrep/select_throttle
 test: fts_manual_probe

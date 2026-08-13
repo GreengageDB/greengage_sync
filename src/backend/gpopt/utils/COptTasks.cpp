@@ -514,7 +514,7 @@ COptTasks::OptimizeTask(void *ptr)
 
 		// set up relcache MD provider
 		CMDProviderRelcache *relcache_provider =
-			GPOS_NEW(mp) CMDProviderRelcache(mp);
+			GPOS_NEW(mp) CMDProviderRelcache();
 
 		{
 			// scope for MD accessor
@@ -672,7 +672,7 @@ COptTasks::PrintMissingStatsWarning(CMemoryPool *mp, CMDAccessor *md_accessor,
 		const ULONG pos = mdid_col_stats->Position();
 		const IMDRelation *rel = md_accessor->RetrieveRel(rel_mdid);
 
-		if (IMDRelation::ErelstorageExternal != rel->RetrieveRelStorageType())
+		if (IMDRelation::ErelstorageForeign != rel->RetrieveRelStorageType())
 		{
 			if (!rel_stats->Contains(rel_mdid))
 			{

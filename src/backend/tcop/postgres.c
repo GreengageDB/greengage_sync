@@ -2240,7 +2240,7 @@ exec_parse_message(const char *query_string,	/* string to execute */
 		if (parsetree_list)
 		{
 			Node	   *parsetree = (Node *) linitial(parsetree_list);
-			sourceTag = nodeTag(parsetree);
+			sourceTag = IsA(parsetree, RawStmt) ? nodeTag(((RawStmt *)parsetree)->stmt) : nodeTag(parsetree);
 		}
 
 		/* Done with the snapshot used for parsing */
@@ -5261,12 +5261,6 @@ PostgresMain(int argc, char *argv[],
 		InvalidateCatalogSnapshotConditionally();
 
 		/*
-		 * Also consider releasing our catalog snapshot if any, so that it's
-		 * not preventing advance of global xmin while we wait for the client.
-		 */
-		InvalidateCatalogSnapshotConditionally();
-
-		/*
 		 * (1) If we've reached idle state, tell the frontend we're ready for
 		 * a new query.
 		 *
@@ -5341,8 +5335,22 @@ PostgresMain(int argc, char *argv[],
 				set_ps_display(activity);
 				pgstat_report_activity(STATE_IDLE, NULL);
 
-				/* Start the idle-session timer */
-				if (IdleSessionTimeout > 0)
+				/*
+				 * Start the idle-session timer.
+				 *
+				 * GPDB: never on a QE.  A QE is idle whenever it is not
+				 * executing a slice, which is an artifact of gang caching
+				 * rather than an idle client, and the writer gang is
+				 * deliberately never reaped by gp_vmem_idle_resource_timeout
+				 * (see DisconnectAndDestroyUnusedQEs()).  Letting a QE
+				 * terminate itself here would tear down exactly the gang the
+				 * dispatcher keeps alive on purpose.  Utility mode
+				 * connections to a segment are real client sessions, so they
+				 * keep honouring the timeout, hence GP_ROLE_EXECUTE rather
+				 * than IS_QUERY_DISPATCHER().  Same reasoning as the
+				 * idle-in-transaction timer above.
+				 */
+				if (IdleSessionTimeout > 0 && Gp_role != GP_ROLE_EXECUTE)
 				{
 					idle_session_timeout_enabled = true;
 					enable_timeout_after(IDLE_SESSION_TIMEOUT,
@@ -5493,11 +5501,8 @@ PostgresMain(int argc, char *argv[],
 					/*
 					 * This is exactly like 'Q' above except we peel off and
 					 * set the snapshot information right away.
-					 *
-					 * Since PortalDefineQuery() does not take NULL query string,
-					 * we initialize it with a constant empty string.
 					 */
-					const char *query_string = pstrdup("");
+					const char *query_string = "";
 
 					const char *serializedDtxContextInfo = NULL;
 					const char *serializedPlantree = NULL;

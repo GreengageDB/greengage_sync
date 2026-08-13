@@ -381,8 +381,9 @@ retry:
 
 		if (testSlot->slotindex > arrayP->maxSlots)
 		{
+			char *slot_dump = SharedSnapshotDump();
 			LWLockRelease(SharedSnapshotLock);
-			elog(ERROR, "Shared Local Snapshots Array appears corrupted: %s", SharedSnapshotDump());
+			elog(ERROR, "Shared Local Snapshots Array appears corrupted: %s", slot_dump);
 		}
 
 		if (testSlot->slotid == slotId)
@@ -749,6 +750,13 @@ readSharedLocalSnapshot_forCursor(Snapshot snapshot, DtxContext distributedTrans
 	memset(snapshot->xip + snapshot->xcnt, 0, (xipEntryCount - snapshot->xcnt)*sizeof(TransactionId));
 
 	snapshot->curcid = dumpsnapshot->curcid;
+
+	/*
+	 * We just overwrote the snapshot contents in place with the writer's
+	 * snapshot, so the reuse token no longer describes them. Invalidate it,
+	 * exactly like the in-place fillers in snapmgr.c do.
+	 */
+	snapshot->snapXactCompletionCount = 0;
 
 	SetSharedTransactionId_reader(
 		localXid,

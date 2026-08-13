@@ -87,7 +87,7 @@ enum Edxltoken
 	EdxltokenPhysicalTableScan,
 	EdxltokenPhysicalBitmapTableScan,
 	EdxltokenPhysicalDynamicBitmapTableScan,
-	EdxltokenPhysicalExternalScan,
+	EdxltokenPhysicalForeignScan,
 	EdxltokenPhysicalIndexScan,
 	EdxltokenPhysicalIndexOnlyScan,
 	EdxltokenPhysicalHashJoin,
@@ -215,12 +215,6 @@ enum Edxltoken
 	EdxltokenPartLevelFilterList,
 	EdxltokenPartLevel,
 	EdxltokenScalarPartDefault,
-	EdxltokenScalarPartBound,
-	EdxltokenScalarPartBoundLower,
-	EdxltokenScalarPartBoundInclusion,
-	EdxltokenScalarPartBoundOpen,
-	EdxltokenScalarPartListValues,
-	EdxltokenScalarPartListNullTest,
 	EdxltokenScalarResidualFilter,
 	EdxltokenScalarPartFilterExpr,
 	EdxltokenScalarBitmapIndexProbe,
@@ -445,12 +439,12 @@ enum Edxltoken
 
 	// metadata-related constants
 	EdxltokenRelation,
-	EdxltokenRelationExternal,
 	EdxltokenRelationCTAS,
 	EdxltokenName,
 	EdxltokenSchema,
 	EdxltokenTablespace,
 	EdxltokenOid,
+	EdxltokenKind,
 	EdxltokenVersion,
 	EdxltokenMdid,
 	EdxltokenLockMode,
@@ -461,10 +455,21 @@ enum Edxltoken
 	EdxltokenRelationStats,
 	EdxltokenColumnStats,
 	EdxltokenColumnStatsBucket,
+	EdxltokenRelationExtendedStats,
+	EdxltokenExtendedStats,
+	EdxltokenExtendedStatsInfo,
+	EdxltokenMVDependencyList,
+	EdxltokenMVDependency,
+	EdxltokenMVNDistinctList,
+	EdxltokenMVNDistinct,
+	EdxltokenDegree,
+	EdxltokenFrom,
+	EdxltokenTo,
 	EdxltokenEmptyRelation,
 	EdxltokenIsNull,
 	EdxltokenLintValue,
 	EdxltokenDoubleValue,
+	EdxltokenAssignedQueryIdForTargetRel,
 
 	EdxltokenRelTemporary,
 
@@ -473,12 +478,11 @@ enum Edxltoken
 	EdxltokenRelStorageAppendOnlyCols,
 	EdxltokenRelStorageAppendOnlyRows,
 	EdxltokenRelStorageMixedPartitioned,
-	EdxltokenRelStorageExternal,
+	EdxltokenRelStorageForeign,
 	EdxltokenRelStorageCompositeType,
 
 	EdxltokenPartKeys,
 	EdxltokenPartTypes,
-	EdxltokenNumLeafPartitions,
 
 	EdxltokenRelDistrPolicy,
 	EdxltokenRelDistrMasterOnly,
@@ -511,6 +515,7 @@ enum Edxltoken
 	EdxltokenIndexPartial,
 	EdxltokenIndexType,
 	EdxltokenIndexTypeBtree,
+	EdxltokenIndexTypeHash,
 	EdxltokenIndexTypeBitmap,
 	EdxltokenIndexTypeGist,
 	EdxltokenIndexTypeGin,
@@ -620,6 +625,7 @@ enum Edxltoken
 
 	EdxltokenGPDBAgg,
 	EdxltokenGPDBIsAggOrdered,
+	EdxltokenGPDBIsAggRepSafe,
 	EdxltokenGPDBAggResultTypeId,
 	EdxltokenGPDBAggIntermediateResultTypeId,
 	EdxltokenGPDBAggSplittable,
@@ -632,7 +638,7 @@ enum Edxltoken
 	EdxltokenQueryOutput,
 	EdxltokenLogical,
 	EdxltokenLogicalGet,
-	EdxltokenLogicalExternalGet,
+	EdxltokenLogicalForeignGet,
 	EdxltokenLogicalProject,
 	EdxltokenLogicalSelect,
 	EdxltokenLogicalJoin,
@@ -729,7 +735,6 @@ enum Edxltoken
 	EdxltokenVarTypeModList,
 
 	EdxltokenIndexTypeBrin,
-
 	EdxltokenSentinel
 };
 

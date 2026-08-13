@@ -1583,6 +1583,15 @@ LANGUAGE plpgSQL READS SQL DATA;
 
 SET gp_log_gang TO DEBUG;
 
+-- The FOR loop below runs its query through a cursor, so SPI_cursor_open_internal()
+-- has _SPI_error_callback() installed while it calls PortalStart().  Whether the QD
+-- notices the segment's error while still inside PortalStart(), or only at the first
+-- fetch after the callback has been popped, depends on dispatch timing.  In the
+-- former case the error context gains an extra "SQL statement" line.  Under load
+-- either outcome is possible, so ignore that line.
+-- start_matchignore
+-- m/^SQL statement "SELECT c2 from exttab_error_context_callback"$/
+-- end_matchignore
 SELECT * FROM exttab_error_context_callback_func();
 
 SET gp_log_gang TO DEFAULT;
@@ -3625,6 +3634,9 @@ ALTER TABLE ext_w_dist SET DISTRIBUTED BY (b);
 SELECT policytype, distkey FROM gp_distribution_policy WHERE localoid = 'ext_w_dist'::regclass;
 ALTER TABLE ext_w_dist SET DISTRIBUTED RANDOMLY;
 SELECT policytype, distkey FROM gp_distribution_policy WHERE localoid = 'ext_w_dist'::regclass;
+CREATE EXTERNAL WEB TABLE ext_r_dist(a int) EXECUTE 'printf ${GP_SEGMENT_ID}' FORMAT 'TEXT' DISTRIBUTED BY (a);
+CREATE EXTERNAL WEB TABLE ext_r_dist(a int) EXECUTE 'printf ${GP_SEGMENT_ID}' FORMAT 'TEXT';
+ALTER TABLE ext_r_dist SET DISTRIBUTED BY (a); -- should error out altering readable external tables' distribution policy
 
 -- Testing external table as the partition child.
 CREATE TABLE part_root(a int) PARTITION BY RANGE(a);

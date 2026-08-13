@@ -122,6 +122,42 @@ ExecutorEnd_hook_type ExecutorEnd_hook = NULL;
 /* Hook for plugin to get control in ExecCheckRTPerms() */
 ExecutorCheckPerms_hook_type ExecutorCheckPerms_hook = NULL;
 
+
+/*
+ * Greenplum specific code:
+ *   Greenplum introduces auto_stats for a long time, please refer to
+ *   https://groups.google.com/a/greenplum.org/g/gpdb-dev/c/bAyw2KBP6yE/m/hmoWikrPAgAJ
+ *   for details and decision of auto_stats.
+ *
+ *  auto_stats() now is invoked at the following 7 places:
+ *    1. ProcessQuery()
+ *    2. _SPI_pquery()
+ *    3. postquel_end()
+ *    4. ATExecExpandTableCTAS()
+ *    5. ATExecSetDistributedBy()
+ *    6. DoCopy()
+ *    7. ExecCreateTableAs()
+ *
+ *  Previously, Place 2, 3 is hard-coded as inside function,
+ *  Place 1, 4~7 is hard-coded as not-inside function.
+ *  Place 4~7 does not cover the case that COPY or CTAS
+ *  is called inside procedure language.
+ *
+ *  Since in future auto_stats will be removed, for now let's
+ *  just to do some simple fix instead of big refactor.
+ *
+ *  To correctly pass the inFunction parameter for auto_stats()
+ *  at Place 4~7 we introduce executor_run_nesting_level to mark
+ *  if the program is already under ExecutorRun(). Place 4~7 is
+ *  directly taken as Utility and will not call ExecutorRun() if
+ *  they are not inside procedure language. This skill is like
+ *  the extension `auto_explain`.
+ *
+ *  For Place 1~3, the context is clear we do not need to check
+ *  executor_run_nesting_level.
+ */
+static int executor_run_nesting_level = 0;
+
 /* decls for local routines only used within this module */
 static void InitPlan(QueryDesc *queryDesc, int eflags);
 static void CheckValidRowMarkRel(Relation rel, RowMarkType markType);
@@ -233,87 +269,20 @@ standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			elog(GP_RESMANAGER_MEMORY_LOG_LEVEL, "query requested %.0fKB of memory",
 				 (double) queryDesc->plannedstmt->query_mem / 1024.0);
 		}
-	}
 
-	/**
-	 * Distribute memory to operators.
-	 *
-	 * There are some statements that do not go through the resource queue, so we cannot
-	 * put in a strong assert here. Someday, we should fix resource queues.
-	 */
-	if (queryDesc->plannedstmt->query_mem > 0)
-	{
-		/*
-		 * Whether we should skip operator memory assignment
-		 * - We should never skip operator memory assignment on QD.
-		 * - On QE, not skip in case of resource group enabled, and customer allow QE re-calculate query_mem,
-		 * as the GUC `gp_resource_group_enable_recalculate_query_mem` set to on.
-		 */
-		bool	should_skip_operator_memory_assign = true;
-
-		if (Gp_role == GP_ROLE_EXECUTE)
-		{
-			/*
-			 * If resource group is enabled, we should re-calculate query_mem on QE, because the memory
-			 * of the coordinator and segment nodes or the number of instance could be different.
-			 *
-			 * On QE, we only try to recalculate query_mem if resource group enabled. Otherwise, we will skip this
-			 * and the next operator memory assignment if resource queue enabled
-			 */
-			if (IsResGroupEnabled())
-			{
-				int 	total_memory_coordinator = queryDesc->plannedstmt->total_memory_coordinator;
-				int    	nsegments_coordinator = queryDesc->plannedstmt->nsegments_coordinator;
-
-				/*
-				 * memSpill is not in fallback mode, and we enable resource group re-calculate the query_mem on QE,
-				 * then re-calculate the query_mem and re-compute operatorMemKB using this new value
-				 */
-				if (total_memory_coordinator != 0 && nsegments_coordinator != 0)
-				{
-					should_skip_operator_memory_assign = false;
-
-					/* Get total system memory on the QE in MB */
-					int 	total_memory_segment = cgroupOpsRoutine->gettotalmemory();
-					int 	nsegments_segment = ResGroupGetHostPrimaryCount();
-					uint64	coordinator_query_mem = queryDesc->plannedstmt->query_mem;
-
-					/*
-					 * In the resource group environment, when we calculate query_mem, we can roughly use the following
-					 * formula:
-					 *
-					 * 	query_mem = (total_memory * gp_resource_group_memory_limit * memory_limit / nsegments) * memory_spill_ratio / concurrency
-					 *
-					 * Only total_memory and nsegments could differ between QD and QE, so query_mem is proportional to
-					 * the system's available virtual memory and inversely proportional to the number of instances.
-					 */
-					queryDesc->plannedstmt->query_mem *= (total_memory_segment * 1.0 / nsegments_segment) /
-														 (total_memory_coordinator * 1.0 / nsegments_coordinator);
-
-					elog(DEBUG1, "re-calculate query_mem, original QD's query_mem: %.0fKB, after recalculation QE's query_mem: %.0fKB",
-						 (double) coordinator_query_mem / 1024.0  , (double) queryDesc->plannedstmt->query_mem / 1024.0);
-				}
-			}
-		}
-		else
-		{
-			/* On QD, we always traverse the plan tree and compute operatorMemKB */
-			should_skip_operator_memory_assign = false;
-		}
-
-		if (!should_skip_operator_memory_assign)
+		if (queryDesc->plannedstmt->query_mem > 0)
 		{
 			PG_TRY();
 			{
-				switch(*gp_resmanager_memory_policy)
+				switch (*gp_resmanager_memory_policy)
 				{
 					case RESMANAGER_MEMORY_POLICY_AUTO:
 						PolicyAutoAssignOperatorMemoryKB(queryDesc->plannedstmt,
-													 queryDesc->plannedstmt->query_mem);
+														 queryDesc->plannedstmt->query_mem);
 						break;
 					case RESMANAGER_MEMORY_POLICY_EAGER_FREE:
 						PolicyEagerFreeAssignOperatorMemoryKB(queryDesc->plannedstmt,
-														  queryDesc->plannedstmt->query_mem);
+															  queryDesc->plannedstmt->query_mem);
 						break;
 					default:
 						Assert(IsResManagerMemoryPolicyNone());
@@ -322,7 +291,10 @@ standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			}
 			PG_CATCH();
 			{
-				mppExecutorCleanup(queryDesc);
+				/* GPDB hook for collecting query info */
+				if (query_info_collect_hook)
+					(*query_info_collect_hook)(QueryCancelCleanup ? METRICS_QUERY_CANCELED : METRICS_QUERY_ERROR, queryDesc);
+
 				PG_RE_THROW();
 			}
 			PG_END_TRY();
@@ -821,10 +793,27 @@ ExecutorRun(QueryDesc *queryDesc,
 			ScanDirection direction, uint64 count,
 			bool execute_once)
 {
-	if (ExecutorRun_hook)
-		(*ExecutorRun_hook) (queryDesc, direction, count, execute_once);
-	else
-		standard_ExecutorRun(queryDesc, direction, count, execute_once);
+	/*
+	 * Greenplum specific code:
+	 * auto_stats() needs to know if it is inside procedure call so
+	 * we maintain executor_run_nesting_level here. See detailed comments
+	 * at the definition of the static variable executor_run_nesting_level.
+	 */
+	executor_run_nesting_level++;
+	PG_TRY();
+	{
+		if (ExecutorRun_hook)
+			(*ExecutorRun_hook) (queryDesc, direction, count, execute_once);
+		else
+			standard_ExecutorRun(queryDesc, direction, count, execute_once);
+		executor_run_nesting_level--;
+	}
+	PG_CATCH();
+	{
+		executor_run_nesting_level--;
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
 }
 
 void
@@ -4049,4 +4038,14 @@ AdjustReplicatedTableCounts(EState *estate)
 
 	if (containReplicatedTable)
 		estate->es_processed = estate->es_processed / numsegments;
+}
+
+/*
+ * Greenplum specific code:
+ * For details, see comments at the definition of static var executor_run_nesting_level
+ */
+bool
+already_under_executor_run(void)
+{
+	return executor_run_nesting_level > 0;
 }

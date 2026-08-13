@@ -144,9 +144,6 @@ _copyPlannedStmt(const PlannedStmt *from)
 
 	COPY_SCALAR_FIELD(query_mem);
 
-	COPY_SCALAR_FIELD(total_memory_coordinator);
-	COPY_SCALAR_FIELD(nsegments_coordinator);
-
 	COPY_NODE_FIELD(intoClause);
 	COPY_NODE_FIELD(copyIntoClause);
 	COPY_NODE_FIELD(refreshClause);
@@ -614,7 +611,7 @@ _copyExternalScanInfo(const ExternalScanInfo *from)
 
 	COPY_NODE_FIELD(uriList);
 	COPY_SCALAR_FIELD(fmtType);
-	COPY_SCALAR_FIELD(isMasterOnly);
+	COPY_SCALAR_FIELD(isCoordinatorOnly);
 	COPY_SCALAR_FIELD(rejLimit);
 	COPY_SCALAR_FIELD(rejLimitInRows);
 	COPY_SCALAR_FIELD(logErrors);

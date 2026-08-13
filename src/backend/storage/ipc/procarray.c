@@ -697,8 +697,11 @@ ProcArrayEndTransaction(PGPROC *proc, TransactionId latestXid)
 		 */
 		if (LWLockConditionalAcquire(ProcArrayLock, LW_EXCLUSIVE))
 		{
-			if (TransactionIdIsValid(latestXid))
-				ProcArrayEndTransactionInternal(proc, latestXid);
+			/*
+			 * Greenplum needs to clear things of proc too in the case that
+			 * the distributed XID is valid but XID is not.
+			 */
+			ProcArrayEndTransactionInternal(proc, latestXid);
 
 			if (TransactionIdIsValid(tmGxact->gxid))
 				ProcArrayEndGxact(tmGxact);
@@ -708,38 +711,43 @@ ProcArrayEndTransaction(PGPROC *proc, TransactionId latestXid)
 		else
 			ProcArrayGroupClearXid(proc, latestXid);
 	}
-
-	/*
-	 * If we have no XID, we don't need to lock, since we won't affect
-	 * anyone else's calculation of a snapshot.  We might change their
-	 * estimate of global xmin, but that's OK.
-	 *
-	 * NB: this may reset the pgproc and tmGxact twice (not including the xid
-	 * and gxid), it should be no harm to the correctness, just an easy way to
-	 * handle the cases like: there's a valid distributed XID but no local XID.
-	 */
-	Assert(!TransactionIdIsValid(proc->xid));
-	Assert(!TransactionIdIsValid(allTmGxact[proc->pgprocno].gxid));
-	Assert(proc->subxidStatus.count == 0);
-	Assert(!proc->subxidStatus.overflowed);
-
-	proc->lxid = InvalidLocalTransactionId;
-	proc->xmin = InvalidTransactionId;
-	proc->delayChkpt = false;		/* be sure this is cleared in abort */
-	proc->recoveryConflictPending = false;
-
-	/* must be cleared with xid/xmin: */
-	/* avoid unnecessarily dirtying shared cachelines */
-	if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
+	else
 	{
-		Assert(!LWLockHeldByMe(ProcArrayLock));
-		LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-		Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
-		proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
-		ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
-		LWLockRelease(ProcArrayLock);
+		/*
+		 * If we have no XID, we don't need to lock, since we won't affect
+		 * anyone else's calculation of a snapshot.  We might change their
+		 * estimate of global xmin, but that's OK.
+		 */
+		Assert(!TransactionIdIsValid(proc->xid));
+		Assert(!TransactionIdIsValid(allTmGxact[proc->pgprocno].gxid));
+		Assert(proc->subxidStatus.count == 0);
+		Assert(!proc->subxidStatus.overflowed);
+
+		proc->lxid = InvalidLocalTransactionId;
+		proc->xmin = InvalidTransactionId;
+		proc->delayChkpt = false;		/* be sure this is cleared in abort */
+		proc->recoveryConflictPending = false;
+
+		/* must be cleared with xid/xmin: */
+		/* avoid unnecessarily dirtying shared cachelines */
+		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
+		{
+			Assert(!LWLockHeldByMe(ProcArrayLock));
+			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
+			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
+			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
+			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
+			LWLockRelease(ProcArrayLock);
+		}
 	}
 
+	/*
+	 * reset global transaction context
+	 *
+	 * proc is currently always MyProc, and we reset MyTmGxact without question,
+	 * assert it.
+	 */
+	Assert(proc == MyProc);
 	resetTmGxact();
 }
 
@@ -752,13 +760,14 @@ static inline void
 ProcArrayEndTransactionInternal(PGPROC *proc, TransactionId latestXid)
 {
 	size_t		pgxactoff = proc->pgxactoff;
+	bool		onlyClear = !TransactionIdIsValid(proc->xid);
 
 	/*
 	 * Note: we need exclusive lock here because we're going to change other
 	 * processes' PGPROC entries.
 	 */
 	Assert(LWLockHeldByMeInMode(ProcArrayLock, LW_EXCLUSIVE));
-	Assert(TransactionIdIsValid(ProcGlobal->xids[pgxactoff]));
+	Assert(onlyClear || TransactionIdIsValid(ProcGlobal->xids[pgxactoff]));
 	Assert(ProcGlobal->xids[pgxactoff] == proc->xid);
 
 	ProcGlobal->xids[pgxactoff] = InvalidTransactionId;
@@ -786,6 +795,9 @@ ProcArrayEndTransactionInternal(PGPROC *proc, TransactionId latestXid)
 		proc->subxidStatus.count = 0;
 		proc->subxidStatus.overflowed = false;
 	}
+
+	if (onlyClear)
+		return;
 
 	/* Also advance global latestCompletedXid while holding the lock */
 	MaintainLatestCompletedXid(latestXid);
@@ -881,8 +893,11 @@ ProcArrayGroupClearXid(PGPROC *proc, TransactionId latestXid)
 		PGPROC	   *proc = &allProcs[nextidx];
 		TMGXACT	   *tmGxact = &allTmGxact[nextidx];
 
-		if (TransactionIdIsValid(proc->procArrayGroupMemberXid))
-			ProcArrayEndTransactionInternal(proc, proc->procArrayGroupMemberXid);
+		/*
+		 * Greenplum needs to clear things of proc too in the case that the
+		 * distributed XID is valid but XID is not.
+		 */
+		ProcArrayEndTransactionInternal(proc, proc->procArrayGroupMemberXid);
 
 		if (TransactionIdIsValid(tmGxact->gxid))
 			ProcArrayEndGxact(tmGxact);
@@ -2213,6 +2228,14 @@ copyLocalSnapshot(Snapshot snapshot)
 	snapshot->curcid = SharedLocalSnapshotSlot->snapshot.curcid;
 	snapshot->subxcnt = -1;
 
+	/*
+	 * We just overwrote the snapshot contents in place, so the reuse token no
+	 * longer describes them. Invalidate it, exactly like the in-place fillers
+	 * in snapmgr.c (SetTransactionSnapshot(), CopySnapshot(),
+	 * RestoreSnapshot()) do.
+	 */
+	snapshot->snapXactCompletionCount = 0;
+
 	if (TransactionIdPrecedes(snapshot->xmin, TransactionXmin))
 		TransactionXmin = snapshot->xmin;
 
@@ -2857,22 +2880,85 @@ GetSnapshotData(Snapshot snapshot, DtxContext distributedTransactionContext)
 	 */
 	LWLockAcquire(ProcArrayLock, LW_SHARED);
 
-#ifdef FAULT_INJECTOR
-	if (!IS_QUERY_DISPATCHER() && snapshot->haveDistribSnapshot &&
-		FaultInjector_InjectFaultIfSet("distributed_snapshot_skip_data_reuse",
-										DDLNotSpecified,
-										MyProcPort ? MyProcPort->database_name: "",
-										"") == FaultInjectorTypeSkip)
+	/*
+	 * GP: Snapshot reuse is deliberately never attempted on the coordinator
+	 * while it is running distributed transactions.  A coordinator snapshot
+	 * also carries the distributed snapshot built by
+	 * CreateDistributedSnapshot() further below, and its contents depend on
+	 * the lifecycle of distributed transactions, which xactCompletionCount
+	 * does not track: a read-only distributed transaction begins and ends
+	 * without ever assigning a local xid, so the counter would be unchanged
+	 * and GetSnapshotDataReuse() would hand back a stale list of in-progress
+	 * gxids.
+	 *
+	 * On a QE this is not a concern.  The distributed part of the snapshot
+	 * has already been reset by SnapshotResetDslm() and copied fresh from
+	 * QEDtxContextInfo above, so only the local part - which is exactly what
+	 * xactCompletionCount tracks - is subject to reuse.
+	 */
+	if (distributedTransactionContext != DTX_CONTEXT_QD_DISTRIBUTED_CAPABLE &&
+		GetSnapshotDataReuse(snapshot))
 	{
-		/* Skip snapshot data reuse */
-	}
-	else
-#endif
+		/*
+		 * Fetch into local variables while ProcArrayLock is held, see the
+		 * identical dance in the full computation below.
+		 */
+		replication_slot_xmin = procArray->replication_slot_xmin;
+		replication_slot_catalog_xmin = procArray->replication_slot_catalog_xmin;
 
-	if ((distributedTransactionContext != DTX_CONTEXT_QD_DISTRIBUTED_CAPABLE ||
-		snapshot->haveDistribSnapshot) && GetSnapshotDataReuse(snapshot))
-	{
 		LWLockRelease(ProcArrayLock);
+
+		/*
+		 * GP: The local part of the snapshot is unchanged, but the
+		 * distributed snapshot we just copied from the QD is new, so the
+		 * distributed log's oldest xmin may still be able to advance.
+		 *
+		 * Maintaining it here is not an optimization.
+		 * DistributedLog_AdvanceOldestXmin() is the only caller of
+		 * DistributedLog_Truncate() - neither checkpoint nor vacuum ever
+		 * truncate the distributed log - so leaving it to the full
+		 * computation alone would make truncation of obsolete distributed log
+		 * segments depend on whether some other backend happened to commit an
+		 * xid-bearing transaction between two of our snapshots.  A workload of
+		 * single-statement sessions would then never truncate at all, because
+		 * every backend's very first snapshot (taken by the implicit "Local
+		 * Only" transaction, before any distributed snapshot has arrived)
+		 * always recomputes, absorbs all pending completions into its
+		 * baseline, and cannot truncate.
+		 *
+		 * We deliberately do not touch GlobalVis* here, matching upstream's
+		 * behaviour on the reuse path.  The horizon below is computed only to
+		 * feed DistributedLog_AdvanceOldestXmin(), and it must come out
+		 * exactly as the full computation would have produced it: advancing
+		 * the distributed log any further would raise the horizon that
+		 * GetDistOldestXmin() hands to vacuum, silently defeating
+		 * vacuum_defer_cleanup_age and the replication slot xmins.
+		 */
+		if (!IS_QUERY_DISPATCHER() && snapshot->haveDistribSnapshot)
+		{
+			TransactionId def_vis_xid;
+
+			/*
+			 * This deliberately duplicates, rather than factors out, the
+			 * def_vis_xid computation in the "maintain state for GlobalVis*"
+			 * block below: that block is verbatim upstream code and we do not
+			 * want to add merge conflicts to it.  Keep the two in sync.  Note
+			 * that both spell out the same symbols, so an upstream rename or
+			 * removal (PostgreSQL 16 drops vacuum_defer_cleanup_age, for
+			 * instance) breaks the build here too rather than passing
+			 * silently.
+			 */
+			def_vis_xid = TransactionIdRetreatedBy(snapshot->xmin,
+												   vacuum_defer_cleanup_age);
+			def_vis_xid = TransactionIdOlder(def_vis_xid,
+											 replication_slot_xmin);
+			def_vis_xid = TransactionIdOlder(replication_slot_catalog_xmin,
+											 def_vis_xid);
+
+			(void) DistributedLog_AdvanceOldestXmin(def_vis_xid,
+													ds->xminAllDistributedSnapshots);
+		}
+
 		goto ret;
 	}
 
@@ -3097,8 +3183,9 @@ GetSnapshotData(Snapshot snapshot, DtxContext distributedTransactionContext)
 		MyProc->xmin = TransactionXmin = xmin;
 	}
 
-	/* GP: QD takes a distributed snapshot */
-	if (distributedTransactionContext == DTX_CONTEXT_QD_DISTRIBUTED_CAPABLE && !Debug_disable_distributed_snapshot)
+	/* GP: QD takes a distributed snapshot iff QD not in retry phase and the query needs distributed snapshot */
+	if (distributedTransactionContext == DTX_CONTEXT_QD_DISTRIBUTED_CAPABLE && !Debug_disable_distributed_snapshot 
+			&& needDistributedSnapshot)
 	{
 		CreateDistributedSnapshot(ds);
 		snapshot->haveDistribSnapshot = true;
@@ -4840,6 +4927,32 @@ FindProcByGpSessionId(long gp_session_id)
 		
 	LWLockRelease(ProcArrayLock);
 	return NULL;
+}
+
+/*
+ * Get a list of session IDs that belong to each running process.
+ *
+ * Note that for quick grab-and-go we do not validate or deduplicate the result
+ * here (e.g. the invalid session ID "-1" could appear multiple times).
+ */
+List *
+GetRunningProcSessionIds(void)
+{
+	ProcArrayStruct *arrayP = procArray;
+	int			index;
+	List 			*list = NIL;
+
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+
+	for (index = 0; index < arrayP->numProcs; index++)
+	{
+		PGPROC	   *proc = &allProcs[arrayP->pgprocnos[index]];
+			
+		list = lappend_oid(list, proc->mppSessionId);
+	}
+		
+	LWLockRelease(ProcArrayLock);
+	return list;
 }
 
 /*

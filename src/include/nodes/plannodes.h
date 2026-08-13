@@ -140,9 +140,6 @@ typedef struct PlannedStmt
 	/* What is the memory reserved for this query's execution? */
 	uint64		query_mem;
 
-	int			total_memory_coordinator;	/* GPDB: The total usable virtual memory on coordinator node in MB */
-	int			nsegments_coordinator;		/* GPDB: The number of primary segments on coordinator node  */
-
 	/*
 	 * GPDB: Used to keep target information for CTAS and it is needed
 	 * to be dispatched to QEs.
@@ -897,15 +894,15 @@ typedef struct WorkTableScan
 typedef struct ExternalScanInfo
 {
 	NodeTag		type;
-	List		*uriList;       /* data uri or null for each segment  */
-	char		fmtType;        /* data format type                   */
-	bool		isMasterOnly;   /* true for EXECUTE on master seg only */
-	int			rejLimit;       /* reject limit (-1 for no sreh)      */
-	bool		rejLimitInRows; /* true if ROWS false if PERCENT      */
-	char		logErrors;      /* 't', 'p' to log errors into file. 'p' makes persistent error log */
-	int			encoding;		/* encoding of external table data    */
-	uint32      scancounter;	/* counter incr per scan node created */
-	List	   *extOptions;		/* external options */
+	List		*uriList;            /* data uri or null for each segment  */
+	char		fmtType;             /* data format type                   */
+	bool		isCoordinatorOnly;   /* true for EXECUTE on coordinator seg only */
+	int			rejLimit;            /* reject limit (-1 for no sreh)      */
+	bool		rejLimitInRows;      /* true if ROWS false if PERCENT      */
+	char		logErrors;           /* 't', 'p' to log errors into file. 'p' makes persistent error log */
+	int			encoding;		     /* encoding of external table data    */
+	uint32      scancounter;	     /* counter incr per scan node created */
+	List	   *extOptions;		     /* external options */
 } ExternalScanInfo;
 
 /* ----------------

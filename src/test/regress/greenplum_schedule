@@ -30,10 +30,14 @@ test: copy_eol
 # might not happen if other backends are holding transactions open, preventing
 # vacuum from removing dead tuples. And run gp_toolkit early to make some log
 # file related tests (like gp_log_system, etc) faster.
+# Also, gp_log_system could have issue reading partial log that's generated
+# from concurrent test. So anything that uses it needs to be run alone.
 test: disable_autovacuum
 test: gp_toolkit
 # test gp_fastsequence allocation (early in schedule as log grepping is expensive)
-test: uao_dml/gp_fastsequence_row uao_dml/gp_fastsequence_column
+test: uao_dml/gp_fastsequence_row
+test: uao_dml/gp_fastsequence_column
+
 test: python_processed64bit
 # brin_detoast's VACUUM must actually remove TOAST rows, which requires no
 # concurrent transactions holding back the xmin horizon: keep it alone in its
@@ -272,6 +276,7 @@ test: vacuum_full_ao
 test: vacuum_full_freeze_heap
 test: vacuum_full_heap
 test: vacuum_full_heap_bitmapindex
+test: vacuum_ao_aux_only
 # Check for shmem leak for instrumentation slots
 test: instr_in_shmem_verify
 # check autostats
@@ -300,6 +305,8 @@ test: mirror_replay
 test: autovacuum
 test: autovacuum-segment
 test: autovacuum-template0-segment
+test: autovacuum-catalog
+test: autovacuum-ao-aux
 
 # gpexpand introduce the partial tables, check them if they can run correctly
 test: gangsize gang_reuse
@@ -323,5 +330,8 @@ test: uao_dml/uao_dml_unique_index_delete_row uao_dml/uao_dml_unique_index_delet
 
 # test CREATE UNIQUE INDEX on AO/CO tables.
 test: uao_dml/ao_unique_index_build_row uao_dml/ao_unique_index_build_column
+
+# test column projection for various operations
+test: aoco_projection
 
 # end of tests

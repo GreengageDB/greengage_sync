@@ -2052,6 +2052,25 @@ heapam_scan_get_blocks_done(HeapScanDesc hscan)
  */
 
 /*
+ * GPDB: Heap tables only have 1 block sequence as they don't have segments like
+ * append-optimized tables. This sequence extends from block 0 to the number of
+ * blocks in the table.
+ */
+static BlockSequence *
+heap_relation_get_block_sequences(Relation rel,
+								  int *numSequences)
+{
+	BlockSequence *blockSequence = palloc(sizeof(BlockSequence) * 1);
+	Assert(numSequences);
+	*numSequences = 1;
+
+	blockSequence->startblknum = 0;
+	blockSequence->nblocks = RelationGetNumberOfBlocks(rel);
+
+	return blockSequence;
+}
+
+/*
  * Check to see whether the table needs a TOAST table.  It does only if
  * (1) there are any toastable attributes, and (2) the maximum length
  * of a tuple could exceed TOAST_TUPLE_THRESHOLD.  (We don't want to
@@ -2612,6 +2631,7 @@ static const TableAmRoutine heapam_methods = {
 	.index_validate_scan = heapam_index_validate_scan,
 
 	.relation_size = table_block_relation_size,
+	.relation_get_block_sequences = heap_relation_get_block_sequences,
 	.relation_needs_toast_table = heapam_relation_needs_toast_table,
 	.relation_toast_am = heapam_relation_toast_am,
 	.relation_fetch_toast_slice = heap_fetch_toast_slice,

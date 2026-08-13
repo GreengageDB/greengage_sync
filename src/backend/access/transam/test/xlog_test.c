@@ -8,7 +8,7 @@
 static void
 KeepLogSeg_wrapper(XLogRecPtr recptr, XLogSegNo *logSegNo)
 {
-	KeepLogSeg(recptr, logSegNo, InvalidXLogRecPtr);
+	KeepLogSeg(recptr, logSegNo);
 }
 
 static void
@@ -123,15 +123,97 @@ test_KeepLogSeg(void **state)
 	 ***********************************************/
 	/* Current Delete pointer */
 	wal_keep_size_mb = 0;
-	_logSegNo = 9 * XLogSegmentsPerXLogId(wal_segment_size) + 45;
+	_logSegNo = recptr / wal_segment_size - 3;
 
 	KeepLogSeg_wrapper(recptr, &_logSegNo);
-	assert_int_equal(_logSegNo, 9*XLogSegmentsPerXLogId(wal_segment_size) + 45);
+	assert_int_equal(_logSegNo, recptr / wal_segment_size - 3);
 
 	wal_keep_size_mb = -1;
 
 	KeepLogSeg_wrapper(recptr, &_logSegNo);
-	assert_int_equal(_logSegNo, 9*XLogSegmentsPerXLogId(wal_segment_size) + 45);
+	assert_int_equal(_logSegNo, recptr / wal_segment_size - 3);
+	/************************************************/
+}
+
+static void
+test_KeepLogSeg_max_slot_wal_keep_size(void **state)
+{
+	XLogRecPtr recptr;
+	XLogSegNo  _logSegNo;
+	XLogCtlData xlogctl;
+
+	xlogctl.replicationSlotMinLSN = ((uint64) 4) << 32 | (wal_segment_size * 0);
+	SpinLockInit(&xlogctl.info_lck);
+	XLogCtl = &xlogctl;
+
+	wal_keep_size_mb = 0;
+
+	/************************************************
+	 * Current Delete greater than what keep wants,
+	 * so, delete offset should get updated.
+	 * max_slot_wal_keep_size smaller than the segs
+	 * that keeps wants, cut to max_slot_wal_keep_size_mb
+	 ***********************************************/
+	/* Current Delete pointer */
+	_logSegNo = 4 * XLogSegmentsPerXLogId(wal_segment_size) + 20;
+
+	max_slot_wal_keep_size_mb = 5 * 64;
+
+	/*
+	 * Current xlog location (4, 10)
+	 * xrecoff = seg * 67108864 (64 MB segsize)
+	 */
+	recptr = ((uint64) 4) << 32 | (wal_segment_size * 10);
+
+	KeepLogSeg_wrapper(recptr, &_logSegNo);
+	/* 4 * 64 + 10 - 5 (max_slot_wal_keep_size) */
+	assert_int_equal(_logSegNo, 261);
+	/************************************************/
+
+
+	/************************************************
+	 * Current Delete greater than what keep wants,
+	 * so, delete offset should get updated.
+	 * max_slot_wal_keep_size smaller than the segs
+	 * that keeps wants, ignore max_slot_wal_keep_size_mb
+	 ***********************************************/
+	/* Current Delete pointer */
+	_logSegNo = 4 * XLogSegmentsPerXLogId(wal_segment_size) + 20;
+
+	max_slot_wal_keep_size_mb = 10 * 64;
+
+	/*
+	 * Current xlog location (4, 1)
+	 * xrecoff = seg * 67108864 (64 MB segsize)
+	 */
+	recptr = ((uint64) 4) << 32 | (wal_segment_size * 10);
+
+	KeepLogSeg_wrapper(recptr, &_logSegNo);
+	/* cut to the keep (xlogctl.replicationSlotMinLSN) */
+	assert_int_equal(_logSegNo, 256);
+	/************************************************/
+
+	wal_keep_size_mb = 15 * (wal_segment_size / (1024 * 1024));
+
+	/************************************************
+	 * Current Delete greater than what keep wants,
+	 * so, delete offset should get updated.
+	 * max_slot_wal_keep_size smaller than wal_keep_size,
+	 * max_slot_wal_keep_size doesn't take effect.
+	 ***********************************************/
+	/* Current Delete pointer */
+	_logSegNo = 4 * XLogSegmentsPerXLogId(wal_segment_size) + 20;
+	max_slot_wal_keep_size_mb = 5 * 64;
+
+	/*
+	 * Current xlog location (4, 1)
+	 * xrecoff = seg * 67108864 (64 MB segsize)
+	 */
+	recptr = ((uint64) 4) << 32 | (wal_segment_size * 10);
+
+	KeepLogSeg_wrapper(recptr, &_logSegNo);
+	/* 4 * 64 + 10 - 15 (wal_keep_size) */
+	assert_int_equal(_logSegNo, 251);
 	/************************************************/
 }
 
@@ -141,7 +223,8 @@ main(int argc, char* argv[])
 	cmockery_parse_arguments(argc, argv);
 
 	const UnitTest tests[] = {
-		unit_test(test_KeepLogSeg)
+		unit_test(test_KeepLogSeg),
+		unit_test(test_KeepLogSeg_max_slot_wal_keep_size)
 	};
 	return run_tests(tests);
 }

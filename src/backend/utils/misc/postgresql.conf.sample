@@ -637,6 +637,8 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 #autovacuum_vacuum_cost_limit = -1	# default vacuum cost limit for
 					# autovacuum, -1 means use
 					# vacuum_cost_limit
+#gp_autovacuum_scope = 'catalog' # default to autovacuuming only catalog tables
+                    # 'catalog_ao_aux' # autovacuum catalog and append-optimized auxiliary tables
 
 #------------------------------------------------------------------------------
 # CLIENT CONNECTION DEFAULTS
@@ -753,10 +755,6 @@ gp_resqueue_memory_policy = 'eager_free'	# memory request based queueing.
 #---------------------------------------------------------------------------
 #gp_external_enable_exec = on   # enable external tables with EXECUTE.
 
-#---------------------------------------------------------------------------
-# APPEND ONLY TABLES
-#---------------------------------------------------------------------------
-#gp_safefswritesize = 0   # minimum size for safe AO writes in a non-mature fs
 #------------------------------------------------------------------------------
 # VERSION AND PLATFORM COMPATIBILITY
 #------------------------------------------------------------------------------

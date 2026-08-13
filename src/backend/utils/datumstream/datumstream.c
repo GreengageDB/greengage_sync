@@ -361,7 +361,6 @@ init_datumstream_info(
 					  char *compName,
 					  int32 compLevel,
 					  bool checksum,
-					  int32 safeFSWriteSize,
 					  int32 maxsz,
 					  Form_pg_attribute attr)
 {
@@ -392,7 +391,6 @@ init_datumstream_info(
 	/*
 	 * The original version didn't bother to populate these fields...
 	 */
-	ao_attr->safeFSWriteSize = 0;
 
 	if (compName != NULL && pg_strcasecmp(compName, "rle_type") == 0)
 	{
@@ -404,8 +402,6 @@ init_datumstream_info(
 		 */
 		*datumStreamVersion = DatumStreamVersion_Dense_Enhanced;
 		*rle_compression = true;
-
-		ao_attr->safeFSWriteSize = safeFSWriteSize;
 
 		/*
 		 * Use the compresslevel as a kludgy way of specifiying the BULK compression
@@ -492,7 +488,6 @@ create_datumstreamwrite(
 						char *compName,
 						int32 compLevel,
 						bool checksum,
-						int32 safeFSWriteSize,
 						int32 maxsz,
 						Form_pg_attribute attr,
 						char *relname,
@@ -519,7 +514,6 @@ create_datumstreamwrite(
 						  compName,
 						  compLevel,
 						  checksum,
-						  safeFSWriteSize,
 						  maxsz,
 						  attr);
 
@@ -635,7 +629,6 @@ create_datumstreamread(
 					   char *compName,
 					   int32 compLevel,
 					   bool checksum,
-					   int32 safeFSWriteSize,
 					   int32 maxsz,
 					   Form_pg_attribute attr,
 					   char *relname,
@@ -658,7 +651,6 @@ create_datumstreamread(
 						  compName,
 						  compLevel,
 						  checksum,
-						  safeFSWriteSize,
 						  maxsz,
 						  attr);
 

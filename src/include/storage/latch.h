@@ -178,6 +178,9 @@ extern int	WaitLatchOrSocket(Latch *latch, int wakeEvents,
 							  pgsocket sock, long timeout, uint32 wait_event_info);
 extern void InitializeLatchWaitSet(void);
 
+/* specifial function for gpdb */
+extern void ResetWaitEventSet(WaitEventSet **pset, MemoryContext context, int nevents);
+
 /*
  * Unix implementation uses SIGUSR1 for inter-process signaling.
  * Win32 doesn't need this.

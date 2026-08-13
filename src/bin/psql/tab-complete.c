@@ -1113,6 +1113,7 @@ static const char *const table_storage_parameters[] = {
 	"autovacuum_vacuum_scale_factor",
 	"autovacuum_vacuum_threshold",
 	"fillfactor",
+	"gp_autovacuum_scope",
 	"log_autovacuum_min_duration",
 	"parallel_workers",
 	"toast.autovacuum_enabled",
@@ -2936,7 +2937,7 @@ psql_completion(const char *text, int start, int end)
 	else if (TailMatches("RESOURCE", "GROUP", MatchAny, "WITH", "("))
 	{
 		static const char *const list_CREATERESOURCEGROUP[] =
-		{"CONCURRENCY", "CPU_RATE_LIMIT", "MEMORY_LIMIT", "MEMORY_REDZONE_LIMIT", NULL};
+		{"CONCURRENCY", "cpu_hard_quota_limit", "MEMORY_LIMIT", "MEMORY_REDZONE_LIMIT", NULL};
 
 		COMPLETE_WITH_LIST(list_CREATERESOURCEGROUP);
 	}

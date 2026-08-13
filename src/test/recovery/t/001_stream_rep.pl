@@ -408,8 +408,5 @@ ok( ($phys_restart_lsn_pre cmp $phys_restart_lsn_post) == 0,
 # Check if the previous segment gets correctly recycled after the
 # server stopped cleanly, causing a shutdown checkpoint to be generated.
 my $primary_data = $node_primary->data_dir;
-# GPDB never uses restart_lsn as lowest cut-off point. Instead always
-# will use Checkpoint redo location prior to restart_lsn as cut-off
-# point.
-ok(-f "$primary_data/pg_wal/$segment_removed",
+ok(!-f "$primary_data/pg_wal/$segment_removed",
 	"WAL segment $segment_removed recycled after physical slot advancing");

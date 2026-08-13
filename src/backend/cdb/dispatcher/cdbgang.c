@@ -79,6 +79,9 @@ CreateGangFunc pCreateGangFunc = cdbgang_createGang_async;
 static bool NeedResetSession = false;
 static Oid	OldTempNamespace = InvalidOid;
 
+/* WaitEventSet for dispatch */
+WaitEventSet *DispWaitSet = NULL;
+
 /*
  * cdbgang_createGang:
  *

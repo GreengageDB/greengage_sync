@@ -1437,6 +1437,7 @@ CopyTo(CopyToState cstate)
 	int			num_phys_attrs;
 	ListCell   *cur;
 	uint64		processed = 0;
+	bool	   *proj = NULL;
 
 	if (cstate->rel)
 		tupDesc = RelationGetDescr(cstate->rel);
@@ -1450,12 +1451,16 @@ CopyTo(CopyToState cstate)
 
 	/* Get info about the columns we need to process. */
 	cstate->out_functions = (FmgrInfo *) palloc(num_phys_attrs * sizeof(FmgrInfo));
+
+	proj = palloc0(sizeof(bool) * num_phys_attrs);
 	foreach(cur, cstate->attnumlist)
 	{
 		int			attnum = lfirst_int(cur);
 		Oid			out_func_oid;
 		bool		isvarlena;
 		Form_pg_attribute attr = TupleDescAttr(tupDesc, attnum - 1);
+
+		proj[attnum - 1] = true;
 
 		if (cstate->opts.binary)
 			getTypeBinaryOutputInfo(attr->atttypid,
@@ -1540,7 +1545,7 @@ CopyTo(CopyToState cstate)
 		TupleTableSlot *slot;
 		TableScanDesc scandesc;
 
-		scandesc = table_beginscan(cstate->rel, GetActiveSnapshot(), 0, NULL);
+		scandesc = table_beginscan_es(cstate->rel, GetActiveSnapshot(), 0, NULL, proj, NULL);
 		slot = table_slot_create(cstate->rel, NULL);
 
 		processed = 0;

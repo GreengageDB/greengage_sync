@@ -2694,8 +2694,7 @@ cost_agg(Path *path, PlannerInfo *root,
 															 quals,
 															 0,
 															 JOIN_INNER,
-															 NULL,
-															 false /* no damping */));
+															 NULL));
 	}
 
 	path->rows = output_tuples;
@@ -2845,8 +2844,7 @@ cost_group(Path *path, PlannerInfo *root,
 															 quals,
 															 0,
 															 JOIN_INNER,
-															 NULL,
-															 false /* no damping */));
+															 NULL));
 	}
 
 	path->rows = output_tuples;
@@ -4815,7 +4813,7 @@ compute_semi_anti_join_factors(PlannerInfo *root,
 	/*
 	 * Get the JOIN_SEMI or JOIN_ANTI selectivity of the join clauses.
 	 */
-	jselec = clauselist_selectivity(root,
+	jselec = clauselist_selectivity_extended(root,
 									joinquals,
 									0,
 									(jointype == JOIN_ANTI) ? JOIN_ANTI : JOIN_SEMI,
@@ -4839,7 +4837,7 @@ compute_semi_anti_join_factors(PlannerInfo *root,
 	norm_sjinfo.semi_operators = NIL;
 	norm_sjinfo.semi_rhs_exprs = NIL;
 
-	nselec = clauselist_selectivity(root,
+	nselec = clauselist_selectivity_extended(root,
 									joinquals,
 									0,
 									JOIN_INNER,
@@ -5046,7 +5044,7 @@ set_baserel_size_estimates(PlannerInfo *root, RelOptInfo *rel)
 	Assert(rel->relid > 0);
 
 	nrows = rel->tuples *
-		clauselist_selectivity(root,
+		clauselist_selectivity_extended(root,
 							   rel->baserestrictinfo,
 							   0,
 							   JOIN_INNER,
@@ -5164,13 +5162,13 @@ get_parameterized_baserel_size(PlannerInfo *root, RelOptInfo *rel,
 	 * non-join clauses during selectivity estimation.
 	 */
 	allclauses = list_concat_copy(param_clauses, rel->baserestrictinfo);
+	/* GPDB_92_MERGE_FIXME: do we need damping? */
 	nrows = rel->tuples *
 		clauselist_selectivity(root,
 							   allclauses,
 							   rel->relid,	/* do not use 0! */
 							   JOIN_INNER,
-							   NULL,
-							   false); /* GPDB_92_MERGE_FIXME: do we need damping? */
+							   NULL);
 	nrows = clamp_row_est(nrows);
 	/* For safety, make sure result is not more than the base estimate */
 	if (nrows > rel->rows)
@@ -5336,13 +5334,13 @@ calc_joinrel_size_estimate(PlannerInfo *root,
 		}
 
 		/* Get the separate selectivities */
-		jselec = clauselist_selectivity(root,
+		jselec = clauselist_selectivity_extended(root,
 										joinquals,
 										0,
 										jointype,
 										sjinfo,
 										gp_selectivity_damping_for_joins);
-		pselec = clauselist_selectivity(root,
+		pselec = clauselist_selectivity_extended(root,
 										pushedquals,
 										0,
 										jointype,
@@ -5365,7 +5363,7 @@ calc_joinrel_size_estimate(PlannerInfo *root,
 	}
 	else
 	{
-		jselec = clauselist_selectivity(root,
+		jselec = clauselist_selectivity_extended(root,
 										restrictlist,
 										0,
 										jointype,

@@ -617,7 +617,7 @@ from gs_data_1 group by cube (g1000, g100,g10);
 
 create table gs_group_1 as
 select g100, g10, sum(g::numeric), count(*), max(g::text)
-from gs_data_1 group by cube (g1000, g100,g10);
+from gs_data_1 group by cube (g1000, g100,g10) distributed by (g100);
 
 -- Produce results with hash aggregation.
 
@@ -630,23 +630,16 @@ from gs_data_1 group by cube (g1000, g100,g10);
 
 create table gs_hash_1 as
 select g100, g10, sum(g::numeric), count(*), max(g::text)
-from gs_data_1 group by cube (g1000, g100,g10);
+from gs_data_1 group by cube (g1000, g100,g10) distributed by (g100);
 
 set enable_sort = true;
 set work_mem to default;
 
--- GPDB_12_MERGE_FIXME: the following comparison query has an ORCA plan that
--- relies on "IS NOT DISTINCT FROM" Hash Join, a variant that we likely have
--- lost during the merge with upstream Postgres 12. Disable ORCA for this query
-SET optimizer TO off;
-
--- Compare results
+-- Compare results of ORCA plan that relies on "IS NOT DISTINCT FROM" HASH Join
 
 (select * from gs_hash_1 except select * from gs_group_1)
   union all
 (select * from gs_group_1 except select * from gs_hash_1);
-
-RESET optimizer;
 
 drop table gs_group_1;
 drop table gs_hash_1;
