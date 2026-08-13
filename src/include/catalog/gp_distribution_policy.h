@@ -29,7 +29,7 @@
  */
 CATALOG(gp_distribution_policy,7142,GpPolicyRelationId)
 {
-	Oid			localoid;
+	Oid			localoid BKI_LOOKUP(pg_class);
 	char		policytype; /* distribution policy type */
 	int32		numsegments;
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */
@@ -38,8 +38,6 @@ CATALOG(gp_distribution_policy,7142,GpPolicyRelationId)
 #endif
 } FormData_gp_distribution_policy;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(localoid REFERENCES pg_class(oid));
 
 /* ----------------
  *		Form_gp_distribution_policy corresponds to a pointer to a tuple with

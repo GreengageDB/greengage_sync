@@ -62,9 +62,6 @@ CATALOG(pg_index,2610,IndexRelationId) BKI_SCHEMA_MACRO
 } FormData_pg_index;
 
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(indexrelid REFERENCES pg_class(oid));
-FOREIGN_KEY(indrelid REFERENCES pg_class(oid));
 /*   alter table pg_index add vector_fk indclass on pg_opclass(oid); */
 
 /* ----------------

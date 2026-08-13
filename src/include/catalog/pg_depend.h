@@ -68,9 +68,6 @@ CATALOG(pg_depend,2608,DependRelationId)
 #endif
 } FormData_pg_depend;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(classid REFERENCES pg_class(oid));
-FOREIGN_KEY(refclassid REFERENCES pg_class(oid));
 
 /* ----------------
  *		Form_pg_depend corresponds to a pointer to a row with

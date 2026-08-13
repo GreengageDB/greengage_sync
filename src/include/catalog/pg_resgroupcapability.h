@@ -19,7 +19,7 @@
 
 CATALOG(pg_resgroupcapability,6439,ResGroupCapabilityRelationId) BKI_SHARED_RELATION
 {
-	Oid			resgroupid;	/* OID of the group with this capability  */
+	Oid			resgroupid BKI_LOOKUP(pg_resgroup);	/* OID of the group with this capability  */
 
 	int16		reslimittype;	/* resource limit type id (RESGROUP_LIMIT_TYPE_XXX) */
 
@@ -29,8 +29,6 @@ CATALOG(pg_resgroupcapability,6439,ResGroupCapabilityRelationId) BKI_SHARED_RELA
 } FormData_pg_resgroupcapability;
 
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(resgroupid REFERENCES pg_resgroup(oid));
 
 /* ----------------
  *	Form_pg_resgroupcapability corresponds to a pointer to a tuple with

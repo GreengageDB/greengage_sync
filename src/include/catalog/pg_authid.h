@@ -53,7 +53,7 @@ CATALOG(pg_authid,1260,AuthIdRelationId) BKI_SHARED_RELATION BKI_ROWTYPE_OID(284
 	 */
 
 	/* ID of resource queue for this role */
-	Oid			rolresqueue BKI_DEFAULT(6055);
+	Oid			rolresqueue BKI_DEFAULT(pg_default) BKI_LOOKUP(pg_resqueue);
 
 	/* allowed to create readable gpfdist tbl?  */
 	bool		rolcreaterextgpfd BKI_DEFAULT(f);
@@ -65,13 +65,10 @@ CATALOG(pg_authid,1260,AuthIdRelationId) BKI_SHARED_RELATION BKI_ROWTYPE_OID(284
 	bool		rolcreatewextgpfd BKI_DEFAULT(f);
 
 	/* ID of resource group for this role  */
-	Oid			rolresgroup BKI_DEFAULT(6438);
+	Oid			rolresgroup BKI_DEFAULT(admin_group) BKI_LOOKUP(pg_resgroup);
 #endif
 } FormData_pg_authid;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(rolresqueue REFERENCES pg_resqueue(oid));
-FOREIGN_KEY(rolresgroup REFERENCES pg_resgroup(oid));
 
 /* ----------------
  *		Form_pg_authid corresponds to a pointer to a tuple with

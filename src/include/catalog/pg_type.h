@@ -253,17 +253,6 @@ CATALOG(pg_type,1247,TypeRelationId) BKI_BOOTSTRAP BKI_ROWTYPE_OID(71,TypeRelati
 #endif
 } FormData_pg_type;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(typnamespace REFERENCES pg_namespace(oid));
-FOREIGN_KEY(typowner REFERENCES pg_authid(oid));
-FOREIGN_KEY(typrelid REFERENCES pg_class(oid));
-FOREIGN_KEY(typinput REFERENCES pg_proc(oid));
-FOREIGN_KEY(typoutput REFERENCES pg_proc(oid));
-FOREIGN_KEY(typreceive REFERENCES pg_proc(oid));
-FOREIGN_KEY(typsend REFERENCES pg_proc(oid));
-FOREIGN_KEY(typanalyze REFERENCES pg_proc(oid));
-FOREIGN_KEY(typmodin REFERENCES pg_proc(oid));
-FOREIGN_KEY(typmodout REFERENCES pg_proc(oid));
 
 /* ----------------
  *		Form_pg_type corresponds to a pointer to a row with

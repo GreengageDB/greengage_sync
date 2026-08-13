@@ -155,11 +155,6 @@ CATALOG(pg_constraint,2606,ConstraintRelationId)
 #endif
 } FormData_pg_constraint;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(connamespace REFERENCES pg_namespace(oid));
-FOREIGN_KEY(conrelid REFERENCES pg_class(oid));
-FOREIGN_KEY(contypid REFERENCES pg_type(oid));
-FOREIGN_KEY(confrelid REFERENCES pg_class(oid));
 
 /* ----------------
  *		Form_pg_constraint corresponds to a pointer to a tuple with

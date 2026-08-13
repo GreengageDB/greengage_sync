@@ -43,10 +43,6 @@ CATALOG(pg_ts_template,3764,TSTemplateRelationId)
 	regproc		tmpllexize BKI_LOOKUP(pg_proc);
 } FormData_pg_ts_template;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(tmplnamespace REFERENCES pg_namespace(oid));
-FOREIGN_KEY(tmplinit REFERENCES pg_proc(oid));
-FOREIGN_KEY(tmpllexize REFERENCES pg_proc(oid));
 
 typedef FormData_pg_ts_template *Form_pg_ts_template;
 

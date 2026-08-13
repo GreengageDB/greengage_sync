@@ -65,10 +65,6 @@ CATALOG(pg_shdepend,1214,SharedDependRelationId) BKI_SHARED_RELATION
 	char		deptype;		/* see codes in dependency.h */
 } FormData_pg_shdepend;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(dbid REFERENCES pg_database(oid));
-FOREIGN_KEY(classid REFERENCES pg_class(oid));
-FOREIGN_KEY(refclassid REFERENCES pg_class(oid));
 
 /* ----------------
  *		Form_pg_shdepend corresponds to a pointer to a row with

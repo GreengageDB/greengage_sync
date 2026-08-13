@@ -37,8 +37,6 @@ CATALOG(pg_attribute_encoding,6231,AttributeEncodingRelationId)
 #endif
 } FormData_pg_attribute_encoding;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(attrelid REFERENCES pg_attribute(attrelid));
 
 /* ----------------
  *		Form_pg_attribute_encoding corresponds to a pointer to a tuple with
@@ -46,6 +44,8 @@ FOREIGN_KEY(attrelid REFERENCES pg_attribute(attrelid));
  * ----------------
  */
 typedef FormData_pg_attribute_encoding *Form_pg_attribute_encoding;
+
+DECLARE_FOREIGN_KEY((attrelid, attnum), pg_attribute, (attrelid, attnum));
 
 DECLARE_TOAST(pg_attribute_encoding, 6233, 6234);
 

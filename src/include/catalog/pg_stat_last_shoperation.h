@@ -28,12 +28,12 @@
 CATALOG(pg_stat_last_shoperation,6056,StatLastShOpRelationId)  BKI_SHARED_RELATION
 {
 	/* unique key */
-	Oid			classid;		/* OID of table containing object */
+	Oid			classid BKI_LOOKUP(pg_class);		/* OID of table containing object */
 	Oid			objid;			/* OID of object itself */
 	NameData	staactionname;	/* name of action */
 
 	/* */
-	Oid			stasysid;		/* OID of user (when action was performed) */
+	Oid			stasysid BKI_LOOKUP(pg_authid);		/* OID of user (when action was performed) */
 	NameData	stausename;		/* name of user (when action was performed) */
 #ifdef CATALOG_VARLEN
 	text		stasubtype;		/* action subtype */
@@ -41,9 +41,6 @@ CATALOG(pg_stat_last_shoperation,6056,StatLastShOpRelationId)  BKI_SHARED_RELATI
 #endif
 } FormData_pg_statlastshop;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(classid REFERENCES pg_class(oid));
-FOREIGN_KEY(stasysid REFERENCES pg_authid(oid));
 
 #undef timestamptz
 

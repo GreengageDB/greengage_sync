@@ -44,8 +44,6 @@ CATALOG(pg_namespace,2615,NamespaceRelationId)
 #endif
 } FormData_pg_namespace;
 
-/* GPDB added foreign key definitions for gpcheckcat. */
-FOREIGN_KEY(nspowner REFERENCES pg_authid(oid));
 
 /* ----------------
  *		Form_pg_namespace corresponds to a pointer to a tuple with

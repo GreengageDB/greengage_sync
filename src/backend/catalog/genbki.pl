@@ -392,6 +392,20 @@ while (<$ef>)
 
 close $ef;
 
+# resource queue lookups
+my %resqueueoids;
+foreach my $row (@{ $catalog_data{pg_resqueue} })
+{
+	$resqueueoids{ $row->{rsqname} } = $row->{oid};
+}
+
+# resource group lookups
+my %resgroupoids;
+foreach my $row (@{ $catalog_data{pg_resgroup} })
+{
+	$resgroupoids{ $row->{rsgname} } = $row->{oid};
+}
+
 # Map lookup name to the corresponding hash table.
 my %lookup_kind = (
 	pg_am          => \%amoids,
@@ -410,7 +424,12 @@ my %lookup_kind = (
 	pg_ts_parser   => \%tsparseroids,
 	pg_ts_template => \%tstemplateoids,
 	pg_type        => \%typeoids,
-	encoding       => \%encids);
+	encoding       => \%encids,
+
+	# gpdb-specific tables
+	pg_resqueue    => \%resqueueoids,
+	pg_resgroup    => \%resgroupoids
+);
 
 
 # Open temp files
