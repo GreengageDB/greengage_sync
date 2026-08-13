@@ -1604,7 +1604,19 @@ acquire_sample_rows(Relation onerel, int elevel,
 	nblocks = BlockSampler_Init(&bs, totalblocks, targrows, randseed);
 
 #ifdef USE_PREFETCH
-	prefetch_maximum = get_tablespace_io_concurrency(onerel->rd_rel->reltablespace);
+	/*
+	 * GPDB: for AO/AOCO relations, 'totalblocks' (and hence the block
+	 * numbers produced by the BlockSampler below) is actually a tuple
+	 * count, not a real smgr block number -- see the RelationIsAppendOptimized
+	 * special case above. table_scan_analyze_next_block() knows how to
+	 * translate that back into a tuple for AO/AOCO relations, but
+	 * PrefetchBuffer() does not: it would issue a prefetch directly against
+	 * the relation's (mostly empty) main fork using the tuple count as a
+	 * literal block number, which fails once that number exceeds the
+	 * fork's actual size. Skip prefetching for AO/AOCO relations.
+	 */
+	prefetch_maximum = RelationIsAppendOptimized(onerel) ?
+		0 : get_tablespace_io_concurrency(onerel->rd_rel->reltablespace);
 	/* Create another BlockSampler, using the same seed, for prefetching */
 	if (prefetch_maximum)
 		(void) BlockSampler_Init(&prefetch_bs, totalblocks, targrows, randseed);
