@@ -414,7 +414,7 @@ NOTICE:  table "t1" does not exist, skipping
 create table t1 (a int) distributed by (a);
 -- Must be an error and not an assert triggered.
 vacuum (rootpartition) t1;
-ERROR:  ANALYZE option ROOTPARTITOIN cannot be used with VACUUM
+ERROR:  ANALYZE option ROOTPARTITION cannot be used with VACUUM
 -- Shouldn't throw an error.
 vacuum (analyse, fullscan) t1;
 drop table t1;

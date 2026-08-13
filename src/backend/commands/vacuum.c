@@ -353,7 +353,7 @@ vacuum(List *relations, VacuumParams *params,
 	 */
 	if ((params->options & VACOPT_VACUUM) && (params->options & VACOPT_ROOTONLY))
 		ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				errmsg("ANALYZE option ROOTPARTITOIN cannot be used with VACUUM")));
+				errmsg("ANALYZE option ROOTPARTITION cannot be used with VACUUM")));
 
 	stmttype = (params->options & VACOPT_VACUUM) ? "VACUUM" : "ANALYZE";
 
