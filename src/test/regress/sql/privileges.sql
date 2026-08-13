@@ -431,9 +431,9 @@ SET SESSION AUTHORIZATION regress_priv_user1;
 DROP TABLE t1;
 
 -- check error reporting with column privs on a partitioned table
-CREATE TABLE errtst(a text, b text NOT NULL, c text, secret1 text, secret2 text) PARTITION BY LIST (a);
-CREATE TABLE errtst_part_1(secret2 text, c text, a text, b text NOT NULL, secret1 text);
-CREATE TABLE errtst_part_2(secret1 text, secret2 text, a text, c text, b text NOT NULL);
+CREATE TABLE errtst(a text, b text NOT NULL, c text, secret1 text, secret2 text) PARTITION BY LIST (a) DISTRIBUTED BY (a);
+CREATE TABLE errtst_part_1(secret2 text, c text, a text, b text NOT NULL, secret1 text) DISTRIBUTED BY (a);
+CREATE TABLE errtst_part_2(secret1 text, secret2 text, a text, c text, b text NOT NULL) DISTRIBUTED BY (a);
 
 ALTER TABLE errtst ATTACH PARTITION errtst_part_1 FOR VALUES IN ('aaa');
 ALTER TABLE errtst ATTACH PARTITION errtst_part_2 FOR VALUES IN ('aaaa');
