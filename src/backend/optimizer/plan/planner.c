@@ -3771,6 +3771,12 @@ remove_useless_groupby_columns(PlannerInfo *root)
 		if (rte->rtekind != RTE_RELATION)
 			continue;
 
+		/* Ignore the primary key in catalog tables accessed with gp_dist_random */
+		if (rte->forceDistRandom)
+		{
+			continue;
+		}
+
 		/*
 		 * We must skip inheritance parent tables as some of the child rels
 		 * may cause duplicate rows.  This cannot happen with partitioned
