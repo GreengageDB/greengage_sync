@@ -9,6 +9,7 @@ use Test::More tests => 5;
 
 my $node = get_new_node('test');
 $node->init;
+$node->append_conf('postgresql.conf', 'allow_system_table_mods = on');
 $node->start;
 
 # Create a custom operator class and an index which uses it.
