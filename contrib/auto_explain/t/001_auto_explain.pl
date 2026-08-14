@@ -38,7 +38,7 @@ like(
 
 like(
 	$log_contents,
-	qr/Index Scan using pg_proc_proname_args_nsp_index on pg_proc/,
+	qr/Bitmap Index Scan on pg_proc_proname_args_nsp_index/,
 	"index scan logged, text mode");
 
 like(
