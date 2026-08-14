@@ -3597,7 +3597,6 @@ ReindexMultipleInternal(List *relids, ReindexParams *params, ReindexStmt *parent
 		}
 		else
 		{
-			bool		result;
 			ReindexParams newparams = *params;
 
 			newparams.options |=
