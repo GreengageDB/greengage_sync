@@ -50,6 +50,7 @@ html man:
 	$(MAKE) -C doc $@
 
 install:
+	$(MAKE) -C contrib/amcheck $@  # needed by src/bin/pg_amcheck
 	$(MAKE) -C contrib/auto_explain $@
 	$(MAKE) -C contrib/citext $@
 	$(MAKE) -C contrib/file_fdw $@

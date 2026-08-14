@@ -72,16 +72,24 @@ use Test::More;
 #    xx                     t_bits: x			offset = 23		C
 #    xx xx xx xx xx xx xx xx   'a': xxxxxxxx	offset = 24		LL
 #    xx xx xx xx xx xx xx xx   'b': xxxxxxxx	offset = 32		CCCCCCCC
-#    xx xx xx xx xx xx xx xx   'c': xxxxxxxx	offset = 40		CCllLL
+#    xx xx xx xx xx xx xx xx   'c': xxxxxxxx	offset = 40		CCCCllLL
 #    xx xx xx xx xx xx xx xx      : xxxxxxxx	 ...continued
-#    xx xx                        : xx      	 ...continued
+#    xx xx xx xx                  : xxxx    	 ...continued
+#
+# Unlike upstream PostgreSQL, Greenplum's varattrib_1b_e (the header used by
+# out-of-line TOAST pointers) carries two extra padding bytes between the
+# va_tag byte and the va_rawsize/va_extsize/va_valueid/va_toastrelid payload
+# (see the "va_padding" field and comment in src/include/postgres.h).  That
+# makes column 'c', an EXTERNAL-storage TOAST pointer, 2 bytes longer here
+# than it is upstream, hence the extra 'CC' below and the total size of 60
+# rather than upstream's 58.
 #
 # We could choose to read and write columns 'b' and 'c' in other ways, but
 # it is convenient enough to do it this way.  We define packing code
 # constants here, where they can be compared easily against the layout.
 
-use constant HEAPTUPLE_PACK_CODE => 'LLLSSSSSCCLLCCCCCCCCCCllLL';
-use constant HEAPTUPLE_PACK_LENGTH => 58;     # Total size
+use constant HEAPTUPLE_PACK_CODE => 'LLLSSSSSCCLLCCCCCCCCCCCCllLL';
+use constant HEAPTUPLE_PACK_LENGTH => 60;     # Total size
 
 # Read a tuple of our table from a heap page.
 #
@@ -123,6 +131,8 @@ sub read_tuple
 			b_body7 => shift,
 			c_va_header => shift,
 			c_va_vartag => shift,
+			c_va_padding1 => shift,
+			c_va_padding2 => shift,
 			c_va_rawsize => shift,
 			c_va_extsize => shift,
 			c_va_valueid => shift,
@@ -168,6 +178,8 @@ sub write_tuple
 					$tup->{b_body7},
 					$tup->{c_va_header},
 					$tup->{c_va_vartag},
+					$tup->{c_va_padding1},
+					$tup->{c_va_padding2},
 					$tup->{c_va_rawsize},
 					$tup->{c_va_extsize},
 					$tup->{c_va_valueid},
@@ -400,7 +412,7 @@ for (my $tupidx = 0; $tupidx < ROWCOUNT; $tupidx++)
 		$tup->{t_hoff} += 128;
 
 		push @expected,
-			qr/${$header}data begins at offset 152 beyond the tuple length 58/,
+			qr/${$header}data begins at offset 152 beyond the tuple length 60/,
 			qr/${$header}tuple data should begin at byte 24, but actually begins at byte 152 \(3 attributes, no nulls\)/;
 	}
 	elsif ($offnum == 6)
