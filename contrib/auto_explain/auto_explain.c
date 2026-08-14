@@ -75,7 +75,7 @@ static bool current_query_sampled = false;
 #define auto_explain_enabled() \
 	(auto_explain_log_min_duration >= 0 && \
 	 (nesting_level == 0 || auto_explain_log_nested_statements) && \
-	 Gp_role == GP_ROLE_DISPATCH && \
+	 (Gp_role == GP_ROLE_DISPATCH || Gp_role == GP_ROLE_UTILITY) && \
 	 current_query_sampled)
 
 /* Saved hook values in case of unload */
@@ -102,7 +102,7 @@ void
 _PG_init(void)
 {
 	/* Only run auto_explain on the Query Dispatcher node */
-	if (Gp_role != GP_ROLE_DISPATCH)
+	if (Gp_role != GP_ROLE_DISPATCH && Gp_role != GP_ROLE_UTILITY)
 		return;
 
 	/* Define custom GUC variables. */
