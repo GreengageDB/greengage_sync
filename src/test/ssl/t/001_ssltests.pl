@@ -134,7 +134,7 @@ switch_server_cert($node, 'server-cn-only');
 # Set of default settings for SSL parameters in connection string.  This
 # makes the tests protected against any defaults the environment may have
 # in ~/.postgresql/.
-my $default_ssl_connstr = "sslkey=invalid sslcert=invalid sslrootcert=invalid sslcrl=invalid";
+my $default_ssl_connstr = "sslkey=invalid sslcert=invalid sslrootcert=invalid sslcrl=invalid sslcrldir=invalid";
 
 $common_connstr =
   "$default_ssl_connstr user=ssltestuser dbname=trustdb hostaddr=$SERVERHOSTADDR host=common-name.pg-ssltest.test";
@@ -220,10 +220,11 @@ test_connect_fails(
 	qr/SSL error/,
 	"CRL belonging to a different CA");
 
-# The same for CRL directory
+# The same for CRL directory.  sslcrl='' is added here to override the
+# invalid default, so as this does not interfere with this case.
 test_connect_fails(
 	$common_connstr,
-	"sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrldir=ssl/client-crldir",
+	"sslcrl='' sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrldir=ssl/client-crldir",
 	qr/SSL error/,
 	"directory CRL belonging to a different CA");
 
@@ -365,9 +366,11 @@ test_connect_fails(
 	"sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrl=ssl/root+server.crl",
 	qr/SSL error/,
 	"does not connect with client-side CRL file");
+# sslcrl='' is added here to override the invalid default, so as this
+# does not interfere with this case.
 test_connect_fails(
 	$common_connstr,
-	"sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrldir=ssl/root+server-crldir",
+	"sslcrl='' sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrldir=ssl/root+server-crldir",
 	qr/SSL error/,
 	"does not connect with client-side CRL directory");
 
