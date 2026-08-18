@@ -822,7 +822,7 @@ process_psqlrc_file(char *filename)
 static void
 showVersion(void)
 {
-	puts("psql (Greenplum Database) " PG_VERSION);
+	puts("psql (Greengage Database) " PG_VERSION);
 }
 
 

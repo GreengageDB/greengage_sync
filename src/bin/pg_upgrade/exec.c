@@ -49,7 +49,7 @@ get_bin_version(ClusterInfo *cluster)
 
 	pclose(output);
 
-	if (sscanf(cmd_output, "%*s (Greenplum Database) %d.%d", &v1, &v2) < 1)
+	if (sscanf(cmd_output, "%*s (Greengage Database) %d.%d", &v1, &v2) < 1)
 		pg_fatal("could not get pg_ctl version output from %s\n", cmd);
 
 	if (v1 < 10)
@@ -447,7 +447,7 @@ check_exec(const char *dir, const char *program, bool check_version)
 	{
 		pg_strip_crlf(line);
 
-		snprintf(versionstr, sizeof(versionstr), "%s (Greenplum Database) " PG_VERSION, program);
+		snprintf(versionstr, sizeof(versionstr), "%s (Greengage Database) " PG_VERSION, program);
 
 		if (strcmp(line, versionstr) != 0)
 			pg_fatal("check for \"%s\" failed: incorrect version: found \"%s\", expected \"%s\"\n",

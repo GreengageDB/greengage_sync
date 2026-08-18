@@ -40,7 +40,7 @@ typedef long pgpid_t;
 
 
 /* postgres version ident string */
-#define PM_VERSIONSTR "postgres (Greenplum Database) " PG_VERSION "\n"
+#define PM_VERSIONSTR "postgres (Greengage Database) " PG_VERSION "\n"
 
 
 typedef enum
@@ -874,7 +874,7 @@ do_init(void)
 	char		cmd[MAXPGPATH];
 
 	if (exec_path == NULL)
-		exec_path = find_other_exec_or_die(argv0, "initdb", "initdb (Greenplum Database) " PG_VERSION "\n");
+		exec_path = find_other_exec_or_die(argv0, "initdb", "initdb (Greengage Database) " PG_VERSION "\n");
 
 	if (pgdata_opt == NULL)
 		pgdata_opt = "";
@@ -2498,12 +2498,12 @@ main(int argc, char **argv)
 		}
 		else if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			printf("%s (Greenplum Database) %s\n", progname, PG_VERSION);
+			printf("%s (Greengage Database) %s\n", progname, PG_VERSION);
 			exit(0);
 		}
 		else if (strcmp(argv[1], "--gp-version") == 0)
 		{
-			printf("%s (Greenplum Database) %s\n", progname, GP_VERSION);
+			printf("%s (Greengage Database) %s\n", progname, GP_VERSION);
 			exit(0);
 		}
 	}
