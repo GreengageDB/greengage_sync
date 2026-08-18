@@ -512,7 +512,7 @@ main(int argc, char **argv)
 		else if (strcmp(argv[1], "-V") == 0 ||
 				 strcmp(argv[1], "--version") == 0)
 		{
-			puts("pg_receivewal (Greengage Database) " PG_VERSION);
+			puts("pg_receivewal (Greenplum Database) " PG_VERSION);
 			exit(0);
 		}
 	}

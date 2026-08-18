@@ -156,7 +156,7 @@ main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("pg_rewind (Greengage Database) " PG_VERSION);
+			puts("pg_rewind (Greenplum Database) " PG_VERSION);
 			exit(0);
 		}
 	}
@@ -1055,7 +1055,7 @@ get_target_dbid(const char *argv0)
 
 	/* locate postgres binary */
 	if ((ret = find_other_exec(argv0, "postgres",
-							   "postgres (Greengage Database) " PG_VERSION "\n",
+							   "postgres (Greenplum Database) " PG_VERSION "\n",
 							   exec_path)) < 0)
 	{
 		char        full_path[MAXPGPATH];

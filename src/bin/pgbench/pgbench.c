@@ -5367,7 +5367,7 @@ printResults(StatsData *total,
 	double		bench_duration = PG_TIME_GET_DOUBLE(total_duration);
 	double		tps = ntx / bench_duration;
 
-	printf("pgbench (Greengage Database) %d.%d\n", PG_VERSION_NUM / 10000, PG_VERSION_NUM % 100);
+	printf("pgbench (Greenplum Database) %d.%d\n", PG_VERSION_NUM / 10000, PG_VERSION_NUM % 100);
 	/* Report test parameters. */
 	printf("transaction type: %s\n",
 		   num_scripts == 1 ? sql_script[0].desc : "multiple scripts");
@@ -5650,7 +5650,7 @@ main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("pgbench (Greengage Database) " PG_VERSION);
+			puts("pgbench (Greenplum Database) " PG_VERSION);
 			exit(0);
 		}
 	}

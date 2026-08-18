@@ -483,7 +483,7 @@ main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("vacuumlo (Greengage Database) " PG_VERSION);
+			puts("vacuumlo (Greenplum Database) " PG_VERSION);
 			exit(0);
 		}
 	}

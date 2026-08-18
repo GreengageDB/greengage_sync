@@ -502,7 +502,7 @@ main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("pg_dump (Greengage Database) " PG_VERSION);
+			puts("pg_dump (Greenplum Database) " PG_VERSION);
 			exit_nicely(0);
 		}
 	}
