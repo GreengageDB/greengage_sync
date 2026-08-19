@@ -330,7 +330,7 @@ external_rescan(FileScanDesc scan)
 					 errmsg("The file parse state of external scan is invalid")));
 
 	/* reset some parse state variables */
-	scan->fs_pstate->reached_eof = false;
+	scan->fs_pstate->raw_reached_eof = false;
 	scan->fs_pstate->cur_lineno = 0;
 	scan->fs_pstate->cur_attname = NULL;
 	scan->fs_pstate->raw_buf_len = 0;
@@ -825,7 +825,8 @@ else \
 	pstate->cdbsreh->rawdata->cursor = 0; \
 	pstate->cdbsreh->rawdata->data = pstate->line_buf.data; \
 	pstate->cdbsreh->rawdata->len = pstate->line_buf.len; \
-	pstate->cdbsreh->is_server_enc = pstate->line_buf_converted; \
+	/* line_buf is always in the database encoding, see CopyReadLine() */ \
+	pstate->cdbsreh->is_server_enc = true; \
 	pstate->cdbsreh->linenumber = pstate->cur_lineno; \
 	pstate->cdbsreh->processed++; \
 \
@@ -894,7 +895,7 @@ externalgettup_custom(FileScanDesc scan)
 
 	/* while didn't finish processing the entire file */
 	/* raw_buf_len was set to 0 in BeginCopyFrom() or external_rescan() */
-	while (pstate->raw_buf_len != 0 || !pstate->reached_eof)
+	while (pstate->raw_buf_len != 0 || !pstate->raw_reached_eof)
 	{
 		/* need to fill our buffer with data? */
 		if (pstate->raw_buf_len == 0)
@@ -935,7 +936,7 @@ externalgettup_custom(FileScanDesc scan)
 						scan->fs_tupDesc,
 						scan->in_functions,
 						scan->typioparams,
-						pstate->reached_eof,
+						pstate->raw_reached_eof,
 						pstate->rowcontext,
 						pstate->need_transcoding,
 						pstate->enc_conversion_proc,
@@ -1411,14 +1412,14 @@ external_getdata(URL_FILE *extfile, CopyFromState pstate, void *outbuf, int maxr
 	/*
 	 * CK: this code is very delicate. The caller expects this: - if url_fread
 	 * returns something, and the EOF is reached, it this call must return
-	 * with both the content and the reached_eof flag set. - failing to do so will
+	 * with both the content and the raw_reached_eof flag set. - failing to do so will
 	 * result in skipping the last line.
 	 */
 	bytesread = url_fread((void *) outbuf, maxread, extfile, pstate);
 
 	if (url_feof(extfile, bytesread))
 	{
-		pstate->reached_eof = true;
+		pstate->raw_reached_eof = true;
 	}
 
 	if (bytesread <= 0)
@@ -1505,7 +1506,7 @@ external_scan_error_callback(void *arg)
 	else
 	{
 		/* error is relevant to a particular line */
-		if (cstate->line_buf_converted || !cstate->need_transcoding)
+		if (cstate->line_buf_valid)
 		{
 			char	   *line_buf;
 

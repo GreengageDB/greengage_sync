@@ -58,7 +58,6 @@
 #include "access/external.h"
 #include "access/url.h"
 #include "catalog/catalog.h"
-#include "catalog/namespace.h"
 #include "catalog/pg_extprotocol.h"
 #include "cdb/cdbappendonlyam.h"
 #include "cdb/cdbaocsam.h"
@@ -1542,12 +1541,7 @@ BeginCopyFrom(ParseState *pstate,
 			  List *attnamelist,
 			  List *options)
 {
-<<<<<<< HEAD
-	CopyFromState	cstate;
-=======
 	CopyFromState cstate;
-	bool		pipe = (filename == NULL);
->>>>>>> 8ff1c94649f
 	TupleDesc	tupDesc;
 	AttrNumber	num_phys_attrs,
 				num_defaults;
@@ -1591,8 +1585,7 @@ BeginCopyFrom(ParseState *pstate,
 	is_external_table = rel != NULL && rel_is_external_table(rel->rd_id);
 
 	/* Extract options from the statement node tree */
-<<<<<<< HEAD
-	ProcessCopyOptions(pstate, &cstate->opts, true /* is_from */, options, is_external_table);
+	ProcessCopyOptions(pstate, &cstate->opts, true /* is_from */ , options, is_external_table);
 
 	if (cstate->opts.delim_off && !is_external_table)
 	{
@@ -1620,9 +1613,6 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->dispatch_mode = COPY_EXECUTOR;
 	else
 		cstate->dispatch_mode = COPY_DIRECT;
-=======
-	ProcessCopyOptions(pstate, &cstate->opts, true /* is_from */ , options);
->>>>>>> 8ff1c94649f
 
 	/* Process the target relation */
 	cstate->rel = rel;
@@ -1713,29 +1703,13 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->file_encoding = cstate->opts.file_encoding;
 
 	/*
-<<<<<<< HEAD
-	 * Set up encoding conversion info.  Even if the file and server encodings
-	 * are the same, we must apply pg_any_to_server() to validate data in
-	 * multibyte encodings.
-	 *
-	 * In COPY_EXECUTE mode, the dispatcher has already done the conversion.
-	 */
-	if (cstate->dispatch_mode != COPY_DISPATCH)
-	{
-		cstate->need_transcoding =
-			((cstate->file_encoding != GetDatabaseEncoding() ||
-			  pg_database_encoding_max_length() > 1));
-		/* See Multibyte encoding comment above */
-		cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
-		setEncodingConversionProc(&cstate->enc_conversion_proc,
-								  cstate->file_encoding, false);
-	}
-	else
-	{
-		cstate->need_transcoding = false;
-		cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
-=======
 	 * Look up encoding conversion function.
+	 *
+	 * GGDB: this is done in every mode, including COPY_DISPATCH.  The input
+	 * pipeline converts the data to the database encoding before the lines
+	 * are split into fields, and the line splitting relies on the input being
+	 * in a server encoding (see comments in copyfromparse.c).  So the QD must
+	 * convert, and it forwards already-converted lines to the QEs.
 	 */
 	if (cstate->file_encoding == GetDatabaseEncoding() ||
 		cstate->file_encoding == PG_SQL_ASCII ||
@@ -1748,8 +1722,15 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->need_transcoding = true;
 		cstate->conversion_proc = FindDefaultConversionProc(cstate->file_encoding,
 															GetDatabaseEncoding());
->>>>>>> 8ff1c94649f
 	}
+
+	/*
+	 * GGDB: custom external table formatters are handed the conversion
+	 * function and do the conversion themselves; they don't go through the
+	 * raw_buf/input_buf pipeline.
+	 */
+	setEncodingConversionProc(&cstate->enc_conversion_proc,
+							  cstate->file_encoding, false);
 
 	cstate->copy_src = COPY_FILE;	/* default */
 
@@ -1762,11 +1743,6 @@ BeginCopyFrom(ParseState *pstate,
 	oldcontext = MemoryContextSwitchTo(cstate->copycontext);
 
 	/* Initialize state variables */
-<<<<<<< HEAD
-	cstate->reached_eof = false;
-=======
-	cstate->eol_type = EOL_UNKNOWN;
->>>>>>> 8ff1c94649f
 	cstate->cur_relname = RelationGetRelationName(cstate->rel);
 	cstate->cur_lineno = 0;
 	cstate->cur_attname = NULL;
@@ -1780,13 +1756,9 @@ BeginCopyFrom(ParseState *pstate,
 	 */
 	cstate->raw_buf = palloc(RAW_BUF_SIZE + 1);
 	cstate->raw_buf_index = cstate->raw_buf_len = 0;
-<<<<<<< HEAD
-	if (!cstate->opts.binary || cstate->dispatch_mode == COPY_EXECUTOR)
-=======
 	cstate->raw_reached_eof = false;
 
-	if (!cstate->opts.binary)
->>>>>>> 8ff1c94649f
+	if (!cstate->opts.binary || cstate->dispatch_mode == COPY_EXECUTOR)
 	{
 		/*
 		 * If encoding conversion is needed, we need another buffer to hold
@@ -2314,7 +2286,6 @@ SendCopyFromForwardedError(CopyFromState cstate, CdbCopy *cdbCopy, char *errorms
 	errframe->lineno = cstate->cur_lineno;
 	errframe->line_len = cstate->line_buf.len;
 	errframe->errmsg_len = errormsg_len;
-	errframe->line_buf_converted = cstate->line_buf_converted;
 
 	/* send the bad data row to a random QE (via roundrobin) */
 	if (cstate->lastsegid == cdbCopy->total_segs)
