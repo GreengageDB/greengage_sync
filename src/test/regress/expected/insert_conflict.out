@@ -214,6 +214,7 @@ explain (costs off, format json) insert into insertconflicttest values (0, 'Bilb
        "Segments": 1,                                                      +
        "Gang Type": "primary writer",                                      +
        "Parallel Aware": false,                                            +
+       "Async Capable": false,                                             +
        "Plans": [                                                          +
          {                                                                 +
            "Node Type": "ModifyTable",                                     +
@@ -223,6 +224,7 @@ explain (costs off, format json) insert into insertconflicttest values (0, 'Bilb
            "Segments": 1,                                                  +
            "Gang Type": "primary writer",                                  +
            "Parallel Aware": false,                                        +
+           "Async Capable": false,                                         +
            "Relation Name": "insertconflicttest",                          +
            "Alias": "insertconflicttest",                                  +
            "Conflict Resolution": "UPDATE",                                +
@@ -231,11 +233,12 @@ explain (costs off, format json) insert into insertconflicttest values (0, 'Bilb
            "Plans": [                                                      +
              {                                                             +
                "Node Type": "Result",                                      +
-               "Parent Relationship": "Member",                            +
+               "Parent Relationship": "Outer",                             +
                "Slice": 1,                                                 +
                "Segments": 1,                                              +
                "Gang Type": "primary writer",                              +
-               "Parallel Aware": false                                     +
+               "Parallel Aware": false,                                    +
+               "Async Capable": false                                      +
              }                                                             +
            ]                                                               +
          }                                                                 +

@@ -128,6 +128,7 @@ void	   *referenced_functions[] =
 	ExecEvalScalarArrayOp,
 	ExecEvalScalarArrayOpFastInt,
 	ExecEvalScalarArrayOpFastStr,
+	ExecEvalHashedScalarArrayOp,
 	ExecEvalSubPlan,
 	ExecEvalSysVar,
 	ExecEvalWholeRowVar,

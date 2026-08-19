@@ -1848,6 +1848,12 @@ llvm_compile_expr(ExprState *state)
 				LLVMBuildBr(b, opblocks[opno + 1]);
 				break;
 
+			case EEOP_HASHED_SCALARARRAYOP:
+				build_EvalXFunc(b, mod, "ExecEvalHashedScalarArrayOp",
+								v_state, op, v_econtext);
+				LLVMBuildBr(b, opblocks[opno + 1]);
+				break;
+
 			case EEOP_XMLEXPR:
 				build_EvalXFunc(b, mod, "ExecEvalXmlExpr",
 								v_state, op);

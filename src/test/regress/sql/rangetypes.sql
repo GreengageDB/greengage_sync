@@ -380,8 +380,20 @@ RESET enable_bitmapscan;
 create table test_range_elem(i int4);
 create index test_range_elem_idx on test_range_elem (i);
 insert into test_range_elem select i from generate_series(1,100) i;
+-- GPDB: analyze for stable plan closer to upstream
+analyze test_range_elem;
+
+SET enable_seqscan    = f;
 
 select count(*) from test_range_elem where i <@ int4range(10,50);
+
+-- also test spgist index on anyrange expression
+create index on test_range_elem using spgist(int4range(i,i+10));
+explain (costs off)
+select count(*) from test_range_elem where int4range(i,i+10) <@ int4range(10,30);
+select count(*) from test_range_elem where int4range(i,i+10) <@ int4range(10,30);
+
+RESET enable_seqscan;
 
 drop table test_range_elem;
 

@@ -129,6 +129,13 @@ aorelpathbackend(RelFileNode node, BackendId backend, int32 segno)
 }
 
 /*
+ * Parameters to determine when to emit a log message in
+ * GetNewOidWithIndex()
+ */
+#define GETNEWOID_LOG_THRESHOLD 1000000
+#define GETNEWOID_LOG_MAX_INTERVAL 128000000
+
+/*
  * IsSystemRelation
  *		True iff the relation is either a system catalog or a toast table.
  *		See IsCatalogRelation for the exact definition of a system catalog.
@@ -549,6 +556,8 @@ GetNewOidWithIndex(Relation relation, Oid indexId, AttrNumber oidcolumn)
 	SysScanDesc scan;
 	ScanKeyData key;
 	bool		collides;
+	uint64		retries = 0;
+	uint64		retries_before_log = GETNEWOID_LOG_THRESHOLD;
 
 	/* Only system relations are supported */
 	Assert(IsSystemRelation(relation));
@@ -588,7 +597,47 @@ GetNewOidWithIndex(Relation relation, Oid indexId, AttrNumber oidcolumn)
 			collides = true;
 
 		systable_endscan(scan);
+
+		/*
+		 * Log that we iterate more than GETNEWOID_LOG_THRESHOLD but have not
+		 * yet found OID unused in the relation. Then repeat logging with
+		 * exponentially increasing intervals until we iterate more than
+		 * GETNEWOID_LOG_MAX_INTERVAL. Finally repeat logging every
+		 * GETNEWOID_LOG_MAX_INTERVAL unless an unused OID is found. This
+		 * logic is necessary not to fill up the server log with the similar
+		 * messages.
+		 */
+		if (retries >= retries_before_log)
+		{
+			ereport(LOG,
+					(errmsg("still finding an unused OID within relation \"%s\"",
+							RelationGetRelationName(relation)),
+					 errdetail("OID candidates were checked \"%llu\"  times, but no unused OID is yet found.",
+							   (unsigned long long) retries)));
+
+			/*
+			 * Double the number of retries to do before logging next until it
+			 * reaches GETNEWOID_LOG_MAX_INTERVAL.
+			 */
+			if (retries_before_log * 2 <= GETNEWOID_LOG_MAX_INTERVAL)
+				retries_before_log *= 2;
+			else
+				retries_before_log += GETNEWOID_LOG_MAX_INTERVAL;
+		}
+
+		retries++;
 	} while (collides);
+
+	/*
+	 * If at least one log message is emitted, also log the completion of OID
+	 * assignment.
+	 */
+	if (retries > GETNEWOID_LOG_THRESHOLD)
+	{
+		ereport(LOG,
+				(errmsg("new OID has been assigned in relation \"%s\" after \"%llu\" retries",
+						RelationGetRelationName(relation), (unsigned long long) retries)));
+	}
 
 	/*
 	 * Most catalog objects need to have the same OID in the master and all

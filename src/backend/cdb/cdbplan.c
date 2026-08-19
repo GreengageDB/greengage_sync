@@ -201,8 +201,8 @@ plan_tree_mutator(Node *node,
 				ModifyTable *newmt;
 
 				FLATCOPY(newmt, mt, ModifyTable);
+				/* PLANMUTATE covers lefttree, the sole source of tuples */
 				PLANMUTATE(newmt, mt);
-				MUTATE(newmt->plans, mt->plans, List *);
 				MUTATE(newmt->onConflictSet, mt->onConflictSet, List *);
 				MUTATE(newmt->onConflictWhere, mt->onConflictWhere , Node *);
 				MUTATE(newmt->withCheckOptionLists, mt->withCheckOptionLists, List *);
@@ -617,6 +617,20 @@ plan_tree_mutator(Node *node,
 				FLATCOPY(newmaterial, material, Material);
 				PLANMUTATE(newmaterial, material);
 				return (Node *) newmaterial;
+			}
+			break;
+
+		case T_ResultCache:
+			{
+				ResultCache *resultcache = (ResultCache *) node;
+				ResultCache *newresultcache;
+
+				FLATCOPY(newresultcache, resultcache, ResultCache);
+				PLANMUTATE(newresultcache, resultcache);
+				COPYARRAY(newresultcache, resultcache, numKeys, hashOperators);
+				COPYARRAY(newresultcache, resultcache, numKeys, collations);
+				MUTATE(newresultcache->param_exprs, resultcache->param_exprs, List *);
+				return (Node *) newresultcache;
 			}
 			break;
 

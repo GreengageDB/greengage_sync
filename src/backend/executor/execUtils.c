@@ -2388,6 +2388,32 @@ change_varattnos_of_a_varno(Node *node, const AttrMap *newattno, Index varno)
 	(void) change_varattnos_varno_walker(node, &attrMapCxt);
 }
 
+/*
+ * Return the map needed to convert given child result relation's tuples to
+ * the rowtype of the query's main target ("root") relation.  Note that a
+ * NULL result is valid and means that no conversion is needed.
+ */
+TupleConversionMap *
+ExecGetChildToRootMap(ResultRelInfo *resultRelInfo)
+{
+	/* If we didn't already do so, compute the map for this child. */
+	if (!resultRelInfo->ri_ChildToRootMapValid)
+	{
+		ResultRelInfo *rootRelInfo = resultRelInfo->ri_RootResultRelInfo;
+
+		if (rootRelInfo)
+			resultRelInfo->ri_ChildToRootMap =
+				convert_tuples_by_name(RelationGetDescr(resultRelInfo->ri_RelationDesc),
+									   RelationGetDescr(rootRelInfo->ri_RelationDesc));
+		else					/* this isn't a child result rel */
+			resultRelInfo->ri_ChildToRootMap = NULL;
+
+		resultRelInfo->ri_ChildToRootMapValid = true;
+	}
+
+	return resultRelInfo->ri_ChildToRootMap;
+}
+
 /* Return a bitmap representing columns being inserted */
 Bitmapset *
 ExecGetInsertedCols(ResultRelInfo *relinfo, EState *estate)

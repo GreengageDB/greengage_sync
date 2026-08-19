@@ -54,7 +54,7 @@ static relopt_bool boolRelOpts_gp[] =
 		{
 			SOPT_ANALYZEHLL,
 			"Enable HLL stats collection during analyze",
-			RELOPT_KIND_HEAP | RELOPT_KIND_TOAST | RELOPT_KIND_APPENDOPTIMIZED,
+			RELOPT_KIND_HEAP | RELOPT_KIND_TOAST | RELOPT_KIND_APPENDOPTIMIZED | RELOPT_KIND_PARTITIONED,
 			ShareUpdateExclusiveLock
 		},
 		ANALYZE_DEFAULT_HLL

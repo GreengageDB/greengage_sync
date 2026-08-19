@@ -47,6 +47,7 @@
 #include "executor/nodeProjectSet.h"
 #include "executor/nodeRecursiveunion.h"
 #include "executor/nodeResult.h"
+#include "executor/nodeResultCache.h"
 #include "executor/nodeSamplescan.h"
 #include "executor/nodeSeqscan.h"
 #include "executor/nodeSetOp.h"
@@ -310,6 +311,10 @@ ExecReScan(PlanState *node)
 
 		case T_MaterialState:
 			ExecReScanMaterial((MaterialState *) node);
+			break;
+
+		case T_ResultCacheState:
+			ExecReScanResultCache((ResultCacheState *) node);
 			break;
 
 		case T_SortState:
@@ -634,6 +639,10 @@ ExecSupportsBackwardScan(Plan *node)
 			{
 				ListCell   *l;
 
+				/* With async, tuples may be interleaved, so can't back up. */
+				if (((Append *) node)->nasyncplans > 0)
+					return false;
+
 				foreach(l, ((Append *) node)->appendplans)
 				{
 					if (!ExecSupportsBackwardScan((Plan *) lfirst(l)))
@@ -779,6 +788,7 @@ ExecSquelchNode(PlanState *node)
 		case T_LockRowsState:
 		case T_NestLoopState:
 		case T_MergeJoinState:
+		case T_ResultCacheState:
 		case T_SetOpState:
 		case T_UniqueState:
 		case T_HashState:

@@ -134,7 +134,7 @@ sub read_tuple
 			c_va_padding1 => shift,
 			c_va_padding2 => shift,
 			c_va_rawsize => shift,
-			c_va_extsize => shift,
+			c_va_extinfo => shift,
 			c_va_valueid => shift,
 			c_va_toastrelid => shift);
 	# Stitch together the text for column 'b'
@@ -181,7 +181,7 @@ sub write_tuple
 					$tup->{c_va_padding1},
 					$tup->{c_va_padding2},
 					$tup->{c_va_rawsize},
-					$tup->{c_va_extsize},
+					$tup->{c_va_extinfo},
 					$tup->{c_va_valueid},
 					$tup->{c_va_toastrelid});
 	seek($fh, $offset, 0)

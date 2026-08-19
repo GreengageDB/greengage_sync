@@ -249,6 +249,7 @@ _readQuery(void)
 	READ_BOOL_FIELD(hasForUpdate);
 	READ_BOOL_FIELD(hasRowSecurity);
 	READ_BOOL_FIELD(canOptSelectLockingClause);
+	READ_BOOL_FIELD(isReturn);
 	READ_NODE_FIELD(cteList);
 	READ_NODE_FIELD(rtable);
 	READ_NODE_FIELD(jointree);
@@ -1074,6 +1075,11 @@ _readSplitUpdate(void)
 	READ_ATTRNUMBER_ARRAY(hashAttnos, local_node->numHashAttrs);
 	READ_OID_ARRAY(hashFuncs, local_node->numHashAttrs);
 
+	READ_NODE_FIELD(policyRelids);
+	READ_NODE_FIELD(policyAttnos);
+	READ_NODE_FIELD(policyFuncs);
+	READ_NODE_FIELD(policyNumSegments);
+
 	ReadCommonPlan(&local_node->plan);
 
 	READ_DONE();
@@ -1576,6 +1582,51 @@ _readRowIdExpr(void)
 {
 	READ_LOCALS(RowIdExpr);
 	READ_INT_FIELD(rowidexpr_id);
+	READ_DONE();
+}
+
+static StatsElem *
+_readStatsElem(void)
+{
+	READ_LOCALS(StatsElem);
+
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(expr);
+
+	READ_DONE();
+}
+
+static RowIdentityVarInfo *
+_readRowIdentityVarInfo(void)
+{
+	READ_LOCALS(RowIdentityVarInfo);
+
+	READ_NODE_FIELD(rowidvar);
+	READ_INT_FIELD(rowidwidth);
+	READ_STRING_FIELD(rowidname);
+	READ_BITMAPSET_FIELD(rowidrels);
+
+	READ_DONE();
+}
+
+static ReturnStmt *
+_readReturnStmt(void)
+{
+	READ_LOCALS(ReturnStmt);
+
+	READ_NODE_FIELD(returnval);
+
+	READ_DONE();
+}
+
+static ParamRef *
+_readParamRef(void)
+{
+	READ_LOCALS(ParamRef);
+
+	READ_INT_FIELD(number);
+	READ_LOCATION_FIELD(location);
+
 	READ_DONE();
 }
 
@@ -2289,6 +2340,9 @@ readNodeBinary(void)
 			case T_AlterSeqStmt:
 				return_value = _readAlterSeqStmt();
 				break;
+			case T_CreateStatsStmt:
+				return_value = _readCreateStatsStmt();
+				break;
 			case T_ClusterStmt:
 				return_value = _readClusterStmt();
 				break;
@@ -2398,6 +2452,9 @@ readNodeBinary(void)
 				break;
 			case T_ColumnRef:
 				return_value = _readColumnRef();
+				break;
+			case T_ParamRef:
+				return_value = _readParamRef();
 				break;
 			case T_A_Const:
 				return_value = _readAConst();
@@ -2605,6 +2662,18 @@ readNodeBinary(void)
 				break;
 			case T_RowIdExpr:
 				return_value = _readRowIdExpr();
+				break;
+			case T_StatsElem:
+				return_value = _readStatsElem();
+				break;
+			case T_RowIdentityVarInfo:
+				return_value = _readRowIdentityVarInfo();
+				break;
+			case T_ResultCache:
+				return_value = _readResultCache();
+				break;
+			case T_ReturnStmt:
+				return_value = _readReturnStmt();
 				break;
 			default:
 				return_value = NULL; /* keep the compiler silent */
