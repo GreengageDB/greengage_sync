@@ -1117,7 +1117,6 @@ PGAC_ARG_BOOL(with, zlib, yes,
 AC_SUBST(with_zlib)
 
 #
-<<<<<<< HEAD
 # bzip2
 #
 PGAC_ARG_BOOL(with, libbz2, yes,
@@ -1175,7 +1174,6 @@ PGAC_ARG_REQ(with, apr-config,
 AC_SUBST(with_apr_config)
 
 #
-=======
 # LZ4
 #
 AC_MSG_CHECKING([whether to build with LZ4 support])
@@ -1201,7 +1199,6 @@ if test "$with_lz4" = yes; then
 fi
 
 #
->>>>>>> 8ff1c94649f
 # Assignments
 #
 
@@ -1720,7 +1717,6 @@ failure.  It is possible the compiler isn't looking in the proper directory.
 Use --without-zlib to disable zlib support.])])
 fi
 
-<<<<<<< HEAD
 # Check for bzlib.h
 if test "$with_libbz2" = yes ; then
   AC_CHECK_HEADER(bzlib.h, [], [AC_MSG_ERROR([header file <bzlib.h> is required for bzip2 support])], [])
@@ -1729,10 +1725,10 @@ fi
 # Check for quicklz.h
 if test "$with_quicklz" = yes; then
   AC_CHECK_HEADER(quicklz.h, [], [AC_MSG_ERROR([header file <quicklz.h> is required for QuickLZ support])])
-=======
+fi
+
 if test "$with_lz4" = yes; then
   AC_CHECK_HEADERS(lz4.h, [], [AC_MSG_ERROR([lz4.h header file is required for LZ4])])
->>>>>>> 8ff1c94649f
 fi
 
 if test "$with_gssapi" = yes ; then
