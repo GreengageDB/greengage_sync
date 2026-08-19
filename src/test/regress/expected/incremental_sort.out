@@ -585,6 +585,7 @@ select explain_analyze_without_memory('select * from (select * from t order by a
 (13 rows)
 
 select jsonb_pretty(explain_analyze_inc_sort_nodes_without_memory('select * from (select * from t order by a) s order by a, b limit 55'));
+<<<<<<< HEAD
                jsonb_pretty               
 ------------------------------------------
  [                                       +
@@ -605,6 +606,37 @@ select jsonb_pretty(explain_analyze_inc_sort_nodes_without_memory('select * from
          "Parallel Aware": false,        +
          "Parent Relationship": "Outer"  +
      }                                   +
+=======
+                  jsonb_pretty                   
+-------------------------------------------------
+ [                                              +
+     {                                          +
+         "Sort Key": [                          +
+             "t.a",                             +
+             "t.b"                              +
+         ],                                     +
+         "Node Type": "Incremental Sort",       +
+         "Actual Rows": 55,                     +
+         "Actual Loops": 1,                     +
+         "Async Capable": false,                +
+         "Presorted Key": [                     +
+             "t.a"                              +
+         ],                                     +
+         "Parallel Aware": false,               +
+         "Full-sort Groups": {                  +
+             "Group Count": 2,                  +
+             "Sort Methods Used": [             +
+                 "top-N heapsort",              +
+                 "quicksort"                    +
+             ],                                 +
+             "Sort Space Memory": {             +
+                 "Peak Sort Space Used": "NN",  +
+                 "Average Sort Space Used": "NN"+
+             }                                  +
+         },                                     +
+         "Parent Relationship": "Outer"         +
+     }                                          +
+>>>>>>> 8ff1c94649f
  ]
 (1 row)
 
@@ -794,6 +826,7 @@ select explain_analyze_without_memory('select * from (select * from t order by a
 (13 rows)
 
 select jsonb_pretty(explain_analyze_inc_sort_nodes_without_memory('select * from (select * from t order by a) s order by a, b limit 70'));
+<<<<<<< HEAD
                jsonb_pretty               
 ------------------------------------------
  [                                       +
@@ -814,6 +847,47 @@ select jsonb_pretty(explain_analyze_inc_sort_nodes_without_memory('select * from
          "Parallel Aware": false,        +
          "Parent Relationship": "Outer"  +
      }                                   +
+=======
+                  jsonb_pretty                   
+-------------------------------------------------
+ [                                              +
+     {                                          +
+         "Sort Key": [                          +
+             "t.a",                             +
+             "t.b"                              +
+         ],                                     +
+         "Node Type": "Incremental Sort",       +
+         "Actual Rows": 70,                     +
+         "Actual Loops": 1,                     +
+         "Async Capable": false,                +
+         "Presorted Key": [                     +
+             "t.a"                              +
+         ],                                     +
+         "Parallel Aware": false,               +
+         "Full-sort Groups": {                  +
+             "Group Count": 1,                  +
+             "Sort Methods Used": [             +
+                 "quicksort"                    +
+             ],                                 +
+             "Sort Space Memory": {             +
+                 "Peak Sort Space Used": "NN",  +
+                 "Average Sort Space Used": "NN"+
+             }                                  +
+         },                                     +
+         "Pre-sorted Groups": {                 +
+             "Group Count": 5,                  +
+             "Sort Methods Used": [             +
+                 "top-N heapsort",              +
+                 "quicksort"                    +
+             ],                                 +
+             "Sort Space Memory": {             +
+                 "Peak Sort Space Used": "NN",  +
+                 "Average Sort Space Used": "NN"+
+             }                                  +
+         },                                     +
+         "Parent Relationship": "Outer"         +
+     }                                          +
+>>>>>>> 8ff1c94649f
  ]
 (1 row)
 

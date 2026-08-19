@@ -2217,12 +2217,18 @@ WHERE EXISTS (
     FROM int4_tbl,
          LATERAL (SELECT int4_tbl.f1 FROM int8_tbl LIMIT 2) ss
     WHERE prt1_l.c IS NULL);
+<<<<<<< HEAD
                                               QUERY PLAN                                               
 -------------------------------------------------------------------------------------------------------
+=======
+                        QUERY PLAN                        
+----------------------------------------------------------
+>>>>>>> 8ff1c94649f
  Delete on prt1_l
    Delete on prt1_l_p1 prt1_l_1
    Delete on prt1_l_p3_p1 prt1_l_2
    Delete on prt1_l_p3_p2 prt1_l_3
+<<<<<<< HEAD
    ->  Explicit Redistribute Motion 1:3  (slice1; segments: 1)
          ->  Nested Loop Semi Join
                ->  Gather Motion 3:1  (slice2; segments: 3)
@@ -2273,6 +2279,23 @@ WHERE EXISTS (
                                                                ->  Seq Scan on int8_tbl int8_tbl_2
  Optimizer: Postgres query optimizer
 (53 rows)
+=======
+   ->  Nested Loop Semi Join
+         ->  Append
+               ->  Seq Scan on prt1_l_p1 prt1_l_1
+                     Filter: (c IS NULL)
+               ->  Seq Scan on prt1_l_p3_p1 prt1_l_2
+                     Filter: (c IS NULL)
+               ->  Seq Scan on prt1_l_p3_p2 prt1_l_3
+                     Filter: (c IS NULL)
+         ->  Materialize
+               ->  Nested Loop
+                     ->  Seq Scan on int4_tbl
+                     ->  Subquery Scan on ss
+                           ->  Limit
+                                 ->  Seq Scan on int8_tbl
+(18 rows)
+>>>>>>> 8ff1c94649f
 
 --
 -- negative testcases

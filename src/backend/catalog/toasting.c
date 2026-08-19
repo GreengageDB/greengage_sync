@@ -15,6 +15,7 @@
 #include "postgres.h"
 
 #include "access/heapam.h"
+#include "access/toast_compression.h"
 #include "access/xact.h"
 #include "catalog/binary_upgrade.h"
 #include "catalog/catalog.h"
@@ -238,6 +239,23 @@ create_toast_table(Relation rel, Oid toastOid, Oid toastIndexOid,
 	TupleDescAttr(tupdesc, 1)->attstorage = TYPSTORAGE_PLAIN;
 	TupleDescAttr(tupdesc, 2)->attstorage = TYPSTORAGE_PLAIN;
 
+<<<<<<< HEAD
+=======
+	/* Toast field should not be compressed */
+	TupleDescAttr(tupdesc, 0)->attcompression = InvalidCompressionMethod;
+	TupleDescAttr(tupdesc, 1)->attcompression = InvalidCompressionMethod;
+	TupleDescAttr(tupdesc, 2)->attcompression = InvalidCompressionMethod;
+
+	/*
+	 * Toast tables for regular relations go in pg_toast; those for temp
+	 * relations go into the per-backend temp-toast-table namespace.
+	 */
+	if (isTempOrTempToastNamespace(rel->rd_rel->relnamespace))
+		namespaceid = GetTempToastNamespace();
+	else
+		namespaceid = PG_TOAST_NAMESPACE;
+
+>>>>>>> 8ff1c94649f
 	/* Toast table is shared if and only if its parent is. */
 	shared_relation = rel->rd_rel->relisshared;
 

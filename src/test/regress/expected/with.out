@@ -2962,9 +2962,42 @@ SELECT * FROM parent;
 EXPLAIN (VERBOSE, COSTS OFF)
 WITH wcte AS ( INSERT INTO int8_tbl VALUES ( 42, 47 ) RETURNING q2 )
 DELETE FROM a USING wcte WHERE aa = q2;
+<<<<<<< HEAD
 ERROR:  writable CTE queries cannot be themselves writable
 DETAIL:  Greenplum Database currently only support CTEs with one writable clause, called in a non-writable context.
 HINT:  Rewrite the query to only include one writable clause.
+=======
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Delete on public.a
+   Delete on public.a a_1
+   Delete on public.b a_2
+   Delete on public.c a_3
+   Delete on public.d a_4
+   CTE wcte
+     ->  Insert on public.int8_tbl
+           Output: int8_tbl.q2
+           ->  Result
+                 Output: '42'::bigint, '47'::bigint
+   ->  Hash Join
+         Output: wcte.*, a.tableoid, a.ctid
+         Hash Cond: (a.aa = wcte.q2)
+         ->  Append
+               ->  Seq Scan on public.a a_1
+                     Output: a_1.aa, a_1.tableoid, a_1.ctid
+               ->  Seq Scan on public.b a_2
+                     Output: a_2.aa, a_2.tableoid, a_2.ctid
+               ->  Seq Scan on public.c a_3
+                     Output: a_3.aa, a_3.tableoid, a_3.ctid
+               ->  Seq Scan on public.d a_4
+                     Output: a_4.aa, a_4.tableoid, a_4.ctid
+         ->  Hash
+               Output: wcte.*, wcte.q2
+               ->  CTE Scan on wcte
+                     Output: wcte.*, wcte.q2
+(26 rows)
+
+>>>>>>> 8ff1c94649f
 -- error cases
 -- data-modifying WITH tries to use its own output
 WITH RECURSIVE t AS (

@@ -73,8 +73,18 @@ typedef struct
 
 typedef enum CAC_state
 {
+<<<<<<< HEAD
 	CAC_OK, CAC_STARTUP, CAC_SHUTDOWN, CAC_RECOVERY, CAC_TOOMANY,
 	CAC_SUPERUSER, CAC_MIRROR_READY, CAC_RESET
+=======
+	CAC_OK,
+	CAC_STARTUP,
+	CAC_SHUTDOWN,
+	CAC_RECOVERY,
+	CAC_NOTCONSISTENT,
+	CAC_TOOMANY,
+	CAC_SUPERUSER
+>>>>>>> 8ff1c94649f
 } CAC_state;
 
 
@@ -159,6 +169,19 @@ typedef struct Port
 	HbaLine    *hba;
 
 	/*
+	 * Authenticated identity.  The meaning of this identifier is dependent on
+	 * hba->auth_method; it is the identity (if any) that the user presented
+	 * during the authentication cycle, before they were assigned a database
+	 * role.  (It is effectively the "SYSTEM-USERNAME" of a pg_ident usermap
+	 * -- though the exact string in use may be different, depending on pg_hba
+	 * options.)
+	 *
+	 * authn_id is NULL if the user has not actually been authenticated, for
+	 * example if the "trust" auth method is in use.
+	 */
+	const char *authn_id;
+
+	/*
 	 * TCP keepalive and user timeout settings.
 	 *
 	 * default values are 0 if AF_UNIX or not yet known; current values are 0
@@ -194,6 +217,7 @@ typedef struct Port
 	 */
 	bool		ssl_in_use;
 	char	   *peer_cn;
+	char	   *peer_dn;
 	bool		peer_cert_valid;
 
 	/*

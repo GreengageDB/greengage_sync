@@ -108,6 +108,7 @@ static List *get_gating_quals(PlannerInfo *root, List *quals);
 static Plan *create_gating_plan(PlannerInfo *root, Path *path, Plan *plan,
 								List *gating_quals);
 static Plan *create_join_plan(PlannerInfo *root, JoinPath *best_path);
+static bool is_async_capable_path(Path *path);
 static Plan *create_append_plan(PlannerInfo *root, AppendPath *best_path,
 								int flags);
 static Plan *create_merge_append_plan(PlannerInfo *root, MergeAppendPath *best_path,
@@ -117,6 +118,9 @@ static Result *create_group_result_plan(PlannerInfo *root,
 static ProjectSet *create_project_set_plan(PlannerInfo *root, ProjectSetPath *best_path);
 static Material *create_material_plan(PlannerInfo *root, MaterialPath *best_path,
 									  int flags);
+static ResultCache *create_resultcache_plan(PlannerInfo *root,
+											ResultCachePath *best_path,
+											int flags);
 static Plan *create_unique_plan(PlannerInfo *root, UniquePath *best_path,
 								int flags);
 static Plan *create_motion_plan(PlannerInfo *root, CdbMotionPath *path);
@@ -311,6 +315,15 @@ static IncrementalSort *make_incrementalsort_from_pathkeys(Plan *lefttree,
 static Sort *make_sort_from_groupcols(List *groupcls,
 									  AttrNumber *grpColIdx,
 									  Plan *lefttree);
+<<<<<<< HEAD
+=======
+static Material *make_material(Plan *lefttree);
+static ResultCache *make_resultcache(Plan *lefttree, Oid *hashoperators,
+									 Oid *collations,
+									 List *param_exprs,
+									 bool singlerow,
+									 uint32 est_entries);
+>>>>>>> 8ff1c94649f
 static WindowAgg *make_windowagg(List *tlist, Index winref,
 								 int partNumCols, AttrNumber *partColIdx, Oid *partOperators, Oid *partCollations,
 								 int ordNumCols, AttrNumber *ordColIdx, Oid *ordOperators, Oid *ordCollations,
@@ -329,11 +342,12 @@ static SetOp *make_setop(SetOpCmd cmd, SetOpStrategy strategy, Plan *lefttree,
 						 long numGroups);
 static LockRows *make_lockrows(Plan *lefttree, List *rowMarks, int epqParam);
 static ProjectSet *make_project_set(List *tlist, Plan *subplan);
-static ModifyTable *make_modifytable(PlannerInfo *root,
+static ModifyTable *make_modifytable(PlannerInfo *root, Plan *subplan,
 									 CmdType operation, bool canSetTag,
 									 Index nominalRelation, Index rootRelation,
 									 bool partColsUpdated,
-									 List *resultRelations, List *subplans, List *subroots,
+									 List *resultRelations,
+									 List *updateColnosLists,
 									 List *withCheckOptionLists, List *returningLists,
 									 List *is_split_updates,
 									 List *rowMarks, OnConflictExpr *onconflict, int epqParam);
@@ -508,6 +522,11 @@ create_plan_recurse(PlannerInfo *root, Path *best_path, int flags)
 			plan = (Plan *) create_material_plan(root,
 												 (MaterialPath *) best_path,
 												 flags);
+			break;
+		case T_ResultCache:
+			plan = (Plan *) create_resultcache_plan(root,
+													(ResultCachePath *) best_path,
+													flags);
 			break;
 		case T_Unique:
 			if (IsA(best_path, UpperUniquePath))
@@ -1203,6 +1222,31 @@ create_join_plan(PlannerInfo *root, JoinPath *best_path)
 }
 
 /*
+ * is_async_capable_path
+ *		Check whether a given Path node is async-capable.
+ */
+static bool
+is_async_capable_path(Path *path)
+{
+	switch (nodeTag(path))
+	{
+		case T_ForeignPath:
+			{
+				FdwRoutine *fdwroutine = path->parent->fdwroutine;
+
+				Assert(fdwroutine != NULL);
+				if (fdwroutine->IsForeignPathAsyncCapable != NULL &&
+					fdwroutine->IsForeignPathAsyncCapable((ForeignPath *) path))
+					return true;
+			}
+			break;
+		default:
+			break;
+	}
+	return false;
+}
+
+/*
  * create_append_plan
  *	  Create an Append plan for 'best_path' and (recursively) plans
  *	  for its subpaths.
@@ -1219,6 +1263,7 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 	List	   *pathkeys = best_path->path.pathkeys;
 	List	   *subplans = NIL;
 	ListCell   *subpaths;
+	int			nasyncplans = 0;
 	RelOptInfo *rel = best_path->path.parent;
 	PartitionPruneInfo *partpruneinfo = NULL;
 	int			nodenumsortkeys = 0;
@@ -1226,6 +1271,7 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 	Oid		   *nodeSortOperators = NULL;
 	Oid		   *nodeCollations = NULL;
 	bool	   *nodeNullsFirst = NULL;
+	bool		consider_async = false;
 
 	/*
 	 * The subpaths list could be empty, if every child was proven empty by
@@ -1288,6 +1334,11 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 										  &nodeNullsFirst);
 		tlist_was_changed = (orig_tlist_length != list_length(plan->plan.targetlist));
 	}
+
+	/* If appropriate, consider async append */
+	consider_async = (enable_async_append && pathkeys == NIL &&
+					  !best_path->path.parallel_safe &&
+					  list_length(best_path->subpaths) > 1);
 
 	/* Build the plan for each child */
 	foreach(subpaths, best_path->subpaths)
@@ -1356,6 +1407,13 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 		}
 
 		subplans = lappend(subplans, subplan);
+
+		/* Check to see if subplan can be executed asynchronously */
+		if (consider_async && is_async_capable_path(subpath))
+		{
+			subplan->async_capable = true;
+			++nasyncplans;
+		}
 	}
 
 	/*
@@ -1400,6 +1458,7 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 	}
 
 	plan->appendplans = subplans;
+	plan->nasyncplans = nasyncplans;
 	plan->first_partial_plan = best_path->first_partial_path;
 	plan->part_prune_info = partpruneinfo;
 
@@ -1667,6 +1726,56 @@ create_material_plan(PlannerInfo *root, MaterialPath *best_path, int flags)
 
 	plan->cdb_strict = best_path->cdb_strict;
 	plan->cdb_shield_child_from_rescans = best_path->cdb_shield_child_from_rescans;
+
+	copy_generic_path_info(&plan->plan, (Path *) best_path);
+
+	return plan;
+}
+
+/*
+ * create_resultcache_plan
+ *	  Create a ResultCache plan for 'best_path' and (recursively) plans
+ *	  for its subpaths.
+ *
+ *	  Returns a Plan node.
+ */
+static ResultCache *
+create_resultcache_plan(PlannerInfo *root, ResultCachePath *best_path, int flags)
+{
+	ResultCache *plan;
+	Plan	   *subplan;
+	Oid		   *operators;
+	Oid		   *collations;
+	List	   *param_exprs = NIL;
+	ListCell   *lc;
+	ListCell   *lc2;
+	int			nkeys;
+	int			i;
+
+	subplan = create_plan_recurse(root, best_path->subpath,
+								  flags | CP_SMALL_TLIST);
+
+	param_exprs = (List *) replace_nestloop_params(root, (Node *)
+												   best_path->param_exprs);
+
+	nkeys = list_length(param_exprs);
+	Assert(nkeys > 0);
+	operators = palloc(nkeys * sizeof(Oid));
+	collations = palloc(nkeys * sizeof(Oid));
+
+	i = 0;
+	forboth(lc, param_exprs, lc2, best_path->hash_operators)
+	{
+		Expr	   *param_expr = (Expr *) lfirst(lc);
+		Oid			opno = lfirst_oid(lc2);
+
+		operators[i] = opno;
+		collations[i] = exprCollation((Node *) param_expr);
+		i++;
+	}
+
+	plan = make_resultcache(subplan, operators, collations, param_exprs,
+							best_path->singlerow, best_path->est_entries);
 
 	copy_generic_path_info(&plan->plan, (Path *) best_path);
 
@@ -2546,12 +2655,7 @@ create_groupingsets_plan(PlannerInfo *root, GroupingSetsPath *best_path)
 	/*
 	 * During setrefs.c, we'll need the grouping_map to fix up the cols lists
 	 * in GroupingFunc nodes.  Save it for setrefs.c to use.
-	 *
-	 * This doesn't work if we're in an inheritance subtree (see notes in
-	 * create_modifytable_plan).  Fortunately we can't be because there would
-	 * never be grouping in an UPDATE/DELETE; but let's Assert that.
 	 */
-	Assert(root->inhTargetKind == INHKIND_NONE);
 	Assert(root->grouping_map == NULL);
 	root->grouping_map = grouping_map;
 	root->grouping_map_size = maxref + 1;
@@ -2722,12 +2826,7 @@ create_minmaxagg_plan(PlannerInfo *root, MinMaxAggPath *best_path)
 	 * with InitPlan output params.  (We can't just do that locally in the
 	 * MinMaxAgg node, because path nodes above here may have Agg references
 	 * as well.)  Save the mmaggregates list to tell setrefs.c to do that.
-	 *
-	 * This doesn't work if we're in an inheritance subtree (see notes in
-	 * create_modifytable_plan).  Fortunately we can't be because there would
-	 * never be aggregates in an UPDATE/DELETE; but let's Assert that.
 	 */
-	Assert(root->inhTargetKind == INHKIND_NONE);
 	Assert(root->minmax_aggs == NIL);
 	root->minmax_aggs = best_path->mmaggregates;
 
@@ -2971,6 +3070,7 @@ static ModifyTable *
 create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 {
 	ModifyTable *plan;
+<<<<<<< HEAD
 	List	   *subplans = NIL;
 	ListCell   *subpaths,
 			   *subroots;
@@ -3023,16 +3123,26 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 
 		subroot->curSlice = save_curSlice;
 	}
+=======
+	Path	   *subpath = best_path->subpath;
+	Plan	   *subplan;
+
+	/* Subplan must produce exactly the specified tlist */
+	subplan = create_plan_recurse(root, subpath, CP_EXACT_TLIST);
+
+	/* Transfer resname/resjunk labeling, too, to keep executor happy */
+	apply_tlist_labeling(subplan->targetlist, root->processed_tlist);
+>>>>>>> 8ff1c94649f
 
 	plan = make_modifytable(root,
+							subplan,
 							best_path->operation,
 							best_path->canSetTag,
 							best_path->nominalRelation,
 							best_path->rootRelation,
 							best_path->partColsUpdated,
 							best_path->resultRelations,
-							subplans,
-							best_path->subroots,
+							best_path->updateColnosLists,
 							best_path->withCheckOptionLists,
 							best_path->returningLists,
 							best_path->is_split_updates,
@@ -7750,6 +7860,28 @@ materialize_finished_plan(PlannerInfo *root, Plan *subplan)
 	return matplan;
 }
 
+static ResultCache *
+make_resultcache(Plan *lefttree, Oid *hashoperators, Oid *collations,
+				 List *param_exprs, bool singlerow, uint32 est_entries)
+{
+	ResultCache *node = makeNode(ResultCache);
+	Plan	   *plan = &node->plan;
+
+	plan->targetlist = lefttree->targetlist;
+	plan->qual = NIL;
+	plan->lefttree = lefttree;
+	plan->righttree = NULL;
+
+	node->numKeys = list_length(param_exprs);
+	node->hashOperators = hashoperators;
+	node->collations = collations;
+	node->param_exprs = param_exprs;
+	node->singlerow = singlerow;
+	node->est_entries = est_entries;
+
+	return node;
+}
+
 Agg *
 make_agg(List *tlist, List *qual,
 		 AggStrategy aggstrategy, AggSplit aggsplit,
@@ -8187,11 +8319,12 @@ make_project_set(List *tlist,
  *	  Build a ModifyTable plan node
  */
 static ModifyTable *
-make_modifytable(PlannerInfo *root,
+make_modifytable(PlannerInfo *root, Plan *subplan,
 				 CmdType operation, bool canSetTag,
 				 Index nominalRelation, Index rootRelation,
 				 bool partColsUpdated,
-				 List *resultRelations, List *subplans, List *subroots,
+				 List *resultRelations,
+				 List *updateColnosLists,
 				 List *withCheckOptionLists, List *returningLists,
 				 List *is_split_updates,
 				 List *rowMarks, OnConflictExpr *onconflict, int epqParam)
@@ -8200,18 +8333,18 @@ make_modifytable(PlannerInfo *root,
 	List	   *fdw_private_list;
 	Bitmapset  *direct_modify_plans;
 	ListCell   *lc;
-	ListCell   *lc2;
 	int			i;
 
-	Assert(list_length(resultRelations) == list_length(subplans));
-	Assert(list_length(resultRelations) == list_length(subroots));
+	Assert(operation == CMD_UPDATE ?
+		   list_length(resultRelations) == list_length(updateColnosLists) :
+		   updateColnosLists == NIL);
 	Assert(withCheckOptionLists == NIL ||
 		   list_length(resultRelations) == list_length(withCheckOptionLists));
 	Assert(returningLists == NIL ||
 		   list_length(resultRelations) == list_length(returningLists));
 	Assert(list_length(resultRelations) == list_length(is_split_updates));
 
-	node->plan.lefttree = NULL;
+	node->plan.lefttree = subplan;
 	node->plan.righttree = NULL;
 	node->plan.qual = NIL;
 	/* setrefs.c will fill in the targetlist, if needed */
@@ -8223,7 +8356,6 @@ make_modifytable(PlannerInfo *root,
 	node->rootRelation = rootRelation;
 	node->partColsUpdated = partColsUpdated;
 	node->resultRelations = resultRelations;
-	node->plans = subplans;
 	if (!onconflict)
 	{
 		node->onConflictAction = ONCONFLICT_NONE;
@@ -8250,6 +8382,7 @@ make_modifytable(PlannerInfo *root,
 		node->exclRelRTI = onconflict->exclRelIndex;
 		node->exclRelTlist = onconflict->exclRelTlist;
 	}
+	node->updateColnosLists = updateColnosLists;
 	node->withCheckOptionLists = withCheckOptionLists;
 	node->returningLists = returningLists;
 	node->rowMarks = rowMarks;
@@ -8265,10 +8398,9 @@ make_modifytable(PlannerInfo *root,
 	fdw_private_list = NIL;
 	direct_modify_plans = NULL;
 	i = 0;
-	forboth(lc, resultRelations, lc2, subroots)
+	foreach(lc, resultRelations)
 	{
 		Index		rti = lfirst_int(lc);
-		PlannerInfo *subroot = lfirst_node(PlannerInfo, lc2);
 		FdwRoutine *fdwroutine;
 		List	   *fdw_private;
 		bool		direct_modify;
@@ -8280,16 +8412,16 @@ make_modifytable(PlannerInfo *root,
 		 * so it's not a baserel; and there are also corner cases for
 		 * updatable views where the target rel isn't a baserel.)
 		 */
-		if (rti < subroot->simple_rel_array_size &&
-			subroot->simple_rel_array[rti] != NULL)
+		if (rti < root->simple_rel_array_size &&
+			root->simple_rel_array[rti] != NULL)
 		{
-			RelOptInfo *resultRel = subroot->simple_rel_array[rti];
+			RelOptInfo *resultRel = root->simple_rel_array[rti];
 
 			fdwroutine = resultRel->fdwroutine;
 		}
 		else
 		{
-			RangeTblEntry *rte = planner_rt_fetch(rti, subroot);
+			RangeTblEntry *rte = planner_rt_fetch(rti, root);
 
 			Assert(rte->rtekind == RTE_RELATION);
 			if (rte->relkind == RELKIND_FOREIGN_TABLE)
@@ -8312,16 +8444,16 @@ make_modifytable(PlannerInfo *root,
 			fdwroutine->IterateDirectModify != NULL &&
 			fdwroutine->EndDirectModify != NULL &&
 			withCheckOptionLists == NIL &&
-			!has_row_triggers(subroot, rti, operation) &&
-			!has_stored_generated_columns(subroot, rti))
-			direct_modify = fdwroutine->PlanDirectModify(subroot, node, rti, i);
+			!has_row_triggers(root, rti, operation) &&
+			!has_stored_generated_columns(root, rti))
+			direct_modify = fdwroutine->PlanDirectModify(root, node, rti, i);
 		if (direct_modify)
 			direct_modify_plans = bms_add_member(direct_modify_plans, i);
 
 		if (!direct_modify &&
 			fdwroutine != NULL &&
 			fdwroutine->PlanForeignModify != NULL)
-			fdw_private = fdwroutine->PlanForeignModify(subroot, node, rti, i);
+			fdw_private = fdwroutine->PlanForeignModify(root, node, rti, i);
 		else
 			fdw_private = NIL;
 		fdw_private_list = lappend(fdw_private_list, fdw_private);
@@ -8345,6 +8477,7 @@ is_projection_capable_path(Path *path)
 	{
 		case T_Hash:
 		case T_Material:
+		case T_ResultCache:
 		case T_Sort:
 		case T_IncrementalSort:
 		case T_Unique:
@@ -8393,6 +8526,7 @@ is_projection_capable_plan(Plan *plan)
 	{
 		case T_Hash:
 		case T_Material:
+		case T_ResultCache:
 		case T_Sort:
 		case T_Unique:
 		case T_SetOp:

@@ -50,8 +50,13 @@
 #include "parser/parse_type.h"
 #include "parser/parsetree.h"
 #include "rewrite/rewriteManip.h"
+#include "utils/backend_status.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
+<<<<<<< HEAD
+=======
+#include "utils/queryjumble.h"
+>>>>>>> 8ff1c94649f
 #include "utils/rel.h"
 
 #include "cdb/cdbhash.h"
@@ -103,6 +108,7 @@ static void coerceSetOpTypes(ParseState *pstate, Node *sop,
 static void select_setop_types(ParseState *pstate, setop_types_ctx *ctx, SetOperation op, List **selected_types, List **selected_typmods);
 static void determineRecursiveColTypes(ParseState *pstate,
 									   Node *larg, List *nrtargetlist);
+static Query *transformReturnStmt(ParseState *pstate, ReturnStmt *stmt);
 static Query *transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt);
 static List *transformReturningList(ParseState *pstate, List *returningList);
 static List *transformUpdateTargetList(ParseState *pstate,
@@ -150,6 +156,7 @@ parse_analyze(RawStmt *parseTree, const char *sourceText,
 {
 	ParseState *pstate = make_parsestate(NULL);
 	Query	   *query;
+	JumbleState *jstate = NULL;
 
 	Assert(sourceText != NULL); /* required as of 8.4 */
 
@@ -162,10 +169,15 @@ parse_analyze(RawStmt *parseTree, const char *sourceText,
 
 	query = transformTopLevelStmt(pstate, parseTree);
 
+	if (compute_query_id)
+		jstate = JumbleQuery(query, sourceText);
+
 	if (post_parse_analyze_hook)
-		(*post_parse_analyze_hook) (pstate, query);
+		(*post_parse_analyze_hook) (pstate, query, jstate);
 
 	free_parsestate(pstate);
+
+	pgstat_report_queryid(query->queryId, false);
 
 	return query;
 }
@@ -183,6 +195,7 @@ parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
 {
 	ParseState *pstate = make_parsestate(NULL);
 	Query	   *query;
+	JumbleState *jstate = NULL;
 
 	Assert(sourceText != NULL); /* required as of 8.4 */
 
@@ -195,10 +208,15 @@ parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
 	/* make sure all is well with parameter types */
 	check_variable_parameters(pstate, query);
 
+	if (compute_query_id)
+		jstate = JumbleQuery(query, sourceText);
+
 	if (post_parse_analyze_hook)
-		(*post_parse_analyze_hook) (pstate, query);
+		(*post_parse_analyze_hook) (pstate, query, jstate);
 
 	free_parsestate(pstate);
+
+	pgstat_report_queryid(query->queryId, false);
 
 	return query;
 }
@@ -381,6 +399,10 @@ transformStmt(ParseState *pstate, Node *parseTree)
 				else
 					result = transformSetOperationStmt(pstate, n);
 			}
+			break;
+
+		case T_ReturnStmt:
+			result = transformReturnStmt(pstate, (ReturnStmt *) parseTree);
 			break;
 
 		case T_PLAssignStmt:
@@ -1899,6 +1921,7 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 										NIL,
 										NIL,
 										NULL,
+										NULL,
 										false);
 
 	sv_namespace = pstate->p_namespace;
@@ -2685,6 +2708,36 @@ determineRecursiveColTypes(ParseState *pstate, Node *larg, List *nrtargetlist)
 
 
 /*
+ * transformReturnStmt -
+ *	  transforms a return statement
+ */
+static Query *
+transformReturnStmt(ParseState *pstate, ReturnStmt *stmt)
+{
+	Query	   *qry = makeNode(Query);
+
+	qry->commandType = CMD_SELECT;
+	qry->isReturn = true;
+
+	qry->targetList = list_make1(makeTargetEntry((Expr *) transformExpr(pstate, stmt->returnval, EXPR_KIND_SELECT_TARGET),
+												 1, NULL, false));
+
+	if (pstate->p_resolve_unknowns)
+		resolveTargetListUnknowns(pstate, qry->targetList);
+	qry->rtable = pstate->p_rtable;
+	qry->jointree = makeFromExpr(pstate->p_joinlist, NULL);
+	qry->hasSubLinks = pstate->p_hasSubLinks;
+	qry->hasWindowFuncs = pstate->p_hasWindowFuncs;
+	qry->hasTargetSRFs = pstate->p_hasTargetSRFs;
+	qry->hasAggs = pstate->p_hasAggs;
+
+	assign_query_collations(pstate, qry);
+
+	return qry;
+}
+
+
+/*
  * transformUpdateStmt -
  *	  transforms an update statement
  */
@@ -3150,16 +3203,29 @@ transformDeclareCursorStmt(ParseState *pstate, DeclareCursorStmt *stmt)
 	Query	   *result;
 	Query	   *query;
 
+<<<<<<< HEAD
 	pstate->p_is_on_conflict_update = false;
 
 	/*
 	 * Don't allow both SCROLL and NO SCROLL to be specified
 	 */
+=======
+>>>>>>> 8ff1c94649f
 	if ((stmt->options & CURSOR_OPT_SCROLL) &&
 		(stmt->options & CURSOR_OPT_NO_SCROLL))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_CURSOR_DEFINITION),
-				 errmsg("cannot specify both SCROLL and NO SCROLL")));
+				 /* translator: %s is a SQL keyword */
+				 errmsg("cannot specify both %s and %s",
+						"SCROLL", "NO SCROLL")));
+
+	if ((stmt->options & CURSOR_OPT_ASENSITIVE) &&
+		(stmt->options & CURSOR_OPT_INSENSITIVE))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_CURSOR_DEFINITION),
+				 /* translator: %s is a SQL keyword */
+				 errmsg("cannot specify both %s and %s",
+						"ASENSITIVE", "INSENSITIVE")));
 
 	/* Transform contained query, not allowing SELECT INTO */
 	query = transformStmt(pstate, stmt->query);
@@ -3218,10 +3284,10 @@ transformDeclareCursorStmt(ParseState *pstate, DeclareCursorStmt *stmt)
 	/* FOR UPDATE and INSENSITIVE are not compatible */
 	if (query->rowMarks != NIL && (stmt->options & CURSOR_OPT_INSENSITIVE))
 		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				(errcode(ERRCODE_INVALID_CURSOR_DEFINITION),
 		/*------
 		  translator: %s is a SQL row locking clause such as FOR UPDATE */
-				 errmsg("DECLARE INSENSITIVE CURSOR ... %s is not supported",
+				 errmsg("DECLARE INSENSITIVE CURSOR ... %s is not valid",
 						LCS_asString(((RowMarkClause *)
 									  linitial(query->rowMarks))->strength)),
 				 errdetail("Insensitive cursors must be READ ONLY.")));

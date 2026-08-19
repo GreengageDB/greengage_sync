@@ -38,6 +38,7 @@ volatile sig_atomic_t ClientConnectionLost = false;
 volatile sig_atomic_t IdleInTransactionSessionTimeoutPending = false;
 volatile sig_atomic_t IdleSessionTimeoutPending = false;
 volatile sig_atomic_t ProcSignalBarrierPending = false;
+<<<<<<< HEAD
 volatile sig_atomic_t IdleGangTimeoutPending = false;
 /*
  * GPDB: Make these signed integers (instead of uint32) to detect garbage
@@ -46,6 +47,12 @@ volatile sig_atomic_t IdleGangTimeoutPending = false;
 volatile int32 InterruptHoldoffCount = 0;
 volatile int32 QueryCancelHoldoffCount = 0;
 volatile int32 CritSectionCount = 0;
+=======
+volatile sig_atomic_t LogMemoryContextPending = false;
+volatile uint32 InterruptHoldoffCount = 0;
+volatile uint32 QueryCancelHoldoffCount = 0;
+volatile uint32 CritSectionCount = 0;
+>>>>>>> 8ff1c94649f
 
 int			MyProcPid;
 pg_time_t	MyStartTime;

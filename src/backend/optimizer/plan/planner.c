@@ -156,9 +156,7 @@ typedef struct
 /* Local functions */
 static Node *preprocess_expression(PlannerInfo *root, Node *expr, int kind);
 static void preprocess_qual_conditions(PlannerInfo *root, Node *jtnode);
-static void inheritance_planner(PlannerInfo *root);
-static void grouping_planner(PlannerInfo *root, bool inheritance_update,
-							 double tuple_fraction);
+static void grouping_planner(PlannerInfo *root, double tuple_fraction);
 static grouping_sets_data *preprocess_grouping_sets(PlannerInfo *root);
 static List *remap_to_groupclause_idx(List *groupClause, List *gsets,
 									  int *tleref_to_colnum_map);
@@ -420,7 +418,6 @@ standard_planner(Query *parse, const char *query_string, int cursorOptions,
 	glob->resultRelations = NIL;
 	glob->appendRelations = NIL;
 	glob->relationOids = NIL;
-	glob->partitionOids = NIL;
 	glob->invalItems = NIL;
 	glob->paramExecTypes = NIL;
 	glob->lastPHId = 0;
@@ -448,16 +445,16 @@ standard_planner(Query *parse, const char *query_string, int cursorOptions,
 	/*
 	 * Assess whether it's feasible to use parallel mode for this query. We
 	 * can't do this in a standalone backend, or if the command will try to
-	 * modify any data (except for Insert), or if this is a cursor operation,
-	 * or if GUCs are set to values that don't permit parallelism, or if
-	 * parallel-unsafe functions are present in the query tree.
+	 * modify any data, or if this is a cursor operation, or if GUCs are set
+	 * to values that don't permit parallelism, or if parallel-unsafe
+	 * functions are present in the query tree.
 	 *
-	 * (Note that we do allow CREATE TABLE AS, INSERT INTO...SELECT, SELECT
-	 * INTO, and CREATE MATERIALIZED VIEW to use parallel plans. However, as
-	 * of now, only the leader backend writes into a completely new table. In
-	 * the future, we can extend it to allow workers to write into the table.
-	 * However, to allow parallel updates and deletes, we have to solve other
-	 * problems, especially around combo CIDs.)
+	 * (Note that we do allow CREATE TABLE AS, SELECT INTO, and CREATE
+	 * MATERIALIZED VIEW to use parallel plans, but as of now, only the leader
+	 * backend writes into a completely new table.  In the future, we can
+	 * extend it to allow workers to write into the table.  However, to allow
+	 * parallel updates and deletes, we have to solve other problems,
+	 * especially around combo CIDs.)
 	 *
 	 * For now, we don't try to use parallel mode if we're running inside a
 	 * parallel worker.  We might eventually be able to relax this
@@ -469,14 +466,13 @@ standard_planner(Query *parse, const char *query_string, int cursorOptions,
 #if 0
 	if ((cursorOptions & CURSOR_OPT_PARALLEL_OK) != 0 &&
 		IsUnderPostmaster &&
-		(parse->commandType == CMD_SELECT ||
-		 is_parallel_allowed_for_modify(parse)) &&
+		parse->commandType == CMD_SELECT &&
 		!parse->hasModifyingCTE &&
 		max_parallel_workers_per_gather > 0 &&
 		!IsParallelWorker())
 	{
 		/* all the cheap tests pass, so scan the query tree */
-		glob->maxParallelHazard = max_parallel_hazard(parse, glob);
+		glob->maxParallelHazard = max_parallel_hazard(parse);
 		glob->parallelModeOK = (glob->maxParallelHazard != PROPARALLEL_UNSAFE);
 	}
 	else
@@ -740,19 +736,6 @@ standard_planner(Query *parse, const char *query_string, int cursorOptions,
 	result->rewindPlanIDs = glob->rewindPlanIDs;
 	result->rowMarks = glob->finalrowmarks;
 	result->relationOids = glob->relationOids;
-
-	/*
-	 * Register the Oids of parallel-safety-checked partitions as plan
-	 * dependencies. This is only really needed in the case of a parallel plan
-	 * so that if parallel-unsafe properties are subsequently defined on the
-	 * partitions, the cached parallel plan will be invalidated, and a
-	 * non-parallel plan will be generated.
-	 *
-	 * We also use this list to acquire locks on partitions before executing
-	 * cached plan. See AcquireExecutorLocks().
-	 */
-	if (glob->partitionOids != NIL && glob->parallelModeNeeded)
-		result->partitionOids = glob->partitionOids;
 	result->invalItems = glob->invalItems;
 	result->paramExecTypes = glob->paramExecTypes;
 	/* utilityStmt should be null, but we might as well copy it */
@@ -839,6 +822,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	root->multiexpr_params = NIL;
 	root->eq_classes = NIL;
 	root->ec_merging_done = false;
+<<<<<<< HEAD
 	root->non_eq_clauses = NIL;
 	root->init_plans = NIL;
 
@@ -848,20 +832,30 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 		root->list_cteplaninfo = init_list_cteplaninfo(list_length(parse->cteList));
 	}
 
+=======
+	root->all_result_relids =
+		parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
+	root->leaf_result_relids = NULL;	/* we'll find out leaf-ness later */
+>>>>>>> 8ff1c94649f
 	root->append_rel_list = NIL;
+	root->row_identity_vars = NIL;
 	root->rowMarks = NIL;
 	memset(root->upper_rels, 0, sizeof(root->upper_rels));
 	memset(root->upper_targets, 0, sizeof(root->upper_targets));
 	root->processed_tlist = NIL;
+	root->update_colnos = NIL;
 	root->grouping_map = NULL;
 	root->minmax_aggs = NIL;
 	root->qual_security_level = 0;
+<<<<<<< HEAD
 	root->inhTargetKind = INHKIND_NONE;
 	root->upd_del_replicated_table = 0;
 
 	Assert(config);
 	root->config = config;
 
+=======
+>>>>>>> 8ff1c94649f
 	root->hasPseudoConstantQuals = false;
 	root->hasAlternativeSubPlans = false;
 	root->hasRecursion = hasRecursion;
@@ -1007,6 +1001,19 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 		if (rte->securityQuals)
 			root->qual_security_level = Max(root->qual_security_level,
 											list_length(rte->securityQuals));
+	}
+
+	/*
+	 * If we have now verified that the query target relation is
+	 * non-inheriting, mark it as a leaf target.
+	 */
+	if (parse->resultRelation)
+	{
+		RangeTblEntry *rte = rt_fetch(parse->resultRelation, parse->rtable);
+
+		if (!rte->inh)
+			root->leaf_result_relids =
+				bms_make_singleton(parse->resultRelation);
 	}
 
 	/*
@@ -1272,14 +1279,9 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 		remove_useless_result_rtes(root);
 
 	/*
-	 * Do the main planning.  If we have an inherited target relation, that
-	 * needs special processing, else go straight to grouping_planner.
+	 * Do the main planning.
 	 */
-	if (parse->resultRelation &&
-		rt_fetch(parse->resultRelation, parse->rtable)->inh)
-		inheritance_planner(root);
-	else
-		grouping_planner(root, false, tuple_fraction);
+	grouping_planner(root, tuple_fraction);
 
 	/*
 	 * Capture the set of outer-level param IDs we have access to, for use in
@@ -1403,6 +1405,16 @@ preprocess_expression(PlannerInfo *root, Node *expr, int kind)
 #endif
 	}
 
+	/*
+	 * Check for ANY ScalarArrayOpExpr with Const arrays and set the
+	 * hashfuncid of any that might execute more quickly by using hash lookups
+	 * instead of a linear search.
+	 */
+	if (kind == EXPRKIND_QUAL || kind == EXPRKIND_TARGET)
+	{
+		convert_saop_to_hashed_saop(expr);
+	}
+
 	/* Expand SubLinks to SubPlans */
 	if (root->parse->hasSubLinks)
 		expr = SS_process_sublinks(root, expr, (kind == EXPRKIND_QUAL));
@@ -1483,6 +1495,7 @@ preprocess_phv_expression(PlannerInfo *root, Expr *expr)
 	return (Expr *) preprocess_expression(root, (Node *) expr, EXPRKIND_PHV);
 }
 
+<<<<<<< HEAD
 /*
  * inheritance_planner
  *	  Generate Paths in the case where the result relation is an
@@ -2165,17 +2178,14 @@ inheritance_planner(PlannerInfo *root)
 									 assign_special_exec_param(root)));
 }
 
+=======
+>>>>>>> 8ff1c94649f
 /*--------------------
  * grouping_planner
  *	  Perform planning steps related to grouping, aggregation, etc.
  *
  * This function adds all required top-level processing to the scan/join
  * Path(s) produced by query_planner.
- *
- * If inheritance_update is true, we're being called from inheritance_planner
- * and should not include a ModifyTable step in the resulting Path(s).
- * (inheritance_planner will create a single ModifyTable node covering all the
- * target tables.)
  *
  * tuple_fraction is the fraction of tuples we expect will be retrieved.
  * tuple_fraction is interpreted as follows:
@@ -2194,8 +2204,7 @@ inheritance_planner(PlannerInfo *root)
  *--------------------
  */
 static void
-grouping_planner(PlannerInfo *root, bool inheritance_update,
-				 double tuple_fraction)
+grouping_planner(PlannerInfo *root, double tuple_fraction)
 {
 	Query	   *parse = root->parse;
 	int64		offset_est = 0;
@@ -2375,7 +2384,7 @@ grouping_planner(PlannerInfo *root, bool inheritance_update,
 		 * that we can transfer its decoration (resnames etc) to the topmost
 		 * tlist of the finished Plan.  This is kept in processed_tlist.
 		 */
-		root->processed_tlist = preprocess_targetlist(root);
+		preprocess_targetlist(root);
 
 		/*
 		 * In the top query, determine a locus to indicate where the final
@@ -2950,15 +2959,116 @@ grouping_planner(PlannerInfo *root, bool inheritance_update,
 		}
 
 		/*
-		 * If this is an INSERT/UPDATE/DELETE, and we're not being called from
-		 * inheritance_planner, add the ModifyTable node.
+		 * If this is an INSERT/UPDATE/DELETE, add the ModifyTable node.
 		 */
-		if (parse->commandType != CMD_SELECT && !inheritance_update)
+		if (parse->commandType != CMD_SELECT)
 		{
 			Index		rootRelation;
-			List	   *withCheckOptionLists;
-			List	   *returningLists;
+			List	   *resultRelations = NIL;
+			List	   *updateColnosLists = NIL;
+			List	   *withCheckOptionLists = NIL;
+			List	   *returningLists = NIL;
 			List	   *rowMarks;
+
+			if (bms_membership(root->all_result_relids) == BMS_MULTIPLE)
+			{
+				/* Inherited UPDATE/DELETE */
+				RelOptInfo *top_result_rel = find_base_rel(root,
+														   parse->resultRelation);
+				int			resultRelation = -1;
+
+				/* Add only leaf children to ModifyTable. */
+				while ((resultRelation = bms_next_member(root->leaf_result_relids,
+														 resultRelation)) >= 0)
+				{
+					RelOptInfo *this_result_rel = find_base_rel(root,
+																resultRelation);
+
+					/*
+					 * Also exclude any leaf rels that have turned dummy since
+					 * being added to the list, for example, by being excluded
+					 * by constraint exclusion.
+					 */
+					if (IS_DUMMY_REL(this_result_rel))
+						continue;
+
+					/* Build per-target-rel lists needed by ModifyTable */
+					resultRelations = lappend_int(resultRelations,
+												  resultRelation);
+					if (parse->commandType == CMD_UPDATE)
+					{
+						List	   *update_colnos = root->update_colnos;
+
+						if (this_result_rel != top_result_rel)
+							update_colnos =
+								adjust_inherited_attnums_multilevel(root,
+																	update_colnos,
+																	this_result_rel->relid,
+																	top_result_rel->relid);
+						updateColnosLists = lappend(updateColnosLists,
+													update_colnos);
+					}
+					if (parse->withCheckOptions)
+					{
+						List	   *withCheckOptions = parse->withCheckOptions;
+
+						if (this_result_rel != top_result_rel)
+							withCheckOptions = (List *)
+								adjust_appendrel_attrs_multilevel(root,
+																  (Node *) withCheckOptions,
+																  this_result_rel->relids,
+																  top_result_rel->relids);
+						withCheckOptionLists = lappend(withCheckOptionLists,
+													   withCheckOptions);
+					}
+					if (parse->returningList)
+					{
+						List	   *returningList = parse->returningList;
+
+						if (this_result_rel != top_result_rel)
+							returningList = (List *)
+								adjust_appendrel_attrs_multilevel(root,
+																  (Node *) returningList,
+																  this_result_rel->relids,
+																  top_result_rel->relids);
+						returningLists = lappend(returningLists,
+												 returningList);
+					}
+				}
+
+				if (resultRelations == NIL)
+				{
+					/*
+					 * We managed to exclude every child rel, so generate a
+					 * dummy one-relation plan using info for the top target
+					 * rel (even though that may not be a leaf target).
+					 * Although it's clear that no data will be updated or
+					 * deleted, we still need to have a ModifyTable node so
+					 * that any statement triggers will be executed.  (This
+					 * could be cleaner if we fixed nodeModifyTable.c to allow
+					 * zero target relations, but that probably wouldn't be a
+					 * net win.)
+					 */
+					resultRelations = list_make1_int(parse->resultRelation);
+					if (parse->commandType == CMD_UPDATE)
+						updateColnosLists = list_make1(root->update_colnos);
+					if (parse->withCheckOptions)
+						withCheckOptionLists = list_make1(parse->withCheckOptions);
+					if (parse->returningList)
+						returningLists = list_make1(parse->returningList);
+				}
+			}
+			else
+			{
+				/* Single-relation INSERT/UPDATE/DELETE. */
+				resultRelations = list_make1_int(parse->resultRelation);
+				if (parse->commandType == CMD_UPDATE)
+					updateColnosLists = list_make1(root->update_colnos);
+				if (parse->withCheckOptions)
+					withCheckOptionLists = list_make1(parse->withCheckOptions);
+				if (parse->returningList)
+					returningLists = list_make1(parse->returningList);
+			}
 
 			/*
 			 * If target is a partition root table, we need to mark the
@@ -2969,20 +3079,6 @@ grouping_planner(PlannerInfo *root, bool inheritance_update,
 				rootRelation = parse->resultRelation;
 			else
 				rootRelation = 0;
-
-			/*
-			 * Set up the WITH CHECK OPTION and RETURNING lists-of-lists, if
-			 * needed.
-			 */
-			if (parse->withCheckOptions)
-				withCheckOptionLists = list_make1(parse->withCheckOptions);
-			else
-				withCheckOptionLists = NIL;
-
-			if (parse->returningList)
-				returningLists = list_make1(parse->returningList);
-			else
-				returningLists = NIL;
 
 			/*
 			 * If there was a FOR [KEY] UPDATE/SHARE clause, the LockRows node
@@ -2996,14 +3092,14 @@ grouping_planner(PlannerInfo *root, bool inheritance_update,
 
 			path = (Path *)
 				create_modifytable_path(root, final_rel,
+										path,
 										parse->commandType,
 										parse->canSetTag,
 										parse->resultRelation,
 										rootRelation,
-										false,
-										list_make1_int(parse->resultRelation),
-										list_make1(path),
-										list_make1(root),
+										root->partColsUpdated,
+										resultRelations,
+										updateColnosLists,
 										withCheckOptionLists,
 										returningLists,
 										list_make1_int(root->is_split_update),
@@ -4359,7 +4455,8 @@ get_number_of_groups(PlannerInfo *root,
 					double		numGroups = estimate_num_groups(root,
 																groupExprs,
 																path_rows,
-																&gset);
+																&gset,
+																NULL);
 
 					gs->numGroups = numGroups;
 					rollup->numGroups += numGroups;
@@ -4384,7 +4481,8 @@ get_number_of_groups(PlannerInfo *root,
 					double		numGroups = estimate_num_groups(root,
 																groupExprs,
 																path_rows,
-																&gset);
+																&gset,
+																NULL);
 
 					gs->numGroups = numGroups;
 					gd->dNumHashGroups += numGroups;
@@ -4400,7 +4498,7 @@ get_number_of_groups(PlannerInfo *root,
 												 target_list);
 
 			dNumGroups = estimate_num_groups(root, groupExprs, path_rows,
-											 NULL);
+											 NULL, NULL);
 		}
 	}
 	else if (parse->groupingSets)
@@ -5436,9 +5534,15 @@ create_distinct_paths(PlannerInfo *root,
 
 		distinctExprs = get_sortgrouplist_exprs(parse->distinctClause,
 												parse->targetList);
+<<<<<<< HEAD
 		numDistinctRowsTotal = estimate_num_groups(root, distinctExprs,
 												   numInputRowsTotal,
 												   NULL);
+=======
+		numDistinctRows = estimate_num_groups(root, distinctExprs,
+											  cheapest_input_path->rows,
+											  NULL, NULL);
+>>>>>>> 8ff1c94649f
 	}
 
 	/*

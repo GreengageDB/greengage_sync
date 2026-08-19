@@ -29,6 +29,10 @@ typedef void (*LogicalOutputPluginWriterUpdateProgress) (struct LogicalDecodingC
 														 TransactionId xid
 );
 
+typedef struct LogicalDecodingContext LogicalDecodingContext;
+
+typedef bool (*LogicalDecodingXLogPageReadCB)(XLogReaderState *ctx);
+
 typedef struct LogicalDecodingContext
 {
 	/* memory context this is all allocated in */
@@ -39,6 +43,7 @@ typedef struct LogicalDecodingContext
 
 	/* infrastructure pieces for decoding */
 	XLogReaderState *reader;
+	LogicalDecodingXLogPageReadCB page_read;
 	struct ReorderBuffer *reorder;
 	struct SnapBuild *snapshot_builder;
 
@@ -105,14 +110,16 @@ extern LogicalDecodingContext *CreateInitDecodingContext(const char *plugin,
 														 List *output_plugin_options,
 														 bool need_full_snapshot,
 														 XLogRecPtr restart_lsn,
-														 XLogReaderRoutine *xl_routine,
+														 LogicalDecodingXLogPageReadCB page_read,
+														 WALSegmentCleanupCB cleanup_cb,
 														 LogicalOutputPluginWriterPrepareWrite prepare_write,
 														 LogicalOutputPluginWriterWrite do_write,
 														 LogicalOutputPluginWriterUpdateProgress update_progress);
 extern LogicalDecodingContext *CreateDecodingContext(XLogRecPtr start_lsn,
 													 List *output_plugin_options,
 													 bool fast_forward,
-													 XLogReaderRoutine *xl_routine,
+													 LogicalDecodingXLogPageReadCB page_read,
+													 WALSegmentCleanupCB cleanup_cb,
 													 LogicalOutputPluginWriterPrepareWrite prepare_write,
 													 LogicalOutputPluginWriterWrite do_write,
 													 LogicalOutputPluginWriterUpdateProgress update_progress);
@@ -125,7 +132,8 @@ extern void LogicalIncreaseRestartDecodingForSlot(XLogRecPtr current_lsn,
 												  XLogRecPtr restart_lsn);
 extern void LogicalConfirmReceivedLocation(XLogRecPtr lsn);
 
-extern bool filter_prepare_cb_wrapper(LogicalDecodingContext *ctx, const char *gid);
+extern bool filter_prepare_cb_wrapper(LogicalDecodingContext *ctx,
+									  TransactionId xid, const char *gid);
 extern bool filter_by_origin_cb_wrapper(LogicalDecodingContext *ctx, RepOriginId origin_id);
 extern void ResetLogicalStreamingState(void);
 extern void UpdateDecodingStats(LogicalDecodingContext *ctx);

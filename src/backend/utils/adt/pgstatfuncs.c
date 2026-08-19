@@ -39,7 +39,7 @@
 
 #define UINT32_ACCESS_ONCE(var)		 ((uint32)(*((volatile uint32 *)&(var))))
 
-#define HAS_PGSTAT_PERMISSIONS(role)	 (is_member_of_role(GetUserId(), DEFAULT_ROLE_READ_ALL_STATS) || has_privs_of_role(GetUserId(), role))
+#define HAS_PGSTAT_PERMISSIONS(role)	 (is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_STATS) || has_privs_of_role(GetUserId(), role))
 
 /* Global bgwriter statistics, from bgwriter.c */
 extern PgStat_MsgBgWriter bgwriterStats;
@@ -575,7 +575,11 @@ pg_stat_get_progress_info(PG_FUNCTION_ARGS)
 Datum
 pg_stat_get_activity(PG_FUNCTION_ARGS)
 {
+<<<<<<< HEAD
 #define PG_STAT_GET_ACTIVITY_COLS	32
+=======
+#define PG_STAT_GET_ACTIVITY_COLS	30
+>>>>>>> 8ff1c94649f
 	int			num_backends = pgstat_fetch_stat_numbackends();
 	int			curr_backend;
 	int			pid = PG_ARGISNULL(0) ? -1 : PG_GETARG_INT32(0);
@@ -948,6 +952,7 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 				values[27] = BoolGetDatum(false);	/* GSS Encryption not in
 													 * use */
 			}
+<<<<<<< HEAD
 
 			values[29] = Int32GetDatum(beentry->st_session_id);  /* GPDB */
 
@@ -961,6 +966,12 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 				else
 					nulls[31] = true;
 			}
+=======
+			if (beentry->st_queryid == 0)
+				nulls[29] = true;
+			else
+				values[29] = DatumGetUInt64(beentry->st_queryid);
+>>>>>>> 8ff1c94649f
 		}
 		else
 		{
@@ -988,9 +999,13 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 			nulls[26] = true;
 			nulls[27] = true;
 			nulls[28] = true;
+<<<<<<< HEAD
 			values[29] = Int32GetDatum(beentry->st_session_id);
 			nulls[30] = true;
 			nulls[31] = true;
+=======
+			nulls[29] = true;
+>>>>>>> 8ff1c94649f
 		}
 
 		tuplestore_putvalues(tupstore, tupdesc, values, nulls);

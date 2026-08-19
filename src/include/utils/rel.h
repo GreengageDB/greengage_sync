@@ -313,6 +313,7 @@ typedef struct StdRdOptions
 	int			parallel_workers;	/* max number of parallel workers */
 	bool		vacuum_index_cleanup;	/* enables index vacuuming and cleanup */
 	bool		vacuum_truncate;	/* enables vacuum to truncate a relation */
+<<<<<<< HEAD
 	bool		analyze_hll_non_part_table; 		/* force hll statistics collection on relation */
 
 	int			blocksize;		/* max varblock size (AO rels only) */
@@ -321,6 +322,8 @@ typedef struct StdRdOptions
 	bool		checksum;		/* checksum (AO rels only) */
 	bool		parallel_insert_enabled;	/* enables planner's use of
 											 * parallel insert */
+=======
+>>>>>>> 8ff1c94649f
 } StdRdOptions;
 
 #define HEAP_MIN_FILLFACTOR			10
@@ -442,6 +445,7 @@ typedef struct ViewOptions
 	  VIEW_OPTION_CHECK_OPTION_CASCADED)
 
 /*
+<<<<<<< HEAD
  * RelationGetParallelInsert
  *		Returns the relation's parallel_insert_enabled reloption setting.
  *		Note multiple eval of argument!
@@ -456,6 +460,8 @@ typedef struct ViewOptions
 	 (defaultpd))
 
 /*
+=======
+>>>>>>> 8ff1c94649f
  * RelationIsValid
  *		True iff relation descriptor is valid.
  */
@@ -639,6 +645,13 @@ typedef struct ViewOptions
 	} while (0)
 
 /*
+ * RelationIsPermanent
+ *		True if relation is permanent.
+ */
+#define RelationIsPermanent(relation) \
+	((relation)->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT)
+
+/*
  * RelationNeedsWAL
  *		True if relation needs WAL.
  *
@@ -647,8 +660,7 @@ typedef struct ViewOptions
  * RelFileNode" in src/backend/access/transam/README.
  */
 #define RelationNeedsWAL(relation)										\
-	((relation)->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT &&	\
-	 (XLogIsNeeded() ||													\
+	(RelationIsPermanent(relation) && (XLogIsNeeded() ||				\
 	  (relation->rd_createSubid == InvalidSubTransactionId &&			\
 	   relation->rd_firstRelfilenodeSubid == InvalidSubTransactionId)))
 
@@ -732,7 +744,8 @@ typedef struct ViewOptions
  *		WAL stream.
  *
  * We don't log information for unlogged tables (since they don't WAL log
- * anyway) and for system tables (their content is hard to make sense of, and
+ * anyway), for foreign tables (since they don't WAL log, either),
+ * and for system tables (their content is hard to make sense of, and
  * it would complicate decoding slightly for little gain). Note that we *do*
  * log information for user defined catalog tables since they presumably are
  * interesting to the user...
@@ -740,6 +753,7 @@ typedef struct ViewOptions
 #define RelationIsLogicallyLogged(relation) \
 	(XLogLogicalInfoActive() && \
 	 RelationNeedsWAL(relation) && \
+	 (relation)->rd_rel->relkind != RELKIND_FOREIGN_TABLE &&	\
 	 !IsCatalogRelation(relation))
 
 /* routines in utils/cache/relcache.c */

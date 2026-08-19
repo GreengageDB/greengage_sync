@@ -35,6 +35,7 @@
 #include "access/xlog_internal.h"
 #include "access/xlogarchive.h"
 #include "access/xloginsert.h"
+#include "access/xlogprefetch.h"
 #include "access/xlogreader.h"
 #include "access/xlogutils.h"
 #include "catalog/catversion.h"
@@ -123,6 +124,7 @@ int			CommitDelay = 0;	/* precommit delay in microseconds */
 int			CommitSiblings = 5; /* # concurrent xacts needed to sleep */
 int			wal_retrieve_retry_interval = 5000;
 int			max_slot_wal_keep_size_mb = -1;
+int			wal_decode_buffer_size = 512 * 1024;
 bool		track_wal_io_timing = false;
 
 /* GPDB specific */
@@ -845,17 +847,13 @@ static XLogSegNo openLogSegNo = 0;
  * These variables are used similarly to the ones above, but for reading
  * the XLOG.  Note, however, that readOff generally represents the offset
  * of the page just read, not the seek position of the FD itself, which
- * will be just past that page. readLen indicates how much of the current
- * page has been read into readBuf, and readSource indicates where we got
- * the currently open file from.
+ * will be just past that page. readSource indicates where we got the
+ * currently open file from.
  * Note: we could use Reserve/ReleaseExternalFD to track consumption of
  * this FD too; but it doesn't currently seem worthwhile, since the XLOG is
  * not read by general-purpose sessions.
  */
 static int	readFile = -1;
-static XLogSegNo readSegNo = 0;
-static uint32 readOff = 0;
-static uint32 readLen = 0;
 static XLogSource readSource = XLOG_FROM_ANY;
 
 /*
@@ -871,13 +869,6 @@ static XLogSource readSource = XLOG_FROM_ANY;
 static XLogSource currentSource = XLOG_FROM_ANY;
 static bool lastSourceFailed = false;
 static bool pendingWalRcvRestart = false;
-
-typedef struct XLogPageReadPrivate
-{
-	int			emode;
-	bool		fetching_ckpt;	/* are we fetching a checkpoint record? */
-	bool		randAccess;
-} XLogPageReadPrivate;
 
 /*
  * These variables track when we last obtained some WAL data to process,
@@ -957,10 +948,13 @@ static bool InstallXLogFileSegment(XLogSegNo *segno, char *tmppath,
 static int	XLogFileRead(XLogSegNo segno, int emode, TimeLineID tli,
 						 XLogSource source, bool notfoundOk);
 static int	XLogFileReadAnyTLI(XLogSegNo segno, int emode, XLogSource source);
-static int	XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
-						 int reqLen, XLogRecPtr targetRecPtr, char *readBuf);
+static bool XLogPageRead(XLogReaderState *state,
+						 bool fetching_ckpt, int emode, bool randAccess,
+						 bool nowait);
 static bool WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
-										bool fetching_ckpt, XLogRecPtr tliRecPtr);
+										bool fetching_ckpt,
+										XLogRecPtr tliRecPtr,
+										XLogSegNo readSegNo);
 static int	emode_for_corrupt_record(int emode, XLogRecPtr RecPtr);
 static void XLogFileClose(void);
 static void PreallocXlogFiles(XLogRecPtr endptr);
@@ -1259,6 +1253,7 @@ XLogInsertRecord(XLogRecData *rdata,
 		StringInfoData recordBuf;
 		char	   *errormsg = NULL;
 		MemoryContext oldCxt;
+		DecodedXLogRecord *decoded;
 
 		oldCxt = MemoryContextSwitchTo(walDebugCxt);
 
@@ -1275,15 +1270,19 @@ XLogInsertRecord(XLogRecData *rdata,
 		for (; rdata != NULL; rdata = rdata->next)
 			appendBinaryStringInfo(&recordBuf, rdata->data, rdata->len);
 
+		/* How much space would it take to decode this record? */
+		decoded = palloc(DecodeXLogRecordRequiredSpace(recordBuf.len));
+
 		if (!debug_reader)
-			debug_reader = XLogReaderAllocate(wal_segment_size, NULL,
-											  XL_ROUTINE(), NULL);
+			debug_reader = XLogReaderAllocate(wal_segment_size, NULL, NULL);
 
 		if (!debug_reader)
 		{
 			appendStringInfoString(&buf, "error decoding record: out of memory");
 		}
-		else if (!DecodeXLogRecord(debug_reader, (XLogRecord *) recordBuf.data,
+		else if (!DecodeXLogRecord(debug_reader, decoded,
+								   (XLogRecord *) recordBuf.data,
+								   EndPos,
 								   &errormsg))
 		{
 			appendStringInfo(&buf, "error decoding record: %s",
@@ -1292,10 +1291,17 @@ XLogInsertRecord(XLogRecData *rdata,
 		else
 		{
 			appendStringInfoString(&buf, " - ");
+			/*
+			 * Temporarily make this decoded record the current record for
+			 * XLogRecGetXXX() macros.
+			 */
+			debug_reader->record = decoded;
 			xlog_outdesc(&buf, debug_reader);
+			debug_reader->record = NULL;
 		}
 		elog(LOG, "%s", buf.data);
 
+		pfree(decoded);
 		pfree(buf.data);
 		pfree(recordBuf.data);
 		MemoryContextSwitchTo(oldCxt);
@@ -1469,7 +1475,7 @@ checkXLogConsistency(XLogReaderState *record)
 
 	Assert((XLogRecGetInfo(record) & XLR_CHECK_CONSISTENCY) != 0);
 
-	for (block_id = 0; block_id <= record->max_block_id; block_id++)
+	for (block_id = 0; block_id <= XLogRecMaxBlockId(record); block_id++)
 	{
 		Buffer		buf;
 		Page		page;
@@ -1500,7 +1506,7 @@ checkXLogConsistency(XLogReaderState *record)
 		 * temporary page.
 		 */
 		buf = XLogReadBufferExtended(rnode, forknum, blkno,
-									 RBM_NORMAL_NO_LOG);
+									 RBM_NORMAL_NO_LOG, InvalidBuffer);
 		if (!BufferIsValid(buf))
 			continue;
 
@@ -3780,7 +3786,6 @@ XLogFileRead(XLogSegNo segno, int emode, TimeLineID tli,
 			snprintf(activitymsg, sizeof(activitymsg), "waiting for %s",
 					 xlogfname);
 			set_ps_display(activitymsg);
-
 			restoredFromArchive = RestoreArchivedFile(path, xlogfname,
 													  "RECOVERYXLOG",
 													  wal_segment_size,
@@ -4427,12 +4432,7 @@ ReadRecord(XLogReaderState *xlogreader, int emode,
 		   bool fetching_ckpt)
 {
 	XLogRecord *record;
-	XLogPageReadPrivate *private = (XLogPageReadPrivate *) xlogreader->private_data;
-
-	/* Pass through parameters to XLogPageRead */
-	private->fetching_ckpt = fetching_ckpt;
-	private->emode = emode;
-	private->randAccess = (xlogreader->ReadRecPtr == InvalidXLogRecPtr);
+	bool		randAccess = (xlogreader->ReadRecPtr == InvalidXLogRecPtr);
 
 	/* This is the first attempt to read this page. */
 	lastSourceFailed = false;
@@ -4440,10 +4440,19 @@ ReadRecord(XLogReaderState *xlogreader, int emode,
 	for (;;)
 	{
 		char	   *errormsg;
+		XLogReadRecordResult result;
 
-		record = XLogReadRecord(xlogreader, &errormsg);
+		while ((result = XLogReadRecord(xlogreader, &record, &errormsg))
+			   == XLREAD_NEED_DATA)
+		{
+			if (!XLogPageRead(xlogreader, fetching_ckpt, emode, randAccess,
+							  false /* wait for data if streaming */))
+				break;
+		}
+
 		ReadRecPtr = xlogreader->ReadRecPtr;
 		EndRecPtr = xlogreader->EndRecPtr;
+
 		if (record == NULL)
 		{
 			/*
@@ -6636,9 +6645,10 @@ CheckRequiredParameterValues(void)
 	 */
 	if (ArchiveRecoveryRequested && ControlFile->wal_level == WAL_LEVEL_MINIMAL)
 	{
-		ereport(WARNING,
-				(errmsg("WAL was generated with wal_level=minimal, data may be missing"),
-				 errhint("This happens if you temporarily set wal_level=minimal without taking a new base backup.")));
+		ereport(FATAL,
+				(errmsg("WAL was generated with wal_level=minimal, cannot continue recovering"),
+				 errdetail("This happens if you temporarily set wal_level=minimal on the server."),
+				 errhint("Use a backup taken after setting wal_level to higher than minimal.")));
 	}
 
 	/*
@@ -6647,11 +6657,6 @@ CheckRequiredParameterValues(void)
 	 */
 	if (ArchiveRecoveryRequested && EnableHotStandby)
 	{
-		if (ControlFile->wal_level < WAL_LEVEL_REPLICA)
-			ereport(ERROR,
-					(errmsg("hot standby is not possible because wal_level was not set to \"replica\" or higher on the primary server"),
-					 errhint("Either set wal_level to \"replica\" on the primary, or turn off hot_standby here.")));
-
 		/* We ignore autovacuum_max_workers when we make this test. */
 		RecoveryRequiresIntParameter("max_connections",
 									 MaxConnections,
@@ -6694,7 +6699,6 @@ StartupXLOG(void)
 	bool		backupFromStandby = false;
 	DBState		dbstate_at_startup;
 	XLogReaderState *xlogreader;
-	XLogPageReadPrivate private;
 	bool		promoted = false;
 	struct stat st;
 
@@ -6879,19 +6883,21 @@ StartupXLOG(void)
 		OwnLatch(&XLogCtl->recoveryWakeupLatch);
 
 	/* Set up XLOG reader facility */
-	MemSet(&private, 0, sizeof(XLogPageReadPrivate));
 	xlogreader =
-		XLogReaderAllocate(wal_segment_size, NULL,
-						   XL_ROUTINE(.page_read = &XLogPageRead,
-									  .segment_open = NULL,
-									  .segment_close = wal_segment_close),
-						   &private);
+		XLogReaderAllocate(wal_segment_size, NULL, wal_segment_close);
+
 	if (!xlogreader)
 		ereport(ERROR,
 				(errcode(ERRCODE_OUT_OF_MEMORY),
 				 errmsg("out of memory"),
 				 errdetail("Failed while allocating a WAL reading processor.")));
 	xlogreader->system_identifier = ControlFile->system_identifier;
+
+	/*
+	 * Set the WAL decode buffer size.  This limits how far ahead we can read
+	 * in the WAL.
+	 */
+	XLogReaderSetDecodeBuffer(xlogreader, NULL, wal_decode_buffer_size);
 
 	/*
 	 * Allocate two page buffers dedicated to WAL consistency checks.  We do
@@ -7610,6 +7616,7 @@ StartupXLOG(void)
 		{
 			ErrorContextCallback errcallback;
 			TimestampTz xtime;
+			XLogPrefetchState prefetch;
 			PGRUsage	ru0;
 
 			pg_rusage_init(&ru0);
@@ -7619,6 +7626,9 @@ StartupXLOG(void)
 			ereport(LOG,
 					(errmsg("redo starts at %X/%X",
 							LSN_FORMAT_ARGS(ReadRecPtr))));
+
+			/* Prepare to prefetch, if configured. */
+			XLogPrefetchBegin(&prefetch, xlogreader);
 
 			/*
 			 * main redo apply loop
@@ -7648,6 +7658,14 @@ StartupXLOG(void)
 
 				/* Handle interrupt signals of startup process */
 				HandleStartupProcInterrupts();
+
+				/* Perform WAL prefetching, if enabled. */
+				while (XLogPrefetch(&prefetch, xlogreader->ReadRecPtr) == XLREAD_NEED_DATA)
+				{
+					if (!XLogPageRead(xlogreader, false, LOG, false,
+									  true /* don't wait for streaming data */))
+						break;
+				}
 
 				/*
 				 * Pause WAL replay, if requested by a hot-standby session via
@@ -7847,6 +7865,9 @@ StartupXLOG(void)
 					 */
 					if (AllowCascadeReplication())
 						WalSndWakeup();
+
+					/* Reset the prefetcher. */
+					XLogPrefetchReconfigure();
 				}
 
 				/* Exit loop if we reached inclusive recovery target */
@@ -7863,6 +7884,7 @@ StartupXLOG(void)
 			/*
 			 * end of main redo apply loop
 			 */
+			XLogPrefetchEnd(&prefetch);
 
 			if (reachedRecoveryTarget)
 			{
@@ -8165,7 +8187,8 @@ StartupXLOG(void)
 		XLogRecPtr	pageBeginPtr;
 
 		pageBeginPtr = EndOfLog - (EndOfLog % XLOG_BLCKSZ);
-		Assert(readOff == XLogSegmentOffset(pageBeginPtr, wal_segment_size));
+		Assert(XLogSegmentOffset(xlogreader->readPagePtr, wal_segment_size) ==
+			   XLogSegmentOffset(pageBeginPtr, wal_segment_size));
 
 		firstIdx = XLogRecPtrToBufIdx(EndOfLog);
 
@@ -11001,7 +11024,7 @@ xlog_redo(XLogReaderState *record)
 		 * XLOG_FPI and XLOG_FPI_FOR_HINT records, they use a different info
 		 * code just to distinguish them for statistics purposes.
 		 */
-		for (uint8 block_id = 0; block_id <= record->max_block_id; block_id++)
+		for (uint8 block_id = 0; block_id <= XLogRecMaxBlockId(record); block_id++)
 		{
 			Buffer		buffer;
 
@@ -11163,7 +11186,7 @@ xlog_block_info(StringInfo buf, XLogReaderState *record)
 	int			block_id;
 
 	/* decode block references */
-	for (block_id = 0; block_id <= record->max_block_id; block_id++)
+	for (block_id = 0; block_id <= XLogRecMaxBlockId(record); block_id++)
 	{
 		RelFileNode rnode;
 		ForkNumber	forknum;
@@ -12828,14 +12851,19 @@ CancelBackup(void)
  * and call XLogPageRead() again with the same arguments. This lets
  * XLogPageRead() to try fetching the record from another source, or to
  * sleep and retry.
+ *
+ * If nowait is true, then return false immediately if the requested data isn't
+ * available yet.
  */
-static int
-XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
-			 XLogRecPtr targetRecPtr, char *readBuf)
+static bool
+XLogPageRead(XLogReaderState *state,
+			 bool fetching_ckpt, int emode, bool randAccess, bool nowait)
 {
-	XLogPageReadPrivate *private =
-	(XLogPageReadPrivate *) xlogreader->private_data;
-	int			emode = private->emode;
+	char *readBuf				= state->readBuf;
+	XLogRecPtr	targetPagePtr	= state->readPagePtr;
+	int			reqLen			= state->reqLen;
+	int			readLen			= 0;
+	XLogRecPtr	targetRecPtr	= state->DecodeRecPtr;
 	uint32		targetPageOff;
 	XLogSegNo	targetSegNo PG_USED_FOR_ASSERTS_ONLY;
 	int			r;
@@ -12848,7 +12876,7 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 	 * is not in the currently open one.
 	 */
 	if (readFile >= 0 &&
-		!XLByteInSeg(targetPagePtr, readSegNo, wal_segment_size))
+		!XLByteInSeg(targetPagePtr, state->seg.ws_segno, wal_segment_size))
 	{
 		elogif(debug_xlog_record_read, LOG,
 			   "xlog page read -- Requested record %X/%X does not exist in"
@@ -12862,10 +12890,10 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 		 */
 		if (bgwriterLaunched)
 		{
-			if (XLogCheckpointNeeded(readSegNo))
+			if (XLogCheckpointNeeded(state->seg.ws_segno))
 			{
 				(void) GetRedoRecPtr();
-				if (XLogCheckpointNeeded(readSegNo))
+				if (XLogCheckpointNeeded(state->seg.ws_segno))
 					RequestCheckpoint(CHECKPOINT_CAUSE_XLOG);
 			}
 		}
@@ -12875,7 +12903,7 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 		readSource = XLOG_FROM_ANY;
 	}
 
-	XLByteToSeg(targetPagePtr, readSegNo, wal_segment_size);
+	XLByteToSeg(targetPagePtr, state->seg.ws_segno, wal_segment_size);
 
 	elogif(debug_xlog_record_read, LOG,
 		   "xlog page read -- Requested record %X/%X has "
@@ -12889,18 +12917,22 @@ retry:
 		(readSource == XLOG_FROM_STREAM &&
 		 flushedUpto < targetPagePtr + reqLen))
 	{
+		if (nowait)
+		{
+			XLogReaderSetInputData(state, -1);
+			return false;
+		}
+
 		if (!WaitForWALToBecomeAvailable(targetPagePtr + reqLen,
-										 private->randAccess,
-										 private->fetching_ckpt,
-										 targetRecPtr))
+										 randAccess, fetching_ckpt,
+										 targetRecPtr, state->seg.ws_segno))
 		{
 			if (readFile >= 0)
 				close(readFile);
 			readFile = -1;
-			readLen = 0;
 			readSource = XLOG_FROM_ANY;
-
-			return -1;
+			XLogReaderSetInputData(state, -1);
+			return false;
 		}
 	}
 
@@ -12927,40 +12959,36 @@ retry:
 	else
 		readLen = XLOG_BLCKSZ;
 
-	/* Read the requested page */
-	readOff = targetPageOff;
-
 	pgstat_report_wait_start(WAIT_EVENT_WAL_READ);
-	r = pg_pread(readFile, readBuf, XLOG_BLCKSZ, (off_t) readOff);
+	r = pg_pread(readFile, readBuf, XLOG_BLCKSZ, (off_t) targetPageOff);
 	if (r != XLOG_BLCKSZ)
 	{
 		char		fname[MAXFNAMELEN];
 		int			save_errno = errno;
 
 		pgstat_report_wait_end();
-		XLogFileName(fname, curFileTLI, readSegNo, wal_segment_size);
+		XLogFileName(fname, curFileTLI, state->seg.ws_segno, wal_segment_size);
 		if (r < 0)
 		{
 			errno = save_errno;
 			ereport(emode_for_corrupt_record(emode, targetPagePtr + reqLen),
 					(errcode_for_file_access(),
 					 errmsg("could not read from log segment %s, offset %u: %m",
-							fname, readOff)));
+							fname, targetPageOff)));
 		}
 		else
 			ereport(emode_for_corrupt_record(emode, targetPagePtr + reqLen),
 					(errcode(ERRCODE_DATA_CORRUPTED),
 					 errmsg("could not read from log segment %s, offset %u: read %d of %zu",
-							fname, readOff, r, (Size) XLOG_BLCKSZ)));
+							fname, targetPageOff, r, (Size) XLOG_BLCKSZ)));
 		goto next_record_is_invalid;
 	}
 	pgstat_report_wait_end();
 
-	Assert(targetSegNo == readSegNo);
-	Assert(targetPageOff == readOff);
-	Assert(reqLen <= readLen);
+	Assert(targetSegNo == state->seg.ws_segno);
+	Assert(readLen >= reqLen);
 
-	xlogreader->seg.ws_tli = curFileTLI;
+	state->seg.ws_tli = curFileTLI;
 
 	/*
 	 * Check the page header immediately, so that we can retry immediately if
@@ -12988,14 +13016,16 @@ retry:
 	 * Validating the page header is cheap enough that doing it twice
 	 * shouldn't be a big deal from a performance point of view.
 	 */
-	if (!XLogReaderValidatePageHeader(xlogreader, targetPagePtr, readBuf))
+	if (!XLogReaderValidatePageHeader(state, targetPagePtr, readBuf))
 	{
-		/* reset any error XLogReaderValidatePageHeader() might have set */
-		xlogreader->errormsg_buf[0] = '\0';
+		/* reset any error StateValidatePageHeader() might have set */
+		state->errormsg_buf[0] = '\0';
 		goto next_record_is_invalid;
 	}
 
-	return readLen;
+	Assert(state->readPagePtr == targetPagePtr);
+	XLogReaderSetInputData(state, readLen);
+	return true;
 
 next_record_is_invalid:
 	lastSourceFailed = true;
@@ -13003,14 +13033,14 @@ next_record_is_invalid:
 	if (readFile >= 0)
 		close(readFile);
 	readFile = -1;
-	readLen = 0;
 	readSource = XLOG_FROM_ANY;
 
 	/* In standby-mode, keep trying */
 	if (StandbyMode)
 		goto retry;
-	else
-		return -1;
+
+	XLogReaderSetInputData(state, -1);
+	return false;
 }
 
 /*
@@ -13041,7 +13071,8 @@ next_record_is_invalid:
  */
 static bool
 WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
-							bool fetching_ckpt, XLogRecPtr tliRecPtr)
+							bool fetching_ckpt, XLogRecPtr tliRecPtr,
+							XLogSegNo readSegNo)
 {
 	static TimestampTz last_fail_time = 0;
 	TimestampTz now;
@@ -13125,6 +13156,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 */
 					currentSource = XLOG_FROM_STREAM;
 					startWalReceiver = true;
+					XLogPrefetchReconfigure();
 					break;
 
 				case XLOG_FROM_STREAM:
@@ -13363,6 +13395,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 * be updated on each cycle. When we are behind,
 					 * XLogReceiptTime will not advance, so the grace time
 					 * allotted to conflicting queries will decrease.
+					 *
 					 */
 					if (RecPtr < flushedUpto)
 						havedata = true;
@@ -13383,6 +13416,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 						else
 							havedata = false;
 					}
+
 					if (havedata)
 					{
 						elogif(debug_xlog_record_read, LOG,

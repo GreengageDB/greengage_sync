@@ -2052,6 +2052,7 @@ pq_settcpusertimeout(int timeout, Port *port)
 bool
 pq_check_connection(void)
 {
+<<<<<<< HEAD
 	struct pollfd pollfd;
 	int         rc;
 	short		poll_ev_aux;
@@ -2079,6 +2080,21 @@ pq_check_connection(void)
 	pollfd.fd = MyProcPort->sock;
 	pollfd.events = POLLOUT | POLLIN | poll_ev_aux;
 
+=======
+#if defined(POLLRDHUP)
+	/*
+	 * POLLRDHUP is a Linux extension to poll(2) to detect sockets closed by
+	 * the other end.  We don't have a portable way to do that without
+	 * actually trying to read or write data on other systems.  We don't want
+	 * to read because that would be confused by pipelined queries and COPY
+	 * data. Perhaps in future we'll try to write a heartbeat message instead.
+	 */
+	struct pollfd pollfd;
+	int			rc;
+
+	pollfd.fd = MyProcPort->sock;
+	pollfd.events = POLLOUT | POLLIN | POLLRDHUP;
+>>>>>>> 8ff1c94649f
 	pollfd.revents = 0;
 
 	rc = poll(&pollfd, 1, 0);
@@ -2090,8 +2106,14 @@ pq_check_connection(void)
 				 errmsg("could not poll socket: %m")));
 		return false;
 	}
+<<<<<<< HEAD
 	else if (rc == 1 && (pollfd.revents & (POLLHUP | poll_ev_aux)))
 		return false;
+=======
+	else if (rc == 1 && (pollfd.revents & (POLLHUP | POLLRDHUP)))
+		return false;
+#endif
+>>>>>>> 8ff1c94649f
 
 	return true;
 }

@@ -202,6 +202,7 @@ explain (costs off) insert into insertconflicttest values(0, 'Crowberry') on con
 
 -- Does the same, but JSON format shows "Conflict Arbiter Index" as JSON array:
 explain (costs off, format json) insert into insertconflicttest values (0, 'Bilberry') on conflict (key) do update set fruit = excluded.fruit where insertconflicttest.fruit != 'Lime' returning *;
+<<<<<<< HEAD
                                  QUERY PLAN                                 
 ----------------------------------------------------------------------------
  [                                                                         +
@@ -243,6 +244,32 @@ explain (costs off, format json) insert into insertconflicttest values (0, 'Bilb
      },                                                                    +
      "Optimizer": "Postgres query optimizer"                               +
    }                                                                       +
+=======
+                               QUERY PLAN                               
+------------------------------------------------------------------------
+ [                                                                     +
+   {                                                                   +
+     "Plan": {                                                         +
+       "Node Type": "ModifyTable",                                     +
+       "Operation": "Insert",                                          +
+       "Parallel Aware": false,                                        +
+       "Async Capable": false,                                         +
+       "Relation Name": "insertconflicttest",                          +
+       "Alias": "insertconflicttest",                                  +
+       "Conflict Resolution": "UPDATE",                                +
+       "Conflict Arbiter Indexes": ["key_index"],                      +
+       "Conflict Filter": "(insertconflicttest.fruit <> 'Lime'::text)",+
+       "Plans": [                                                      +
+         {                                                             +
+           "Node Type": "Result",                                      +
+           "Parent Relationship": "Outer",                             +
+           "Parallel Aware": false,                                    +
+           "Async Capable": false                                      +
+         }                                                             +
+       ]                                                               +
+     }                                                                 +
+   }                                                                   +
+>>>>>>> 8ff1c94649f
  ]
 (1 row)
 

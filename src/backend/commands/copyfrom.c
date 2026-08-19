@@ -3,6 +3,12 @@
  * copyfrom.c
  *		COPY <table> FROM file/program/client
  *
+ * This file contains routines needed to efficiently load tuples into a
+ * table.  That includes looking up the correct partition, firing triggers,
+ * calling the table AM function to insert the data, and updating indexes.
+ * Reading data from the input file or client and parsing it into Datums
+ * is handled in copyfromparse.c.
+ *
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
@@ -23,6 +29,7 @@
 #include "access/tableam.h"
 #include "access/xact.h"
 #include "access/xlog.h"
+#include "catalog/namespace.h"
 #include "commands/copy.h"
 #include "commands/copyfrom_internal.h"
 #include "commands/progress.h"
@@ -111,7 +118,7 @@ typedef struct CopyMultiInsertInfo
 	List	   *multiInsertBuffers; /* List of tracked CopyMultiInsertBuffers */
 	int			bufferedTuples; /* number of tuples buffered over all buffers */
 	int			bufferedBytes;	/* number of bytes from all buffered tuples */
-	CopyFromState	cstate;			/* Copy state for this CopyMultiInsertInfo */
+	CopyFromState cstate;		/* Copy state for this CopyMultiInsertInfo */
 	EState	   *estate;			/* Executor state used for COPY */
 	CommandId	mycid;			/* Command Id used for COPY */
 	int			ti_options;		/* table insert options */
@@ -158,7 +165,7 @@ static unsigned int GetTargetSeg(GpDistributionData *distData,
 void
 CopyFromErrorCallback(void *arg)
 {
-	CopyFromState	cstate = (CopyFromState) arg;
+	CopyFromState cstate = (CopyFromState) arg;
 	char		curlineno_str[32];
 
 	snprintf(curlineno_str, sizeof(curlineno_str), UINT64_FORMAT,
@@ -200,15 +207,9 @@ CopyFromErrorCallback(void *arg)
 			/*
 			 * Error is relevant to a particular line.
 			 *
-			 * If line_buf still contains the correct line, and it's already
-			 * transcoded, print it. If it's still in a foreign encoding, it's
-			 * quite likely that the error is precisely a failure to do
-			 * encoding conversion (ie, bad data). We dare not try to convert
-			 * it, and at present there's no way to regurgitate it without
-			 * conversion. So we have to punt and just report the line number.
+			 * If line_buf still contains the correct line, print it.
 			 */
-			if (cstate->line_buf_valid &&
-				(cstate->line_buf_converted || !cstate->need_transcoding))
+			if (cstate->line_buf_valid)
 			{
 				char	   *lineval;
 
@@ -351,7 +352,7 @@ CopyMultiInsertBufferFlush(CopyMultiInsertInfo *miinfo,
 	MemoryContext oldcontext;
 	int			i;
 	uint64		save_cur_lineno;
-	CopyFromState	cstate = miinfo->cstate;
+	CopyFromState cstate = miinfo->cstate;
 	EState	   *estate = miinfo->estate;
 	CommandId	mycid = miinfo->mycid;
 	int			ti_options = miinfo->ti_options;
@@ -721,6 +722,7 @@ CopyFrom(CopyFromState cstate)
 	mtstate->ps.plan = NULL;
 	mtstate->ps.state = estate;
 	mtstate->operation = CMD_INSERT;
+	mtstate->mt_nrels = 1;
 	mtstate->resultRelInfo = resultRelInfo;
 	mtstate->rootResultRelInfo = resultRelInfo;
 
@@ -750,7 +752,7 @@ CopyFrom(CopyFromState cstate)
 	 * CopyFrom tuple routing.
 	 */
 	if (cstate->rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
-		proute = ExecSetupPartitionTupleRouting(estate, NULL, cstate->rel);
+		proute = ExecSetupPartitionTupleRouting(estate, cstate->rel);
 
 	if (cstate->whereClause)
 		cstate->qualexpr = ExecInitQual(castNode(List, cstate->whereClause),
@@ -1540,7 +1542,12 @@ BeginCopyFrom(ParseState *pstate,
 			  List *attnamelist,
 			  List *options)
 {
+<<<<<<< HEAD
 	CopyFromState	cstate;
+=======
+	CopyFromState cstate;
+	bool		pipe = (filename == NULL);
+>>>>>>> 8ff1c94649f
 	TupleDesc	tupDesc;
 	AttrNumber	num_phys_attrs,
 				num_defaults;
@@ -1584,6 +1591,7 @@ BeginCopyFrom(ParseState *pstate,
 	is_external_table = rel != NULL && rel_is_external_table(rel->rd_id);
 
 	/* Extract options from the statement node tree */
+<<<<<<< HEAD
 	ProcessCopyOptions(pstate, &cstate->opts, true /* is_from */, options, is_external_table);
 
 	if (cstate->opts.delim_off && !is_external_table)
@@ -1612,6 +1620,9 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->dispatch_mode = COPY_EXECUTOR;
 	else
 		cstate->dispatch_mode = COPY_DIRECT;
+=======
+	ProcessCopyOptions(pstate, &cstate->opts, true /* is_from */ , options);
+>>>>>>> 8ff1c94649f
 
 	/* Process the target relation */
 	cstate->rel = rel;
@@ -1702,6 +1713,7 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->file_encoding = cstate->opts.file_encoding;
 
 	/*
+<<<<<<< HEAD
 	 * Set up encoding conversion info.  Even if the file and server encodings
 	 * are the same, we must apply pg_any_to_server() to validate data in
 	 * multibyte encodings.
@@ -1722,6 +1734,21 @@ BeginCopyFrom(ParseState *pstate,
 	{
 		cstate->need_transcoding = false;
 		cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
+=======
+	 * Look up encoding conversion function.
+	 */
+	if (cstate->file_encoding == GetDatabaseEncoding() ||
+		cstate->file_encoding == PG_SQL_ASCII ||
+		GetDatabaseEncoding() == PG_SQL_ASCII)
+	{
+		cstate->need_transcoding = false;
+	}
+	else
+	{
+		cstate->need_transcoding = true;
+		cstate->conversion_proc = FindDefaultConversionProc(cstate->file_encoding,
+															GetDatabaseEncoding());
+>>>>>>> 8ff1c94649f
 	}
 
 	cstate->copy_src = COPY_FILE;	/* default */
@@ -1735,25 +1762,50 @@ BeginCopyFrom(ParseState *pstate,
 	oldcontext = MemoryContextSwitchTo(cstate->copycontext);
 
 	/* Initialize state variables */
+<<<<<<< HEAD
 	cstate->reached_eof = false;
+=======
+	cstate->eol_type = EOL_UNKNOWN;
+>>>>>>> 8ff1c94649f
 	cstate->cur_relname = RelationGetRelationName(cstate->rel);
 	cstate->cur_lineno = 0;
 	cstate->cur_attname = NULL;
 	cstate->cur_attval = NULL;
 
 	/*
-	 * Set up variables to avoid per-attribute overhead.  attribute_buf and
-	 * raw_buf are used in both text and binary modes, but we use line_buf
-	 * only in text mode.
+	 * Allocate buffers for the input pipeline.
+	 *
+	 * attribute_buf and raw_buf are used in both text and binary modes, but
+	 * input_buf and line_buf only in text mode.
 	 */
-	initStringInfo(&cstate->attribute_buf);
-	cstate->raw_buf = (char *) palloc(RAW_BUF_SIZE + 1);
+	cstate->raw_buf = palloc(RAW_BUF_SIZE + 1);
 	cstate->raw_buf_index = cstate->raw_buf_len = 0;
+<<<<<<< HEAD
 	if (!cstate->opts.binary || cstate->dispatch_mode == COPY_EXECUTOR)
+=======
+	cstate->raw_reached_eof = false;
+
+	if (!cstate->opts.binary)
+>>>>>>> 8ff1c94649f
 	{
+		/*
+		 * If encoding conversion is needed, we need another buffer to hold
+		 * the converted input data.  Otherwise, we can just point input_buf
+		 * to the same buffer as raw_buf.
+		 */
+		if (cstate->need_transcoding)
+		{
+			cstate->input_buf = (char *) palloc(INPUT_BUF_SIZE + 1);
+			cstate->input_buf_index = cstate->input_buf_len = 0;
+		}
+		else
+			cstate->input_buf = cstate->raw_buf;
+		cstate->input_reached_eof = false;
+
 		initStringInfo(&cstate->line_buf);
-		cstate->line_buf_converted = false;
 	}
+
+	initStringInfo(&cstate->attribute_buf);
 
 	/* Assign range table, we'll need it in CopyFrom. */
 	if (pstate)
@@ -2029,7 +2081,7 @@ ClosePipeFromProgram(CopyFromState cstate)
 		 * should not report that as an error.  Otherwise, SIGPIPE indicates a
 		 * problem.
 		 */
-		if (!cstate->reached_eof &&
+		if (!cstate->raw_reached_eof &&
 			wait_result_is_signal(pclose_rc, SIGPIPE))
 			return;
 

@@ -20,6 +20,7 @@
 /* forward references to avoid circularity */
 struct ExprEvalStep;
 struct SubscriptingRefState;
+struct ScalarArrayOpExprHashTable;
 
 /* Bits in ExprState->flags (see also execnodes.h for public flag bits): */
 /* expression's interpreter has been initialized */
@@ -218,8 +219,12 @@ typedef enum ExprEvalOp
 	/* evaluate assorted special-purpose expression types */
 	EEOP_CONVERT_ROWTYPE,
 	EEOP_SCALARARRAYOP,
+<<<<<<< HEAD
 	EEOP_SCALARARRAYOP_FAST_INT, 	/* fast path x in (123, 456, 789) */
 	EEOP_SCALARARRAYOP_FAST_STR, 	/* fast path x in ('a', 'b', 'c') */
+=======
+	EEOP_HASHED_SCALARARRAYOP,
+>>>>>>> 8ff1c94649f
 	EEOP_XMLEXPR,
 	EEOP_AGGREF,
 	EEOP_GROUPING_FUNC,
@@ -567,6 +572,7 @@ typedef struct ExprEvalStep
 			PGFunction	fn_addr;	/* actual call address */
 		}			scalararrayop;
 
+<<<<<<< HEAD
 		/* for EEOP_SCALARARRAYOP_FAST_INT / SCALARARRAYOP_FAST_STR */
 		struct
 		{
@@ -580,6 +586,22 @@ typedef struct ExprEvalStep
 			int		   *fp_len;
 			Datum	   *fp_datum;
 		}			scalararrayop_fast;
+=======
+		/* for EEOP_HASHED_SCALARARRAYOP */
+		struct
+		{
+			bool		has_nulls;
+			struct ScalarArrayOpExprHashTable *elements_tab;
+			FmgrInfo   *finfo;	/* function's lookup data */
+			FunctionCallInfo fcinfo_data;	/* arguments etc */
+			/* faster to access without additional indirection: */
+			PGFunction	fn_addr;	/* actual call address */
+			FmgrInfo   *hash_finfo; /* function's lookup data */
+			FunctionCallInfo hash_fcinfo_data;	/* arguments etc */
+			/* faster to access without additional indirection: */
+			PGFunction	hash_fn_addr;	/* actual call address */
+		}			hashedscalararrayop;
+>>>>>>> 8ff1c94649f
 
 		/* for EEOP_XMLEXPR */
 		struct
@@ -777,8 +799,13 @@ extern void ExecEvalFieldStoreForm(ExprState *state, ExprEvalStep *op,
 extern void ExecEvalConvertRowtype(ExprState *state, ExprEvalStep *op,
 								   ExprContext *econtext);
 extern void ExecEvalScalarArrayOp(ExprState *state, ExprEvalStep *op);
+<<<<<<< HEAD
 extern void ExecEvalScalarArrayOpFastInt(ExprState *state, ExprEvalStep *op);
 extern void ExecEvalScalarArrayOpFastStr(ExprState *state, ExprEvalStep *op);
+=======
+extern void ExecEvalHashedScalarArrayOp(ExprState *state, ExprEvalStep *op,
+										ExprContext *econtext);
+>>>>>>> 8ff1c94649f
 extern void ExecEvalConstraintNotNull(ExprState *state, ExprEvalStep *op);
 extern void ExecEvalConstraintCheck(ExprState *state, ExprEvalStep *op);
 extern void ExecEvalXmlExpr(ExprState *state, ExprEvalStep *op);

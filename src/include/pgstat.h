@@ -12,14 +12,13 @@
 #define PGSTAT_H
 
 #include "datatype/timestamp.h"
-#include "libpq/pqcomm.h"
-#include "miscadmin.h"
-#include "port/atomics.h"
 #include "portability/instr_time.h"
-#include "postmaster/pgarch.h"
-#include "storage/proc.h"
+#include "postmaster/pgarch.h" /* for MAX_XFN_CHARS */
+#include "utils/backend_progress.h" /* for backward compatibility */
+#include "utils/backend_status.h" /* for backward compatibility */
 #include "utils/hsearch.h"
 #include "utils/relcache.h"
+#include "utils/wait_event.h" /* for backward compatibility */
 
 #include "postmaster/autostats.h"
 
@@ -72,11 +71,13 @@ typedef enum StatMsgType
 	PGSTAT_MTYPE_AUTOVAC_START,
 	PGSTAT_MTYPE_VACUUM,
 	PGSTAT_MTYPE_ANALYZE,
+	PGSTAT_MTYPE_ANL_ANCESTORS,
 	PGSTAT_MTYPE_ARCHIVER,
 	PGSTAT_MTYPE_QUEUESTAT, /* GPDB */
 	PGSTAT_MTYPE_BGWRITER,
 	PGSTAT_MTYPE_WAL,
 	PGSTAT_MTYPE_SLRU,
+	PGSTAT_MTYPE_RECOVERYPREFETCH,
 	PGSTAT_MTYPE_FUNCSTAT,
 	PGSTAT_MTYPE_FUNCPURGE,
 	PGSTAT_MTYPE_RECOVERYCONFLICT,
@@ -110,7 +111,7 @@ typedef int64 PgStat_Counter;
  *
  * tuples_inserted/updated/deleted/hot_updated count attempted actions,
  * regardless of whether the transaction committed.  delta_live_tuples,
- * delta_dead_tuples, and changed_tuples are set depending on commit or abort.
+ * delta_dead_tuples, changed_tuples are set depending on commit or abort.
  * Note that delta_live_tuples and delta_dead_tuples can be negative!
  * ----------
  */
@@ -200,6 +201,19 @@ typedef struct PgStat_TableXactStatus
 	struct PgStat_TableXactStatus *next;	/* next of same subxact */
 } PgStat_TableXactStatus;
 
+/*
+ * Recovery prefetching statistics persisted on disk by pgstat.c, but kept in
+ * shared memory by xlogprefetch.c.
+ */
+typedef struct PgStat_RecoveryPrefetchStats
+{
+	PgStat_Counter prefetch;
+	PgStat_Counter skip_hit;
+	PgStat_Counter skip_new;
+	PgStat_Counter skip_fpw;
+	PgStat_Counter skip_seq;
+	TimestampTz stat_reset_timestamp;
+} PgStat_RecoveryPrefetchStats;
 
 /* ------------------------------------------------------------
  * Message formats follow
@@ -433,6 +447,25 @@ typedef struct PgStat_MsgAnalyze
 	PgStat_Counter m_dead_tuples;
 } PgStat_MsgAnalyze;
 
+/* ----------
+ * PgStat_MsgAnlAncestors		Sent by the backend or autovacuum daemon
+ *								to inform partitioned tables that are
+ *								ancestors of a partition, to propagate
+ *								analyze counters
+ * ----------
+ */
+#define PGSTAT_NUM_ANCESTORENTRIES    \
+	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(Oid) - sizeof(int))	\
+	 / sizeof(Oid))
+
+typedef struct PgStat_MsgAnlAncestors
+{
+	PgStat_MsgHdr m_hdr;
+	Oid			m_databaseid;
+	Oid			m_tableoid;
+	int			m_nancestors;
+	Oid			m_ancestors[PGSTAT_NUM_ANCESTORENTRIES];
+} PgStat_MsgAnlAncestors;
 
 /* ----------
  * PgStat_MsgArchiver			Sent by the archiver to update statistics.
@@ -535,6 +568,15 @@ typedef struct PgStat_MsgReplSlot
 	PgStat_Counter m_stream_bytes;
 } PgStat_MsgReplSlot;
 
+/* ----------
+ * PgStat_MsgRecoveryPrefetch			Sent by XLogPrefetch to save statistics.
+ * ----------
+ */
+typedef struct PgStat_MsgRecoveryPrefetch
+{
+	PgStat_MsgHdr m_hdr;
+	PgStat_RecoveryPrefetchStats m_stats;
+} PgStat_MsgRecoveryPrefetch;
 
 /* ----------
  * PgStat_MsgRecoveryConflict	Sent by the backend upon recovery conflict
@@ -693,11 +735,13 @@ typedef union PgStat_Msg
 	PgStat_MsgAutovacStart msg_autovacuum_start;
 	PgStat_MsgVacuum msg_vacuum;
 	PgStat_MsgAnalyze msg_analyze;
+	PgStat_MsgAnlAncestors msg_anl_ancestors;
 	PgStat_MsgArchiver msg_archiver;
 	PgStat_MsgQueuestat msg_queuestat;  /* GPDB */
 	PgStat_MsgBgWriter msg_bgwriter;
 	PgStat_MsgWal msg_wal;
 	PgStat_MsgSLRU msg_slru;
+	PgStat_MsgRecoveryPrefetch msg_recoveryprefetch;
 	PgStat_MsgFuncstat msg_funcstat;
 	PgStat_MsgFuncpurge msg_funcpurge;
 	PgStat_MsgRecoveryConflict msg_recoveryconflict;
@@ -789,6 +833,7 @@ typedef struct PgStat_StatTabEntry
 	PgStat_Counter n_live_tuples;
 	PgStat_Counter n_dead_tuples;
 	PgStat_Counter changes_since_analyze;
+	PgStat_Counter changes_since_analyze_reported;
 	PgStat_Counter inserts_since_vacuum;
 
 	PgStat_Counter blocks_fetched;
@@ -943,6 +988,7 @@ typedef struct PgStat_ReplSlotStats
 	TimestampTz stat_reset_timestamp;
 } PgStat_ReplSlotStats;
 
+<<<<<<< HEAD
 /* ----------
  * Backend states
  * ----------
@@ -1438,6 +1484,8 @@ typedef struct LocalPgBackendStatus
 	 */
 	TransactionId backend_xmin;
 } LocalPgBackendStatus;
+=======
+>>>>>>> 8ff1c94649f
 
 /*
  * Working state needed to accumulate per-function-call timing statistics.
@@ -1460,10 +1508,8 @@ typedef struct PgStat_FunctionCallUsage
  * GUC parameters
  * ----------
  */
-extern PGDLLIMPORT bool pgstat_track_activities;
 extern PGDLLIMPORT bool pgstat_track_counts;
 extern PGDLLIMPORT int pgstat_track_functions;
-extern PGDLLIMPORT int pgstat_track_activity_query_size;
 extern char *pgstat_stat_directory;
 extern char *pgstat_stat_tmpname;
 extern char *pgstat_stat_filename;
@@ -1488,6 +1534,14 @@ extern PgStat_Counter pgStatBlockReadTime;
 extern PgStat_Counter pgStatBlockWriteTime;
 
 /*
+ * Updated by pgstat_count_conn_*_time macros, called by
+ * pgstat_report_activity().
+ */
+extern PgStat_Counter pgStatActiveTime;
+extern PgStat_Counter pgStatTransactionIdleTime;
+
+
+/*
  * Updated by the traffic cop and in errfinish()
  */
 extern SessionEndType pgStatSessionEndCause;
@@ -1496,9 +1550,6 @@ extern SessionEndType pgStatSessionEndCause;
  * Functions called from postmaster
  * ----------
  */
-extern Size BackendStatusShmemSize(void);
-extern void CreateSharedBackendStatus(void);
-
 extern void pgstat_init(void);
 extern int	pgstat_start(void);
 extern void pgstat_reset_all(void);
@@ -1534,18 +1585,21 @@ extern void pgstat_report_vacuum(Oid tableoid, bool shared,
 extern void pgstat_report_analyze(Relation rel,
 								  PgStat_Counter livetuples, PgStat_Counter deadtuples,
 								  bool resetcounter);
+extern void pgstat_report_anl_ancestors(Oid relid);
 
 extern void pgstat_report_recovery_conflict(int reason);
 extern void pgstat_report_deadlock(void);
 extern void pgstat_report_checksum_failures_in_db(Oid dboid, int failurecount);
 extern void pgstat_report_checksum_failure(void);
-extern void pgstat_report_replslot(const char *slotname, int spilltxns, int spillcount,
-								   int spillbytes, int streamtxns, int streamcount, int streambytes);
+extern void pgstat_report_replslot(const char *slotname, PgStat_Counter spilltxns,
+								   PgStat_Counter spillcount, PgStat_Counter spillbytes,
+								   PgStat_Counter streamtxns, PgStat_Counter streamcount,
+								   PgStat_Counter streambytes);
 extern void pgstat_report_replslot_drop(const char *slotname);
 
 extern void pgstat_initialize(void);
-extern void pgstat_bestart(void);
 
+<<<<<<< HEAD
 extern void pgstat_report_sessionid(int new_sessionid);
 
 extern void pgstat_report_activity(BackendState state, const char *cmd_str);
@@ -1564,6 +1618,8 @@ extern void pgstat_progress_update_param(int index, int64 val);
 extern void pgstat_progress_update_multi_param(int nparam, const int *index,
 											   const int64 *val);
 extern void pgstat_progress_end_command(void);
+=======
+>>>>>>> 8ff1c94649f
 
 extern PgStat_TableStatus *find_tabstat_entry(Oid rel_id);
 extern PgStat_BackendFunctionEntry *find_funcstat_entry(Oid func_id);
@@ -1572,6 +1628,7 @@ extern void pgstat_report_resgroup(Oid groupid);
 
 extern void pgstat_initstats(Relation rel);
 
+<<<<<<< HEAD
 extern char *pgstat_clip_activity(const char *raw_activity);
 
 extern void pgstat_init_localportalhash(void);
@@ -1632,6 +1689,8 @@ pgstat_report_wait_end(void)
 	proc->wait_event_info = 0;
 }
 
+=======
+>>>>>>> 8ff1c94649f
 /* nontransactional event counts are simple enough to inline */
 
 #define pgstat_count_heap_scan(rel)									\
@@ -1692,6 +1751,10 @@ pgstat_report_wait_end(void)
 	(pgStatBlockReadTime += (n))
 #define pgstat_count_buffer_write_time(n)							\
 	(pgStatBlockWriteTime += (n))
+#define pgstat_count_conn_active_time(n)							\
+	(pgStatActiveTime += (n))
+#define pgstat_count_conn_txn_idle_time(n)							\
+	(pgStatTransactionIdleTime += (n))
 
 /* Resource queue statistics: */
 #define pgstat_count_queue_exec(p, q) 									\
@@ -1784,6 +1847,7 @@ extern void pgstat_twophase_postabort(TransactionId xid, uint16 info,
 
 extern void pgstat_send_archiver(const char *xlog, bool failed);
 extern void pgstat_send_bgwriter(void);
+extern void pgstat_send_recoveryprefetch(PgStat_RecoveryPrefetchStats *stats);
 extern void pgstat_report_wal(void);
 extern bool pgstat_send_wal(bool force);
 
@@ -1804,16 +1868,19 @@ extern void pgstat_combine_from_qe(struct CdbDispatchResults *results,	/* GPDB *
  */
 extern PgStat_StatDBEntry *pgstat_fetch_stat_dbentry(Oid dbid);
 extern PgStat_StatTabEntry *pgstat_fetch_stat_tabentry(Oid relid);
+<<<<<<< HEAD
 extern PgStat_StatQueueEntry *pgstat_fetch_stat_queueentry(Oid queueid);  /* GPDB */
 extern PgBackendStatus *pgstat_fetch_stat_beentry(int beid);
 extern LocalPgBackendStatus *pgstat_fetch_stat_local_beentry(int beid);
+=======
+>>>>>>> 8ff1c94649f
 extern PgStat_StatFuncEntry *pgstat_fetch_stat_funcentry(Oid funcid);
-extern int	pgstat_fetch_stat_numbackends(void);
 extern PgStat_ArchiverStats *pgstat_fetch_stat_archiver(void);
 extern PgStat_GlobalStats *pgstat_fetch_global(void);
 extern PgStat_WalStats *pgstat_fetch_stat_wal(void);
 extern PgStat_SLRUStats *pgstat_fetch_slru(void);
 extern PgStat_ReplSlotStats *pgstat_fetch_replslot(int *nslots_p);
+extern PgStat_RecoveryPrefetchStats *pgstat_fetch_recoveryprefetch(void);
 
 extern void pgstat_count_slru_page_zeroed(int slru_idx);
 extern void pgstat_count_slru_page_hit(int slru_idx);

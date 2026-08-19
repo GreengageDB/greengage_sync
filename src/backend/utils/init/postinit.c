@@ -94,6 +94,7 @@ static void IdleInTransactionSessionTimeoutHandler(void);
 static void IdleGangTimeoutHandler(void);
 static void ClientCheckTimeoutHandler(void);
 static void IdleSessionTimeoutHandler(void);
+static void ClientCheckTimeoutHandler(void);
 static bool ThereIsAtLeastOneRole(void);
 static void process_startup_options(Port *port, bool am_superuser);
 static void process_settings(Oid databaseid, Oid roleid);
@@ -715,6 +716,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		RegisterTimeout(IDLE_GANG_TIMEOUT, IdleGangTimeoutHandler);
 		RegisterTimeout(CLIENT_CONNECTION_CHECK_TIMEOUT, ClientCheckTimeoutHandler);
 		RegisterTimeout(IDLE_SESSION_TIMEOUT, IdleSessionTimeoutHandler);
+		RegisterTimeout(CLIENT_CONNECTION_CHECK_TIMEOUT, ClientCheckTimeoutHandler);
 	}
 
 	/*
@@ -773,6 +775,10 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	/* Initialize stats collection --- must happen before first xact */
 	if (!bootstrap)
 		pgstat_initialize();
+
+	/* Initialize status reporting */
+	if (!bootstrap)
+		pgstat_beinit();
 
 	/*
 	 * Load relcache entries for the shared system catalogs.  This must create
@@ -1524,7 +1530,11 @@ ClientCheckTimeoutHandler(void)
 {
 	CheckClientConnectionPending = true;
 	InterruptPending = true;
+<<<<<<< HEAD
 	SetLatch(&MyProc->procLatch);
+=======
+	SetLatch(MyLatch);
+>>>>>>> 8ff1c94649f
 }
 
 /*
