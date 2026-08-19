@@ -288,7 +288,6 @@ struct XLogReaderState
 
 	/* Buffer to hold error message */
 	char	   *errormsg_buf;
-<<<<<<< HEAD
 
 	/*
 	 * Set at the end of recovery: the start point of a partial record at the
@@ -299,9 +298,8 @@ struct XLogReaderState
 	XLogRecPtr	missingContrecPtr;
 	/* Set when XLP_FIRST_IS_OVERWRITE_CONTRECORD is found */
 	XLogRecPtr	overwrittenRecPtr;
-=======
+
 	bool		errormsg_deferred;
->>>>>>> 8ff1c94649f
 };
 
 struct XLogFindNextRecordState
