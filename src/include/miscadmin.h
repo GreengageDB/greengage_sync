@@ -86,13 +86,10 @@ extern PGDLLIMPORT volatile sig_atomic_t ProcDiePending;
 extern PGDLLIMPORT volatile sig_atomic_t IdleInTransactionSessionTimeoutPending;
 extern PGDLLIMPORT volatile sig_atomic_t IdleSessionTimeoutPending;
 extern PGDLLIMPORT volatile sig_atomic_t ProcSignalBarrierPending;
-<<<<<<< HEAD
 extern PGDLLIMPORT volatile sig_atomic_t IdleGangTimeoutPending;
-=======
 extern PGDLLIMPORT volatile sig_atomic_t LogMemoryContextPending;
 
 extern PGDLLIMPORT volatile sig_atomic_t CheckClientConnectionPending;
->>>>>>> 8ff1c94649f
 extern PGDLLIMPORT volatile sig_atomic_t ClientConnectionLost;
 extern PGDLLIMPORT volatile sig_atomic_t CheckClientConnectionPending;
 
