@@ -126,12 +126,9 @@ void	   *referenced_functions[] =
 	ExecEvalRowNull,
 	ExecEvalSQLValueFunction,
 	ExecEvalScalarArrayOp,
-<<<<<<< HEAD
 	ExecEvalScalarArrayOpFastInt,
 	ExecEvalScalarArrayOpFastStr,
-=======
 	ExecEvalHashedScalarArrayOp,
->>>>>>> 8ff1c94649f
 	ExecEvalSubPlan,
 	ExecEvalSysVar,
 	ExecEvalWholeRowVar,

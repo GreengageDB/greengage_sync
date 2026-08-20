@@ -474,12 +474,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		&&CASE_EEOP_DOMAIN_CHECK,
 		&&CASE_EEOP_CONVERT_ROWTYPE,
 		&&CASE_EEOP_SCALARARRAYOP,
-<<<<<<< HEAD
 		&&CASE_EEOP_SCALARARRAYOP_FAST_INT,
 		&&CASE_EEOP_SCALARARRAYOP_FAST_STR,
-=======
 		&&CASE_EEOP_HASHED_SCALARARRAYOP,
->>>>>>> 8ff1c94649f
 		&&CASE_EEOP_XMLEXPR,
 		&&CASE_EEOP_AGGREF,
 		&&CASE_EEOP_GROUPING_FUNC,
@@ -1494,7 +1491,6 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			EEO_NEXT();
 		}
 
-<<<<<<< HEAD
 		EEO_CASE(EEOP_SCALARARRAYOP_FAST_INT)
 		{
 			/* too complex for an inline implementation */
@@ -1507,12 +1503,14 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		{
 			/* too complex for an inline implementation */
 			ExecEvalScalarArrayOpFastStr(state, op);
-=======
+
+			EEO_NEXT();
+		}
+
 		EEO_CASE(EEOP_HASHED_SCALARARRAYOP)
 		{
 			/* too complex for an inline implementation */
 			ExecEvalHashedScalarArrayOp(state, op, econtext);
->>>>>>> 8ff1c94649f
 
 			EEO_NEXT();
 		}
@@ -3505,7 +3503,6 @@ ExecEvalScalarArrayOp(ExprState *state, ExprEvalStep *op)
 }
 
 /*
-<<<<<<< HEAD
  * Fast-path versin of "scalar op ANY/ALL (array)".
  *
  * Used when 'op' is one of the hard-coded built-in functions, and array is a Const.
@@ -3623,7 +3620,9 @@ ExecEvalScalarArrayOpFastStr(ExprState *state, ExprEvalStep *op)
 
 	*op->resvalue = BoolGetDatum(result);
 	*op->resnull = false;
-=======
+}
+
+/*
  * Hash function for scalar array hash op elements.
  *
  * We use the element type's default hash opclass, and the column collation
@@ -3829,7 +3828,6 @@ ExecEvalHashedScalarArrayOp(ExprState *state, ExprEvalStep *op, ExprContext *eco
 
 	*op->resvalue = result;
 	*op->resnull = resultnull;
->>>>>>> 8ff1c94649f
 }
 
 /*
