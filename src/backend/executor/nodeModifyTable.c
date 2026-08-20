@@ -45,6 +45,7 @@
 #include "executor/nodeModifyTable.h"
 #include "foreign/fdwapi.h"
 #include "miscadmin.h"
+#include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "rewrite/rewriteHandler.h"
 #include "storage/bufmgr.h"
@@ -406,15 +407,44 @@ ExecInitInsertProjection(ModifyTableState *mtstate,
 	bool		need_projection = false;
 	ListCell   *l;
 
-	/* Extract non-junk columns of the subplan's result tlist. */
-	foreach(l, subplan->targetlist)
+	/*
+	 * Extract non-junk columns of the subplan's result tlist.
+	 *
+	 * GPDB: the projection is evaluated against the subplan's OUTPUT tuple
+	 * (planSlot), but the tlist expressions reference the subplan's own
+	 * child.  For planner-generated plans the non-junk entries precede all
+	 * junk ones, so re-evaluating them happens to read the right columns;
+	 * ORCA's DML plans interleave constants (dropped-column padding) with
+	 * child Vars, shifting the positions and silently reading the wrong
+	 * column.  Build position-based OUTER Vars instead -- a pure
+	 * junk-stripping projection over planSlot, correct for both.
+	 */
 	{
-		TargetEntry *tle = (TargetEntry *) lfirst(l);
+		int			attno = 0;
 
-		if (!tle->resjunk)
-			insertTargetList = lappend(insertTargetList, tle);
-		else
-			need_projection = true;
+		foreach(l, subplan->targetlist)
+		{
+			TargetEntry *tle = (TargetEntry *) lfirst(l);
+
+			attno++;
+			if (!tle->resjunk)
+			{
+				Var		   *var;
+
+				var = makeVar(OUTER_VAR, attno,
+							  exprType((Node *) tle->expr),
+							  exprTypmod((Node *) tle->expr),
+							  exprCollation((Node *) tle->expr),
+							  0);
+				insertTargetList = lappend(insertTargetList,
+										   makeTargetEntry((Expr *) var,
+														   list_length(insertTargetList) + 1,
+														   tle->resname,
+														   false));
+			}
+			else
+				need_projection = true;
+		}
 	}
 
 	/*
