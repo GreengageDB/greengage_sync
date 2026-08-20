@@ -579,19 +579,15 @@ choose_next_subplan_locally(AppendState *node)
 	 */
 	if (whichplan == INVALID_SUBPLAN_INDEX)
 	{
-<<<<<<< HEAD
-		if (node->as_valid_subplans == NULL)
-		{
-			Append	   *plan = (Append *) node->ps.plan;
-
-=======
 		if (node->as_nasyncplans > 0)
 		{
 			/* We'd have filled as_valid_subplans already */
 			Assert(node->as_valid_subplans);
 		}
 		else if (node->as_valid_subplans == NULL)
->>>>>>> 8ff1c94649f
+		{
+			Append	   *plan = (Append *) node->ps.plan;
+
 			node->as_valid_subplans =
 				ExecFindMatchingSubPlans(node->as_prune_state,
 										 node->ps.state,
@@ -869,15 +865,6 @@ mark_invalid_subplans_as_finished(AppendState *node)
 	}
 }
 
-<<<<<<< HEAD
-void
-ExecSquelchAppend(AppendState *node)
-{
-	int			i;
-
-	for (i = 0; i < node->as_nplans; i++)
-		ExecSquelchNode(node->appendplans[i]);
-=======
 /* ----------------------------------------------------------------
  *						Asynchronous Append Support
  * ----------------------------------------------------------------
@@ -902,8 +889,15 @@ ExecAppendAsyncBegin(AppendState *node)
 
 	/* If we've yet to determine the valid subplans then do so now. */
 	if (node->as_valid_subplans == NULL)
+	{
+		Append	   *plan = (Append *) node->ps.plan;
+
 		node->as_valid_subplans =
-			ExecFindMatchingSubPlans(node->as_prune_state);
+			ExecFindMatchingSubPlans(node->as_prune_state,
+									 node->ps.state,
+									 list_length(plan->appendplans),
+									 plan->join_prune_paramids);
+	}
 
 	classify_matching_subplans(node);
 
@@ -1181,5 +1175,13 @@ classify_matching_subplans(AppendState *node)
 	/* Save valid async subplans. */
 	node->as_valid_asyncplans = valid_asyncplans;
 	node->as_nasyncremain = bms_num_members(valid_asyncplans);
->>>>>>> 8ff1c94649f
+}
+
+void
+ExecSquelchAppend(AppendState *node)
+{
+	int			i;
+
+	for (i = 0; i < node->as_nplans; i++)
+		ExecSquelchNode(node->appendplans[i]);
 }

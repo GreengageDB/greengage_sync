@@ -422,14 +422,11 @@ static void postgresGetForeignUpperPaths(PlannerInfo *root,
 										 RelOptInfo *input_rel,
 										 RelOptInfo *output_rel,
 										 void *extra);
-<<<<<<< HEAD
 static int greenplumCheckIsGreenplum(UserMapping *user);
-=======
 static bool postgresIsForeignPathAsyncCapable(ForeignPath *path);
 static void postgresForeignAsyncRequest(AsyncRequest *areq);
 static void postgresForeignAsyncConfigureWait(AsyncRequest *areq);
 static void postgresForeignAsyncNotify(AsyncRequest *areq);
->>>>>>> 8ff1c94649f
 
 /*
  * Helper functions
