@@ -71,10 +71,7 @@ extern int	pq_getbyte(void);
 extern int	pq_peekbyte(void);
 extern int	pq_getbyte_if_available(unsigned char *c);
 extern int	pq_putmessage_v2(char msgtype, const char *s, size_t len);
-<<<<<<< HEAD
 extern bool pq_waitForDataUsingSelect(void);                /* GPDB only */
-=======
->>>>>>> 8ff1c94649f
 extern bool pq_check_connection(void);
 
 /*
