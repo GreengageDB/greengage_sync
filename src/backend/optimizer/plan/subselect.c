@@ -1635,6 +1635,7 @@ convert_ANY_sublink_to_join(PlannerInfo *root, SubLink *sublink,
 	result->larg = NULL;		/* caller must fill this in */
 	result->rarg = (Node *) rtr;
 	result->usingClause = NIL;
+	result->join_using_alias = NULL;
 	result->quals = quals;
 	result->alias = NULL;
 	result->rtindex = 0;
@@ -1789,6 +1790,7 @@ convert_EXISTS_sublink_to_join(PlannerInfo *root, SubLink *sublink,
 	else
 		result->rarg = (Node *) subselect->jointree;
 	result->usingClause = NIL;
+	result->join_using_alias = NULL;
 	result->quals = whereClause;
 	result->alias = NULL;
 	result->rtindex = 0;		/* we don't need an RTE for it */
@@ -2997,7 +2999,6 @@ finalize_plan(PlannerInfo *root, Plan *plan,
 		case T_ModifyTable:
 			{
 				ModifyTable *mtplan = (ModifyTable *) plan;
-				ListCell   *l;
 
 				/* Force descendant scan nodes to reference epqParam */
 				locally_added_param = mtplan->epqParam;
@@ -3012,16 +3013,6 @@ finalize_plan(PlannerInfo *root, Plan *plan,
 				finalize_primnode((Node *) mtplan->onConflictWhere,
 								  &context);
 				/* exclRelTlist contains only Vars, doesn't need examination */
-				foreach(l, mtplan->plans)
-				{
-					context.paramids =
-						bms_add_members(context.paramids,
-										finalize_plan(root,
-													  (Plan *) lfirst(l),
-													  gather_param,
-													  valid_params,
-													  scan_params));
-				}
 			}
 			break;
 
@@ -3244,6 +3235,11 @@ finalize_plan(PlannerInfo *root, Plan *plan,
 				gather_param = locally_added_param;
 			}
 			/* rescan_param does *not* get added to scan_params */
+			break;
+
+		case T_ResultCache:
+			finalize_primnode((Node *) ((ResultCache *) plan)->param_exprs,
+							  &context);
 			break;
 
 		case T_ProjectSet:

@@ -295,6 +295,7 @@ IsMemoryIntensiveOperator(Node *node, PlannedStmt *stmt)
 	switch(nodeTag(node))
 	{
 		case T_Material:
+		case T_ResultCache:
 		case T_Sort:
 		case T_IncrementalSort:
 		case T_ShareInputScan:

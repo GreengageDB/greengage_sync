@@ -4,22 +4,16 @@
 --
 -- create required tables
 CREATE TABLE CHAR_STRINGS_TBL(f1 char(4));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO CHAR_STRINGS_TBL (f1) VALUES ('a'),
 ('ab'),
 ('abcd'),
 ('abcd    ');
 CREATE TABLE VARCHAR_STRINGS_TBL(f1 varchar(4));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO VARCHAR_STRINGS_TBL (f1) VALUES ('a'),
 ('ab'),
 ('abcd'),
 ('abcd    ');
 CREATE TABLE TEXT_STRINGS_TBL (f1 text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO TEXT_STRINGS_TBL VALUES ('doh!'),
 ('hi de ho neighbor');
 -- SQL string continuation syntax
@@ -402,10 +396,10 @@ SELECT CAST(f1 AS text) AS "text(char)" FROM CHAR_STRINGS_TBL;
 SELECT CAST(f1 AS text) AS "text(varchar)" FROM VARCHAR_STRINGS_TBL;
  text(varchar) 
 ---------------
- a
  ab
  abcd
  abcd
+ a
 (4 rows)
 
 SELECT CAST(name 'namefield' AS text) AS "text(name)";
@@ -455,10 +449,10 @@ SELECT CAST(f1 AS varchar) AS "varchar(text)" FROM TEXT_STRINGS_TBL;
 SELECT CAST(f1 AS varchar) AS "varchar(char)" FROM CHAR_STRINGS_TBL;
  varchar(char) 
 ---------------
- a
  ab
  abcd
  abcd
+ a
 (4 rows)
 
 SELECT CAST(name 'namefield' AS varchar) AS "varchar(name)";
@@ -1519,8 +1513,6 @@ SELECT text 'text' || varchar ' and varchar' AS "Concat text to varchar";
 -- test substr with toasted text values
 --
 CREATE TABLE toasttest(f1 text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into toasttest values(repeat('1234567890',10000));
 insert into toasttest values(repeat('1234567890',10000));
 --
@@ -1543,7 +1535,7 @@ SELECT substr(f1, -1, 5) from toasttest;
 
 -- If the length is less than zero, an ERROR is thrown.
 SELECT substr(f1, 5, -1) from toasttest;
-ERROR:  negative substring length not allowed  (seg1 slice1 127.0.1.1:25436 pid=15605)
+ERROR:  negative substring length not allowed  (seg2 slice1 172.17.0.7:7004 pid=129815)
 -- If no third argument (length) is provided, the length to the end of the
 -- string is assumed.
 SELECT substr(f1, 99995) from toasttest;
@@ -1601,8 +1593,6 @@ DROP TABLE toasttest;
 -- test substr with toasted bytea values
 --
 CREATE TABLE toasttest(f1 bytea);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into toasttest values("decode"(repeat('1234567890',10000),'escape'));
 insert into toasttest values(pg_catalog.decode(repeat('1234567890',10000),'escape'));
 --
@@ -1625,7 +1615,7 @@ SELECT substr(f1, -1, 5) from toasttest;
 
 -- If the length is less than zero, an ERROR is thrown.
 SELECT substr(f1, 5, -1) from toasttest;
-ERROR:  negative substring length not allowed  (seg1 slice1 127.0.1.1:25436 pid=15605)
+ERROR:  negative substring length not allowed  (seg2 slice1 172.17.0.7:7004 pid=129815)
 -- If no third argument (length) is provided, the length to the end of the
 -- string is assumed.
 SELECT substr(f1, 99995) from toasttest;
@@ -1655,8 +1645,6 @@ DROP TABLE toasttest;
 -- datum must be given a 4-byte header because there are no bits to indicate
 -- compression in a 1-byte header
 CREATE TABLE toasttest (c char(4096));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO toasttest VALUES('x');
 SELECT length(c), c::text FROM toasttest;
  length | c 
@@ -2149,6 +2137,7 @@ select 'a\\bcd' as f1, 'a\\b\'cd' as f2, 'a\\b\'''cd' as f3, 'abcd\\'   as f4, '
  a\bcd | a\b'cd | a\b''cd | abcd\ | ab\'cd | \\
 (1 row)
 
+reset standard_conforming_strings;
 --
 -- Additional string functions
 --
@@ -2349,6 +2338,48 @@ SELECT encode(overlay(E'Th\\000omas'::bytea placing E'\\002\\003'::bytea from 5 
  Th\000o\x02\x03
 (1 row)
 
+SELECT bit_count('\x1234567890'::bytea);
+ bit_count 
+-----------
+        15
+(1 row)
+
+SELECT unistr('\0064at\+0000610');
+ unistr 
+--------
+ data0
+(1 row)
+
+SELECT unistr('d\u0061t\U000000610');
+ unistr 
+--------
+ data0
+(1 row)
+
+SELECT unistr('a\\b');
+ unistr 
+--------
+ a\b
+(1 row)
+
+-- errors:
+SELECT unistr('wrong: \db99');
+ERROR:  invalid Unicode surrogate pair
+SELECT unistr('wrong: \db99\0061');
+ERROR:  invalid Unicode surrogate pair
+SELECT unistr('wrong: \+00db99\+000061');
+ERROR:  invalid Unicode surrogate pair
+SELECT unistr('wrong: \+2FFFFF');
+ERROR:  invalid Unicode code point: 2FFFFF
+SELECT unistr('wrong: \udb99\u0061');
+ERROR:  invalid Unicode surrogate pair
+SELECT unistr('wrong: \U0000db99\U00000061');
+ERROR:  invalid Unicode surrogate pair
+SELECT unistr('wrong: \U002FFFFF');
+ERROR:  invalid Unicode code point: 2FFFFF
+SELECT unistr('wrong: \xyz');
+ERROR:  invalid Unicode escape
+HINT:  Unicode escapes must be \XXXX, \+XXXXXX, \uXXXX, or \UXXXXXXXX.
 -- Clean up GPDB-added tables
 DROP TABLE char_strings_tbl;
 DROP TABLE varchar_strings_tbl;

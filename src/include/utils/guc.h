@@ -341,6 +341,7 @@ extern bool log_btree_build_stats;
 extern PGDLLIMPORT bool check_function_bodies;
 extern bool session_auth_is_superuser;
 
+extern bool compute_query_id;
 extern bool log_duration;
 extern int	log_parameter_max_length;
 extern int	log_parameter_max_length_on_error;
@@ -745,7 +746,7 @@ extern ArrayType *GUCArrayReset(ArrayType *array);
 extern void pg_timezone_abbrev_initialize(void);
 
 extern struct config_generic *find_option(const char *name,
-				bool create_placeholders, int elevel);
+				bool create_placeholders, bool skip_errors, int elevel);
 
 extern void set_gp_replication_config(const char *name, const char *value);
 
@@ -798,6 +799,10 @@ extern void assign_search_path(const char *newval, void *extra);
 /* in access/transam/xlog.c */
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
+
+/* in access/transam/xlogprefetch.c */
+extern void assign_recovery_prefetch(bool new_value, void *extra);
+extern void assign_recovery_prefetch_fpw(bool new_value, void *extra);
 
 /* in cdb/cdbvars.c */
 extern bool check_gp_role(char **newval, void **extra, GucSource source);

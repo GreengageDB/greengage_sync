@@ -39,6 +39,7 @@ volatile sig_atomic_t IdleInTransactionSessionTimeoutPending = false;
 volatile sig_atomic_t IdleSessionTimeoutPending = false;
 volatile sig_atomic_t ProcSignalBarrierPending = false;
 volatile sig_atomic_t IdleGangTimeoutPending = false;
+volatile sig_atomic_t LogMemoryContextPending = false;
 /*
  * GPDB: Make these signed integers (instead of uint32) to detect garbage
  * negative values.

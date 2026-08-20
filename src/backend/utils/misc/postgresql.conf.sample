@@ -234,9 +234,15 @@ max_prepared_transactions = 250		# can be 0 or more
 #checkpoint_timeout = 5min		# range 30s-1d
 #max_wal_size = 1GB
 #min_wal_size = 80MB
-#checkpoint_completion_target = 0.5	# checkpoint target duration, 0.0 - 1.0
+#checkpoint_completion_target = 0.9	# checkpoint target duration, 0.0 - 1.0
 #checkpoint_flush_after = 0		# measured in pages, 0 disables
 #checkpoint_warning = 30s		# 0 disables
+
+# - Prefetching during recovery -
+
+#wal_decode_buffer_size = 512kB		# lookahead window used for prefetching
+#recovery_prefetch = off		# prefetch pages referenced in the WAL?
+#recovery_prefetch_fpw = off		# even pages logged with full page?
 
 # - Archiving -
 
@@ -367,12 +373,13 @@ max_prepared_transactions = 250		# can be 0 or more
 #enable_seqscan = on
 #enable_sort = on
 #enable_incremental_sort = on
+#enable_resultcache = on
 #enable_tidscan = on
 #enable_partitionwise_join = off
 #enable_partitionwise_aggregate = off
 #enable_parallel_hash = on
 #enable_partition_pruning = on
-#enable_parallel_insert = on
+#enable_async_append = on
 
 #gp_enable_multiphase_agg = on
 #gp_enable_preunique = on
@@ -531,6 +538,7 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 					#   %t = timestamp without milliseconds
 					#   %m = timestamp with milliseconds
 					#   %n = timestamp with milliseconds (as a Unix epoch)
+					#   %Q = query ID (0 if none or not computed)
 					#   %i = command tag
 					#   %e = SQL state
 					#   %c = session ID
@@ -600,6 +608,7 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 
 # - Monitoring -
 
+#compute_query_id = off
 #log_parser_stats = off
 #log_planner_stats = off
 #log_executor_stats = off
@@ -663,6 +672,7 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 #temp_tablespaces = ''			# a list of tablespace names, '' uses
 					# only default tablespace
 #default_table_access_method = 'heap'
+#default_toast_compression = 'pglz'	# 'pglz' or 'lz4'
 #check_function_bodies = on
 #default_transaction_isolation = 'read committed'
 #default_transaction_read_only = off
@@ -677,6 +687,8 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 #vacuum_freeze_table_age = 150000000
 #vacuum_multixact_freeze_min_age = 5000000
 #vacuum_multixact_freeze_table_age = 150000000
+#vacuum_failsafe_age = 1600000000
+#vacuum_multixact_failsafe_age = 1600000000
 #bytea_output = 'hex'			# hex, escape
 #xmlbinary = 'base64'
 #xmloption = 'content'
@@ -721,6 +733,9 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 
 #dynamic_library_path = '$libdir'
 
+#client_connection_check_interval = 0	# time between checks for client
+					# disconnection while running queries;
+					# 0 for never
 
 #------------------------------------------------------------------------------
 # LOCK MANAGEMENT
@@ -805,6 +820,7 @@ gp_vmem_protect_limit = 8192  #Virtual memory limit (in MB).
 #restart_after_crash = on		# reinitialize after backend crash?
 #remove_temp_files_after_crash = on	# remove temporary files after
 					# backend crash?
+#recovery_init_sync_method = fsync	# fsync, syncfs (Linux 5.8+)
 #data_sync_retry = off			# retry or panic on failure to fsync
 					# data?
 					# (change requires restart)

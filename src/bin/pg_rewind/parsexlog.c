@@ -44,15 +44,9 @@ static int	xlogreadfd = -1;
 static XLogSegNo xlogreadsegno = -1;
 static char xlogfpath[MAXPGPATH];
 
-typedef struct XLogPageReadPrivate
-{
-	const char *restoreCommand;
-	int			tliIndex;
-} XLogPageReadPrivate;
-
-static int	SimpleXLogPageRead(XLogReaderState *xlogreader,
-							   XLogRecPtr targetPagePtr,
-							   int reqLen, XLogRecPtr targetRecPtr, char *readBuf);
+static bool SimpleXLogPageRead(XLogReaderState *xlogreader,
+							   const char *datadir, int *tliIndex,
+							   const char *restoreCommand);
 
 /*
  * Read WAL from the datadir/pg_wal, starting from 'startpoint' on timeline
@@ -69,20 +63,22 @@ extractPageMap(const char *datadir, XLogRecPtr startpoint, int tliIndex,
 	XLogRecord *record;
 	XLogReaderState *xlogreader;
 	char	   *errormsg;
-	XLogPageReadPrivate private;
 
-	private.tliIndex = tliIndex;
-	private.restoreCommand = restoreCommand;
-	xlogreader = XLogReaderAllocate(WalSegSz, datadir,
-									XL_ROUTINE(.page_read = &SimpleXLogPageRead),
-									&private);
+	xlogreader = XLogReaderAllocate(WalSegSz, datadir, NULL);
+
 	if (xlogreader == NULL)
 		pg_fatal("out of memory");
 
 	XLogBeginRead(xlogreader, startpoint);
 	do
 	{
-		record = XLogReadRecord(xlogreader, &errormsg);
+		while (XLogReadRecord(xlogreader, &record, &errormsg) ==
+			   XLREAD_NEED_DATA)
+		{
+			if (!SimpleXLogPageRead(xlogreader, datadir,
+									&tliIndex, restoreCommand))
+				break;
+		}
 
 		if (record == NULL)
 		{
@@ -126,19 +122,19 @@ readOneRecord(const char *datadir, XLogRecPtr ptr, int tliIndex,
 	XLogRecord *record;
 	XLogReaderState *xlogreader;
 	char	   *errormsg;
-	XLogPageReadPrivate private;
 	XLogRecPtr	endptr;
 
-	private.tliIndex = tliIndex;
-	private.restoreCommand = restoreCommand;
-	xlogreader = XLogReaderAllocate(WalSegSz, datadir,
-									XL_ROUTINE(.page_read = &SimpleXLogPageRead),
-									&private);
+	xlogreader = XLogReaderAllocate(WalSegSz, datadir, NULL);
 	if (xlogreader == NULL)
 		pg_fatal("out of memory");
 
 	XLogBeginRead(xlogreader, ptr);
-	record = XLogReadRecord(xlogreader, &errormsg);
+	while (XLogReadRecord(xlogreader, &record, &errormsg) ==
+		   XLREAD_NEED_DATA)
+	{
+		if (!SimpleXLogPageRead(xlogreader, datadir, &tliIndex, restoreCommand))
+			break;
+	}
 	if (record == NULL)
 	{
 		if (errormsg)
@@ -173,7 +169,6 @@ findLastCheckpoint(const char *datadir, XLogRecPtr forkptr, int tliIndex,
 	XLogRecPtr	searchptr;
 	XLogReaderState *xlogreader;
 	char	   *errormsg;
-	XLogPageReadPrivate private;
 
 	/*
 	 * The given fork pointer points to the end of the last common record,
@@ -189,11 +184,7 @@ findLastCheckpoint(const char *datadir, XLogRecPtr forkptr, int tliIndex,
 			forkptr += SizeOfXLogShortPHD;
 	}
 
-	private.tliIndex = tliIndex;
-	private.restoreCommand = restoreCommand;
-	xlogreader = XLogReaderAllocate(WalSegSz, datadir,
-									XL_ROUTINE(.page_read = &SimpleXLogPageRead),
-									&private);
+	xlogreader = XLogReaderAllocate(WalSegSz, datadir, NULL);
 	if (xlogreader == NULL)
 		pg_fatal("out of memory");
 
@@ -203,7 +194,13 @@ findLastCheckpoint(const char *datadir, XLogRecPtr forkptr, int tliIndex,
 		uint8		info;
 
 		XLogBeginRead(xlogreader, searchptr);
-		record = XLogReadRecord(xlogreader, &errormsg);
+		while (XLogReadRecord(xlogreader, &record, &errormsg) ==
+			   XLREAD_NEED_DATA)
+		{
+			if (!SimpleXLogPageRead(xlogreader, datadir,
+									&tliIndex, restoreCommand))
+				break;
+		}
 
 		if (record == NULL)
 		{
@@ -249,15 +246,18 @@ findLastCheckpoint(const char *datadir, XLogRecPtr forkptr, int tliIndex,
 }
 
 /* XLogReader callback function, to read a WAL page */
-static int
-SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
-				   int reqLen, XLogRecPtr targetRecPtr, char *readBuf)
+static bool
+SimpleXLogPageRead(XLogReaderState *xlogreader, const char *datadir,
+				   int *tliIndex, const char *restoreCommand)
 {
-	XLogPageReadPrivate *private = (XLogPageReadPrivate *) xlogreader->private_data;
+	XLogRecPtr	targetPagePtr = xlogreader->readPagePtr;
+	char	   *readBuf		  = xlogreader->readBuf;
 	uint32		targetPageOff;
 	XLogRecPtr	targetSegEnd;
 	XLogSegNo	targetSegNo;
 	int			r;
+
+	Assert(xlogreader->reqLen <= XLOG_BLCKSZ);
 
 	XLByteToSeg(targetPagePtr, targetSegNo, WalSegSz);
 	XLogSegNoOffsetToRecPtr(targetSegNo + 1, 0, WalSegSz, targetSegEnd);
@@ -286,14 +286,14 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 		 * be done both forward and backward, consider also switching timeline
 		 * accordingly.
 		 */
-		while (private->tliIndex < targetNentries - 1 &&
-			   targetHistory[private->tliIndex].end < targetSegEnd)
-			private->tliIndex++;
-		while (private->tliIndex > 0 &&
-			   targetHistory[private->tliIndex].begin >= targetSegEnd)
-			private->tliIndex--;
+		while (*tliIndex < targetNentries - 1 &&
+			   targetHistory[*tliIndex].end < targetSegEnd)
+			(*tliIndex)++;
+		while (*tliIndex > 0 &&
+			   targetHistory[*tliIndex].begin >= targetSegEnd)
+			(*tliIndex)--;
 
-		XLogFileName(xlogfname, targetHistory[private->tliIndex].tli,
+		XLogFileName(xlogfname, targetHistory[*tliIndex].tli,
 					 xlogreadsegno, WalSegSz);
 
 		snprintf(xlogfpath, MAXPGPATH, "%s/" XLOGDIR "/%s",
@@ -306,10 +306,11 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 			/*
 			 * If we have no restore_command to execute, then exit.
 			 */
-			if (private->restoreCommand == NULL)
+			if (restoreCommand == NULL)
 			{
 				pg_log_error("could not open file \"%s\": %m", xlogfpath);
-				return -1;
+				XLogReaderSetInputData(xlogreader, -1);
+				return false;
 			}
 
 			/*
@@ -319,10 +320,13 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 			xlogreadfd = RestoreArchivedFile(xlogreader->segcxt.ws_dir,
 											 xlogfname,
 											 WalSegSz,
-											 private->restoreCommand);
+											 restoreCommand);
 
 			if (xlogreadfd < 0)
-				return -1;
+			{
+				XLogReaderSetInputData(xlogreader, -1);
+				return false;
+			}
 			else
 				pg_log_debug("using file \"%s\" restored from archive",
 							 xlogfpath);
@@ -338,7 +342,8 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 	if (lseek(xlogreadfd, (off_t) targetPageOff, SEEK_SET) < 0)
 	{
 		pg_log_error("could not seek in file \"%s\": %m", xlogfpath);
-		return -1;
+		XLogReaderSetInputData(xlogreader, -1);
+		return false;
 	}
 
 
@@ -351,13 +356,15 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 			pg_log_error("could not read file \"%s\": read %d of %zu",
 						 xlogfpath, r, (Size) XLOG_BLCKSZ);
 
-		return -1;
+		XLogReaderSetInputData(xlogreader, -1);
+		return false;
 	}
 
 	Assert(targetSegNo == xlogreadsegno);
 
-	xlogreader->seg.ws_tli = targetHistory[private->tliIndex].tli;
-	return XLOG_BLCKSZ;
+	xlogreader->seg.ws_tli = targetHistory[*tliIndex].tli;
+	XLogReaderSetInputData(xlogreader, XLOG_BLCKSZ);
+	return true;
 }
 
 /*
@@ -465,7 +472,7 @@ extractPageInfo(XLogReaderState *record)
 	 * revisit here to make sure RM_BITMAP_ID works.
 	 */
 
-	for (block_id = 0; block_id <= record->max_block_id; block_id++)
+	for (block_id = 0; block_id <= XLogRecMaxBlockId(record); block_id++)
 	{
 		RelFileNode rnode;
 		ForkNumber	forknum;

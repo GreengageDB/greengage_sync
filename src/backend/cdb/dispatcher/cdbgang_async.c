@@ -14,6 +14,7 @@
  */
 
 #include "postgres.h"
+#include "storage/latch.h"
 
 #ifdef HAVE_POLL_H
 #include <poll.h>

@@ -120,8 +120,6 @@ typedef struct PlannedStmt
 
 	List	   *relationOids;	/* OIDs of relations the plan depends on */
 
-	List	   *partitionOids;	/* OIDs of partitions the plan depends on */
-
 	List	   *invalItems;		/* other dependencies, as PlanInvalItems */
 
 	List	   *paramExecTypes; /* type OIDs for PARAM_EXEC Params */
@@ -281,6 +279,11 @@ typedef struct Plan
 	bool		parallel_safe;	/* OK to use as part of parallel plan? */
 
 	/*
+	 * information needed for asynchronous execution
+	 */
+	bool		async_capable; 	/* engage asynchronous-capable logic? */
+
+	/*
 	 * Common structural data for all Plan types.
 	 */
 	int			plan_node_id;	/* unique across entire final plan tree */
@@ -369,7 +372,7 @@ typedef struct ProjectSet
 
 /* ----------------
  *	 ModifyTable node -
- *		Apply rows produced by subplan(s) to result table(s),
+ *		Apply rows produced by outer plan to result table(s),
  *		by inserting, updating, or deleting.
  *
  * If the originally named target table is a partitioned table, both
@@ -379,7 +382,7 @@ typedef struct ProjectSet
  * EXPLAIN should claim is the INSERT/UPDATE/DELETE target.
  *
  * Note that rowMarks and epqParam are presumed to be valid for all the
- * subplan(s); they can't contain any info that varies across subplans.
+ * table(s); they can't contain any info that varies across tables.
  * ----------------
  */
 typedef struct ModifyTable
@@ -389,9 +392,9 @@ typedef struct ModifyTable
 	bool		canSetTag;		/* do we set the command tag/es_processed? */
 	Index		nominalRelation;	/* Parent RT index for use of EXPLAIN */
 	Index		rootRelation;	/* Root RT index, if target is partitioned */
-	bool		partColsUpdated;	/* some part key in hierarchy updated */
+	bool		partColsUpdated;	/* some part key in hierarchy updated? */
 	List	   *resultRelations;	/* integer list of RT indexes */
-	List	   *plans;			/* plan(s) producing source data */
+	List	   *updateColnosLists;	/* per-target-table update_colnos lists */
 	List	   *withCheckOptionLists;	/* per-target-table WCO lists */
 	List	   *returningLists; /* per-target-table RETURNING tlists */
 	List	   *fdwPrivLists;	/* per-target-table FDW private data lists */
@@ -421,6 +424,7 @@ typedef struct Append
 	Plan		plan;
 	Bitmapset  *apprelids;		/* RTIs of appendrel(s) formed by this node */
 	List	   *appendplans;
+	int			nasyncplans;	/* # of asynchronous plans */
 
 	/*
 	 * All 'appendplans' preceding this index are non-partial plans. All
@@ -1172,6 +1176,27 @@ typedef struct Material
 } Material;
 
 /* ----------------
+ *		result cache node
+ * ----------------
+ */
+typedef struct ResultCache
+{
+	Plan		plan;
+
+	int			numKeys;		/* size of the two arrays below */
+
+	Oid		   *hashOperators;	/* hash operators for each key */
+	Oid		   *collations;		/* cache keys */
+	List	   *param_exprs;	/* exprs containing parameters */
+	bool		singlerow;		/* true if the cache entry should be marked as
+								 * complete after we store the first tuple in
+								 * it. */
+	uint32		est_entries;	/* The maximum number of entries that the
+								 * planner expects will fit in the cache, or 0
+								 * if unknown */
+} ResultCache;
+
+/* ----------------
  *		sort node
  * ----------------
  */
@@ -1514,6 +1539,24 @@ typedef struct SplitUpdate
 	AttrNumber *hashAttnos;
 	Oid		   *hashFuncs;			/* corresponding hash functions */
 	int			numHashSegments;	/* # of segs to use in hash computation */
+
+	/*
+	 * GPDB: per-result-relation placement policies, used when the target is
+	 * an old-style inheritance tree whose members' distribution policies can
+	 * differ (key columns and/or numsegments).  Each row's source relation is
+	 * identified at run time by the "tableoid" junk column, and the matching
+	 * entry decides the target segment of the row's INSERT half.  An empty
+	 * attnos sublist means "keep the row on its old segment" (the relation is
+	 * randomly distributed, or its distribution key does not exist in the
+	 * nominal relation's column layout and hence cannot be changed by this
+	 * UPDATE).  The four lists are parallel; all NIL when the target is not
+	 * an inheritance tree (the fields above then apply to every row).
+	 */
+	List	   *policyRelids;		/* OID list of result relation OIDs */
+	List	   *policyAttnos;		/* per rel: int list of hash key positions
+									 * in the output tuple */
+	List	   *policyFuncs;		/* per rel: OID list of hash functions */
+	List	   *policyNumSegments;	/* per rel: int list of # of segments */
 } SplitUpdate;
 
 /*
@@ -1714,7 +1757,7 @@ typedef struct PartitionPruneStep
 } PartitionPruneStep;
 
 /*
- * PartitionPruneStepOp - Information to prune using a set of mutually AND'd
+ * PartitionPruneStepOp - Information to prune using a set of mutually ANDed
  *							OpExpr clauses
  *
  * This contains information extracted from up to partnatts OpExpr clauses,

@@ -27,8 +27,8 @@ static void
 ao_invalid_segment_file_test(uint8 xl_info)
 {
 	RelFileNode relfilenode;
-	XLogRecord record;
 	XLogReaderState *mockrecord;
+	DecodedXLogRecord *decoded;
 	xl_ao_target xlaotarget;
 	xl_ao_insert xlaoinsert;
 	xl_ao_truncate xlaotruncate;
@@ -42,24 +42,29 @@ ao_invalid_segment_file_test(uint8 xl_info)
 	xlaotarget.segment_filenum = 2;
 	xlaotarget.offset = 12345;
 
-	record.xl_info = xl_info;
-	record.xl_rmid = RM_APPEND_ONLY_ID;
+	/*
+	 * The XLogRecGet* accessors now go through the DecodedXLogRecord attached
+	 * to the reader state, so mock up a decoded record instead of reading one.
+	 */
+	mockrecord = XLogReaderAllocate(DEFAULT_XLOG_SEG_SIZE, NULL, NULL);
 
-	mockrecord = XLogReaderAllocate(DEFAULT_XLOG_SEG_SIZE, NULL,
-									XL_ROUTINE(.page_read = read_local_xlog_page,
-											   .segment_open = wal_segment_open,
-											   .segment_close = wal_segment_close),
-									NULL);
+	decoded = (DecodedXLogRecord *) palloc0(sizeof(DecodedXLogRecord));
+	decoded->header.xl_info = xl_info;
+	decoded->header.xl_rmid = RM_APPEND_ONLY_ID;
+	decoded->max_block_id = -1;
+	mockrecord->record = decoded;
 
 	if (xl_info == XLOG_APPENDONLY_INSERT)
 	{
 		xlaoinsert.target = xlaotarget;
-		mockrecord->main_data = (char *) &xlaoinsert;
+		decoded->main_data = (char *) &xlaoinsert;
+		decoded->main_data_len = SizeOfAOInsert;
 	}
 	else if (xl_info == XLOG_APPENDONLY_TRUNCATE)
 	{
 		xlaotruncate.target = xlaotarget;
-		mockrecord->main_data = (char *) &xlaotruncate;
+		decoded->main_data = (char *) &xlaotruncate;
+		decoded->main_data_len = sizeof(xl_ao_truncate);
 	}
 
 	/* mock to not find AO segment file */

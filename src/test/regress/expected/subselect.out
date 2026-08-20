@@ -89,14 +89,14 @@ INSERT INTO SUBSELECT_TBL VALUES (8, 9, NULL);
 SELECT * FROM SUBSELECT_TBL;
  f1 | f2 | f3 
 ----+----+----
-  1 |  2 |  3
   2 |  3 |  4
   3 |  4 |  5
-  1 |  1 |  1
   2 |  2 |  2
   3 |  3 |  3
-  6 |  7 |  8
   8 |  9 |   
+  6 |  7 |  8
+  1 |  2 |  3
+  1 |  1 |  1
 (8 rows)
 
 -- Uncorrelated subselects
@@ -113,9 +113,9 @@ SELECT f1 AS "Uncorrelated Field" FROM SUBSELECT_TBL
  Uncorrelated Field 
 --------------------
                   1
+                  1
                   2
                   3
-                  1
                   2
                   3
 (6 rows)
@@ -126,9 +126,9 @@ SELECT f1 AS "Uncorrelated Field" FROM SUBSELECT_TBL
  Uncorrelated Field 
 --------------------
                   1
+                  1
                   2
                   3
-                  1
                   2
                   3
 (6 rows)
@@ -139,9 +139,9 @@ SELECT f1, f2
                          WHERE f3 IS NOT NULL);
  f1 | f2 
 ----+----
+  8 |  9
   1 |  2
   6 |  7
-  8 |  9
 (3 rows)
 
 -- Correlated subselects
@@ -150,12 +150,12 @@ SELECT f1 AS "Correlated Field", f2 AS "Second Field"
   WHERE f1 IN (SELECT f2 FROM SUBSELECT_TBL WHERE f1 = upper.f1);
  Correlated Field | Second Field 
 ------------------+--------------
-                1 |            2
                 2 |            3
                 3 |            4
-                1 |            1
                 2 |            2
                 3 |            3
+                1 |            2
+                1 |            1
 (6 rows)
 
 SELECT f1 AS "Correlated Field", f3 AS "Second Field"
@@ -166,9 +166,9 @@ SELECT f1 AS "Correlated Field", f3 AS "Second Field"
 ------------------+--------------
                 2 |            4
                 3 |            5
-                1 |            1
                 2 |            2
                 3 |            3
+                1 |            1
 (5 rows)
 
 SELECT f1 AS "Correlated Field", f3 AS "Second Field"
@@ -177,10 +177,10 @@ SELECT f1 AS "Correlated Field", f3 AS "Second Field"
                WHERE f2 = CAST(f3 AS integer));
  Correlated Field | Second Field 
 ------------------+--------------
-                1 |            3
                 2 |            4
                 3 |            5
                 6 |            8
+                1 |            3
 (4 rows)
 
 SELECT f1 AS "Correlated Field"
@@ -191,9 +191,9 @@ SELECT f1 AS "Correlated Field"
 ------------------
                 2
                 3
-                1
                 2
                 3
+                1
 (5 rows)
 
 --
@@ -209,8 +209,8 @@ SELECT ss.f1 AS "Correlated Field", ss.f3 AS "Second Field"
                 3 |            5
                 2 |            2
                 3 |            3
-                6 |            8
                 8 |             
+                6 |            8
 (6 rows)
 
 select q1, float8(count(*)) / (select count(*) from int8_tbl)
@@ -233,30 +233,32 @@ SELECT *, pg_typeof(f1) FROM
 
 -- ... unless there's context to suggest differently
 explain (verbose, costs off) select '42' union all select '43';
-         QUERY PLAN         
-----------------------------
+             QUERY PLAN              
+-------------------------------------
  Append
    ->  Result
          Output: '42'::text
    ->  Result
          Output: '43'::text
-(5 rows)
+ Optimizer: Postgres query optimizer
+(6 rows)
 
 explain (verbose, costs off) select '42' union all select 43;
-     QUERY PLAN     
---------------------
+             QUERY PLAN              
+-------------------------------------
  Append
    ->  Result
          Output: 42
    ->  Result
          Output: 43
-(5 rows)
+ Optimizer: Postgres query optimizer
+(6 rows)
 
 -- check materialization of an initplan reference (bug #14524)
 explain (verbose, costs off)
 select 1 = all (select (select 1));
-            QUERY PLAN             
------------------------------------
+             QUERY PLAN              
+-------------------------------------
  Result
    Output: (SubPlan 2)
    SubPlan 2
@@ -267,7 +269,8 @@ select 1 = all (select (select 1));
                    Output: 1
            ->  Result
                  Output: $0
-(10 rows)
+ Optimizer: Postgres query optimizer
+(11 rows)
 
 select 1 = all (select (select 1));
  ?column? 
@@ -468,7 +471,6 @@ FROM orderstest ord;
 SELECT * FROM orders_view;
  approver_ref | po_ref | ordercanceled | Approved |  Status  | Status_OK 
 --------------+--------+---------------+----------+----------+-----------
-            1 |      1 | f             | ---      | ---      | ---
            66 |      5 | f             | Approved | PO       | PO
            66 |      6 | f             | Approved | PO       | PO
            66 |      7 | f             | Approved | PO       | PO
@@ -476,8 +478,9 @@ SELECT * FROM orders_view;
            66 |      8 | f             | Approved | PO       | PO
            66 |      1 | f             | Approved | Approved | Approved
            77 |      1 | f             | Approved | Approved | Approved
-            1 |      1 | f             | ---      | ---      | ---
            66 |      1 | f             | Approved | Approved | Approved
+            1 |      1 | f             | ---      | ---      | ---
+            1 |      1 | f             | ---      | ---      | ---
             1 |      1 | f             | ---      | ---      | ---
 (11 rows)
 
@@ -528,9 +531,9 @@ select f1, ss1 as relabel from
      from int4_tbl a) ss;
      f1      |  relabel   
 -------------+------------
-           0 | 2147607103
       123456 | 2147607103
      -123456 | 2147483647
+           0 | 2147607103
   2147483647 | 2147483647
  -2147483647 |          0
 (5 rows)
@@ -573,8 +576,8 @@ select * from float_table
   where float_col in (select num_col from numeric_table);
  float_col 
 -----------
-         1
          2
+         1
          3
 (3 rows)
 
@@ -582,10 +585,10 @@ select * from numeric_table
   where num_col in (select float_col from float_table);
          num_col         
 -------------------------
-                       1
- 1.000000000000000000001
                        2
+ 1.000000000000000000001
                        3
+                       1
 (4 rows)
 
 --
@@ -670,10 +673,10 @@ with q as (select max(f1) from int4_tbl group by f1 order by f1)
   select q from q;  -- order none
        q       
 ---------------
- (-2147483647)
  (-123456)
- (0)
  (123456)
+ (-2147483647)
+ (0)
  (2147483647)
 (5 rows)
 
@@ -781,7 +784,8 @@ select 'foo'::text in (select 'bar'::name union all select 'bar'::name);
                  Output: 'bar'::name
            ->  Result
                  Output: 'bar'::name
-(8 rows)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 select 'foo'::text in (select 'bar'::name union all select 'bar'::name);
  ?column? 
@@ -979,8 +983,8 @@ explain (verbose, costs off)
 explain (verbose, costs off)
   select x, x from
     (select (select random()) as x from (values(1),(2)) v(y)) ss;
-            QUERY PLAN             
------------------------------------
+             QUERY PLAN              
+-------------------------------------
  Subquery Scan on ss
    Output: ss.x, ss.x
    ->  Values Scan on "*VALUES*"
@@ -1107,8 +1111,8 @@ select sum(o.four), sum(ss.a) from
     select * from x
   ) ss
 where o.ten = 1;
-                       QUERY PLAN                        
----------------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
@@ -1116,12 +1120,14 @@ where o.ten = 1;
                      ->  Seq Scan on onek o
                            Filter: (ten = 1)
                      ->  Materialize
-                           ->  Recursive Union
-                                 ->  Result
-                                 ->  WorkTable Scan on x
-                                       Filter: (a < 10)
+                           ->  Result Cache
+                                 Cache Key: o.four
+                                 ->  Recursive Union
+                                       ->  Result
+                                       ->  WorkTable Scan on x
+                                             Filter: (a < 10)
  Optimizer: Postgres query optimizer
-(12 rows)
+(14 rows)
 
 select sum(o.four), sum(ss.a) from
   onek o cross join lateral (
@@ -1147,15 +1153,14 @@ insert into notinouter values (null), (1);
 select * from notinouter where a not in (select b from notininner);
  a 
 ---
-  
  1
+  
 (2 rows)
 
 --
 -- Check we behave sanely in corner case of empty SELECT list (bug #8648)
 --
 create temp table nocolumns();
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause, and no column type is suitable for a distribution key. Creating a NULL policy entry.
 select exists(select * from nocolumns);
  exists 
 --------
@@ -1206,7 +1211,8 @@ select * from
    SubPlan 1
      ->  Values Scan on "*VALUES*_1"
            Output: "*VALUES*_1".column1
-(5 rows)
+ Optimizer: Postgres query optimizer
+(6 rows)
 
 select * from
 (values
@@ -1291,7 +1297,7 @@ select * from int4_tbl o where (f1, f1) in
                                  ->  Seq Scan on public.int4_tbl i
                                        Output: i.f1
  Optimizer: Postgres query optimizer
-(20 rows)
+(19 rows)
 
 select * from int4_tbl o where (f1, f1) in
   (select f1, generate_series(1,50) / 10 g from int4_tbl i group by f1);
@@ -1311,8 +1317,8 @@ select (select q from
 from int4_tbl;
      q     
 -----------
- (4,5,6.0)
  (1,2,3)
+ (4,5,6.0)
  (4,5,6.0)
  (1,2,3)
  (4,5,6.0)
@@ -1356,8 +1362,7 @@ where b and f1 >= 0;
                      ->  Result
                            Output: true, 2
  Optimizer: Postgres query optimizer
- Settings: optimizer = 'off'
-(22 rows)
+(21 rows)
 
 select * from
     int4_tbl i4,
@@ -1371,10 +1376,10 @@ where b and f1 >= 0;
      f1     | b | id 
 ------------+---+----
           0 | t |  2
-     123456 | t |  1
-     123456 | t |  2
  2147483647 | t |  1
  2147483647 | t |  2
+     123456 | t |  1
+     123456 | t |  2
 (5 rows)
 
 --
@@ -1428,7 +1433,8 @@ select * from
    ->  ProjectSet
          Output: 9, unnest('{1,2,3,11,12,13}'::integer[])
          ->  Result
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 select * from
   (select 9 as x, unnest(array[1,2,3,11,12,13]) as u) ss
@@ -1461,6 +1467,7 @@ NOTICE:  x = 9, y = 8
  ProjectSet
    Output: 9, unnest('{1,2,3,11,12,13}'::integer[])
    ->  Result
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 select * from
@@ -1490,7 +1497,8 @@ select * from
    ->  ProjectSet
          Output: 9, unnest('{1,2,3,11,12,13}'::integer[])
          ->  Result
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 select * from
   (select 9 as x, unnest(array[1,2,3,11,12,13]) as u) ss
@@ -1553,7 +1561,7 @@ select * from explain_sq_limit();
                      Executor Memory: xxx  Segments: x  Max: xxkB (segment x)
                      ->  Seq Scan on sq_limit (actual rows=8 loops=1)
  Optimizer: Postgres query optimizer
-(10 rows)
+(9 rows)
 
 -- a subpath is sorted under a subqueryscan. however, the subqueryscan is not.
 -- whether the order of subpath can applied to the subqueryscan is up-to-implement.
@@ -1565,7 +1573,7 @@ select * from (select pk,c2 from sq_limit order by c1,pk) as x limit 3;
 ----+----
   1 |  1
   5 |  1
-  6 |  2
+  2 |  2
 (3 rows)
 
 --end_ignore
@@ -1583,12 +1591,7 @@ declare c1 scroll cursor for
   where i <> all (values (2),(3));
 move forward all in c1;
 fetch backward all in c1;
- i 
----
- 4
- 1
-(2 rows)
-
+ERROR:  backward scan is not supported in this version of Greenplum Database
 commit;
 --end_ignore
 --
@@ -1607,7 +1610,7 @@ select * from x where f1 = 1;
          Output: subselect_tbl.f1
          Filter: (subselect_tbl.f1 = 1)
  Optimizer: Postgres query optimizer
- Settings: optimizer=off
+ Settings: gp_cte_sharing = 'on'
 (7 rows)
 
 -- Explicitly request materialization
@@ -1626,7 +1629,7 @@ select * from x where f1 = 1;
                ->  Seq Scan on public.subselect_tbl
                      Output: subselect_tbl.f1
  Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing=on
+ Settings: gp_cte_sharing = 'on'
 (11 rows)
 
 -- Stable functions are safe to inline
@@ -1641,7 +1644,7 @@ select * from x where f1 = 1;
          Output: subselect_tbl.f1, 'regression'::name
          Filter: (subselect_tbl.f1 = 1)
  Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing=on
+ Settings: gp_cte_sharing = 'on'
 (7 rows)
 
 -- Volatile functions prevent inlining
@@ -1662,12 +1665,11 @@ select * from x where f1 = 1;
                ->  Seq Scan on public.subselect_tbl
                      Output: subselect_tbl.f1, random()
  Optimizer: Postgres query optimizer
-(10 rows)
+ Settings: gp_cte_sharing = 'on'
+(11 rows)
 
 create temporary sequence ts;
 create table vol_test(a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 explain (verbose, costs off)
 with x as (select * from (select a, nextval('ts') from vol_test) ss)
 select * from x where a = 1;
@@ -1683,7 +1685,8 @@ select * from x where a = 1;
                ->  Seq Scan on public.vol_test
                      Output: vol_test.a, nextval('ts'::regclass)
  Optimizer: Postgres query optimizer
-(10 rows)
+ Settings: gp_cte_sharing = 'on'
+(11 rows)
 
 drop sequence ts;
 drop table vol_test;
@@ -1705,7 +1708,7 @@ select * from x where f1 = 1;
                Output: subselect_tbl.f1, subselect_tbl.ctid
                Filter: (subselect_tbl.f1 = 1)
  Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing=on, optimizer=off
+ Settings: gp_cte_sharing = 'on'
 (9 rows)
 
 -- Multiply-referenced CTEs are inlined only when requested
@@ -1734,7 +1737,7 @@ select * from x, x x2 where x.n = x2.n;
                            ->  Seq Scan on public.subselect_tbl
                                  Output: subselect_tbl.f1, 'regression'::name
  Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing=on
+ Settings: gp_cte_sharing = 'on'
 (21 rows)
 
 explain (verbose, costs off)
@@ -1760,7 +1763,7 @@ select * from x, x x2 where x.n = x2.n;
                      ->  Seq Scan on public.subselect_tbl subselect_tbl_1
                            Output: subselect_tbl_1.f1, 'regression'::name
  Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing=on
+ Settings: gp_cte_sharing = 'on'
 (19 rows)
 
 -- Multiply-referenced CTEs can't be inlined if they contain outer self-refs
@@ -1787,7 +1790,8 @@ select * from x;
                ->  WorkTable Scan on x x_1
                      Output: x_1.a
  Optimizer: Postgres query optimizer
-(13 rows)
+ Settings: gp_cte_sharing = 'on'
+(14 rows)
 
 with recursive x(a) as
   ((values ('a'), ('b'))
@@ -1841,7 +1845,7 @@ select * from x;
                Output: x.a
                Filter: (length((x.a || x.a)) < 5)
  Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing=on, optimizer=off
+ Settings: gp_cte_sharing = 'on'
 (10 rows)
 
 with recursive x(a) as
@@ -1872,13 +1876,14 @@ select * from (with y as (select * from x) select * from y) ss;
    ->  Seq Scan on public.int4_tbl
          Output: int4_tbl.f1
  Optimizer: Postgres query optimizer
-(5 rows)
+ Settings: gp_cte_sharing = 'on'
+(6 rows)
 
 explain (verbose, costs off)
 with x as materialized (select * from int4_tbl)
 select * from (with y as (select * from x) select * from y) ss;
-                 QUERY PLAN                 
---------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Output: share0_ref1.f1
    ->  Shared Scan (share slice:id 1:0)
@@ -1886,7 +1891,7 @@ select * from (with y as (select * from x) select * from y) ss;
          ->  Seq Scan on public.int4_tbl
                Output: int4_tbl.f1
  Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing=on, optimizer=off
+ Settings: gp_cte_sharing = 'on'
 (8 rows)
 
 -- Ensure that we inline the currect CTE when there are
@@ -1894,11 +1899,13 @@ select * from (with y as (select * from x) select * from y) ss;
 explain (verbose, costs off)
 with x as (select 1 as y)
 select * from (with x as (select 2 as y) select * from x) ss;
- QUERY PLAN  
--------------
+             QUERY PLAN              
+-------------------------------------
  Result
    Output: 2
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: gp_cte_sharing = 'on'
+(4 rows)
 
 -- Row marks are not pushed into CTEs
 explain (verbose, costs off)
@@ -1911,6 +1918,7 @@ select * from x for update;
    ->  Seq Scan on public.subselect_tbl
          Output: subselect_tbl.f1, subselect_tbl.f2, subselect_tbl.f3
  Optimizer: Postgres query optimizer
-(5 rows)
+ Settings: gp_cte_sharing = 'on'
+(6 rows)
 
 set gp_cte_sharing to off;

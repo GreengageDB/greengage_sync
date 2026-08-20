@@ -86,6 +86,8 @@ int			vacuum_freeze_min_age;
 int			vacuum_freeze_table_age;
 int			vacuum_multixact_freeze_min_age;
 int			vacuum_multixact_freeze_table_age;
+int			vacuum_failsafe_age;
+int			vacuum_multixact_failsafe_age;
 
 
 /* A few variables that don't seem worth passing around as parameters */
@@ -719,7 +721,7 @@ Relation
 vacuum_open_relation(Oid relid, RangeVar *relation, bits32 options,
 					 bool verbose, LOCKMODE lmode)
 {
-	Relation	onerel;
+	Relation	rel;
 	bool		rel_lock = true;
 	int			elevel;
 
@@ -735,18 +737,18 @@ vacuum_open_relation(Oid relid, RangeVar *relation, bits32 options,
 	 * in non-blocking mode, before calling try_relation_open().
 	 */
 	if (!(options & VACOPT_SKIP_LOCKED))
-		onerel = try_relation_open(relid, lmode, false);
+		rel = try_relation_open(relid, lmode, false);
 	else if (ConditionalLockRelationOid(relid, lmode))
-		onerel = try_relation_open(relid, NoLock, false);
+		rel = try_relation_open(relid, NoLock, false);
 	else
 	{
-		onerel = NULL;
+		rel = NULL;
 		rel_lock = false;
 	}
 
 	/* if relation is opened, leave */
-	if (onerel)
-		return onerel;
+	if (rel)
+		return rel;
 
 	/*
 	 * Relation could not be opened, hence generate if possible a log
@@ -1060,7 +1062,7 @@ expand_vacuum_rel(VacuumRelation *vrel, int options)
 				Oid			parent_relid;
 				int			elevel = ((options & VACOPT_VERBOSE) ? LOG : DEBUG2);
 
-				parent_relid = get_partition_parent(child_relid);
+				parent_relid = get_partition_parent(child_relid, false);
 
 				/*
 				 * Only ANALYZE the parent if the stats can be updated by merging
@@ -1373,6 +1375,62 @@ vacuum_set_xid_limits(Relation rel,
 	{
 		Assert(mxactFullScanLimit == NULL);
 	}
+}
+
+/*
+ * vacuum_xid_failsafe_check() -- Used by VACUUM's wraparound failsafe
+ * mechanism to determine if its table's relfrozenxid and relminmxid are now
+ * dangerously far in the past.
+ *
+ * Input parameters are the target relation's relfrozenxid and relminmxid.
+ *
+ * When we return true, VACUUM caller triggers the failsafe.
+ */
+bool
+vacuum_xid_failsafe_check(TransactionId relfrozenxid, MultiXactId relminmxid)
+{
+	TransactionId xid_skip_limit;
+	MultiXactId multi_skip_limit;
+	int			skip_index_vacuum;
+
+	Assert(TransactionIdIsNormal(relfrozenxid));
+	Assert(MultiXactIdIsValid(relminmxid));
+
+	/*
+	 * Determine the index skipping age to use. In any case no less than
+	 * autovacuum_freeze_max_age * 1.05.
+	 */
+	skip_index_vacuum = Max(vacuum_failsafe_age, autovacuum_freeze_max_age * 1.05);
+
+	xid_skip_limit = ReadNextTransactionId() - skip_index_vacuum;
+	if (!TransactionIdIsNormal(xid_skip_limit))
+		xid_skip_limit = FirstNormalTransactionId;
+
+	if (TransactionIdPrecedes(relfrozenxid, xid_skip_limit))
+	{
+		/* The table's relfrozenxid is too old */
+		return true;
+	}
+
+	/*
+	 * Similar to above, determine the index skipping age to use for
+	 * multixact. In any case no less than autovacuum_multixact_freeze_max_age
+	 * * 1.05.
+	 */
+	skip_index_vacuum = Max(vacuum_multixact_failsafe_age,
+							autovacuum_multixact_freeze_max_age * 1.05);
+
+	multi_skip_limit = ReadNextMultiXactId() - skip_index_vacuum;
+	if (multi_skip_limit < FirstMultiXactId)
+		multi_skip_limit = FirstMultiXactId;
+
+	if (MultiXactIdPrecedes(relminmxid, multi_skip_limit))
+	{
+		/* The table's relminmxid is too old */
+		return true;
+	}
+
+	return false;
 }
 
 /*
@@ -2059,8 +2117,8 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		   bool recursing)
 {
 	LOCKMODE	lmode;
-	Relation	onerel;
-	LockRelId	onerelid;
+	Relation	rel;
+	LockRelId	lockrelid;
 	Oid			toast_relid;
 	Oid			aoseg_relid = InvalidOid;
 	Oid         aoblkdir_relid = InvalidOid;
@@ -2150,11 +2208,11 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		AccessExclusiveLock : ShareUpdateExclusiveLock;
 
 	/* open the relation and get the appropriate lock on it */
-	onerel = vacuum_open_relation(relid, relation, params->options,
-								  params->log_min_duration >= 0, lmode);
+	rel = vacuum_open_relation(relid, relation, params->options,
+							   params->log_min_duration >= 0, lmode);
 
 	/* leave if relation could not be opened or locked */
-	if (!onerel)
+	if (!rel)
 	{
 		PopActiveSnapshot();
 		CommitTransactionCommand();
@@ -2169,11 +2227,11 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * changed in-between.  Make sure to only generate logs for VACUUM in this
 	 * case.
 	 */
-	if (!vacuum_is_relation_owner(RelationGetRelid(onerel),
-								  onerel->rd_rel,
+	if (!vacuum_is_relation_owner(RelationGetRelid(rel),
+								  rel->rd_rel,
 								  params->options & VACOPT_VACUUM))
 	{
-		relation_close(onerel, lmode);
+		relation_close(rel, lmode);
 		PopActiveSnapshot();
 		CommitTransactionCommand();
 		return false;
@@ -2182,18 +2240,18 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	/*
 	 * Check that it's of a vacuumable relkind.
 	 */
-	if (onerel->rd_rel->relkind != RELKIND_RELATION &&
-		onerel->rd_rel->relkind != RELKIND_MATVIEW &&
-		onerel->rd_rel->relkind != RELKIND_TOASTVALUE &&
-		onerel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE &&
-		onerel->rd_rel->relkind != RELKIND_AOSEGMENTS &&
-		onerel->rd_rel->relkind != RELKIND_AOBLOCKDIR &&
-		onerel->rd_rel->relkind != RELKIND_AOVISIMAP)
+	if (rel->rd_rel->relkind != RELKIND_RELATION &&
+		rel->rd_rel->relkind != RELKIND_MATVIEW &&
+		rel->rd_rel->relkind != RELKIND_TOASTVALUE &&
+		rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE &&
+		rel->rd_rel->relkind != RELKIND_AOSEGMENTS &&
+		rel->rd_rel->relkind != RELKIND_AOBLOCKDIR &&
+		rel->rd_rel->relkind != RELKIND_AOVISIMAP)
 	{
 		ereport(WARNING,
 				(errmsg("skipping \"%s\" --- cannot vacuum non-tables or special system tables",
-						RelationGetRelationName(onerel))));
-		relation_close(onerel, lmode);
+						RelationGetRelationName(rel))));
+		relation_close(rel, lmode);
 		PopActiveSnapshot();
 		CommitTransactionCommand();
 		return false;
@@ -2206,9 +2264,9 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * warning here; it would just lead to chatter during a database-wide
 	 * VACUUM.)
 	 */
-	if (RELATION_IS_OTHER_TEMP(onerel))
+	if (RELATION_IS_OTHER_TEMP(rel))
 	{
-		relation_close(onerel, lmode);
+		relation_close(rel, lmode);
 		PopActiveSnapshot();
 		CommitTransactionCommand();
 		return false;
@@ -2219,9 +2277,9 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * useful work is on their child partitions, which have been queued up for
 	 * us separately.
 	 */
-	if (onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+	if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
 	{
-		relation_close(onerel, lmode);
+		relation_close(rel, lmode);
 		PopActiveSnapshot();
 		CommitTransactionCommand();
 		/* It's OK to proceed with ANALYZE on this table */
@@ -2238,14 +2296,14 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * because the lock manager knows that both lock requests are from the
 	 * same process.
 	 */
-	onerelid = onerel->rd_lockInfo.lockRelId;
-	LockRelationIdForSession(&onerelid, lmode);
+	lockrelid = rel->rd_lockInfo.lockRelId;
+	LockRelationIdForSession(&lockrelid, lmode);
 
 	/* Set index cleanup option based on reloptions if not yet */
 	if (params->index_cleanup == VACOPT_TERNARY_DEFAULT)
 	{
-		if (onerel->rd_options == NULL ||
-			((StdRdOptions *) onerel->rd_options)->vacuum_index_cleanup)
+		if (rel->rd_options == NULL ||
+			((StdRdOptions *) rel->rd_options)->vacuum_index_cleanup)
 			params->index_cleanup = VACOPT_TERNARY_ENABLED;
 		else
 			params->index_cleanup = VACOPT_TERNARY_DISABLED;
@@ -2254,8 +2312,8 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	/* Set truncate option based on reloptions if not yet */
 	if (params->truncate == VACOPT_TERNARY_DEFAULT)
 	{
-		if (onerel->rd_options == NULL ||
-			((StdRdOptions *) onerel->rd_options)->vacuum_truncate)
+		if (rel->rd_options == NULL ||
+			((StdRdOptions *) rel->rd_options)->vacuum_truncate)
 			params->truncate = VACOPT_TERNARY_ENABLED;
 		else
 			params->truncate = VACOPT_TERNARY_DISABLED;
@@ -2270,13 +2328,13 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 */
 	if ((params->options & VACOPT_PROCESS_TOAST) != 0 &&
 		(params->options & VACOPT_FULL) == 0)
-		toast_relid = onerel->rd_rel->reltoastrelid;
+		toast_relid = rel->rd_rel->reltoastrelid;
 	else
 		toast_relid = InvalidOid;
 
-	if (RelationIsAppendOptimized(onerel))
+	if (RelationIsAppendOptimized(rel))
 	{
-		GetAppendOnlyEntryAuxOids(RelationGetRelid(onerel), NULL,
+		GetAppendOnlyEntryAuxOids(RelationGetRelid(rel), NULL,
 								  &aoseg_relid,
 								  &aoblkdir_relid, NULL,
 								  &aovisimap_relid, NULL);
@@ -2292,25 +2350,25 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * Note we choose to treat permissions failure as a WARNING and keep
 	 * trying to vacuum the rest of the DB --- is this appropriate?
 	 */
-	if (!(pg_class_ownercheck(RelationGetRelid(onerel), GetUserId()) ||
-		  (pg_database_ownercheck(MyDatabaseId, GetUserId()) && !onerel->rd_rel->relisshared)))
+	if (!(pg_class_ownercheck(RelationGetRelid(rel), GetUserId()) ||
+		  (pg_database_ownercheck(MyDatabaseId, GetUserId()) && !rel->rd_rel->relisshared)))
 	{
 		if (Gp_role != GP_ROLE_EXECUTE)
 		{
-			if (onerel->rd_rel->relisshared)
+			if (rel->rd_rel->relisshared)
 				ereport(WARNING,
 						(errmsg("skipping \"%s\" --- only superuser can vacuum it",
-								RelationGetRelationName(onerel))));
-			else if (onerel->rd_rel->relnamespace == PG_CATALOG_NAMESPACE)
+								RelationGetRelationName(rel))));
+			else if (rel->rd_rel->relnamespace == PG_CATALOG_NAMESPACE)
 				ereport(WARNING,
 						(errmsg("skipping \"%s\" --- only superuser or database owner can vacuum it",
-								RelationGetRelationName(onerel))));
+								RelationGetRelationName(rel))));
 			else
 				ereport(WARNING,
 						(errmsg("skipping \"%s\" --- only table or database owner can vacuum it",
-								RelationGetRelationName(onerel))));
+								RelationGetRelationName(rel))));
 		}
-		relation_close(onerel, lmode);
+		relation_close(rel, lmode);
 		PopActiveSnapshot();
 		CommitTransactionCommand();
 		return false;
@@ -2321,18 +2379,18 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * get_rel_oids() but seems safer to check after we've locked the
 	 * relation.
 	 */
-	if ((onerel->rd_rel->relkind != RELKIND_RELATION &&
-		 onerel->rd_rel->relkind != RELKIND_MATVIEW &&
-		 onerel->rd_rel->relkind != RELKIND_TOASTVALUE &&
-		 onerel->rd_rel->relkind != RELKIND_AOSEGMENTS &&
-		 onerel->rd_rel->relkind != RELKIND_AOBLOCKDIR &&
-		 onerel->rd_rel->relkind != RELKIND_AOVISIMAP)
-		|| onerel->rd_rel->relkind == RELKIND_FOREIGN_TABLE)
+	if ((rel->rd_rel->relkind != RELKIND_RELATION &&
+		 rel->rd_rel->relkind != RELKIND_MATVIEW &&
+		 rel->rd_rel->relkind != RELKIND_TOASTVALUE &&
+		 rel->rd_rel->relkind != RELKIND_AOSEGMENTS &&
+		 rel->rd_rel->relkind != RELKIND_AOBLOCKDIR &&
+		 rel->rd_rel->relkind != RELKIND_AOVISIMAP)
+		|| rel->rd_rel->relkind == RELKIND_FOREIGN_TABLE)
 	{
 		ereport(WARNING,
 				(errmsg("skipping \"%s\" --- cannot vacuum non-tables, external tables, foreign tables or special system tables",
-						RelationGetRelationName(onerel))));
-		relation_close(onerel, lmode);
+						RelationGetRelationName(rel))));
+		relation_close(rel, lmode);
 		PopActiveSnapshot();
 		CommitTransactionCommand();
 		return false;
@@ -2345,7 +2403,7 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 			"compaction_before_cleanup_phase",
 			DDLNotSpecified,
 			"",	// databaseName
-			RelationGetRelationName(onerel)); // tableName
+			RelationGetRelationName(rel)); // tableName
 	}
 #endif
 
@@ -2356,16 +2414,16 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * warning here; it would just lead to chatter during a database-wide
 	 * VACUUM.)
 	 */
-	if (RELATION_IS_OTHER_TEMP(onerel))
+	if (RELATION_IS_OTHER_TEMP(rel))
 	{
-		relation_close(onerel, lmode);
+		relation_close(rel, lmode);
 		PopActiveSnapshot();
 		CommitTransactionCommand();
 		return false;
 	}
 
-	is_appendoptimized = RelationIsAppendOptimized(onerel);
-	is_toast = (onerel->rd_rel->relkind == RELKIND_TOASTVALUE);
+	is_appendoptimized = RelationIsAppendOptimized(rel);
+	is_toast = (rel->rd_rel->relkind == RELKIND_TOASTVALUE);
 
 	if (ao_vacuum_phase && !(is_appendoptimized || is_toast))
 	{
@@ -2380,8 +2438,8 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * can dispatch it.
 	 */
 	MemoryContext oldcontext = MemoryContextSwitchTo(vac_context);
-	this_rangevar = makeRangeVar(get_namespace_name(onerel->rd_rel->relnamespace),
-								 pstrdup(RelationGetRelationName(onerel)),
+	this_rangevar = makeRangeVar(get_namespace_name(rel->rd_rel->relnamespace),
+								 pstrdup(RelationGetRelationName(rel)),
 								 -1);
 	MemoryContextSwitchTo(oldcontext);
 
@@ -2391,7 +2449,7 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	 * arrange to make GUC variable changes local to this command.
 	 */
 	GetUserIdAndSecContext(&save_userid, &save_sec_context);
-	SetUserIdAndSecContext(onerel->rd_rel->relowner,
+	SetUserIdAndSecContext(rel->rd_rel->relowner,
 						   save_sec_context | SECURITY_RESTRICTED_OPERATION);
 	save_nestlevel = NewGUCNestLevel();
 
@@ -2406,7 +2464,7 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		bool 		has_bitmap = false;
 		Relation   *i_rel = NULL;
 
-		vac_open_indexes(onerel, AccessShareLock, &nindexes, &i_rel);
+		vac_open_indexes(rel, AccessShareLock, &nindexes, &i_rel);
 		if (i_rel != NULL)
 		{
 			for (i = 0; i < nindexes; i++)
@@ -2421,7 +2479,7 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		vac_close_indexes(nindexes, i_rel, AccessShareLock);
 
 		if (has_bitmap)
-			LockRelation(onerel, ShareLock);
+			LockRelation(rel, ShareLock);
 	}
 
 	if (!is_appendoptimized && (params->options & VACOPT_FULL))
@@ -2429,8 +2487,8 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		ClusterParams cluster_params = {0};
 
 		/* close relation before vacuuming, but hold lock until commit */
-		relation_close(onerel, NoLock);
-		onerel = NULL;
+		relation_close(rel, NoLock);
+		rel = NULL;
 
 		if ((params->options & VACOPT_VERBOSE) != 0)
 			cluster_params.options |= CLUOPT_VERBOSE;
@@ -2439,7 +2497,7 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		cluster_rel(relid, InvalidOid, &cluster_params, true);
 	}
 	else /* Heap vacuum or AO/CO vacuum in specific phase */
-		table_relation_vacuum(onerel, params, vac_strategy);
+		table_relation_vacuum(rel, params, vac_strategy);
 
 	/* Roll back any GUC changes executed by index functions */
 	AtEOXact_GUC(false, save_nestlevel);
@@ -2448,8 +2506,8 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	SetUserIdAndSecContext(save_userid, save_sec_context);
 
 	/* all done with this class, but hold lock until commit */
-	if (onerel)
-		relation_close(onerel, NoLock);
+	if (rel)
+		relation_close(rel, NoLock);
 
 	/*
 	 * Complete the transaction and free all temporary memory used.
@@ -2580,7 +2638,7 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 	/*
 	 * Now release the session-level lock on the main table.
 	 */
-	UnlockRelationIdForSession(&onerelid, lmode);
+	UnlockRelationIdForSession(&lockrelid, lmode);
 
 	/* Report that we really did it. */
 	return true;
@@ -2689,9 +2747,11 @@ vacuum_delay_point(void)
 		if (msec > VacuumCostDelay * 4)
 			msec = VacuumCostDelay * 4;
 
-		pgstat_report_wait_start(WAIT_EVENT_VACUUM_DELAY);
-		pg_usleep((long) (msec * 1000));
-		pgstat_report_wait_end();
+		(void) WaitLatch(MyLatch,
+						 WL_LATCH_SET | WL_TIMEOUT | WL_EXIT_ON_PM_DEATH,
+						 msec,
+						 WAIT_EVENT_VACUUM_DELAY);
+		ResetLatch(MyLatch);
 
 		VacuumCostBalance = 0;
 

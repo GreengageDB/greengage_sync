@@ -25,6 +25,7 @@
 #include "access/syncscan.h"
 #include "access/twophase.h"
 #include "access/distributedlog.h"
+#include "access/xlogprefetch.h"
 #include "cdb/cdblocaldistribxact.h"
 #include "cdb/cdbvars.h"
 #include "commands/async.h"
@@ -164,6 +165,7 @@ CreateSharedMemoryAndSemaphores(void)
 
 		size = add_size(size, ProcGlobalShmemSize());
 		size = add_size(size, XLOGShmemSize());
+		size = add_size(size, XLogPrefetchShmemSize());
 		size = add_size(size, DistributedLog_ShmemSize());
 		size = add_size(size, CLOGShmemSize());
 		size = add_size(size, CommitTsShmemSize());
@@ -286,6 +288,7 @@ CreateSharedMemoryAndSemaphores(void)
 	 * Set up xlog, clog, and buffers
 	 */
 	XLOGShmemInit();
+	XLogPrefetchShmemInit();
 	CLOGShmemInit();
 	DistributedLog_ShmemInit();
 	CommitTsShmemInit();

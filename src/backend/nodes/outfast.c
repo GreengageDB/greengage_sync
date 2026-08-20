@@ -393,6 +393,7 @@ _outJoinExpr(StringInfo str, JoinExpr *node)
 	WRITE_NODE_FIELD(larg);
 	WRITE_NODE_FIELD(rarg);
 	WRITE_NODE_FIELD(usingClause);
+	WRITE_NODE_FIELD(join_using_alias);
 	WRITE_NODE_FIELD(quals);
 	WRITE_NODE_FIELD(alias);
 	WRITE_INT_FIELD(rtindex);
@@ -509,6 +510,7 @@ _outQuery(StringInfo str, Query *node)
 	WRITE_BOOL_FIELD(hasForUpdate);
 	WRITE_BOOL_FIELD(hasRowSecurity);
 	WRITE_BOOL_FIELD(canOptSelectLockingClause);
+	WRITE_BOOL_FIELD(isReturn);
 	WRITE_NODE_FIELD(cteList);
 	WRITE_NODE_FIELD(rtable);
 	WRITE_NODE_FIELD(jointree);
@@ -1085,6 +1087,9 @@ _outNode(StringInfo str, void *obj)
 			case T_ShareInputScan:
 				_outShareInputScan(str, obj);
 				break;
+			case T_ResultCache:
+				_outResultCache(str, obj);
+				break;
 			case T_Sort:
 				_outSort(str, obj);
 				break;
@@ -1538,6 +1543,9 @@ _outNode(StringInfo str, void *obj)
 			case T_UpdateStmt:
 				_outUpdateStmt(str, obj);
 				break;
+			case T_ReturnStmt:
+				_outReturnStmt(str, obj);
+				break;
 			case T_ColumnDef:
 				_outColumnDef(str, obj);
 				break;
@@ -1555,6 +1563,9 @@ _outNode(StringInfo str, void *obj)
 				break;
 			case T_IndexElem:
 				_outIndexElem(str, obj);
+				break;
+			case T_StatsElem:
+				_outStatsElem(str, obj);
 				break;
 			case T_Query:
 				_outQuery(str, obj);

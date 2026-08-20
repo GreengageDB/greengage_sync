@@ -593,7 +593,7 @@ heapgettup(HeapScanDesc scan,
 				ParallelBlockTableScanDesc pbscan =
 				(ParallelBlockTableScanDesc) scan->rs_base.rs_parallel;
 				ParallelBlockTableScanWorker pbscanwork =
-				(ParallelBlockTableScanWorker) scan->rs_base.rs_private;
+				scan->rs_parallelworkerdata;
 
 				table_block_parallelscan_startblock_init(scan->rs_base.rs_rd,
 														 pbscanwork, pbscan);
@@ -688,8 +688,15 @@ heapgettup(HeapScanDesc scan,
 		}
 		else
 		{
+			/*
+			 * The previous returned tuple may have been vacuumed since the
+			 * previous scan when we use a non-MVCC snapshot, so we must
+			 * re-establish the lineoff <= PageGetMaxOffsetNumber(dp)
+			 * invariant
+			 */
 			lineoff =			/* previous offnum */
-				OffsetNumberPrev(ItemPointerGetOffsetNumber(&(tuple->t_self)));
+				Min(lines,
+					OffsetNumberPrev(ItemPointerGetOffsetNumber(&(tuple->t_self))));
 		}
 		/* page and lineoff now reference the physically previous tid */
 
@@ -731,8 +738,15 @@ heapgettup(HeapScanDesc scan,
 	lpp = PageGetItemId(dp, lineoff);
 	for (;;)
 	{
-        CHECK_FOR_INTERRUPTS();
+		CHECK_FOR_INTERRUPTS();
 
+		/*
+		 * Only continue scanning the page while we have lines left.
+		 *
+		 * Note that this protects us from accessing line pointers past
+		 * PageGetMaxOffsetNumber(); both for forward scans when we resume the
+		 * table scan, and for when we start scanning a new page.
+		 */
 		while (linesleft > 0)
 		{
 			if (ItemIdIsNormal(lpp))
@@ -804,7 +818,7 @@ heapgettup(HeapScanDesc scan,
 			ParallelBlockTableScanDesc pbscan =
 			(ParallelBlockTableScanDesc) scan->rs_base.rs_parallel;
 			ParallelBlockTableScanWorker pbscanwork =
-			(ParallelBlockTableScanWorker) scan->rs_base.rs_private;
+			scan->rs_parallelworkerdata;
 
 			page = table_block_parallelscan_nextpage(scan->rs_base.rs_rd,
 													 pbscanwork, pbscan);
@@ -920,7 +934,7 @@ heapgettup_pagemode(HeapScanDesc scan,
 				ParallelBlockTableScanDesc pbscan =
 				(ParallelBlockTableScanDesc) scan->rs_base.rs_parallel;
 				ParallelBlockTableScanWorker pbscanwork =
-				(ParallelBlockTableScanWorker) scan->rs_base.rs_private;
+				scan->rs_parallelworkerdata;
 
 				table_block_parallelscan_startblock_init(scan->rs_base.rs_rd,
 														 pbscanwork, pbscan);
@@ -1115,7 +1129,7 @@ heapgettup_pagemode(HeapScanDesc scan,
 			ParallelBlockTableScanDesc pbscan =
 			(ParallelBlockTableScanDesc) scan->rs_base.rs_parallel;
 			ParallelBlockTableScanWorker pbscanwork =
-			(ParallelBlockTableScanWorker) scan->rs_base.rs_private;
+			scan->rs_parallelworkerdata;
 
 			page = table_block_parallelscan_nextpage(scan->rs_base.rs_rd,
 													 pbscanwork, pbscan);
@@ -1250,8 +1264,6 @@ heap_beginscan(Relation relation, Snapshot snapshot,
 	scan->rs_base.rs_nkeys = nkeys;
 	scan->rs_base.rs_flags = flags;
 	scan->rs_base.rs_parallel = parallel_scan;
-	scan->rs_base.rs_private =
-		palloc(sizeof(ParallelBlockTableScanWorkerData));
 	scan->rs_strategy = NULL;	/* set in initscan */
 
 	/*
@@ -1286,6 +1298,15 @@ heap_beginscan(Relation relation, Snapshot snapshot,
 
 	/* we only need to set this up once */
 	scan->rs_ctup.t_tableOid = RelationGetRelid(relation);
+
+	/*
+	 * Allocate memory to keep track of page allocation for parallel workers
+	 * when doing a parallel scan.
+	 */
+	if (parallel_scan != NULL)
+		scan->rs_parallelworkerdata = palloc(sizeof(ParallelBlockTableScanWorkerData));
+	else
+		scan->rs_parallelworkerdata = NULL;
 
 	/*
 	 * we do this here instead of in initscan() because heap_rescan also calls
@@ -1361,6 +1382,9 @@ heap_endscan(TableScanDesc sscan)
 
 	if (scan->rs_strategy != NULL)
 		FreeAccessStrategy(scan->rs_strategy);
+
+	if (scan->rs_parallelworkerdata != NULL)
+		pfree(scan->rs_parallelworkerdata);
 
 	if (scan->rs_base.rs_flags & SO_TEMP_SNAPSHOT)
 		UnregisterSnapshot(scan->rs_base.rs_snapshot);
@@ -2222,7 +2246,7 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 		int			bufflags = 0;
 
 		/*
-		 * If this is a catalog, we need to transmit combocids to properly
+		 * If this is a catalog, we need to transmit combo CIDs to properly
 		 * decode, so log that as well.
 		 */
 		if (RelationIsAccessibleInLogicalDecoding(relation))
@@ -2514,7 +2538,7 @@ heap_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		RelationPutHeapTuple(relation, buffer, heaptuples[ndone], false);
 
 		/*
-		 * For logical decoding we need combocids to properly decode the
+		 * For logical decoding we need combo CIDs to properly decode the
 		 * catalog.
 		 */
 		if (needwal && need_cids)
@@ -2530,7 +2554,7 @@ heap_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 			RelationPutHeapTuple(relation, buffer, heaptup, false);
 
 			/*
-			 * For logical decoding we need combocids to properly decode the
+			 * For logical decoding we need combo CIDs to properly decode the
 			 * catalog.
 			 */
 			if (needwal && need_cids)
@@ -2830,7 +2854,7 @@ xmax_infomask_changed(uint16 new_infomask, uint16 old_infomask)
  *
  * In the failure cases, the routine fills *tmfd with the tuple's t_ctid,
  * t_xmax (resolving a possible MultiXact, if necessary), and t_cmax (the last
- * only for TM_SelfModified, since we cannot obtain cmax from a combocid
+ * only for TM_SelfModified, since we cannot obtain cmax from a combo CID
  * generated by another transaction).
  */
 TM_Result
@@ -2860,8 +2884,8 @@ heap_delete(Relation relation, ItemPointer tid,
 	gp_expand_protect_catalog_changes(relation);
 
 	/*
-	 * Forbid this during a parallel operation, lest it allocate a combocid.
-	 * Other workers might need that combocid for visibility checks, and we
+	 * Forbid this during a parallel operation, lest it allocate a combo CID.
+	 * Other workers might need that combo CID for visibility checks, and we
 	 * have no provision for broadcasting it to them.
 	 */
 	if (IsInParallelMode())
@@ -3062,7 +3086,7 @@ l1:
 	 */
 	CheckForSerializableConflictIn(relation, tid, BufferGetBlockNumber(buffer));
 
-	/* replace cid with a combo cid if necessary */
+	/* replace cid with a combo CID if necessary */
 	HeapTupleHeaderAdjustCmax(tp.t_data, &cid, &iscombo);
 
 	/*
@@ -3134,7 +3158,7 @@ l1:
 		xl_heap_header xlhdr;
 		XLogRecPtr	recptr;
 
-		/* For logical decode we need combocids to properly decode the catalog */
+		/* For logical decode we need combo CIDs to properly decode the catalog */
 		if (RelationIsAccessibleInLogicalDecoding(relation))
 			log_heap_new_cid(relation, &tp);
 
@@ -3282,7 +3306,7 @@ simple_heap_delete(Relation relation, ItemPointer tid)
  *
  * In the failure cases, the routine fills *tmfd with the tuple's t_ctid,
  * t_xmax (resolving a possible MultiXact, if necessary), and t_cmax (the last
- * only for TM_SelfModified, since we cannot obtain cmax from a combocid
+ * only for TM_SelfModified, since we cannot obtain cmax from a combo CID
  * generated by another transaction).
  */
 static TM_Result
@@ -3333,8 +3357,8 @@ heap_update_internal(Relation relation, ItemPointer otid, HeapTuple newtup,
 	gp_expand_protect_catalog_changes(relation);
 
 	/*
-	 * Forbid this during a parallel operation, lest it allocate a combocid.
-	 * Other workers might need that combocid for visibility checks, and we
+	 * Forbid this during a parallel operation, lest it allocate a combo CID.
+	 * Other workers might need that combo CID for visibility checks, and we
 	 * have no provision for broadcasting it to them.
 	 */
 	if (IsInParallelMode())
@@ -3773,7 +3797,7 @@ l2:
 	HeapTupleHeaderSetXmax(newtup->t_data, xmax_new_tuple);
 
 	/*
-	 * Replace cid with a combo cid if necessary.  Note that we already put
+	 * Replace cid with a combo CID if necessary.  Note that we already put
 	 * the plain cid into the new tuple.
 	 */
 	HeapTupleHeaderAdjustCmax(oldtup.t_data, &cid, &iscombo);
@@ -4091,7 +4115,7 @@ l2:
 		XLogRecPtr	recptr;
 
 		/*
-		 * For logical decoding we need combocids to properly decode the
+		 * For logical decoding we need combo CIDs to properly decode the
 		 * catalog.
 		 */
 		if (RelationIsAccessibleInLogicalDecoding(relation))
@@ -4375,7 +4399,7 @@ get_mxact_status_for_lock(LockTupleMode mode, bool is_update)
  * In the failure cases other than TM_Invisible, the routine fills
  * *tmfd with the tuple's t_ctid, t_xmax (resolving a possible MultiXact,
  * if necessary), and t_cmax (the last only for TM_SelfModified,
- * since we cannot obtain cmax from a combocid generated by another
+ * since we cannot obtain cmax from a combo CID generated by another
  * transaction).
  * See comments for struct TM_FailureData for additional info.
  *
@@ -6017,7 +6041,7 @@ heap_abort_speculative(Relation relation, ItemPointer tid)
 
 	/*
 	 * No need to check for serializable conflicts here.  There is never a
-	 * need for a combocid, either.  No need to extract replica identity, or
+	 * need for a combo CID, either.  No need to extract replica identity, or
 	 * do anything special with infomask bits.
 	 */
 
@@ -7645,7 +7669,7 @@ heap_index_delete_tuples(Relation rel, TM_IndexDeleteOp *delstate)
 			 * must have considered the original tuple header as part of
 			 * generating its own latestRemovedXid value.
 			 *
-			 * Relying on XLOG_HEAP2_CLEAN records like this is the same
+			 * Relying on XLOG_HEAP2_PRUNE records like this is the same
 			 * strategy that index vacuuming uses in all cases.  Index VACUUM
 			 * WAL records don't even have a latestRemovedXid field of their
 			 * own for this reason.
@@ -8065,88 +8089,6 @@ bottomup_sort_and_shrink(TM_IndexDeleteOp *delstate)
 }
 
 /*
- * Perform XLogInsert to register a heap cleanup info message. These
- * messages are sent once per VACUUM and are required because
- * of the phasing of removal operations during a lazy VACUUM.
- * see comments for vacuum_log_cleanup_info().
- */
-XLogRecPtr
-log_heap_cleanup_info(RelFileNode rnode, TransactionId latestRemovedXid)
-{
-	xl_heap_cleanup_info xlrec;
-	XLogRecPtr	recptr;
-
-	xlrec.node = rnode;
-	xlrec.latestRemovedXid = latestRemovedXid;
-
-	XLogBeginInsert();
-	XLogRegisterData((char *) &xlrec, SizeOfHeapCleanupInfo);
-
-	recptr = XLogInsert(RM_HEAP2_ID, XLOG_HEAP2_CLEANUP_INFO);
-
-	return recptr;
-}
-
-/*
- * Perform XLogInsert for a heap-clean operation.  Caller must already
- * have modified the buffer and marked it dirty.
- *
- * Note: prior to Postgres 8.3, the entries in the nowunused[] array were
- * zero-based tuple indexes.  Now they are one-based like other uses
- * of OffsetNumber.
- *
- * We also include latestRemovedXid, which is the greatest XID present in
- * the removed tuples. That allows recovery processing to cancel or wait
- * for long standby queries that can still see these tuples.
- */
-XLogRecPtr
-log_heap_clean(Relation reln, Buffer buffer,
-			   OffsetNumber *redirected, int nredirected,
-			   OffsetNumber *nowdead, int ndead,
-			   OffsetNumber *nowunused, int nunused,
-			   TransactionId latestRemovedXid)
-{
-	xl_heap_clean xlrec;
-	XLogRecPtr	recptr;
-
-	/* Caller should not call me on a non-WAL-logged relation */
-	Assert(RelationNeedsWAL(reln));
-
-	xlrec.latestRemovedXid = latestRemovedXid;
-	xlrec.nredirected = nredirected;
-	xlrec.ndead = ndead;
-
-	XLogBeginInsert();
-	XLogRegisterData((char *) &xlrec, SizeOfHeapClean);
-
-	XLogRegisterBuffer(0, buffer, REGBUF_STANDARD);
-
-	/*
-	 * The OffsetNumber arrays are not actually in the buffer, but we pretend
-	 * that they are.  When XLogInsert stores the whole buffer, the offset
-	 * arrays need not be stored too.  Note that even if all three arrays are
-	 * empty, we want to expose the buffer as a candidate for whole-page
-	 * storage, since this record type implies a defragmentation operation
-	 * even if no line pointers changed state.
-	 */
-	if (nredirected > 0)
-		XLogRegisterBufData(0, (char *) redirected,
-							nredirected * sizeof(OffsetNumber) * 2);
-
-	if (ndead > 0)
-		XLogRegisterBufData(0, (char *) nowdead,
-							ndead * sizeof(OffsetNumber));
-
-	if (nunused > 0)
-		XLogRegisterBufData(0, (char *) nowunused,
-							nunused * sizeof(OffsetNumber));
-
-	recptr = XLogInsert(RM_HEAP2_ID, XLOG_HEAP2_CLEAN);
-
-	return recptr;
-}
-
-/*
  * Perform XLogInsert for a heap-freeze operation.  Caller must have already
  * modified the buffer and marked it dirty.
  */
@@ -8462,7 +8404,7 @@ log_heap_new_cid(Relation relation, HeapTuple tup)
 
 	/*
 	 * If the tuple got inserted & deleted in the same TX we definitely have a
-	 * combocid, set cmin and cmax.
+	 * combo CID, set cmin and cmax.
 	 */
 	if (hdr->t_infomask & HEAP_COMBOCID)
 	{
@@ -8472,7 +8414,7 @@ log_heap_new_cid(Relation relation, HeapTuple tup)
 		xlrec.cmax = HeapTupleHeaderGetCmax(hdr);
 		xlrec.combocid = HeapTupleHeaderGetRawCommandId(hdr);
 	}
-	/* No combocid, so only cmin or cmax can be set by this TX */
+	/* No combo CID, so only cmin or cmax can be set by this TX */
 	else
 	{
 		/*
@@ -8617,34 +8559,15 @@ ExtractReplicaIdentity(Relation relation, HeapTuple tp, bool key_changed,
 }
 
 /*
- * Handles CLEANUP_INFO
+ * Handles XLOG_HEAP2_PRUNE record type.
+ *
+ * Acquires a super-exclusive lock.
  */
 static void
-heap_xlog_cleanup_info(XLogReaderState *record)
-{
-	xl_heap_cleanup_info *xlrec = (xl_heap_cleanup_info *) XLogRecGetData(record);
-
-	if (InHotStandby)
-		ResolveRecoveryConflictWithSnapshot(xlrec->latestRemovedXid, xlrec->node);
-
-	/*
-	 * Actual operation is a no-op. Record type exists to provide a means for
-	 * conflict processing to occur before we begin index vacuum actions. see
-	 * vacuumlazy.c and also comments in btvacuumpage()
-	 */
-
-	/* Backup blocks are not used in cleanup_info records */
-	Assert(!XLogRecHasAnyBlockRefs(record));
-}
-
-/*
- * Handles XLOG_HEAP2_CLEAN record type
- */
-static void
-heap_xlog_clean(XLogReaderState *record)
+heap_xlog_prune(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_heap_clean *xlrec = (xl_heap_clean *) XLogRecGetData(record);
+	xl_heap_prune *xlrec = (xl_heap_prune *) XLogRecGetData(record);
 	Buffer		buffer;
 	RelFileNode rnode;
 	BlockNumber blkno;
@@ -8655,12 +8578,8 @@ heap_xlog_clean(XLogReaderState *record)
 	/*
 	 * We're about to remove tuples. In Hot Standby mode, ensure that there's
 	 * no queries running for which the removed tuples are still visible.
-	 *
-	 * Not all HEAP2_CLEAN records remove tuples with xids, so we only want to
-	 * conflict on the records that cause MVCC failures for user queries. If
-	 * latestRemovedXid is invalid, skip conflict processing.
 	 */
-	if (InHotStandby && TransactionIdIsValid(xlrec->latestRemovedXid))
+	if (InHotStandby)
 		ResolveRecoveryConflictWithSnapshot(xlrec->latestRemovedXid, rnode);
 
 	/*
@@ -8713,10 +8632,82 @@ heap_xlog_clean(XLogReaderState *record)
 		UnlockReleaseBuffer(buffer);
 
 		/*
-		 * After cleaning records from a page, it's useful to update the FSM
+		 * After pruning records from a page, it's useful to update the FSM
 		 * about it, as it may cause the page become target for insertions
 		 * later even if vacuum decides not to visit it (which is possible if
 		 * gets marked all-visible.)
+		 *
+		 * Do this regardless of a full-page image being applied, since the
+		 * FSM data is not in the page anyway.
+		 */
+		XLogRecordPageWithFreeSpace(rnode, blkno, freespace);
+	}
+}
+
+/*
+ * Handles XLOG_HEAP2_VACUUM record type.
+ *
+ * Acquires an exclusive lock only.
+ */
+static void
+heap_xlog_vacuum(XLogReaderState *record)
+{
+	XLogRecPtr	lsn = record->EndRecPtr;
+	xl_heap_vacuum *xlrec = (xl_heap_vacuum *) XLogRecGetData(record);
+	Buffer		buffer;
+	BlockNumber blkno;
+	XLogRedoAction action;
+
+	/*
+	 * If we have a full-page image, restore it	(without using a cleanup lock)
+	 * and we're done.
+	 */
+	action = XLogReadBufferForRedoExtended(record, 0, RBM_NORMAL, false,
+										   &buffer);
+	if (action == BLK_NEEDS_REDO)
+	{
+		Page		page = (Page) BufferGetPage(buffer);
+		OffsetNumber *nowunused;
+		Size		datalen;
+		OffsetNumber *offnum;
+
+		nowunused = (OffsetNumber *) XLogRecGetBlockData(record, 0, &datalen);
+
+		/* Shouldn't be a record unless there's something to do */
+		Assert(xlrec->nunused > 0);
+
+		/* Update all now-unused line pointers */
+		offnum = nowunused;
+		for (int i = 0; i < xlrec->nunused; i++)
+		{
+			OffsetNumber off = *offnum++;
+			ItemId		lp = PageGetItemId(page, off);
+
+			Assert(ItemIdIsDead(lp) && !ItemIdHasStorage(lp));
+			ItemIdSetUnused(lp);
+		}
+
+		/* Attempt to truncate line pointer array now */
+		PageTruncateLinePointerArray(page);
+
+		PageSetLSN(page, lsn);
+		MarkBufferDirty(buffer);
+	}
+
+	if (BufferIsValid(buffer))
+	{
+		Size		freespace = PageGetHeapFreeSpace(BufferGetPage(buffer));
+		RelFileNode rnode;
+
+		XLogRecGetBlockTag(record, 0, &rnode, NULL, &blkno);
+
+		UnlockReleaseBuffer(buffer);
+
+		/*
+		 * After vacuuming LP_DEAD items from a page, it's useful to update
+		 * the FSM about it, as it may cause the page become target for
+		 * insertions later even if vacuum decides not to visit it (which is
+		 * possible if gets marked all-visible.)
 		 *
 		 * Do this regardless of a full-page image being applied, since the
 		 * FSM data is not in the page anyway.
@@ -9838,14 +9829,14 @@ heap2_redo(XLogReaderState *record)
 
 	switch (info & XLOG_HEAP_OPMASK)
 	{
-		case XLOG_HEAP2_CLEAN:
-			heap_xlog_clean(record);
+		case XLOG_HEAP2_PRUNE:
+			heap_xlog_prune(record);
+			break;
+		case XLOG_HEAP2_VACUUM:
+			heap_xlog_vacuum(record);
 			break;
 		case XLOG_HEAP2_FREEZE_PAGE:
 			heap_xlog_freeze_page(record);
-			break;
-		case XLOG_HEAP2_CLEANUP_INFO:
-			heap_xlog_cleanup_info(record);
 			break;
 		case XLOG_HEAP2_VISIBLE:
 			heap_xlog_visible(record);

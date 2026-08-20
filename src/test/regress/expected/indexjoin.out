@@ -88,24 +88,26 @@ WHERE tq.sym = tt.symbol AND
       tt.event_ts <  tq.end_ts
 GROUP BY 1
 ORDER BY 1 asc ;
-                                                               QUERY PLAN                                                               
-----------------------------------------------------------------------------------------------------------------------------------------
- Finalize GroupAggregate  (cost=10000004659.04..10000004809.69 rows=413 width=16)
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=10000004648.25..10000004798.90 rows=413 width=16)
    Group Key: ((((tt.event_ts / 100000) / 5) * 5))
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=10000004659.04..10000004796.27 rows=1239 width=16)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=10000004648.25..10000004785.48 rows=1239 width=16)
          Merge Key: ((((tt.event_ts / 100000) / 5) * 5))
-         ->  Partial GroupAggregate  (cost=10000004659.04..10000004779.75 rows=413 width=16)
+         ->  Partial GroupAggregate  (cost=10000004648.25..10000004768.96 rows=413 width=16)
                Group Key: ((((tt.event_ts / 100000) / 5) * 5))
-               ->  Sort  (cost=10000004659.04..10000004696.87 rows=15131 width=8)
+               ->  Sort  (cost=10000004648.25..10000004686.08 rows=15131 width=8)
                      Sort Key: ((((tt.event_ts / 100000) / 5) * 5))
-                     ->  Nested Loop  (cost=10000000000.15..10000003608.53 rows=15131 width=8)
+                     ->  Nested Loop  (cost=10000000000.16..10000003597.74 rows=15131 width=8)
                            ->  Broadcast Motion 3:3  (slice2; segments: 3)  (cost=10000000000.00..10000000008.00 rows=420 width=25)
                                  ->  Seq Scan on my_tt_agg_small tt  (cost=10000000000.00..10000000002.40 rows=140 width=25)
-                           ->  Index Scan using my_tq_agg_small_ets_end_ts_ix on my_tq_agg_small tq  (cost=0.15..7.93 rows=38 width=20)
-                                 Index Cond: ((tt.event_ts >= ets) AND (tt.event_ts < end_ts))
-                                 Filter: (tt.symbol = (sym)::bpchar)
+                           ->  Result Cache  (cost=0.16..7.94 rows=38 width=20)
+                                 Cache Key: tt.event_ts, tt.event_ts, tt.symbol
+                                 ->  Index Scan using my_tq_agg_small_ets_end_ts_ix on my_tq_agg_small tq  (cost=0.15..7.93 rows=38 width=20)
+                                       Index Cond: ((ets <= tt.event_ts) AND (end_ts > tt.event_ts))
+                                       Filter: (tt.symbol = (sym)::bpchar)
  Optimizer: Postgres query optimizer
-(15 rows)
+(17 rows)
 
 reset optimizer_segments;
 reset optimizer_nestloop_factor;
@@ -133,8 +135,6 @@ create table no_index_table(fake_col1 int, fake_col2 int, fake_col3 int, a int, 
 insert into no_index_table values (1,1,1,1,1);
 analyze no_index_table;
 create table with_index_table(x int, y int) with (appendonly=true, orientation=column);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create index with_index_table_index on with_index_table (x);
 insert into with_index_table select i, 1 from generate_series(1, 20)i;
 analyze with_index_table;

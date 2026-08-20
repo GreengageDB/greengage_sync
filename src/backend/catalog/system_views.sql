@@ -54,7 +54,7 @@ CREATE VIEW pg_shadow AS
     ON (pg_authid.oid = setrole AND setdatabase = 0)
     WHERE rolcanlogin;
 
-REVOKE ALL on pg_shadow FROM public;
+REVOKE ALL ON pg_shadow FROM public;
 
 CREATE VIEW pg_group AS
     SELECT
@@ -258,7 +258,7 @@ CREATE VIEW pg_stats WITH (security_barrier) AS
     AND has_column_privilege(c.oid, a.attnum, 'select')
     AND (c.relrowsecurity = false OR NOT row_security_active(c.oid));
 
-REVOKE ALL on pg_statistic FROM public;
+REVOKE ALL ON pg_statistic FROM public;
 
 CREATE VIEW pg_stats_ext WITH (security_barrier) AS
     SELECT cn.nspname AS schemaname,
@@ -271,6 +271,7 @@ CREATE VIEW pg_stats_ext WITH (security_barrier) AS
                   JOIN pg_attribute a
                        ON (a.attrelid = s.stxrelid AND a.attnum = k)
            ) AS attnames,
+           pg_get_statisticsobjdef_expressions(s.oid) as exprs,
            s.stxkind AS kinds,
            sd.stxdndistinct AS n_distinct,
            sd.stxddependencies AS dependencies,
@@ -297,8 +298,76 @@ CREATE VIEW pg_stats_ext WITH (security_barrier) AS
                 WHERE NOT has_column_privilege(c.oid, a.attnum, 'select') )
     AND (c.relrowsecurity = false OR NOT row_security_active(c.oid));
 
+CREATE VIEW pg_stats_ext_exprs WITH (security_barrier) AS
+    SELECT cn.nspname AS schemaname,
+           c.relname AS tablename,
+           sn.nspname AS statistics_schemaname,
+           s.stxname AS statistics_name,
+           pg_get_userbyid(s.stxowner) AS statistics_owner,
+           stat.expr,
+           (stat.a).stanullfrac AS null_frac,
+           (stat.a).stawidth AS avg_width,
+           (stat.a).stadistinct AS n_distinct,
+           (CASE
+               WHEN (stat.a).stakind1 = 1 THEN (stat.a).stavalues1
+               WHEN (stat.a).stakind2 = 1 THEN (stat.a).stavalues2
+               WHEN (stat.a).stakind3 = 1 THEN (stat.a).stavalues3
+               WHEN (stat.a).stakind4 = 1 THEN (stat.a).stavalues4
+               WHEN (stat.a).stakind5 = 1 THEN (stat.a).stavalues5
+           END) AS most_common_vals,
+           (CASE
+               WHEN (stat.a).stakind1 = 1 THEN (stat.a).stanumbers1
+               WHEN (stat.a).stakind2 = 1 THEN (stat.a).stanumbers2
+               WHEN (stat.a).stakind3 = 1 THEN (stat.a).stanumbers3
+               WHEN (stat.a).stakind4 = 1 THEN (stat.a).stanumbers4
+               WHEN (stat.a).stakind5 = 1 THEN (stat.a).stanumbers5
+           END) AS most_common_freqs,
+           (CASE
+               WHEN (stat.a).stakind1 = 2 THEN (stat.a).stavalues1
+               WHEN (stat.a).stakind2 = 2 THEN (stat.a).stavalues2
+               WHEN (stat.a).stakind3 = 2 THEN (stat.a).stavalues3
+               WHEN (stat.a).stakind4 = 2 THEN (stat.a).stavalues4
+               WHEN (stat.a).stakind5 = 2 THEN (stat.a).stavalues5
+           END) AS histogram_bounds,
+           (CASE
+               WHEN (stat.a).stakind1 = 3 THEN (stat.a).stanumbers1[1]
+               WHEN (stat.a).stakind2 = 3 THEN (stat.a).stanumbers2[1]
+               WHEN (stat.a).stakind3 = 3 THEN (stat.a).stanumbers3[1]
+               WHEN (stat.a).stakind4 = 3 THEN (stat.a).stanumbers4[1]
+               WHEN (stat.a).stakind5 = 3 THEN (stat.a).stanumbers5[1]
+           END) correlation,
+           (CASE
+               WHEN (stat.a).stakind1 = 4 THEN (stat.a).stavalues1
+               WHEN (stat.a).stakind2 = 4 THEN (stat.a).stavalues2
+               WHEN (stat.a).stakind3 = 4 THEN (stat.a).stavalues3
+               WHEN (stat.a).stakind4 = 4 THEN (stat.a).stavalues4
+               WHEN (stat.a).stakind5 = 4 THEN (stat.a).stavalues5
+           END) AS most_common_elems,
+           (CASE
+               WHEN (stat.a).stakind1 = 4 THEN (stat.a).stanumbers1
+               WHEN (stat.a).stakind2 = 4 THEN (stat.a).stanumbers2
+               WHEN (stat.a).stakind3 = 4 THEN (stat.a).stanumbers3
+               WHEN (stat.a).stakind4 = 4 THEN (stat.a).stanumbers4
+               WHEN (stat.a).stakind5 = 4 THEN (stat.a).stanumbers5
+           END) AS most_common_elem_freqs,
+           (CASE
+               WHEN (stat.a).stakind1 = 5 THEN (stat.a).stanumbers1
+               WHEN (stat.a).stakind2 = 5 THEN (stat.a).stanumbers2
+               WHEN (stat.a).stakind3 = 5 THEN (stat.a).stanumbers3
+               WHEN (stat.a).stakind4 = 5 THEN (stat.a).stanumbers4
+               WHEN (stat.a).stakind5 = 5 THEN (stat.a).stanumbers5
+           END) AS elem_count_histogram
+    FROM pg_statistic_ext s JOIN pg_class c ON (c.oid = s.stxrelid)
+         LEFT JOIN pg_statistic_ext_data sd ON (s.oid = sd.stxoid)
+         LEFT JOIN pg_namespace cn ON (cn.oid = c.relnamespace)
+         LEFT JOIN pg_namespace sn ON (sn.oid = s.stxnamespace)
+         JOIN LATERAL (
+             SELECT unnest(pg_get_statisticsobjdef_expressions(s.oid)) AS expr,
+                    unnest(sd.stxdexpr)::pg_statistic AS a
+         ) stat ON (stat.expr IS NOT NULL);
+
 -- unprivileged users may read pg_statistic_ext but not pg_statistic_ext_data
-REVOKE ALL on pg_statistic_ext_data FROM public;
+REVOKE ALL ON pg_statistic_ext_data FROM public;
 
 CREATE VIEW pg_publication_tables AS
     SELECT
@@ -534,13 +603,13 @@ GRANT SELECT, UPDATE ON pg_settings TO PUBLIC;
 CREATE VIEW pg_file_settings AS
    SELECT * FROM pg_show_all_file_settings() AS A;
 
-REVOKE ALL on pg_file_settings FROM PUBLIC;
+REVOKE ALL ON pg_file_settings FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION pg_show_all_file_settings() FROM PUBLIC;
 
 CREATE VIEW pg_hba_file_rules AS
    SELECT * FROM pg_hba_file_rules() AS A;
 
-REVOKE ALL on pg_hba_file_rules FROM PUBLIC;
+REVOKE ALL ON pg_hba_file_rules FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION pg_hba_file_rules() FROM PUBLIC;
 
 CREATE VIEW pg_timezone_abbrevs AS
@@ -552,7 +621,7 @@ CREATE VIEW pg_timezone_names AS
 CREATE VIEW pg_config AS
     SELECT * FROM pg_config();
 
-REVOKE ALL on pg_config FROM PUBLIC;
+REVOKE ALL ON pg_config FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION pg_config() FROM PUBLIC;
 
 CREATE VIEW pg_shmem_allocations AS
@@ -598,7 +667,7 @@ CREATE VIEW pg_stat_all_tables_internal AS
     FROM pg_class C LEFT JOIN
          pg_index I ON C.oid = I.indrelid
          LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace)
-    WHERE C.relkind IN ('r', 't', 'm')
+    WHERE C.relkind IN ('r', 't', 'm', 'p')
     GROUP BY C.oid, N.nspname, C.relname;
 
 -- Gather data from segments on user tables, and use data on coordinator on system tables.
@@ -686,7 +755,7 @@ CREATE VIEW pg_stat_xact_all_tables AS
     FROM pg_class C LEFT JOIN
          pg_index I ON C.oid = I.indrelid
          LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace)
-    WHERE C.relkind IN ('r', 't', 'm')
+    WHERE C.relkind IN ('r', 't', 'm', 'p')
     GROUP BY C.oid, N.nspname, C.relname;
 
 CREATE VIEW pg_stat_sys_tables AS
@@ -878,6 +947,7 @@ CREATE VIEW pg_stat_activity AS
             S.state,
             S.backend_xid,
             s.backend_xmin,
+            S.queryid,
             S.query,
             S.backend_type,
 
@@ -1014,6 +1084,20 @@ CREATE VIEW pg_stat_wal_receiver AS
             s.conninfo
     FROM pg_stat_get_wal_receiver() s
     WHERE s.pid IS NOT NULL;
+
+CREATE VIEW pg_stat_prefetch_recovery AS
+    SELECT
+            s.stats_reset,
+            s.prefetch,
+            s.skip_hit,
+            s.skip_new,
+            s.skip_fpw,
+            s.skip_seq,
+            s.distance,
+            s.queue_depth,
+	    s.avg_distance,
+	    s.avg_queue_depth
+     FROM pg_stat_get_prefetch_recovery() s;
 
 CREATE VIEW pg_stat_subscription AS
     SELECT
@@ -1557,7 +1641,7 @@ CREATE VIEW pg_user_mappings AS
         JOIN pg_foreign_server S ON (U.umserver = S.oid)
         LEFT JOIN pg_authid A ON (A.oid = U.umuser);
 
-REVOKE ALL on pg_user_mapping FROM public;
+REVOKE ALL ON pg_user_mapping FROM public;
 
 CREATE VIEW pg_replication_origin_status AS
     SELECT *
@@ -1662,6 +1746,16 @@ CREATE OR REPLACE FUNCTION pg_stop_backup (
 CREATE OR REPLACE FUNCTION
   pg_promote(wait boolean DEFAULT true, wait_seconds integer DEFAULT 60)
   RETURNS boolean STRICT VOLATILE LANGUAGE INTERNAL AS 'pg_promote'
+  PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION
+  pg_terminate_backend(pid integer, timeout int8 DEFAULT 0)
+  RETURNS boolean STRICT VOLATILE LANGUAGE INTERNAL AS 'pg_terminate_backend'
+  PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION
+  pg_wait_for_backend_termination(pid integer, timeout int8 DEFAULT 5000)
+  RETURNS boolean STRICT VOLATILE LANGUAGE INTERNAL AS 'pg_wait_for_backend_termination'
   PARALLEL SAFE;
 
 -- legacy definition for compatibility with 9.3

@@ -249,6 +249,7 @@ _readQuery(void)
 	READ_BOOL_FIELD(hasForUpdate);
 	READ_BOOL_FIELD(hasRowSecurity);
 	READ_BOOL_FIELD(canOptSelectLockingClause);
+	READ_BOOL_FIELD(isReturn);
 	READ_NODE_FIELD(cteList);
 	READ_NODE_FIELD(rtable);
 	READ_NODE_FIELD(jointree);
@@ -439,6 +440,40 @@ _readUpdateStmt(void)
 	READ_NODE_FIELD(fromClause);
 	READ_NODE_FIELD(returningList);
 	READ_NODE_FIELD(withClause);
+	READ_DONE();
+}
+
+static ReturnStmt *
+_readReturnStmt(void)
+{
+	READ_LOCALS(ReturnStmt);
+
+	READ_NODE_FIELD(returnval);
+	READ_DONE();
+}
+
+static StatsElem *
+_readStatsElem(void)
+{
+	READ_LOCALS(StatsElem);
+
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(expr);
+	READ_DONE();
+}
+
+static CreateStatsStmt *
+_readCreateStatsStmt(void)
+{
+	READ_LOCALS(CreateStatsStmt);
+
+	READ_NODE_FIELD(defnames);
+	READ_NODE_FIELD(stat_types);
+	READ_NODE_FIELD(exprs);
+	READ_NODE_FIELD(relations);
+	READ_STRING_FIELD(stxcomment);
+	READ_BOOL_FIELD(if_not_exists);
+	READ_BOOL_FIELD(transformed);
 	READ_DONE();
 }
 
@@ -1073,6 +1108,11 @@ _readSplitUpdate(void)
 	READ_INT_FIELD(numHashAttrs);
 	READ_ATTRNUMBER_ARRAY(hashAttnos, local_node->numHashAttrs);
 	READ_OID_ARRAY(hashFuncs, local_node->numHashAttrs);
+
+	READ_NODE_FIELD(policyRelids);
+	READ_NODE_FIELD(policyAttnos);
+	READ_NODE_FIELD(policyFuncs);
+	READ_NODE_FIELD(policyNumSegments);
 
 	ReadCommonPlan(&local_node->plan);
 
@@ -1860,6 +1900,9 @@ readNodeBinary(void)
 			case T_ShareInputScan:
 				return_value = _readShareInputScan();
 				break;
+			case T_ResultCache:
+				return_value = _readResultCache();
+				break;
 			case T_Sort:
 				return_value = _readSort();
 				break;
@@ -2333,6 +2376,9 @@ readNodeBinary(void)
 			case T_UpdateStmt:
 				return_value = _readUpdateStmt();
 				break;
+			case T_ReturnStmt:
+				return_value = _readReturnStmt();
+				break;
 			case T_ColumnDef:
 				return_value = _readColumnDef();
 				break;
@@ -2350,6 +2396,12 @@ readNodeBinary(void)
 				break;
 			case T_IndexElem:
 				return_value = _readIndexElem();
+				break;
+			case T_StatsElem:
+				return_value = _readStatsElem();
+				break;
+			case T_CreateStatsStmt:
+				return_value = _readCreateStatsStmt();
 				break;
 			case T_Query:
 				return_value = _readQuery();
@@ -2398,6 +2450,9 @@ readNodeBinary(void)
 				break;
 			case T_ColumnRef:
 				return_value = _readColumnRef();
+				break;
+			case T_ParamRef:
+				return_value = _readParamRef();
 				break;
 			case T_A_Const:
 				return_value = _readAConst();
