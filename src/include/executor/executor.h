@@ -690,7 +690,6 @@ extern void CheckCmdReplicaIdentity(Relation rel, CmdType cmd);
 extern void CheckSubscriptionRelkind(char relkind, const char *nspname,
 									 const char *relname);
 
-<<<<<<< HEAD
 extern void fake_outer_params(JoinState *node);
 extern void ExecPrefetchQual(JoinState *node, bool isJoinQual);
 
@@ -706,7 +705,7 @@ extern ResultRelInfo *slot_get_partition(TupleTableSlot *slot, EState *estate, b
 
 extern void
 change_varattnos_of_a_varno(Node *node, const AttrMap *newattno, Index varno);
-=======
+
 /*
  * prototypes from functions in nodeModifyTable.c
  */
@@ -718,5 +717,4 @@ extern ResultRelInfo *ExecLookupResultRelByOid(ModifyTableState *node,
 											   bool missing_ok,
 											   bool update_cache);
 
->>>>>>> 8ff1c94649f
 #endif							/* EXECUTOR_H  */
