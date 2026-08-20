@@ -1000,13 +1000,11 @@
 /* Define to 1 to build with LLVM based JIT support. (--with-llvm) */
 #undef USE_LLVM
 
-<<<<<<< HEAD
 /* Define to 1 to build with Mapreduce capabilities (--enable-mapreduce) */
 #undef USE_MAPREDUCE
-=======
+
 /* Define to 1 to build with LZ4 support. (--with-lz4) */
 #undef USE_LZ4
->>>>>>> 8ff1c94649f
 
 /* Define to select named POSIX semaphores. */
 #undef USE_NAMED_POSIX_SEMAPHORES
