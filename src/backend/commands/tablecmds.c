@@ -73,11 +73,8 @@
 #include "commands/typecmds.h"
 #include "commands/user.h"
 #include "executor/executor.h"
-<<<<<<< HEAD
 #include "executor/instrument.h"
-=======
 #include "foreign/fdwapi.h"
->>>>>>> 8ff1c94649f
 #include "foreign/foreign.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -2259,13 +2256,8 @@ ExecuteTruncate(TruncateStmt *stmt)
 					 errhint("Do not specify the ONLY keyword, or use TRUNCATE ONLY on the partitions directly.")));
 	}
 
-<<<<<<< HEAD
-	ExecuteTruncateGuts(rels, relids, relids_logged,
-						stmt->behavior, stmt->restart_seqs, stmt);
-=======
 	ExecuteTruncateGuts(rels, relids, relids_extra, relids_logged,
-						stmt->behavior, stmt->restart_seqs);
->>>>>>> 8ff1c94649f
+						stmt->behavior, stmt->restart_seqs, stmt);
 
 	/* And close the rels */
 	foreach(cell, rels)
@@ -2291,16 +2283,12 @@ ExecuteTruncate(TruncateStmt *stmt)
  * but the existing callers have this information handy in this form.
  */
 void
-<<<<<<< HEAD
-ExecuteTruncateGuts(List *explicit_rels, List *relids, List *relids_logged,
-					DropBehavior behavior, bool restart_seqs, TruncateStmt *stmt)
-=======
 ExecuteTruncateGuts(List *explicit_rels,
 					List *relids,
 					List *relids_extra,
 					List *relids_logged,
-					DropBehavior behavior, bool restart_seqs)
->>>>>>> 8ff1c94649f
+					DropBehavior behavior, bool restart_seqs,
+					TruncateStmt *stmt)
 {
 	List	   *rels;
 	List	   *seq_relids = NIL;
@@ -2349,12 +2337,8 @@ ExecuteTruncateGuts(List *explicit_rels,
 				truncate_check_activity(rel);
 				rels = lappend(rels, rel);
 				relids = lappend_oid(relids, relid);
-<<<<<<< HEAD
-
-=======
 				relids_extra = lappend_int(relids_extra,
 										   TRUNCATE_REL_CONTEXT_CASCADING);
->>>>>>> 8ff1c94649f
 				/* Log this relation only if needed for logical decoding */
 				if (RelationIsLogicallyLogged(rel))
 					relids_logged = lappend_oid(relids_logged, relid);
@@ -2481,9 +2465,24 @@ ExecuteTruncateGuts(List *explicit_rels,
 		 */
 		if (rel->rd_rel->relkind == RELKIND_FOREIGN_TABLE)
 		{
-			Oid			serverid = GetForeignServerIdByRelId(RelationGetRelid(rel));
+			Oid			serverid;
 			bool		found;
 			ForeignTruncateInfo *ft_info;
+
+			/*
+			 * GGDB: The QD dispatches the TRUNCATE statement to the QEs,
+			 * which re-enter this function for the same relations.  Unlike
+			 * INSERT, where every segment contributes its own slice of the
+			 * data, TRUNCATE is not partitionable: each segment would
+			 * truncate the very same foreign data over its own connection,
+			 * contending for the same locks in the external data source.  So
+			 * truncate foreign tables on the QD only, whatever the table's
+			 * mpp_execute setting is.
+			 */
+			if (Gp_role == GP_ROLE_EXECUTE)
+				continue;
+
+			serverid = GetForeignServerIdByRelId(RelationGetRelid(rel));
 
 			/* First time through, initialize hashtable for foreign tables */
 			if (!ft_htab)
@@ -2586,35 +2585,6 @@ ExecuteTruncateGuts(List *explicit_rels,
 		pgstat_count_truncate(rel);
 	}
 
-<<<<<<< HEAD
-	if (Gp_role == GP_ROLE_DISPATCH && stmt)
-	{
-		ListCell	*lc;
-
-		Assert(GetAssignedOidsForDispatch() == NIL);
-		CdbDispatchUtilityStatement((Node *) stmt,
-									DF_CANCEL_ON_ERROR |
-									DF_WITH_SNAPSHOT |
-									DF_NEED_TWO_PHASE,
-									NIL,
-									NULL);
-
-		/* MPP-6929: metadata tracking */
-		foreach(lc, rels)
-		{
-			Relation	rel = lfirst(lc);
-
-			MetaTrackUpdObject(RelationRelationId,
-							   RelationGetRelid(rel),
-							   GetUserId(),
-							   "VACUUM", "TRUNCATE");
-
-			MetaTrackUpdObject(RelationRelationId,
-							   RelationGetRelid(rel),
-							   GetUserId(),
-							   "TRUNCATE", "");
-		}
-=======
 	/* Now go through the hash table, and truncate foreign tables */
 	if (ft_htab)
 	{
@@ -2643,7 +2613,35 @@ ExecuteTruncateGuts(List *explicit_rels,
 			hash_destroy(ft_htab);
 		}
 		PG_END_TRY();
->>>>>>> 8ff1c94649f
+	}
+
+	if (Gp_role == GP_ROLE_DISPATCH && stmt)
+	{
+		ListCell	*lc;
+
+		Assert(GetAssignedOidsForDispatch() == NIL);
+		CdbDispatchUtilityStatement((Node *) stmt,
+									DF_CANCEL_ON_ERROR |
+									DF_WITH_SNAPSHOT |
+									DF_NEED_TWO_PHASE,
+									NIL,
+									NULL);
+
+		/* MPP-6929: metadata tracking */
+		foreach(lc, rels)
+		{
+			Relation	rel = lfirst(lc);
+
+			MetaTrackUpdObject(RelationRelationId,
+							   RelationGetRelid(rel),
+							   GetUserId(),
+							   "VACUUM", "TRUNCATE");
+
+			MetaTrackUpdObject(RelationRelationId,
+							   RelationGetRelid(rel),
+							   GetUserId(),
+							   "TRUNCATE", "");
+		}
 	}
 
 	/*
@@ -2736,14 +2734,6 @@ truncate_check_rel(Oid relid, Form_pg_class reltuple)
 	 * latter are only being included here for the following checks; no
 	 * physical truncation will occur in their case.).
 	 */
-<<<<<<< HEAD
-	if (reltuple->relkind != RELKIND_RELATION &&
-		reltuple->relkind != RELKIND_PARTITIONED_TABLE &&
-		(!IsBinaryUpgrade || (
-			reltuple->relkind != RELKIND_AOSEGMENTS &&
-			reltuple->relkind != RELKIND_AOBLOCKDIR &&
-			reltuple->relkind != RELKIND_AOVISIMAP)))
-=======
 	if (reltuple->relkind == RELKIND_FOREIGN_TABLE)
 	{
 		Oid			serverid = GetForeignServerIdByRelId(relid);
@@ -2756,8 +2746,11 @@ truncate_check_rel(Oid relid, Form_pg_class reltuple)
 							relname)));
 	}
 	else if (reltuple->relkind != RELKIND_RELATION &&
-			 reltuple->relkind != RELKIND_PARTITIONED_TABLE)
->>>>>>> 8ff1c94649f
+			 reltuple->relkind != RELKIND_PARTITIONED_TABLE &&
+			 (!IsBinaryUpgrade || (
+				 reltuple->relkind != RELKIND_AOSEGMENTS &&
+				 reltuple->relkind != RELKIND_AOBLOCKDIR &&
+				 reltuple->relkind != RELKIND_AOVISIMAP)))
 		ereport(ERROR,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 				 errmsg("\"%s\" is not a table", relname)));

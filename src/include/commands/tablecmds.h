@@ -85,17 +85,13 @@ extern void AlterRelationNamespaceInternal(Relation classRel, Oid relOid,
 extern void CheckTableNotInUse(Relation rel, const char *stmt);
 
 extern void ExecuteTruncate(TruncateStmt *stmt);
-<<<<<<< HEAD
-extern void ExecuteTruncateGuts(List *explicit_rels, List *relids, List *relids_logged,
-								DropBehavior behavior, bool restart_seqs, TruncateStmt *stmt);
-=======
 extern void ExecuteTruncateGuts(List *explicit_rels,
 								List *relids,
 								List *relids_extra,
 								List *relids_logged,
 								DropBehavior behavior,
-								bool restart_seqs);
->>>>>>> 8ff1c94649f
+								bool restart_seqs,
+								TruncateStmt *stmt);
 
 extern void SetRelationHasSubclass(Oid relationId, bool relhassubclass);
 

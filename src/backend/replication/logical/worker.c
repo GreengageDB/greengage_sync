@@ -1877,18 +1877,14 @@ apply_handle_truncate(StringInfo s)
 	 * to replaying changes without further cascading. This might be later
 	 * changeable with a user specified option.
 	 */
-<<<<<<< HEAD
-	ExecuteTruncateGuts(rels, relids, relids_logged, DROP_RESTRICT, restart_seqs,
-						NULL);
-
-=======
 	ExecuteTruncateGuts(rels,
 						relids,
 						relids_extra,
 						relids_logged,
 						DROP_RESTRICT,
-						restart_seqs);
->>>>>>> 8ff1c94649f
+						restart_seqs,
+						NULL);
+
 	foreach(lc, remote_rels)
 	{
 		LogicalRepRelMapEntry *rel = lfirst(lc);
