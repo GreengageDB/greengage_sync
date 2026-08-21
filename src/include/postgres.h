@@ -250,57 +250,7 @@ typedef struct
 #define SET_VARTAG_1B_E(PTR,tag) \
 	(((varattrib_1b_e *) (PTR))->va_header = 0x80, \
 	 ((varattrib_1b_e *) (PTR))->va_tag = (tag))
-<<<<<<< HEAD
 
-#define VARHDRSZ_SHORT			offsetof(varattrib_1b, va_data)
-#define VARATT_SHORT_MAX		0x7F
-#define VARATT_CAN_MAKE_SHORT(PTR) \
-	(VARATT_IS_4B_U(PTR) && \
-	 (VARSIZE(PTR) - VARHDRSZ + VARHDRSZ_SHORT) <= VARATT_SHORT_MAX)
-#define VARATT_CONVERTED_SHORT_SIZE(PTR) \
-	(VARSIZE(PTR) - VARHDRSZ + VARHDRSZ_SHORT)
-
-/* In Postgres, this is 2, but in GPDB, it's 4, due to padding */
-#define VARHDRSZ_EXTERNAL		offsetof(varattrib_1b_e, va_data)
-
-=======
-
-#else							/* !WORDS_BIGENDIAN */
-
-#define VARATT_IS_4B(PTR) \
-	((((varattrib_1b *) (PTR))->va_header & 0x01) == 0x00)
-#define VARATT_IS_4B_U(PTR) \
-	((((varattrib_1b *) (PTR))->va_header & 0x03) == 0x00)
-#define VARATT_IS_4B_C(PTR) \
-	((((varattrib_1b *) (PTR))->va_header & 0x03) == 0x02)
-#define VARATT_IS_1B(PTR) \
-	((((varattrib_1b *) (PTR))->va_header & 0x01) == 0x01)
-#define VARATT_IS_1B_E(PTR) \
-	((((varattrib_1b *) (PTR))->va_header) == 0x01)
-#define VARATT_NOT_PAD_BYTE(PTR) \
-	(*((uint8 *) (PTR)) != 0)
-
-/* VARSIZE_4B() should only be used on known-aligned data */
-#define VARSIZE_4B(PTR) \
-	((((varattrib_4b *) (PTR))->va_4byte.va_header >> 2) & 0x3FFFFFFF)
-#define VARSIZE_1B(PTR) \
-	((((varattrib_1b *) (PTR))->va_header >> 1) & 0x7F)
-#define VARTAG_1B_E(PTR) \
-	(((varattrib_1b_e *) (PTR))->va_tag)
-
-#define SET_VARSIZE_4B(PTR,len) \
-	(((varattrib_4b *) (PTR))->va_4byte.va_header = (((uint32) (len)) << 2))
-#define SET_VARSIZE_4B_C(PTR,len) \
-	(((varattrib_4b *) (PTR))->va_4byte.va_header = (((uint32) (len)) << 2) | 0x02)
-#define SET_VARSIZE_1B(PTR,len) \
-	(((varattrib_1b *) (PTR))->va_header = (((uint8) (len)) << 1) | 0x01)
-#define SET_VARTAG_1B_E(PTR,tag) \
-	(((varattrib_1b_e *) (PTR))->va_header = 0x01, \
-	 ((varattrib_1b_e *) (PTR))->va_tag = (tag))
-
-#endif							/* WORDS_BIGENDIAN */
-
->>>>>>> 8ff1c94649f
 #define VARDATA_4B(PTR)		(((varattrib_4b *) (PTR))->va_4byte.va_data)
 #define VARDATA_4B_C(PTR)	(((varattrib_4b *) (PTR))->va_compressed.va_data)
 #define VARDATA_1B(PTR)		(((varattrib_1b *) (PTR))->va_data)
@@ -310,6 +260,7 @@ typedef struct
  * Externally visible TOAST macros begin here.
  */
 
+/* In Postgres, this is 2, but in GPDB, it's 4, due to padding */
 #define VARHDRSZ_EXTERNAL		offsetof(varattrib_1b_e, va_data)
 #define VARHDRSZ_COMPRESSED		offsetof(varattrib_4b, va_compressed.va_data)
 #define VARHDRSZ_SHORT			offsetof(varattrib_1b, va_data)
