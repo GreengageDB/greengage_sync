@@ -3346,6 +3346,18 @@ relation_needs_vacanalyze(Oid relid,
 				Form_pg_class childclass;
 
 				childtuple = SearchSysCache1(RELOID, ObjectIdGetDatum(childOID));
+
+				/*
+				 * The child may have been dropped concurrently: we found it
+				 * in pg_inherits under our catalog snapshot, but autovacuum
+				 * held no lock on it until find_all_inheritors() above, so
+				 * the syscache lookup can come up empty.  Just skip it.
+				 * (Upstream removed this whole loop in 0e69f705cc1a for
+				 * exactly this reason.)
+				 */
+				if (!HeapTupleIsValid(childtuple))
+					continue;
+
 				childclass = (Form_pg_class) GETSTRUCT(childtuple);
 
 				/* Skip a partitioned table and foreign partitions */

@@ -57,7 +57,7 @@ SELECT ctid,cmin,* FROM combocidtest;
  (0,2) |    1 |      2 |        
 (2 rows)
 
--- Test combo cids with portals
+-- Test combo CIDs with portals
 BEGIN;
 INSERT INTO combocidtest VALUES (333);
 -- In GPDB, the cursor starts executing in the segments as soon as the
@@ -108,10 +108,6 @@ SELECT ctid,cmin,* FROM combocidtest;
 
 SAVEPOINT s1;
 -- this doesn't affect cmin
--- start_ignore
--- GPDB: GPORCA ignores FOR UPDATE, so the FOR UPDATE doesn't consume the CID,
--- which affects the cmin assigned to the UPDATE below.
--- end_ignore
 SELECT ctid,cmin,* FROM combocidtest FOR UPDATE;
  ctid  | cmin | foobar | distkey 
 -------+------+--------+---------

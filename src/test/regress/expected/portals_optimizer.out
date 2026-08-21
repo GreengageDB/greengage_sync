@@ -556,8 +556,6 @@ ROLLBACK;
 -- cursor
 --
 create temp table tt1(f1 int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create function count_tt1_v() returns int8 as
 'select count(*) from tt1' language sql volatile READS SQL DATA;
 create function count_tt1_s() returns int8 as
@@ -815,7 +813,7 @@ SELECT f1, f2 FROM uctest;
   8 | one
 (1 row)
 
---- sensitive cursors can't currently scroll back, so this is an error:
+--- FOR UPDATE cursors can't currently scroll back, so this is an error:
 FETCH RELATIVE 0 FROM c1;
 ERROR:  cursor can only scan forward
 HINT:  Declare it with SCROLL option to enable backward scan.
@@ -827,6 +825,41 @@ SELECT f1, f2 FROM uctest;
   8 | one
 (2 rows)
 
+-- Check insensitive cursor with INSERT
+-- (The above tests don't test the SQL notion of an insensitive cursor
+-- correctly, because per SQL standard, changes from WHERE CURRENT OF
+-- commands should be visible in the cursor.  So here we make the
+-- changes with a command that is independent of the cursor.)
+BEGIN;
+DECLARE c1 INSENSITIVE CURSOR FOR SELECT * FROM uctest;
+INSERT INTO uctest VALUES (10, 'ten');
+FETCH NEXT FROM c1;
+ f1 |  f2   | distkey 
+----+-------+---------
+  3 | three | 
+(1 row)
+
+FETCH NEXT FROM c1;
+ f1 | f2  | distkey 
+----+-----+---------
+  8 | one | 
+(1 row)
+
+FETCH NEXT FROM c1;  -- insert not visible
+ f1 | f2 | distkey 
+----+----+---------
+(0 rows)
+
+COMMIT;
+SELECT * FROM uctest;
+ f1 |  f2   | distkey 
+----+-------+---------
+  3 | three | 
+  8 | one   | 
+ 10 | ten   | 
+(3 rows)
+
+DELETE FROM uctest WHERE f1 = 10;  -- restore test table state
 -- Check inheritance cases
 CREATE TEMP TABLE ucchild () inherits (uctest);
 NOTICE:  table has parent, setting distribution columns to match parent table
@@ -977,8 +1010,8 @@ COMMIT;
 BEGIN;
 EXPLAIN (costs off)
 DECLARE c1 CURSOR FOR SELECT stringu1 FROM onek WHERE stringu1 = 'DZAAAA';
-                      QUERY PLAN                       
--------------------------------------------------------
+                   QUERY PLAN                    
+-------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Index Scan using onek_stringu1 on onek
          Index Cond: (stringu1 = 'DZAAAA'::name)
@@ -1005,8 +1038,6 @@ ROLLBACK;
 -- as per bug #15395
 BEGIN;
 CREATE TABLE current_check (currentid int, payload text);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'currentid' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE current_check_1 () INHERITS (current_check);
 NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE current_check_2 () INHERITS (current_check);
@@ -1018,7 +1049,7 @@ DECLARE c1 SCROLL CURSOR FOR SELECT * FROM current_check;
 FETCH ABSOLUTE 12 FROM c1;
  currentid | payload 
 -----------+---------
-        10 | P10
+         5 | p5
 (1 row)
 
 FETCH ABSOLUTE 8 FROM c1;
@@ -1056,8 +1087,6 @@ ROLLBACK;
 BEGIN;
 SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 CREATE TABLE cursor (a int, b int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO cursor VALUES (1, 1);
 DECLARE c1 NO SCROLL CURSOR FOR SELECT * FROM cursor FOR UPDATE;
 UPDATE cursor SET b = 2;
@@ -1083,11 +1112,11 @@ create function nochange(int) returns int
 declare c cursor for select * from int8_tbl limit nochange(3);
 -- start_ignore
 fetch all from c;
-        q1        |        q2         
-------------------+-------------------
- 4567890123456789 |               123
- 4567890123456789 |  4567890123456789
- 4567890123456789 | -4567890123456789
+        q1        |        q2        
+------------------+------------------
+              123 |              456
+              123 | 4567890123456789
+ 4567890123456789 |              123
 (3 rows)
 
 -- end_ignore
@@ -1163,8 +1192,6 @@ rollback;
 -- Assert failure:
 -- DETAIL:  FailedAssertion("!(!((heap)->bh_size == 0) && heap->bh_has_heap_property)", File: "binaryheap.c", Line: 161)
 CREATE TABLE foo1_tbl (a int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO foo1_tbl values(2);
 BEGIN;
 DECLARE foo1 CURSOR WITH HOLD FOR SELECT * FROM foo1_tbl ORDER BY a;
