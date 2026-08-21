@@ -3745,11 +3745,8 @@ _copyQuery(const Query *from)
 	COPY_SCALAR_FIELD(hasModifyingCTE);
 	COPY_SCALAR_FIELD(hasForUpdate);
 	COPY_SCALAR_FIELD(hasRowSecurity);
-<<<<<<< HEAD
 	COPY_SCALAR_FIELD(canOptSelectLockingClause);
-=======
 	COPY_SCALAR_FIELD(isReturn);
->>>>>>> 8ff1c94649f
 	COPY_NODE_FIELD(cteList);
 	COPY_NODE_FIELD(rtable);
 	COPY_NODE_FIELD(jointree);
