@@ -166,7 +166,9 @@ static Datum CopyReadBinaryAttribute(CopyFromState cstate, FmgrInfo *flinfo,
 /* Low-level communications functions */
 static inline bool CopyGetInt32(CopyFromState cstate, int32 *val);
 static inline bool CopyGetInt16(CopyFromState cstate, int16 *val);
+static void CopyLoadRawBuf(CopyFromState cstate);
 static void CopyLoadInputBuf(CopyFromState cstate);
+static void CopyConsumeBadInputLine(CopyFromState cstate);
 static int	CopyReadBinaryData(CopyFromState cstate, char *dest, int nbytes);
 
 void
@@ -535,6 +537,303 @@ CopyConvertBuf(CopyFromState cstate)
 }
 
 /*
+ * GPDB: one step of CopyReadLineText's CSV quote/escape tracking.  Used by
+ * CopyConsumeBadInputLine() to replay/continue the quoting state of the
+ * current line.  Must match the corresponding logic in CopyReadLineText().
+ */
+static inline void
+CopyCSVQuoteStep(char c, char quotec, char escapec,
+				 bool *in_quote, bool *last_was_esc)
+{
+	if (*in_quote && c == escapec)
+		*last_was_esc = !*last_was_esc;
+	if (c == quotec && !*last_was_esc)
+		*in_quote = !*in_quote;
+	if (c != escapec)
+		*last_was_esc = false;
+}
+
+/*
+ * GPDB: helper for CopyConsumeBadInputLine().  Flush the scanned raw
+ * segment [*segstart, *pos) to line_buf, consume it from the pipeline, and
+ * load more raw data.  On return, *pos and *segstart point at the first
+ * not-yet-scanned byte (the buffer contents may have moved).
+ */
+static void
+CopyConsumeBadRefill(CopyFromState cstate, int *pos, int *segstart)
+{
+	if (*pos > *segstart)
+		appendBinaryStringInfo(&cstate->line_buf,
+							   cstate->raw_buf + *segstart,
+							   *pos - *segstart);
+
+	/* consume the flushed bytes */
+	cstate->raw_buf_index = *pos;
+	if (cstate->raw_buf == cstate->input_buf)
+	{
+		/*
+		 * input_buf aliases raw_buf: mark the consumed bytes as verified,
+		 * to keep the aliased state coherent (see CopyLoadRawBuf's
+		 * assertions).
+		 */
+		cstate->input_buf_index = *pos;
+		cstate->input_buf_len = *pos;
+	}
+
+	CopyLoadRawBuf(cstate);
+	*pos = *segstart = cstate->raw_buf_index;
+}
+
+/*
+ * GPDB: single-row error handling (SREH) support for encoding
+ * verification/conversion errors.
+ *
+ * The upstream pipeline verifies/converts the input in chunks
+ * (CopyConvertBuf), before line splitting.  When it hits an invalid byte
+ * sequence it reports an error without consuming the offending bytes.
+ * That is fine for the all-or-nothing upstream behavior, but under SREH
+ * the error is caught (HandleCopyError) and NextCopyFrom() retries: the
+ * retry would hit the very same bytes again and make no forward progress,
+ * rejecting a phantom (empty) row with an ever-increasing line number on
+ * each retry, until the reject limit kills the COPY.
+ *
+ * To restore the pre-PG14, per-line conversion semantics, this function
+ * attributes the error to the physical input line that contains the
+ * offending byte sequence:
+ *
+ * 1. It appends to line_buf the not-yet-consumed bytes of the current
+ *    line: first the already-verified bytes still in input_buf, then the
+ *    raw (unverified/unconverted) bytes up to, but excluding, the line
+ *    terminator (or EOF).  HandleCopyError then logs line_buf as the
+ *    rejected row, under the current line number.
+ *
+ * 2. It consumes that line, terminator included, from the pipeline
+ *    (raw_buf/input_buf), and clears input_reached_error, so that
+ *    verification resumes at the start of the next line and the retry
+ *    makes forward progress.
+ *
+ * The terminator search mirrors CopyReadLineText's GPDB semantics: the
+ * line ends only at the configured/detected EOL (bare \r or \n are data
+ * in EOL_CRNL mode, etc.), quoted CSV fields may contain newlines (the
+ * quoting state of the line's already-consumed prefix is replayed), and
+ * in text mode a backslash escapes the following byte.
+ *
+ * Note: in the transcoding case, the already-converted prefix of the line
+ * (in line_buf/input_buf) is in the server encoding; its raw bytes have
+ * already been consumed from raw_buf and are no longer available.  The
+ * logged row is therefore the converted prefix plus the raw tail.  The
+ * row is logged with is_server_enc = false (raw bytes), which is accurate
+ * for the offending bytes themselves.
+ */
+static void
+CopyConsumeBadInputLine(CopyFromState cstate)
+{
+	bool		in_quote = false;
+	bool		last_was_esc = false;
+	char		quotec = '\0';
+	char		escapec = '\0';
+	int			pos;
+	int			segstart;
+	int			eol_len = 0;
+
+	if (cstate->opts.csv_mode)
+	{
+		int			i;
+
+		quotec = cstate->opts.quote[0];
+		escapec = cstate->opts.escape[0];
+		/* ignore special escape processing if it's the same as quotec */
+		if (quotec == escapec)
+			escapec = '\0';
+
+		/*
+		 * Replay the CSV quoting state over the part of the line that has
+		 * been read so far, to know whether the raw tail starts inside a
+		 * quoted field.  (The quote/escape characters are ASCII, and both
+		 * the server encoding and the aliased no-transcoding raw data
+		 * cannot embed ASCII-equal bytes in multi-byte characters, so a
+		 * byte-wise replay matches what CopyReadLineText saw.)
+		 */
+		for (i = 0; i < cstate->line_buf.len; i++)
+			CopyCSVQuoteStep(cstate->line_buf.data[i], quotec, escapec,
+							 &in_quote, &last_was_esc);
+		for (i = cstate->input_buf_index; i < cstate->input_buf_len; i++)
+			CopyCSVQuoteStep(cstate->input_buf[i], quotec, escapec,
+							 &in_quote, &last_was_esc);
+	}
+
+	/*
+	 * Transfer the verified-but-unconsumed bytes of the current line to
+	 * line_buf, and consume them.
+	 */
+	if (INPUT_BUF_BYTES(cstate) > 0)
+	{
+		appendBinaryStringInfo(&cstate->line_buf,
+							   cstate->input_buf + cstate->input_buf_index,
+							   INPUT_BUF_BYTES(cstate));
+		cstate->input_buf_index = cstate->input_buf_len;
+	}
+
+	/*
+	 * Find where the offending raw data begins.
+	 */
+	if (!cstate->need_transcoding)
+	{
+		/*
+		 * input_buf aliases raw_buf: everything up to input_buf_len has
+		 * been verified (and, by now, consumed); the invalid byte is at
+		 * offset input_buf_len.  Keep raw_buf_index in sync with
+		 * input_buf_index, like CopyLoadInputBuf does.
+		 */
+		Assert(cstate->raw_buf == cstate->input_buf);
+		cstate->raw_buf_index = cstate->input_buf_index;
+		pos = cstate->raw_buf_index;
+	}
+	else
+	{
+		/* raw_buf_index points at the unconvertible byte sequence. */
+		pos = cstate->raw_buf_index;
+	}
+	segstart = pos;
+
+	/*
+	 * Scan the raw data for the line terminator, loading more data as
+	 * needed.
+	 */
+	for (;;)
+	{
+		char		c;
+
+		if (pos >= cstate->raw_buf_len)
+		{
+			if (cstate->raw_reached_eof)
+				break;			/* the bad line is terminated by EOF */
+			CopyConsumeBadRefill(cstate, &pos, &segstart);
+			continue;
+		}
+
+		c = cstate->raw_buf[pos];
+
+		/*
+		 * '\r' may need a one-byte lookahead for a following '\n', and in
+		 * text mode a backslash escapes the next byte: make sure the next
+		 * byte is available before processing 'c'.  (At EOF, the missing
+		 * lookahead byte reads as the '\0' pad, like in CopyReadLineText.)
+		 */
+		if (((c == '\r' && (cstate->eol_type == EOL_CRNL ||
+							cstate->eol_type == EOL_UNKNOWN)) ||
+			 (c == '\\' && !cstate->opts.csv_mode)) &&
+			pos + 1 >= cstate->raw_buf_len && !cstate->raw_reached_eof)
+		{
+			CopyConsumeBadRefill(cstate, &pos, &segstart);
+			continue;
+		}
+
+		if (cstate->opts.csv_mode)
+		{
+			CopyCSVQuoteStep(c, quotec, escapec, &in_quote, &last_was_esc);
+
+			/*
+			 * Keep the line count in sync for newlines embedded in quoted
+			 * fields, like CopyReadLineText does.
+			 */
+			if (in_quote && c == (cstate->eol_type == EOL_NL ? '\n' : '\r'))
+				cstate->cur_lineno++;
+		}
+
+		if (!cstate->opts.csv_mode || !in_quote)
+		{
+			/* Check for the line terminator */
+			if (c == '\n' &&
+				(cstate->eol_type == EOL_NL ||
+				 cstate->eol_type == EOL_UNKNOWN))
+			{
+				eol_len = 1;
+				break;
+			}
+			if (c == '\r')
+			{
+				if (cstate->eol_type == EOL_CR)
+				{
+					eol_len = 1;
+					break;
+				}
+				if (cstate->eol_type == EOL_CRNL ||
+					cstate->eol_type == EOL_UNKNOWN)
+				{
+					if (pos + 1 < cstate->raw_buf_len &&
+						cstate->raw_buf[pos + 1] == '\n')
+					{
+						eol_len = 2;
+						break;
+					}
+					if (cstate->eol_type == EOL_UNKNOWN)
+					{
+						/* bare CR ends the line, like CopyReadLineText */
+						eol_len = 1;
+						break;
+					}
+					/* EOL_CRNL: a bare \r is data */
+				}
+				/* EOL_NL: a bare \r is data */
+			}
+
+			/*
+			 * In text mode, a backslash escapes the next byte: skip it, so
+			 * that an escaped CR/LF is not taken for the terminator.  A
+			 * backslash directly followed by the line terminator ends the
+			 * line, with the backslash as data (like CopyReadLineText, see
+			 * github issue 12454): the terminator branch above handles that
+			 * on the next iteration.
+			 */
+			if (c == '\\' && !cstate->opts.csv_mode &&
+				pos + 1 < cstate->raw_buf_len)
+			{
+				char		c2 = cstate->raw_buf[pos + 1];
+
+				if (c2 != '\n' && c2 != '\r')
+					pos++;		/* skip the escaped byte too */
+			}
+		}
+
+		pos++;
+	}
+
+	/*
+	 * Transfer the rest of the line to line_buf, excluding the terminator,
+	 * and consume the line, terminator included.
+	 */
+	if (pos > segstart)
+		appendBinaryStringInfo(&cstate->line_buf,
+							   cstate->raw_buf + segstart,
+							   pos - segstart);
+
+	pos += eol_len;
+	Assert(pos <= cstate->raw_buf_len);
+	cstate->raw_buf_index = pos;
+	if (cstate->raw_buf == cstate->input_buf)
+	{
+		/*
+		 * Mark the consumed bytes as verified, so that verification
+		 * resumes at the byte after the terminator.
+		 */
+		cstate->input_buf_index = pos;
+		cstate->input_buf_len = pos;
+	}
+
+	/* We have consumed past the error; let conversion resume. */
+	cstate->input_reached_error = false;
+
+	/*
+	 * The rejected row contains raw, unconverted bytes: log it as raw
+	 * bytes (is_server_enc = false), like the pre-PG14 per-line conversion
+	 * model did.
+	 */
+	cstate->line_buf_converted = false;
+	cstate->line_buf_valid = true;
+}
+
+/*
  * Report an encoding or conversion error.
  */
 static void
@@ -542,6 +841,63 @@ CopyConversionError(CopyFromState cstate)
 {
 	Assert(cstate->raw_buf_len > 0);
 	Assert(cstate->input_reached_error);
+
+	/*
+	 * GPDB: under single-row error handling, attribute the error to the
+	 * current physical input line: place the line's raw bytes in line_buf
+	 * for the error handler (HandleCopyError) to log, and consume the line
+	 * so that the next NextCopyFrom() attempt makes forward progress.  See
+	 * CopyConsumeBadInputLine.
+	 *
+	 * The offending bytes must be saved before consuming the line, because
+	 * consuming may shift or overwrite the buffer contents that the error
+	 * report needs.
+	 */
+	if (cstate->cdbsreh)
+	{
+		char		errbytes[64];
+		int			errbyteslen;
+		const char *errsrc;
+
+		if (!cstate->need_transcoding)
+			errsrc = cstate->raw_buf + cstate->input_buf_len;
+		else
+			errsrc = cstate->raw_buf + cstate->raw_buf_index;
+		errbyteslen = Min(cstate->raw_buf_len - (int) (errsrc - cstate->raw_buf),
+						  (int) sizeof(errbytes));
+		Assert(errbyteslen > 0);
+		memcpy(errbytes, errsrc, errbyteslen);
+
+		CopyConsumeBadInputLine(cstate);
+
+		if (!cstate->need_transcoding)
+			report_invalid_encoding(cstate->file_encoding,
+									errbytes, errbyteslen);
+		else
+		{
+			char		dstbuf[sizeof(errbytes) * MAX_CONVERSION_GROWTH + 1];
+
+			/*
+			 * Have the conversion routine throw the error, for a more
+			 * specific error message.  The saved bytes begin at the
+			 * unconvertible byte sequence, so it reports right away.
+			 */
+			(void) pg_do_encoding_conversion_buf(cstate->conversion_proc,
+												 cstate->file_encoding,
+												 GetDatabaseEncoding(),
+												 (unsigned char *) errbytes,
+												 errbyteslen,
+												 (unsigned char *) dstbuf,
+												 sizeof(dstbuf),
+												 false);
+
+			/*
+			 * The conversion routine should have reported an error, so
+			 * this should not be reached.
+			 */
+			elog(ERROR, "encoding conversion failed without error");
+		}
+	}
 
 	if (!cstate->need_transcoding)
 	{
@@ -1500,7 +1856,14 @@ HandleQDErrorFrame(CopyFromState cstate, char *p, int len)
 	cdbsreh->linenumber = errframe.lineno;
 	cdbsreh->rawdata->cursor = 0;
 	cdbsreh->rawdata->data = line;
-	cdbsreh->rawdata->len = strlen(line);
+
+	/*
+	 * GPDB: use the transmitted length, not strlen(): when the rejected
+	 * line was an encoding error, the raw bytes may contain embedded NUL
+	 * bytes, and strlen() would truncate the logged data at the first
+	 * one.
+	 */
+	cdbsreh->rawdata->len = errframe.line_len;
 	cdbsreh->errmsg = errormsg;
 	cdbsreh->is_server_enc = errframe.line_buf_converted;
 
