@@ -89,10 +89,7 @@ extern GroupResultPath *create_group_result_path(PlannerInfo *root,
 												 RelOptInfo *rel,
 												 PathTarget *target,
 												 List *havingqual);
-<<<<<<< HEAD
 extern MaterialPath *create_material_path(PlannerInfo *root, RelOptInfo *rel, Path *subpath);
-=======
-extern MaterialPath *create_material_path(RelOptInfo *rel, Path *subpath);
 extern ResultCachePath *create_resultcache_path(PlannerInfo *root,
 												RelOptInfo *rel,
 												Path *subpath,
@@ -100,7 +97,6 @@ extern ResultCachePath *create_resultcache_path(PlannerInfo *root,
 												List *hash_operators,
 												bool singlerow,
 												double calls);
->>>>>>> 8ff1c94649f
 extern UniquePath *create_unique_path(PlannerInfo *root, RelOptInfo *rel,
 									  Path *subpath, SpecialJoinInfo *sjinfo);
 extern UniquePath *create_unique_rowid_path(PlannerInfo *root,
