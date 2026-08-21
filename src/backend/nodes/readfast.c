@@ -249,6 +249,7 @@ _readQuery(void)
 	READ_BOOL_FIELD(hasForUpdate);
 	READ_BOOL_FIELD(hasRowSecurity);
 	READ_BOOL_FIELD(canOptSelectLockingClause);
+	READ_BOOL_FIELD(isReturn);
 	READ_NODE_FIELD(cteList);
 	READ_NODE_FIELD(rtable);
 	READ_NODE_FIELD(jointree);
@@ -2605,6 +2606,18 @@ readNodeBinary(void)
 				break;
 			case T_RowIdExpr:
 				return_value = _readRowIdExpr();
+				break;
+			case T_StatsElem:
+				return_value = _readStatsElem();
+				break;
+			case T_RowIdentityVarInfo:
+				return_value = _readRowIdentityVarInfo();
+				break;
+			case T_ResultCache:
+				return_value = _readResultCache();
+				break;
+			case T_ReturnStmt:
+				return_value = _readReturnStmt();
 				break;
 			default:
 				return_value = NULL; /* keep the compiler silent */

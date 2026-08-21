@@ -340,11 +340,8 @@ _readQuery(void)
 	READ_BOOL_FIELD(hasModifyingCTE);
 	READ_BOOL_FIELD(hasForUpdate);
 	READ_BOOL_FIELD(hasRowSecurity);
-<<<<<<< HEAD
 	READ_BOOL_FIELD(canOptSelectLockingClause);
-=======
 	READ_BOOL_FIELD(isReturn);
->>>>>>> 8ff1c94649f
 	READ_NODE_FIELD(cteList);
 	READ_NODE_FIELD(rtable);
 	READ_NODE_FIELD(jointree);
@@ -2522,12 +2519,8 @@ _readPlannedStmt(void)
 	READ_BITMAPSET_FIELD(rewindPlanIDs);
 	READ_NODE_FIELD(rowMarks);
 	READ_NODE_FIELD(relationOids);
-<<<<<<< HEAD
-	READ_NODE_FIELD(partitionOids);
 	/* invalItems not serialized in binary mode */
 #ifndef COMPILING_BINARY_FUNCS
-=======
->>>>>>> 8ff1c94649f
 	READ_NODE_FIELD(invalItems);
 #endif /* COMPILING_BINARY_FUNCS */
 	READ_NODE_FIELD(paramExecTypes);

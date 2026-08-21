@@ -356,15 +356,11 @@ _outPlannedStmt(StringInfo str, const PlannedStmt *node)
 	WRITE_BITMAPSET_FIELD(rewindPlanIDs);
 	WRITE_NODE_FIELD(rowMarks);
 	WRITE_NODE_FIELD(relationOids);
-<<<<<<< HEAD
-	WRITE_NODE_FIELD(partitionOids);
 	/*
 	 * Don't serialize invalItems when dispatching. The TIDs of the invalidated items wouldn't
 	 * make sense in segments.
 	 */
 #ifndef COMPILING_BINARY_FUNCS
-=======
->>>>>>> 8ff1c94649f
 	WRITE_NODE_FIELD(invalItems);
 #endif /* COMPILING_BINARY_FUNCS */
 	WRITE_NODE_FIELD(paramExecTypes);
@@ -3076,15 +3072,10 @@ _outRestrictInfo(StringInfo str, const RestrictInfo *node)
 	WRITE_BOOL_FIELD(outerjoin_delayed);
 	WRITE_BOOL_FIELD(can_join);
 	WRITE_BOOL_FIELD(pseudoconstant);
-<<<<<<< HEAD
     WRITE_BOOL_FIELD(leakproof);
+	WRITE_ENUM_FIELD(has_volatile, VolatileFunctionStatus);
     WRITE_UINT_FIELD(security_level);
 	WRITE_BOOL_FIELD(contain_outer_query_references);
-=======
-	WRITE_BOOL_FIELD(leakproof);
-	WRITE_ENUM_FIELD(has_volatile, VolatileFunctionStatus);
-	WRITE_UINT_FIELD(security_level);
->>>>>>> 8ff1c94649f
 	WRITE_BITMAPSET_FIELD(clause_relids);
 	WRITE_BITMAPSET_FIELD(required_relids);
 	WRITE_BITMAPSET_FIELD(outer_relids);
@@ -4393,8 +4384,15 @@ _outIndexElem(StringInfo str, const IndexElem *node)
 	WRITE_ENUM_FIELD(nulls_ordering, SortByNulls);
 }
 
+static void _outStatsElem(StringInfo str, const StatsElem *node)
+{
+	WRITE_NODE_TYPE("STATSELEM");
+
+	WRITE_STRING_FIELD(name);
+	WRITE_NODE_FIELD(expr);
+}
+
 static void
-<<<<<<< HEAD
 _outVariableSetStmt(StringInfo str, const VariableSetStmt *node)
 {
 	WRITE_NODE_TYPE("VARIABLESETSTMT");
@@ -4406,16 +4404,6 @@ _outVariableSetStmt(StringInfo str, const VariableSetStmt *node)
 }
 
 #ifndef COMPILING_BINARY_FUNCS
-=======
-_outStatsElem(StringInfo str, const StatsElem *node)
-{
-	WRITE_NODE_TYPE("STATSELEM");
-
-	WRITE_STRING_FIELD(name);
-	WRITE_NODE_FIELD(expr);
-}
-
->>>>>>> 8ff1c94649f
 static void
 _outQuery(StringInfo str, const Query *node)
 {
@@ -4513,11 +4501,8 @@ _outQuery(StringInfo str, const Query *node)
 	WRITE_BOOL_FIELD(hasModifyingCTE);
 	WRITE_BOOL_FIELD(hasForUpdate);
 	WRITE_BOOL_FIELD(hasRowSecurity);
-<<<<<<< HEAD
 	WRITE_BOOL_FIELD(canOptSelectLockingClause);
-=======
 	WRITE_BOOL_FIELD(isReturn);
->>>>>>> 8ff1c94649f
 	WRITE_NODE_FIELD(cteList);
 	WRITE_NODE_FIELD(rtable);
 	WRITE_NODE_FIELD(jointree);
@@ -5838,13 +5823,11 @@ outNode(StringInfo str, const void *obj)
 			case T_Material:
 				_outMaterial(str, obj);
 				break;
-<<<<<<< HEAD
 			case T_ShareInputScan:
 				_outShareInputScan(str, obj);
-=======
+				break;
 			case T_ResultCache:
 				_outResultCache(str, obj);
->>>>>>> 8ff1c94649f
 				break;
 			case T_Sort:
 				_outSort(str, obj);
@@ -6461,7 +6444,6 @@ outNode(StringInfo str, const void *obj)
 			case T_SelectStmt:
 				_outSelectStmt(str, obj);
 				break;
-<<<<<<< HEAD
 			case T_InsertStmt:
 				_outInsertStmt(str, obj);
 				break;
@@ -6473,10 +6455,9 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_Null:
 				_outNull(str, obj);
-=======
+				break;
 			case T_ReturnStmt:
 				_outReturnStmt(str, obj);
->>>>>>> 8ff1c94649f
 				break;
 			case T_PLAssignStmt:
 				_outPLAssignStmt(str, obj);
