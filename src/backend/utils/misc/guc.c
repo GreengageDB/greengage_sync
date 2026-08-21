@@ -1187,12 +1187,6 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	{
-<<<<<<< HEAD
-		{"geqo", PGC_USERSET, DEFUNCT_OPTIONS,
-			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
-            NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-=======
 		{"enable_async_append", PGC_USERSET, QUERY_TUNING_METHOD,
 			gettext_noop("Enables the planner's use of async append plans."),
 			NULL,
@@ -1203,12 +1197,10 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	{
-		{"geqo", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("Enables genetic query optimization."),
-			gettext_noop("This algorithm attempts to do planning without "
-						 "exhaustive searching."),
-			GUC_EXPLAIN
->>>>>>> 8ff1c94649f
+		{"geqo", PGC_USERSET, DEFUNCT_OPTIONS,
+			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
+            NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
 		&defunct_bool,
 		false,

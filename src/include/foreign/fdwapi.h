@@ -284,7 +284,6 @@ typedef struct FdwRoutine
 	/* Support functions for path reparameterization. */
 	ReparameterizeForeignPathByChild_function ReparameterizeForeignPathByChild;
 
-<<<<<<< HEAD
 	/*
 	 * These two callbacks are MPP interface for analyze and
 	 * only invoked by QE.
@@ -295,13 +294,12 @@ typedef struct FdwRoutine
 	 */
 	AcquireSampleRowsFunc AcquireSampleRowsOnSegment;
 	ForeignTableSize_function GetRelationSizeOnSegment;
-=======
+
 	/* Support functions for asynchronous execution */
 	IsForeignPathAsyncCapable_function IsForeignPathAsyncCapable;
 	ForeignAsyncRequest_function ForeignAsyncRequest;
 	ForeignAsyncConfigureWait_function ForeignAsyncConfigureWait;
 	ForeignAsyncNotify_function ForeignAsyncNotify;
->>>>>>> 8ff1c94649f
 } FdwRoutine;
 
 
