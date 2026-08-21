@@ -738,8 +738,14 @@ check_splitupdate(List *tlist, Index result_relation, Relation rel, bool inh)
 		List	   *children;
 		ListCell   *lcc;
 
+		/*
+		 * NoLock: the target root is already locked at the statement's
+		 * rellockmode, which serializes any DDL that could change the
+		 * inheritance tree; children get properly locked during
+		 * inheritance expansion.  We only read catalog entries here.
+		 */
 		children = find_all_inheritors(RelationGetRelid(rel),
-									   AccessShareLock, NULL);
+									   NoLock, NULL);
 		foreach(lcc, children)
 		{
 			Oid			childrelid = lfirst_oid(lcc);
@@ -806,7 +812,8 @@ rel_has_appendoptimized_partition(Relation rel)
 	if (rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE)
 		return false;
 
-	children = find_all_inheritors(RelationGetRelid(rel), AccessShareLock,
+	/* NoLock: see check_splitupdate() */
+	children = find_all_inheritors(RelationGetRelid(rel), NoLock,
 								   NULL);
 	foreach(lc, children)
 	{

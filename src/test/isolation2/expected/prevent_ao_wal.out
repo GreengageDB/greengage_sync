@@ -84,6 +84,15 @@ rmgr: Appendonly  len (rec/tot):     50/    50, tx:        562, lsn: 0/10041940,
 pg_waldump: fatal: error in WAL record at 0/10081FB8: invalid record length at 0/10081FE8: wanted 24, got 0
 
 
+-- PG14 (9de9294b0c4): recovering over WAL generated with wal_level=minimal
+-- is a hard error, so a wal_level=minimal episode permanently breaks an
+-- archive-recovery standby.  Drop the standby coordinator (if any) for the
+-- duration of this test and re-create it afterwards.
+!\retcode psql -At -c "SELECT hostname||' '||port||' '||datadir FROM gp_segment_configuration WHERE content=-1 AND role='m'" postgres > /tmp/prevent_ao_wal_standby.info;
+(exited with code 0)
+!\retcode bash -c 'test -s /tmp/prevent_ao_wal_standby.info && gpinitstandby -ar || true';
+(exited with code 0)
+
 -- *********** Set wal_level=minimal **************
 !\retcode gpconfig -c wal_level -v minimal --masteronly;
 (exited with code 0)
@@ -134,4 +143,10 @@ DROP
 (exited with code 0)
 -- Restart QD
 !\retcode pg_ctl -l /dev/null -D $COORDINATOR_DATA_DIRECTORY restart -w -t 600 -m fast;
+(exited with code 0)
+
+-- Re-create the standby coordinator removed above, if there was one.
+!\retcode bash -c 'test -s /tmp/prevent_ao_wal_standby.info && read h p d < /tmp/prevent_ao_wal_standby.info && rm -rf "$d" && gpinitstandby -a -s "$h" -P "$p" -S "$d" || true';
+(exited with code 0)
+!\retcode rm -f /tmp/prevent_ao_wal_standby.info;
 (exited with code 0)

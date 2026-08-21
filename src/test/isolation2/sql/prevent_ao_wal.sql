@@ -51,6 +51,13 @@
 -- Validate wal records (mirrorless setting has alternative answer file for this since wal_level is already minimal)
 ! last_wal_file=$(psql -At -c "SELECT pg_walfile_name(pg_current_wal_lsn())" postgres) && pg_waldump ${last_wal_file} -p ${COORDINATOR_DATA_DIRECTORY}/pg_wal -r appendonly;
 
+-- PG14 (9de9294b0c4): recovering over WAL generated with wal_level=minimal
+-- is a hard error, so a wal_level=minimal episode permanently breaks an
+-- archive-recovery standby.  Drop the standby coordinator (if any) for the
+-- duration of this test and re-create it afterwards.
+!\retcode psql -At -c "SELECT hostname||' '||port||' '||datadir FROM gp_segment_configuration WHERE content=-1 AND role='m'" postgres > /tmp/prevent_ao_wal_standby.info;
+!\retcode bash -c 'test -s /tmp/prevent_ao_wal_standby.info && gpinitstandby -ar || true';
+
 -- *********** Set wal_level=minimal **************
 !\retcode gpconfig -c wal_level -v minimal --masteronly;
 -- Set max_wal_senders to 0 because a non-zero value requires wal_level >= 'archive'
@@ -83,3 +90,7 @@
 !\retcode gpconfig -r max_wal_senders --masteronly;
 -- Restart QD
 !\retcode pg_ctl -l /dev/null -D $COORDINATOR_DATA_DIRECTORY restart -w -t 600 -m fast;
+
+-- Re-create the standby coordinator removed above, if there was one.
+!\retcode bash -c 'test -s /tmp/prevent_ao_wal_standby.info && read h p d < /tmp/prevent_ao_wal_standby.info && rm -rf "$d" && gpinitstandby -a -s "$h" -P "$p" -S "$d" || true';
+!\retcode rm -f /tmp/prevent_ao_wal_standby.info;

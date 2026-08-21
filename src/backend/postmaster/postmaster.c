@@ -2689,12 +2689,12 @@ retry1:
 			if (EnableHotStandby)
 				ereport(FATAL,
 						(errcode(ERRCODE_CANNOT_CONNECT_NOW),
-						 errmsg("the database system is not yet accepting connections"),
+						 errmsg(POSTMASTER_NOT_YET_ACCEPTING_MSG),
 						 errdetail("Consistent recovery state has not been yet reached.")));
 			else
 				ereport(FATAL,
 						(errcode(ERRCODE_CANNOT_CONNECT_NOW),
-						 errmsg("the database system is not accepting connections"),
+						 errmsg(POSTMASTER_NOT_ACCEPTING_MSG),
 						 errdetail("Hot standby mode is disabled.")));
 			break;
 		case CAC_SHUTDOWN:

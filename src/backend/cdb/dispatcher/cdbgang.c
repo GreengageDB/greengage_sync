@@ -197,6 +197,21 @@ segment_failure_due_to_recovery(const char *error_message)
 		{
 			return true;
 		}
+
+		/*
+		 * PG14 (df9384492b8): a promoting mirror / recovering node without
+		 * hot standby rejects with these instead; they are just as
+		 * retryable -- the segment will accept connections once promotion
+		 * or recovery completes (the FTS will have flipped it by then).
+		 */
+		if (strstr(error_message, _(POSTMASTER_NOT_YET_ACCEPTING_MSG)))
+		{
+			return true;
+		}
+		if (strstr(error_message, _(POSTMASTER_NOT_ACCEPTING_MSG)))
+		{
+			return true;
+		}
 		/* We could do retries for "sorry, too many clients already" here too */
 	}
 
