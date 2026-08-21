@@ -70,9 +70,15 @@ sub test_recovery_wal_level_minimal
 
 	# Use run_log instead of recovery_node->start because this test expects
 	# that the server ends with an error during recovery.
+	# GPDB: raw pg_ctl bypasses PostgresNode::start, so pass the mandatory
+	# identity options ourselves (like start() does).
+	my $node_name_opt = $recovery_node->name;
+	my $dbid = $recovery_node->{_dbid};
 	run_log(
 		['pg_ctl','-D', $recovery_node->data_dir, '-l',
-		 $recovery_node->logfile, 'start']);
+		 $recovery_node->logfile, '-o',
+		 "--cluster-name=$node_name_opt -c gp_role=utility --gp_dbid=$dbid --gp_contentid=0",
+		 'start']);
 
 	# Wait up to 180s for postgres to terminate
 	foreach my $i (0 .. 1800)
