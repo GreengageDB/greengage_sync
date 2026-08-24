@@ -2572,15 +2572,11 @@ index_drop(Oid indexId, bool concurrent, bool concurrent_lock_mode)
 	/*
 	 * fix INHERITS relation
 	 */
-<<<<<<< HEAD
-	DeleteInheritsTuple(indexId, InvalidOid);
-	
-	/* MPP-6929: metadata tracking */
-	MetaTrackDropObject(RelationRelationId, 
-						indexId);
-=======
 	DeleteInheritsTuple(indexId, InvalidOid, false, NULL);
->>>>>>> 8ff1c94649f
+
+	/* MPP-6929: metadata tracking */
+	MetaTrackDropObject(RelationRelationId,
+						indexId);
 
 	/*
 	 * We are presently too lazy to attempt to compute the new correct value
