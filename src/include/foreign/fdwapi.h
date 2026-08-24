@@ -166,14 +166,12 @@ typedef bool (*AnalyzeForeignTable_function) (Relation relation,
 typedef List *(*ImportForeignSchema_function) (ImportForeignSchemaStmt *stmt,
 											   Oid serverOid);
 
-<<<<<<< HEAD
 typedef bool (*ForeignTableSize_function) (Relation relation, int64 *tablesize);
-=======
+
 typedef void (*ExecForeignTruncate_function) (List *rels,
 											  List *rels_extra,
 											  DropBehavior behavior,
 											  bool restart_seqs);
->>>>>>> 8ff1c94649f
 
 typedef Size (*EstimateDSMForeignScan_function) (ForeignScanState *node,
 												 ParallelContext *pcxt);
