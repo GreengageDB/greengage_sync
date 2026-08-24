@@ -358,7 +358,7 @@ extern bool XLogReaderValidatePageHeader(XLogReaderState *state,
 /* In GPDB, this is needed in the backend, too, for WAL replication tests. */
 /* #ifdef FRONTEND */
 #if 1
-extern XLogRecPtr XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr);
+extern bool XLogFindNextRecord(XLogFindNextRecordState *state);
 #endif							/* FRONTEND */
 
 /*
