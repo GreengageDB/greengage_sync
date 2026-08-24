@@ -4753,19 +4753,6 @@ static struct config_enum ConfigureNamesEnum[] =
 	},
 
 	{
-<<<<<<< HEAD
-		/*
-		 * Greenplum needs to reconcile conflict detection based
-		 * on predicate locks across cluster to support true
-		 * serializability.  See merge fixme in
-		 * assign_XactIsoLevel(). String guc sets the value of the
-		 * corresponding variable via the assign hook, but enum guc
-		 * sets it in set_config_option by new_val. We can't change
-		 * the value of newval in the assignment hook, it's the
-		 * reason why assign hook function method didn't work in
-		 * past. Use the check hook to change 'newval'.
-		 */
-=======
 		{"default_toast_compression", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Sets the default compression for new columns."),
 			NULL,
@@ -4777,7 +4764,17 @@ static struct config_enum ConfigureNamesEnum[] =
 	},
 
 	{
->>>>>>> 8ff1c94649f
+		/*
+		 * Greenplum needs to reconcile conflict detection based
+		 * on predicate locks across cluster to support true
+		 * serializability.  See merge fixme in
+		 * assign_XactIsoLevel(). String guc sets the value of the
+		 * corresponding variable via the assign hook, but enum guc
+		 * sets it in set_config_option by new_val. We can't change
+		 * the value of newval in the assignment hook, it's the
+		 * reason why assign hook function method didn't work in
+		 * past. Use the check hook to change 'newval'.
+		 */
 		{"default_transaction_isolation", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Sets the transaction isolation level of each new transaction."),
 			NULL
@@ -5712,14 +5709,9 @@ add_placeholder_variable(const char *name, int elevel)
  * can only happen when create_placeholders is true, so callers passing
  * false need not think terribly hard about this.)
  */
-<<<<<<< HEAD
 struct config_generic *
-find_option(const char *name, bool create_placeholders, int elevel)
-=======
-static struct config_generic *
 find_option(const char *name, bool create_placeholders, bool skip_errors,
 			int elevel)
->>>>>>> 8ff1c94649f
 {
 	const char **key = &name;
 	struct config_generic **res;
@@ -8818,16 +8810,8 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	{
 		struct config_generic *record;
 
-<<<<<<< HEAD
-		record = find_option(name, false, ERROR);
-		if (record == NULL)
-			ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-				   errmsg("unrecognized configuration parameter \"%s\"", name)));
-=======
 		record = find_option(name, false, false, ERROR);
 		Assert(record != NULL);
->>>>>>> 8ff1c94649f
 
 		/*
 		 * Don't allow parameters that can't be set in configuration files to
