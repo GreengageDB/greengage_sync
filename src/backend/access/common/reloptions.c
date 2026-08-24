@@ -1875,16 +1875,9 @@ default_reloptions(Datum reloptions, bool validate, relopt_kind kind)
 		{"vacuum_index_cleanup", RELOPT_TYPE_BOOL,
 		offsetof(StdRdOptions, vacuum_index_cleanup)},
 		{"vacuum_truncate", RELOPT_TYPE_BOOL,
-<<<<<<< HEAD
 		offsetof(StdRdOptions, vacuum_truncate)},
 		{SOPT_ANALYZEHLL, RELOPT_TYPE_BOOL,
-		offsetof(StdRdOptions, analyze_hll_non_part_table)},
-
-		{"parallel_insert_enabled", RELOPT_TYPE_BOOL,
-		offsetof(StdRdOptions, parallel_insert_enabled)}
-=======
-		offsetof(StdRdOptions, vacuum_truncate)}
->>>>>>> 8ff1c94649f
+		offsetof(StdRdOptions, analyze_hll_non_part_table)}
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate, kind,
@@ -1994,18 +1987,13 @@ bytea *
 partitioned_table_reloptions(Datum reloptions, bool validate)
 {
 	/*
-<<<<<<< HEAD
+	 * autovacuum_enabled, autovacuum_analyze_threshold and
+	 * autovacuum_analyze_scale_factor are supported for partitioned tables.
+	 *
 	 * GPDB: we maintain reloptions for partition roots to support reloption
 	 * inheritance and hierarchy wide ALTER TABLE SET().
 	 */
-	return default_reloptions(reloptions, validate, RELOPT_KIND_HEAP);
-=======
-	 * autovacuum_enabled, autovacuum_analyze_threshold and
-	 * autovacuum_analyze_scale_factor are supported for partitioned tables.
-	 */
-
 	return default_reloptions(reloptions, validate, RELOPT_KIND_PARTITIONED);
->>>>>>> 8ff1c94649f
 }
 
 /*
