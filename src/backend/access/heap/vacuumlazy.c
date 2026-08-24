@@ -482,7 +482,7 @@ static void restore_vacuum_error_info(LVRelState *vacrel,
 									  const LVSavedErrInfo *saved_vacrel);
 
 /*
- *	lazy_vacuum_rel_heap() -- perform VACUUM for one heap relation
+ *	heap_vacuum_rel() -- perform VACUUM for one heap relation
  *
  *		This routine vacuums a single heap, cleans out its indexes, and
  *		updates its relpages and reltuples statistics.
@@ -491,11 +491,7 @@ static void restore_vacuum_error_info(LVRelState *vacrel,
  *		and locked the relation.
  */
 void
-<<<<<<< HEAD
-lazy_vacuum_rel_heap(Relation onerel, VacuumParams *params,
-=======
 heap_vacuum_rel(Relation rel, VacuumParams *params,
->>>>>>> 8ff1c94649f
 				BufferAccessStrategy bstrategy)
 {
 	LVRelState *vacrel;
@@ -551,19 +547,13 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	pgstat_progress_start_command(PROGRESS_COMMAND_VACUUM,
 								  RelationGetRelid(rel));
 
-<<<<<<< HEAD
-	vac_strategy = bstrategy;
-
 	/*
 	 * MPP-23647.  Update xid limits for heap as well as appendonly
 	 * relations.  This allows setting relfrozenxid to correct value
 	 * for an appendonly (AO/CO) table.
 	 */
 
-	vacuum_set_xid_limits(onerel,
-=======
 	vacuum_set_xid_limits(rel,
->>>>>>> 8ff1c94649f
 						  params->freeze_min_age,
 						  params->freeze_table_age,
 						  params->multixact_freeze_min_age,
@@ -1381,11 +1371,7 @@ lazy_scan_heap(LVRelState *vacrel, VacuumParams *params, bool aggressive)
 			 * performed here can be thought of as the one-pass equivalent of
 			 * a call to lazy_vacuum().
 			 */
-<<<<<<< HEAD
-			switch (HeapTupleSatisfiesVacuum(onerel, &tuple, OldestXmin, buf))
-=======
 			if (prunestate.has_lpdead_items)
->>>>>>> 8ff1c94649f
 			{
 				Size		freespace;
 
@@ -1533,13 +1519,6 @@ lazy_scan_heap(LVRelState *vacrel, VacuumParams *params, bool aggressive)
 		 * Final steps for block: drop super-exclusive lock, record free space
 		 * in the FSM
 		 */
-<<<<<<< HEAD
-		if (dead_tuples->num_tuples == prev_dead_count)
-			RecordPageWithFreeSpace(onerel, blkno, freespace);
-
-		if (RelationNeedsWAL(onerel))
-			wait_to_avoid_large_repl_lag();
-=======
 		if (prunestate.has_lpdead_items && vacrel->do_index_vacuuming)
 		{
 			/*
@@ -1570,7 +1549,9 @@ lazy_scan_heap(LVRelState *vacrel, VacuumParams *params, bool aggressive)
 			UnlockReleaseBuffer(buf);
 			RecordPageWithFreeSpace(vacrel->rel, blkno, freespace);
 		}
->>>>>>> 8ff1c94649f
+
+		if (RelationNeedsWAL(vacrel->rel))
+			wait_to_avoid_large_repl_lag();
 	}
 
 	/* report that everything is now scanned */
@@ -1817,7 +1798,7 @@ retry:
 		 * since heap_page_prune() looked.  Handle that here by restarting.
 		 * (See comments at the top of function for a full explanation.)
 		 */
-		res = HeapTupleSatisfiesVacuum(&tuple, vacrel->OldestXmin, buf);
+		res = HeapTupleSatisfiesVacuum(rel, &tuple, vacrel->OldestXmin, buf);
 
 		if (unlikely(res == HEAPTUPLE_DEAD))
 			goto retry;
@@ -3669,11 +3650,7 @@ heap_page_is_all_visible(LVRelState *vacrel, Buffer buf,
 		tuple.t_len = ItemIdGetLength(itemid);
 		tuple.t_tableOid = RelationGetRelid(vacrel->rel);
 
-<<<<<<< HEAD
-		switch (HeapTupleSatisfiesVacuum(rel, &tuple, OldestXmin, buf))
-=======
-		switch (HeapTupleSatisfiesVacuum(&tuple, vacrel->OldestXmin, buf))
->>>>>>> 8ff1c94649f
+		switch (HeapTupleSatisfiesVacuum(vacrel->rel, &tuple, vacrel->OldestXmin, buf))
 		{
 			case HEAPTUPLE_LIVE:
 				{
@@ -3829,13 +3806,9 @@ update_index_statistics(LVRelState *vacrel)
 							false,
 							InvalidTransactionId,
 							InvalidMultiXactId,
-<<<<<<< HEAD
 							false,
 							true /* isvacuum */);
-		pfree(stats[i]);
-=======
-							false);
->>>>>>> 8ff1c94649f
+		pfree(istat);
 	}
 }
 
