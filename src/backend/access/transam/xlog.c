@@ -12873,6 +12873,7 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 
 	XLByteToSeg(targetPagePtr, readSegNo, wal_segment_size);
 
+	/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 	elogif(debug_xlog_record_read, LOG,
 		   "xlog page read -- Requested record %X/%X has "
 		   "targetsegno " UINT64_FORMAT ", targetpageoff %u",
