@@ -330,11 +330,15 @@ external_rescan(FileScanDesc scan)
 					 errmsg("The file parse state of external scan is invalid")));
 
 	/* reset some parse state variables */
-	scan->fs_pstate->raw_reached_eof = false;
 	scan->fs_pstate->cur_lineno = 0;
 	scan->fs_pstate->cur_attname = NULL;
 	scan->fs_pstate->raw_buf_len = 0;
 	scan->fs_pstate->raw_buf_index = 0;
+	scan->fs_pstate->raw_reached_eof = false;
+	scan->fs_pstate->input_buf_len = 0;
+	scan->fs_pstate->input_buf_index = 0;
+	scan->fs_pstate->input_reached_eof = false;
+	scan->fs_pstate->input_reached_error = false;
 }
 
 /* ----------------
