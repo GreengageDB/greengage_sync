@@ -91,7 +91,6 @@ typedef enum UpperRelationKind
 	/* NB: UPPERREL_FINAL must be last enum entry; it's used to size arrays */
 } UpperRelationKind;
 
-<<<<<<< HEAD
 /*
  * This enum identifies which type of relation is being planned through the
  * inheritance planner.  INHKIND_NONE indicates the inheritance planner
@@ -143,8 +142,6 @@ typedef struct ApplyShareInputContext
 
 } ApplyShareInputContext;
 
-=======
->>>>>>> 8ff1c94649f
 /*----------
  * PlannerGlobal
  *		Global information for planning/optimization
@@ -1271,7 +1268,6 @@ typedef struct PathKey
 } PathKey;
 
 /*
-<<<<<<< HEAD
  * DistributionKeys
  *
  * Like PathKey, but is used to represent data distribution by hash across
@@ -1295,7 +1291,8 @@ typedef struct DistributionKey
  */
 #define CdbEquivClassIsConstant(eclass)						\
 	((eclass)->ec_has_const && !(eclass)->ec_below_outer_join)
-=======
+
+/*
  * VolatileFunctionStatus -- allows nodes to cache their
  * contain_volatile_functions properties. VOLATILITY_UNKNOWN means not yet
  * determined.
@@ -1306,7 +1303,6 @@ typedef enum VolatileFunctionStatus
 	VOLATILITY_VOLATILE,
 	VOLATILITY_NOVOLATILE
 } VolatileFunctionStatus;
->>>>>>> 8ff1c94649f
 
 /*
  * PathTarget
@@ -2291,13 +2287,10 @@ typedef struct ModifyTablePath
 	Index		rootRelation;	/* Root RT index, if target is partitioned */
 	bool		partColsUpdated;	/* some part key in hierarchy updated? */
 	List	   *resultRelations;	/* integer list of RT indexes */
-<<<<<<< HEAD
 	List	   *is_split_updates;
 	List	   *subpaths;		/* Path(s) producing source data */
 	List	   *subroots;		/* per-target-table PlannerInfos */
-=======
 	List	   *updateColnosLists;	/* per-target-table update_colnos lists */
->>>>>>> 8ff1c94649f
 	List	   *withCheckOptionLists;	/* per-target-table WCO lists */
 	List	   *returningLists; /* per-target-table RETURNING tlists */
 	List	   *rowMarks;		/* PlanRowMarks (non-locking only) */
