@@ -1727,7 +1727,11 @@ BeginCopyFrom(ParseState *pstate,
 	/*
 	 * GGDB: custom external table formatters are handed the conversion
 	 * function and do the conversion themselves; they don't go through the
-	 * raw_buf/input_buf pipeline.
+	 * raw_buf/input_buf pipeline.  That also means they cannot use
+	 * need_transcoding: clearing it for matching encodings is safe here only
+	 * because CopyConvertBuf() still verifies every chunk, which a formatter
+	 * never reaches.  They get their own flag; see fs_needs_transcoding in
+	 * external_beginscan().
 	 */
 	setEncodingConversionProc(&cstate->enc_conversion_proc,
 							  cstate->file_encoding, false);
