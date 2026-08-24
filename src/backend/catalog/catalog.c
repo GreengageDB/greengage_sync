@@ -629,7 +629,17 @@ GetNewOidWithIndex(Relation relation, Oid indexId, AttrNumber oidcolumn)
 	} while (collides);
 
 	/*
-<<<<<<< HEAD
+	 * If at least one log message is emitted, also log the completion of OID
+	 * assignment.
+	 */
+	if (retries > GETNEWOID_LOG_THRESHOLD)
+	{
+		ereport(LOG,
+				(errmsg("new OID has been assigned in relation \"%s\" after \"%llu\" retries",
+						RelationGetRelationName(relation), (unsigned long long) retries)));
+	}
+
+	/*
 	 * Most catalog objects need to have the same OID in the master and all
 	 * segments. When creating a new object, the master should allocate the
 	 * OID and tell the segments to use the same, so segments should have no
@@ -640,17 +650,6 @@ GetNewOidWithIndex(Relation relation, Oid indexId, AttrNumber oidcolumn)
 	if (Gp_role == GP_ROLE_EXECUTE && RelationNeedsSynchronizedOIDs(relation))
 		elog(PANIC, "allocated OID %u for relation \"%s\" in segment",
 			 newOid, RelationGetRelationName(relation));
-=======
-	 * If at least one log message is emitted, also log the completion of OID
-	 * assignment.
-	 */
-	if (retries > GETNEWOID_LOG_THRESHOLD)
-	{
-		ereport(LOG,
-				(errmsg("new OID has been assigned in relation \"%s\" after \"%llu\" retries",
-						RelationGetRelationName(relation), (unsigned long long) retries)));
-	}
->>>>>>> 8ff1c94649f
 
 	return newOid;
 }
