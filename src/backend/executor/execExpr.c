@@ -1233,12 +1233,6 @@ ExecInitExprRec(Expr *node, ExprState *state,
 								   get_func_name(opexpr->opfuncid));
 				InvokeFunctionExecuteHook(opexpr->opfuncid);
 
-<<<<<<< HEAD
-				/* GPDB: Try the hard-coded fast-path versions of these */
-				if (ExecInitScalarArrayOpFastPath(&scratch, opexpr,
-												  state, resv, resnull))
-					break;
-=======
 				if (OidIsValid(opexpr->hashfuncid))
 				{
 					aclresult = pg_proc_aclcheck(opexpr->hashfuncid,
@@ -1249,7 +1243,11 @@ ExecInitExprRec(Expr *node, ExprState *state,
 									   get_func_name(opexpr->hashfuncid));
 					InvokeFunctionExecuteHook(opexpr->hashfuncid);
 				}
->>>>>>> 8ff1c94649f
+
+				/* GPDB: Try the hard-coded fast-path versions of these */
+				if (ExecInitScalarArrayOpFastPath(&scratch, opexpr,
+												  state, resv, resnull))
+					break;
 
 				/* Set up the primary fmgr lookup information */
 				finfo = palloc0(sizeof(FmgrInfo));
@@ -4075,7 +4073,6 @@ ExecBuildGroupingEqual(TupleDesc ldesc, TupleDesc rdesc,
 	return state;
 }
 
-<<<<<<< HEAD
 /* ----------------------------------------------------------------
  *	isJoinExprNull
  *
@@ -4216,7 +4213,8 @@ ExecEvalFunctionArgToConst(FuncExpr *fexpr, int argno, bool *isnull)
 		*isnull = result->constisnull;
 
 	return result->constvalue;
-=======
+}
+
 /*
  * Build equality expression that can be evaluated using ExecQual(), returning
  * true if the expression context's inner/outer tuples are equal.  Datums in
@@ -4349,5 +4347,4 @@ ExecBuildParamSetEqual(TupleDesc desc,
 	ExecReadyExpr(state);
 
 	return state;
->>>>>>> 8ff1c94649f
 }
