@@ -26,15 +26,13 @@
 #include "optimizer/pathnode.h"
 #include "optimizer/paths.h"
 #include "optimizer/planmain.h"
-<<<<<<< HEAD
+#include "utils/typcache.h"
+
 #include "optimizer/tlist.h"
 #include "utils/lsyscache.h"
 
 #include "executor/nodeHash.h"                  /* ExecHashRowSize() */
 #include "cdb/cdbpath.h"                        /* cdbpath_rows() */
-=======
-#include "utils/typcache.h"
->>>>>>> 8ff1c94649f
 
 /* Hook for plugins to get control in add_paths_to_joinrel() */
 set_join_pathlist_hook_type set_join_pathlist_hook = NULL;
@@ -1948,12 +1946,9 @@ consider_parallel_nestloop(PlannerInfo *root,
 			}
 
 			try_partial_nestloop_path(root, joinrel, outerpath, innerpath,
-<<<<<<< HEAD
 									  pathkeys, jointype,
 									  save_jointype,
 									  extra);
-=======
-									  pathkeys, jointype, extra);
 
 			/*
 			 * Try generating a result cache path and see if that makes the
@@ -1965,7 +1960,6 @@ consider_parallel_nestloop(PlannerInfo *root,
 			if (rcpath != NULL)
 				try_partial_nestloop_path(root, joinrel, outerpath, rcpath,
 										  pathkeys, jointype, extra);
->>>>>>> 8ff1c94649f
 		}
 	}
 }
