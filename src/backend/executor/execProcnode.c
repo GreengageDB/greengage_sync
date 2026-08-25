@@ -433,15 +433,12 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 														   estate, eflags);
 			break;
 
-<<<<<<< HEAD
-#ifdef NOT_USED /* Group nodes are not used in GPDB */
-=======
 		case T_ResultCache:
 			result = (PlanState *) ExecInitResultCache((ResultCache *) node,
 													   estate, eflags);
 			break;
 
->>>>>>> 8ff1c94649f
+#ifdef NOT_USED /* Group nodes are not used in GPDB */
 		case T_Group:
 			result = (PlanState *) ExecInitGroup((Group *) node,
 												 estate, eflags);
@@ -979,14 +976,11 @@ ExecEndNode(PlanState *node)
 			ExecEndIncrementalSort((IncrementalSortState *) node);
 			break;
 
-<<<<<<< HEAD
-#ifdef NOT_USED /* GroupState nodes are not used in GPDB */
-=======
 		case T_ResultCacheState:
 			ExecEndResultCache((ResultCacheState *) node);
 			break;
 
->>>>>>> 8ff1c94649f
+#ifdef NOT_USED /* GroupState nodes are not used in GPDB */
 		case T_GroupState:
 			ExecEndGroup((GroupState *) node);
 			break;
