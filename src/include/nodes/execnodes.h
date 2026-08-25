@@ -496,10 +496,6 @@ typedef struct ResultRelInfo
 	/* number of stored generated columns we need to compute */
 	int			ri_NumGeneratedNeeded;
 
-<<<<<<< HEAD
-	/* for removing junk attributes from tuples */
-	JunkFilter *ri_junkFilter;
-
 	/*
 	 * Extra GPDB junk columns. ri_segid_attno is used with DELETE, to indicate
 	 * the segment the target tuple came from. 'action' is used with
@@ -510,8 +506,6 @@ typedef struct ResultRelInfo
 	AttrNumber  ri_segid_attno;		/* gp_segment_id of old tuple */
 	AttrNumber	ri_action_attno;	/* is this an INSERT or DELETE ? */
 
-=======
->>>>>>> 8ff1c94649f
 	/* list of RETURNING expressions */
 	List	   *ri_returningList;
 
