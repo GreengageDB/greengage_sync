@@ -127,6 +127,7 @@ typedef struct PgBackendStatus
 	/* Database OID, owning user's OID, connection client address */
 	Oid			st_databaseid;
 	Oid			st_userid;
+	int			st_session_id;  /* GPDB only */
 	SockAddr	st_clientaddr;
 	char	   *st_clienthostname;	/* MUST be null-terminated */
 
@@ -152,6 +153,8 @@ typedef struct PgBackendStatus
 	 * pgstat_clip_activity() to truncate correctly.
 	 */
 	char	   *st_activity_raw;
+
+	Oid			st_rsgid;
 
 	/*
 	 * Command progress reporting.  Any command which wishes can advertise
@@ -301,6 +304,8 @@ extern void pgstat_report_queryid(uint64 queryId, bool force);
 extern void pgstat_report_tempfile(size_t filesize);
 extern void pgstat_report_appname(const char *appname);
 extern void pgstat_report_xact_timestamp(TimestampTz tstamp);
+extern void pgstat_report_resgroup(Oid groupid);
+extern void pgstat_report_sessionid(int new_sessionid);
 extern const char *pgstat_get_backend_current_activity(int pid, bool checkUser);
 extern const char *pgstat_get_crashed_backend_activity(int pid, char *buffer,
 													   int buflen);
