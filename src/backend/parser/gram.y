@@ -452,12 +452,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 				oper_argtypes RuleActionList RuleActionMulti
 				cdb_string_list
 				opt_column_list columnList opt_name_list
-<<<<<<< HEAD
 				exttab_auth_list keyvalue_list
-				sort_clause opt_sort_clause sortby_list index_params
-=======
 				sort_clause opt_sort_clause sortby_list index_params stats_params
->>>>>>> 8ff1c94649f
 				opt_include opt_c_include index_including_params
 				name_list role_list from_clause from_list opt_array_bounds
 				qualified_name_list qualified_name_list_with_only any_name any_name_list type_name_list
@@ -742,16 +738,10 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
 	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
-<<<<<<< HEAD
-	COMMITTED CONCURRENTLY CONFIGURATION CONFLICT CONNECTION CONSTRAINT
+	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT CONNECTION CONSTRAINT
 	CONCURRENCY
 	CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY COST CREATE
 	CROSS CSV CUBE CURRENT_P
-=======
-	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
-	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
-	COST CREATE CROSS CSV CUBE CURRENT_P
->>>>>>> 8ff1c94649f
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
@@ -804,11 +794,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
-<<<<<<< HEAD
-	RESET RESTART RESTRICT RETRIEVE RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
-=======
-	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
->>>>>>> 8ff1c94649f
+	RESET RESTART RESTRICT RETRIEVE RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS RULE
 
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
@@ -4937,7 +4923,6 @@ TypedTableElement:
 			| TableConstraint					{ $$ = $1; }
 		;
 
-<<<<<<< HEAD
 column_reference_storage_directive:
 			COLUMN ColId ENCODING definition
 				{
@@ -4960,10 +4945,7 @@ column_reference_storage_directive:
 				}
 		;
 
-columnDef:	ColId Typename create_generic_options ColQualList opt_storage_encoding
-=======
-columnDef:	ColId Typename optColumnCompression create_generic_options ColQualList
->>>>>>> 8ff1c94649f
+columnDef:	ColId Typename optColumnCompression create_generic_options ColQualList opt_storage_encoding
 				{
 					ColumnDef *n = makeNode(ColumnDef);
 					n->colname = $1;
@@ -10060,12 +10042,8 @@ opt_nulls_order: NULLS_LA FIRST_P			{ $$ = SORTBY_NULLS_FIRST; }
 
 CreateFunctionStmt:
 			CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
-<<<<<<< HEAD
-			RETURNS func_return createfunc_opt_list
-			opt_definition
-=======
 			RETURNS func_return opt_createfunc_opt_list opt_routine_body
->>>>>>> 8ff1c94649f
+			opt_definition
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = false;
@@ -10074,20 +10052,13 @@ CreateFunctionStmt:
 					n->parameters = $5;
 					n->returnType = $7;
 					n->options = $8;
-<<<<<<< HEAD
 					n->options = list_concat(n->options, $9);
-					$$ = (Node *)n;
-				}
-			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
-			  RETURNS TABLE '(' table_func_column_list ')' createfunc_opt_list
-			  opt_definition
-=======
-					n->sql_body = $9;
+					n->sql_body = $10;
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
 			  RETURNS TABLE '(' table_func_column_list ')' opt_createfunc_opt_list opt_routine_body
->>>>>>> 8ff1c94649f
+			  opt_definition
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = false;
@@ -10097,20 +10068,13 @@ CreateFunctionStmt:
 					n->returnType = TableFuncTypeName($9);
 					n->returnType->location = @7;
 					n->options = $11;
-<<<<<<< HEAD
 					n->options = list_concat(n->options, $12);
-					$$ = (Node *)n;
-				}
-			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
-			  createfunc_opt_list
-			  opt_definition
-=======
-					n->sql_body = $12;
+					n->sql_body = $13
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
 			  opt_createfunc_opt_list opt_routine_body
->>>>>>> 8ff1c94649f
+			  opt_definition
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = false;
@@ -10119,11 +10083,8 @@ CreateFunctionStmt:
 					n->parameters = $5;
 					n->returnType = NULL;
 					n->options = $6;
-<<<<<<< HEAD
 					n->options = list_concat(n->options, $7);
-=======
-					n->sql_body = $7;
->>>>>>> 8ff1c94649f
+					n->sql_body = $8;
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace PROCEDURE func_name func_args_with_defaults
@@ -18499,11 +18460,8 @@ unreserved_keyword:
 			| COMMENTS
 			| COMMIT
 			| COMMITTED
-<<<<<<< HEAD
-			| CONCURRENCY
-=======
 			| COMPRESSION
->>>>>>> 8ff1c94649f
+			| CONCURRENCY
 			| CONFIGURATION
 			| CONFLICT
 			| CONNECTION
@@ -18721,11 +18679,8 @@ unreserved_keyword:
 			| RESOURCE
 			| RESTART
 			| RESTRICT
-<<<<<<< HEAD
 			| RETRIEVE
-=======
 			| RETURN
->>>>>>> 8ff1c94649f
 			| RETURNS
 			| REVOKE
 			| ROLE
@@ -19388,11 +19343,8 @@ bare_label_keyword:
 			| COMMENTS
 			| COMMIT
 			| COMMITTED
-<<<<<<< HEAD
-			| CONCURRENCY
-=======
 			| COMPRESSION
->>>>>>> 8ff1c94649f
+			| CONCURRENCY
 			| CONCURRENTLY
 			| CONFIGURATION
 			| CONFLICT
@@ -19472,12 +19424,9 @@ bare_label_keyword:
 			| EXTRACT
 			| FALSE_P
 			| FAMILY
-<<<<<<< HEAD
 			| FIELDS
 			| FILL
-=======
 			| FINALIZE
->>>>>>> 8ff1c94649f
 			| FIRST_P
 			| FLOAT_P
 			| FOLLOWING
@@ -19666,11 +19615,8 @@ bare_label_keyword:
 			| RESOURCE
 			| RESTART
 			| RESTRICT
-<<<<<<< HEAD
 			| RETRIEVE
-=======
 			| RETURN
->>>>>>> 8ff1c94649f
 			| RETURNS
 			| REVOKE
 			| RIGHT
