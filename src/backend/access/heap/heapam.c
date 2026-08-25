@@ -738,10 +738,8 @@ heapgettup(HeapScanDesc scan,
 	lpp = PageGetItemId(dp, lineoff);
 	for (;;)
 	{
-<<<<<<< HEAD
-        CHECK_FOR_INTERRUPTS();
+		CHECK_FOR_INTERRUPTS();
 
-=======
 		/*
 		 * Only continue scanning the page while we have lines left.
 		 *
@@ -749,7 +747,6 @@ heapgettup(HeapScanDesc scan,
 		 * PageGetMaxOffsetNumber(); both for forward scans when we resume the
 		 * table scan, and for when we start scanning a new page.
 		 */
->>>>>>> 8ff1c94649f
 		while (linesleft > 0)
 		{
 			if (ItemIdIsNormal(lpp))

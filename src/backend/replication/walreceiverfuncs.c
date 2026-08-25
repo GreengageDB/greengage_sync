@@ -242,7 +242,6 @@ ShutdownWalRcv(void)
 	 */
 	ConditionVariablePrepareToSleep(&walrcv->walRcvStoppedCV);
 	while (WalRcvRunning())
-<<<<<<< HEAD
 	{
 		/*
 		 * This possibly-long loop needs to handle interrupts of startup
@@ -251,12 +250,8 @@ ShutdownWalRcv(void)
 		HandleStartupProcInterrupts();
 
 		ConditionVariableTimedSleep(&walrcv->walRcvStoppedCV, 100 /* ms */,
-									WAIT_EVENT_WALRCV_EXIT);
+									WAIT_EVENT_WAL_RECEIVER_EXIT);
 	}
-=======
-		ConditionVariableSleep(&walrcv->walRcvStoppedCV,
-							   WAIT_EVENT_WAL_RECEIVER_EXIT);
->>>>>>> 8ff1c94649f
 	ConditionVariableCancelSleep();
 
 	elogif(debug_xlog_record_read, LOG,

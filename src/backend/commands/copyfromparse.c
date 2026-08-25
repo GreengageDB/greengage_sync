@@ -252,10 +252,9 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 	switch (cstate->copy_src)
 	{
 		case COPY_FILE:
-<<<<<<< HEAD
 			bytesread = fread(databuf, 1, datasize, cstate->copy_file);
 			if (feof(cstate->copy_file))
-				cstate->reached_eof = true;
+				cstate->raw_reached_eof = true;
 			if (ferror(cstate->copy_file))
 			{
 				if (cstate->is_program)
@@ -283,19 +282,7 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 			}
 			break;
 		case COPY_FRONTEND:
-			while (datasize > 0 && !cstate->reached_eof)
-=======
-			bytesread = fread(databuf, 1, maxread, cstate->copy_file);
-			if (ferror(cstate->copy_file))
-				ereport(ERROR,
-						(errcode_for_file_access(),
-						 errmsg("could not read from COPY file: %m")));
-			if (bytesread == 0)
-				cstate->raw_reached_eof = true;
-			break;
-		case COPY_FRONTEND:
-			while (maxread > 0 && bytesread < minread && !cstate->raw_reached_eof)
->>>>>>> 8ff1c94649f
+			while (datasize > 0 && !cstate->raw_reached_eof)
 			{
 				int			avail;
 
@@ -633,10 +620,6 @@ CopyLoadRawBuf(CopyFromState cstate)
 	cstate->raw_buf_len -= cstate->raw_buf_index;
 	cstate->raw_buf_index = 0;
 
-<<<<<<< HEAD
-	inbytes = CopyGetData(cstate, cstate->raw_buf + nbytes,
-						  RAW_BUF_SIZE - nbytes);
-=======
 	/*
 	 * If raw_buf and input_buf are in fact the same buffer, adjust the
 	 * input_buf variables, too.
@@ -649,8 +632,7 @@ CopyLoadRawBuf(CopyFromState cstate)
 
 	/* Load more data */
 	inbytes = CopyGetData(cstate, cstate->raw_buf + cstate->raw_buf_len,
-						  1, RAW_BUF_SIZE - cstate->raw_buf_len);
->>>>>>> 8ff1c94649f
+						  RAW_BUF_SIZE - cstate->raw_buf_len);
 	nbytes += inbytes;
 	cstate->raw_buf[nbytes] = '\0';
 	cstate->raw_buf_len = nbytes;
@@ -910,7 +892,8 @@ HandleCopyError(CopyFromState cstate)
 		cdbsreh->rawdata->data = cstate->line_buf.data;
 		cdbsreh->rawdata->len = cstate->line_buf.len;
 
-		cdbsreh->is_server_enc = cstate->line_buf_converted;
+		/* line_buf is always in the database encoding, see CopyReadLine() */
+		cdbsreh->is_server_enc = true;
 		cdbsreh->linenumber = cstate->cur_lineno;
 		if (cstate->cur_attname)
 		{
@@ -1228,7 +1211,6 @@ NextCopyFromX(CopyFromState cstate, ExprContext *econtext,
 }
 
 /*
-<<<<<<< HEAD
  * Like NextCopyFrom(), but used in the QD, when we want to parse the
  * input line only partially. We only want to parse enough fields needed
  * to determine which target segment to forward the row to.
@@ -1266,11 +1248,11 @@ NextCopyFromExecute(CopyFromState cstate, ExprContext *econtext, Datum *values, 
 	/*
 	 * The code below reads the 'copy_from_dispatch_row' struct, and only
 	 * then checks if it was actually a 'copy_from_dispatch_error' struct.
-	 * That only works when 'copy_from_dispatch_error' is larger than
-	 *'copy_from_dispatch_row'.
+	 * That only works when 'copy_from_dispatch_error' is at least as large as
+	 * 'copy_from_dispatch_row'.
 	 */
 	StaticAssertStmt(SizeOfCopyFromDispatchError >= SizeOfCopyFromDispatchRow,
-					 "copy_from_dispatch_error must be larger than copy_from_dispatch_row");
+					 "copy_from_dispatch_error must not be smaller than copy_from_dispatch_row");
 
 	/*
 	 * If we encounter an error while parsing the row (or we receive a row from
@@ -1320,7 +1302,6 @@ retry:
 	cstate->line_buf.len = frame.line_len;
 	cstate->line_buf.cursor = frame.residual_off;
 	cstate->line_buf_valid = true;
-	cstate->line_buf_converted = true;
 	cstate->cur_lineno = frame.lineno;
 	cstate->stopped_processing_at_delim = frame.delim_seen_at_end;
 
@@ -1520,7 +1501,8 @@ HandleQDErrorFrame(CopyFromState cstate, char *p, int len)
 	cdbsreh->rawdata->data = line;
 	cdbsreh->rawdata->len = strlen(line);
 	cdbsreh->errmsg = errormsg;
-	cdbsreh->is_server_enc = errframe.line_buf_converted;
+	/* the QD converted the line to the database encoding before sending it */
+	cdbsreh->is_server_enc = true;
 
 	HandleSingleRowError(cdbsreh);
 
@@ -1529,11 +1511,7 @@ HandleQDErrorFrame(CopyFromState cstate, char *p, int len)
 }
 
 /*
- * Read the next input line and stash it in line_buf, with conversion to
- * server encoding.
-=======
  * Read the next input line and stash it in line_buf.
->>>>>>> 8ff1c94649f
  *
  * Result is true if read was terminated by EOF, false if terminated
  * by newline.  The terminating newline or EOF marker is not included
@@ -1564,7 +1542,7 @@ CopyReadLine(CopyFromState cstate)
 			do
 			{
 				inbytes = CopyGetData(cstate, cstate->input_buf,
-									  1, INPUT_BUF_SIZE);
+									  INPUT_BUF_SIZE);
 			} while (inbytes > 0);
 			cstate->input_buf_index = 0;
 			cstate->input_buf_len = 0;
@@ -1897,7 +1875,7 @@ CopyReadLineText(CopyFromState cstate)
 				else if(cstate->eol_type == EOL_NL)
 				{
 					// found a new line with '\n'
-					raw_buf_ptr++;
+					input_buf_ptr++;
 					break;
 				}
 			}
@@ -1910,7 +1888,7 @@ CopyReadLineText(CopyFromState cstate)
 				else if(cstate->eol_type == EOL_CR)
 				{
 					// found a new line wirh '\r'
-					raw_buf_ptr++;
+					input_buf_ptr++;
 					break;
 				}
 				else if(cstate->eol_type == EOL_CRNL)
@@ -1920,14 +1898,14 @@ CopyReadLineText(CopyFromState cstate)
 					 * which comes after c2 if exists.
 					 */
 					char c3;
-					raw_buf_ptr++;
+					input_buf_ptr++;
 					IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(0);
 					IF_NEED_REFILL_AND_EOF_BREAK(0);
-					c3 = copy_raw_buf[raw_buf_ptr];
+					c3 = copy_input_buf[input_buf_ptr];
 					if(c3 == '\n')
 					{
 						// found a new line with '\r\n'
-						raw_buf_ptr++;
+						input_buf_ptr++;
 						break;
 					} else {
 						NO_END_OF_COPY_GOTO;
@@ -1954,7 +1932,7 @@ CopyReadLineText(CopyFromState cstate)
 					{
 						if (!cstate->opts.csv_mode)
 						{
-							cstate->raw_buf_index = raw_buf_ptr;
+							cstate->input_buf_index = input_buf_ptr;
 							ereport(ERROR,
 									(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 									 errmsg("end-of-copy marker does not match previous newline style")));
@@ -1966,7 +1944,7 @@ CopyReadLineText(CopyFromState cstate)
 					{
 						if (!cstate->opts.csv_mode)
 						{
-							cstate->raw_buf_index = raw_buf_ptr;
+							cstate->input_buf_index = input_buf_ptr;
 							ereport(ERROR,
 									(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 									 errmsg("end-of-copy marker corrupt")));
@@ -1985,7 +1963,7 @@ CopyReadLineText(CopyFromState cstate)
 				{
 					if (!cstate->opts.csv_mode)
 					{
-						cstate->raw_buf_index = raw_buf_ptr;
+						cstate->input_buf_index = input_buf_ptr;
 						ereport(ERROR,
 								(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 								 errmsg("end-of-copy marker corrupt")));
@@ -1998,7 +1976,7 @@ CopyReadLineText(CopyFromState cstate)
 					(cstate->eol_type == EOL_CRNL && c2 != '\n') ||
 					(cstate->eol_type == EOL_CR && c2 != '\r'))
 				{
-					cstate->raw_buf_index = raw_buf_ptr;
+					cstate->input_buf_index = input_buf_ptr;
 					ereport(ERROR,
 							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 							 errmsg("end-of-copy marker does not match previous newline style")));

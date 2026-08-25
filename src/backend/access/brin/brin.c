@@ -444,10 +444,8 @@ bringetbitmap(IndexScanDesc scan, Node **bmNodeP)
 	BrinMemTuple *dtup;
 	BrinTuple  *btup = NULL;
 	Size		btupsz = 0;
-<<<<<<< HEAD
 	int			segno;
 	BlockNumber seg_start_blk;
-=======
 	ScanKey   **keys,
 			  **nullkeys;
 	int		   *nkeys,
@@ -456,7 +454,6 @@ bringetbitmap(IndexScanDesc scan, Node **bmNodeP)
 	char	   *ptr;
 	Size		len;
 	char	   *tmp PG_USED_FOR_ASSERTS_ONLY;
->>>>>>> 8ff1c94649f
 
 	opaque = (BrinOpaque *) scan->opaque;
 	bdesc = opaque->bo_bdesc;

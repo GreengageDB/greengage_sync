@@ -25,6 +25,8 @@
 #include "utils/guc.h" /* for application_name */
 #include "utils/memutils.h"
 
+#include "cdb/cdbvars.h"
+
 
 /* ----------
  * Total number of backends including auxiliary
@@ -346,6 +348,8 @@ pgstat_bestart(void)
 	else
 		lbeentry.st_userid = InvalidOid;
 
+	lbeentry.st_session_id = gp_session_id;  /* GPDB only */
+
 	/*
 	 * We may not have a MyProcPort (eg, if this is the autovacuum process).
 	 * If so, use all-zeroes client address, which is dealt with specially in
@@ -398,6 +402,7 @@ pgstat_bestart(void)
 	lbeentry.st_state = STATE_UNDEFINED;
 	lbeentry.st_progress_command = PROGRESS_COMMAND_INVALID;
 	lbeentry.st_progress_command_target = InvalidOid;
+	lbeentry.st_rsgid = InvalidOid;
 
 	/*
 	 * we don't zero st_progress_param here to save cycles; nobody should
@@ -445,6 +450,11 @@ pgstat_bestart(void)
 
 	PGSTAT_END_WRITE_ACTIVITY(vbeentry);
 
+	/*
+	 * GPDB: Initialize per-portal statistics hash for resource queues.
+	 */
+	pgstat_init_localportalhash();
+
 	/* Update app name to current GUC setting */
 	if (application_name)
 		pgstat_report_appname(application_name);
@@ -466,6 +476,7 @@ pgstat_beshutdown_hook(int code, Datum arg)
 	PGSTAT_BEGIN_WRITE_ACTIVITY(beentry);
 
 	beentry->st_procpid = 0;	/* mark invalid */
+	beentry->st_session_id = 0;
 
 	PGSTAT_END_WRITE_ACTIVITY(beentry);
 }
@@ -710,6 +721,50 @@ pgstat_report_xact_timestamp(TimestampTz tstamp)
 	beentry->st_xact_start_timestamp = tstamp;
 
 	PGSTAT_END_WRITE_ACTIVITY(beentry);
+}
+
+/*
+ * Report the timestamp of transaction start queueing on the resource group.
+ */
+void
+pgstat_report_resgroup(Oid groupid)
+{
+	volatile PgBackendStatus *beentry = MyBEEntry;
+
+	if (!beentry)
+		return;
+
+	/*
+	 * Update my status entry, following the protocol of bumping
+	 * st_changecount before and after.  We use a volatile pointer here to
+	 * ensure the compiler doesn't try to get cute.
+	 */
+	beentry->st_changecount++;
+
+	beentry->st_rsgid = groupid;
+	beentry->st_changecount++;
+	Assert((beentry->st_changecount & 1) == 0);
+}
+
+/* ----------
+ * pgstat_report_sessionid() -
+ *
+ * 	Called from cdbgang to report a session is reset.
+ *
+ * ----------
+ */
+void
+pgstat_report_sessionid(int new_sessionid)
+{
+	volatile PgBackendStatus *beentry = MyBEEntry;
+
+	if (!beentry)
+		return;
+
+	beentry->st_changecount++;
+	beentry->st_session_id = new_sessionid;
+	beentry->st_changecount++;
+	Assert((beentry->st_changecount & 1) == 0);
 }
 
 /* ----------
