@@ -2904,26 +2904,18 @@ canAcceptConnections(int backend_type)
 	{
 		if (Shutdown > NoShutdown)
 			return CAC_SHUTDOWN;	/* shutdown is pending */
-<<<<<<< HEAD
 		/*
 		 * If the wal receiver has been launched at least once, return that
 		 * the mirror is ready.
 		 */
 		else if (GetMirrorReadyFlag())
 			return CAC_MIRROR_READY;
-		else if (!FatalError &&
-				 (pmState == PM_STARTUP ||
-				  pmState == PM_RECOVERY))
-			return CAC_STARTUP; /* normal startup */
-		else if (pmState == PM_STARTUP || pmState == PM_RECOVERY)
-=======
 		else if (!FatalError && pmState == PM_STARTUP)
 			return CAC_STARTUP; /* normal startup */
 		else if (!FatalError && pmState == PM_RECOVERY)
 			return CAC_NOTCONSISTENT;	/* not yet at consistent recovery
 										 * state */
-		else
->>>>>>> 8ff1c94649f
+		else if (pmState == PM_STARTUP || pmState == PM_RECOVERY)
 			return CAC_RECOVERY;	/* else must be crash recovery */
 		else
 			/* 
