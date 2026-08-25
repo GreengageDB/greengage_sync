@@ -2264,7 +2264,6 @@ InitResultRelInfo(ResultRelInfo *resultRelInfo,
 	resultRelInfo->ri_usesFdwDirectModify = false;
 	resultRelInfo->ri_ConstraintExprs = NULL;
 	resultRelInfo->ri_GeneratedExprs = NULL;
-	resultRelInfo->ri_junkFilter = NULL;
 	resultRelInfo->ri_segid_attno = InvalidAttrNumber;
 	resultRelInfo->ri_action_attno = InvalidAttrNumber;
 	resultRelInfo->ri_projectReturning = NULL;
