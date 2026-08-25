@@ -2393,7 +2393,6 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 		 */
 		subquery = push_down_restrict(root, rel, rte, rti, subquery);
 
-<<<<<<< HEAD
 		/*
 		 * The upper query might not use all the subquery's output columns; if
 		 * not, we can simplify.
@@ -2416,29 +2415,6 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 			tuple_fraction = 0.0;	/* default case */
 		else
 			tuple_fraction = root->tuple_fraction;
-=======
-		foreach(l, rel->baserestrictinfo)
-		{
-			RestrictInfo *rinfo = (RestrictInfo *) lfirst(l);
-
-			if (!rinfo->pseudoconstant &&
-				qual_is_pushdown_safe(subquery, rti, rinfo, &safetyInfo))
-			{
-				Node	   *clause = (Node *) rinfo->clause;
-
-				/* Push it down */
-				subquery_push_qual(subquery, rte, rti, clause);
-			}
-			else
-			{
-				/* Keep it in the upper query */
-				upperrestrictlist = lappend(upperrestrictlist, rinfo);
-			}
-		}
-		rel->baserestrictinfo = upperrestrictlist;
-		/* We don't bother recomputing baserestrict_min_security */
-	}
->>>>>>> 8ff1c94649f
 
 		/* Generate a subroot and Paths for the subquery */
 		config = CopyPlannerConfig(root->config);
@@ -3720,11 +3696,12 @@ push_down_restrict(PlannerInfo *root, RelOptInfo *rel,
 		foreach(l, rel->baserestrictinfo)
 		{
 			RestrictInfo *rinfo = (RestrictInfo *) lfirst(l);
-			Node	   *clause = (Node *) rinfo->clause;
 
 			if (!rinfo->pseudoconstant &&
-				qual_is_pushdown_safe(subquery, rti, clause, &safetyInfo))
+				qual_is_pushdown_safe(subquery, rti, rinfo, &safetyInfo))
 			{
+				Node	   *clause = (Node *) rinfo->clause;
+
 				/* Push it down */
 				subquery_push_qual(subquery, rte, rti, clause);
 			}
