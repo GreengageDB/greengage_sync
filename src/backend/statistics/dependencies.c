@@ -1400,8 +1400,12 @@ dependencies_clauselist_selectivity(PlannerInfo *root,
 	MVDependency **dependencies;
 	int			ndependencies;
 	int			i;
-<<<<<<< HEAD
 	RangeTblEntry *rte = planner_rt_fetch(rel->relid, root);
+	AttrNumber	attnum_offset;
+
+	/* unique expressions */
+	Node	  **unique_exprs;
+	int			unique_exprs_cnt;
 
 	/*
 	 * When dealing with regular inheritance trees, ignore extended stats
@@ -1412,13 +1416,6 @@ dependencies_clauselist_selectivity(PlannerInfo *root,
 	 */
 	if (rte->inh && rte->relkind != RELKIND_PARTITIONED_TABLE)
 		return 1.0;
-=======
-	AttrNumber	attnum_offset;
-
-	/* unique expressions */
-	Node	  **unique_exprs;
-	int			unique_exprs_cnt;
->>>>>>> 8ff1c94649f
 
 	/* check if there's any stats that might be useful for us. */
 	if (!has_stats_of_kind(rel->statlist, STATS_EXT_DEPENDENCIES))
