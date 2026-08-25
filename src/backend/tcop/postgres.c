@@ -129,11 +129,7 @@ int			max_stack_depth = 100;
 int			PostAuthDelay = 0;
 
 /* Time between checks that the client is still connected. */
-<<<<<<< HEAD
-int         client_connection_check_interval = 0;
-=======
 int			client_connection_check_interval = 0;
->>>>>>> 8ff1c94649f
 
 /* ----------------
  *		private typedefs etc
@@ -252,11 +248,7 @@ static int	InteractiveBackend(StringInfo inBuf);
 static int	interactive_getc(void);
 static int	SocketBackend(StringInfo inBuf);
 static int	ReadCommand(StringInfo inBuf);
-<<<<<<< HEAD
 static void forbidden_in_wal_sender(int firstchar);
-=======
-static void forbidden_in_wal_sender(char firstchar);
->>>>>>> 8ff1c94649f
 static bool check_log_statement(List *stmt_list);
 static int	errdetail_execute(List *raw_parsetree_list);
 static int	errdetail_params(ParamListInfo params);
@@ -3459,11 +3451,8 @@ start_xact_command(void)
 
 	/* Start timeout for checking if the client has gone away if necessary. */
 	if (client_connection_check_interval > 0 &&
-<<<<<<< HEAD
 		/* doesn't operate on segments in case of distributed queries */
 		Gp_role != GP_ROLE_EXECUTE &&
-=======
->>>>>>> 8ff1c94649f
 		IsUnderPostmaster &&
 		MyProcPort &&
 		!get_timeout_active(CLIENT_CONNECTION_CHECK_TIMEOUT))
