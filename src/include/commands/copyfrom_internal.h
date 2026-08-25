@@ -45,13 +45,7 @@ typedef struct CopyFromStateData
 	/* low-level state data */
 	CopySrcDest	copy_src;		/* type of copy source */
 	FILE	   *copy_file;		/* used if copy_src == COPY_FILE */
-<<<<<<< HEAD
 	StringInfo	fe_msgbuf;		/* used if copy_src == COPY_FRONTEND */
-	bool		reached_eof;	/* true if we read to end of copy data (not
-								 * all copy_src types maintain this) */
-=======
-	StringInfo	fe_msgbuf;		/* used if copy_src == COPY_NEW_FE */
->>>>>>> 8ff1c94649f
 
 	EolType		eol_type;		/* EOL type of input */
 	int			file_encoding;	/* file or remote side's character encoding */
@@ -167,7 +161,8 @@ typedef struct CopyFromStateData
 	/* Shorthand for number of unconsumed bytes available in raw_buf */
 #define RAW_BUF_BYTES(cstate) ((cstate)->raw_buf_len - (cstate)->raw_buf_index)
 
-<<<<<<< HEAD
+	uint64		bytes_processed;	/* number of bytes processed so far */
+
 	/* GPDB specific variables */
 	FmgrInfo   *enc_conversion_proc; /* conv proc from exttbl encoding to
 										server or the other way around */
@@ -183,9 +178,6 @@ typedef struct CopyFromStateData
 	CdbCopy    *cdbCopy;
 
 	/* end GPDB specific variables */
-=======
-	uint64		bytes_processed;	/* number of bytes processed so far */
->>>>>>> 8ff1c94649f
 } CopyFromStateData;
 
 /*
@@ -289,14 +281,13 @@ typedef struct
 	int64		lineno;
 	uint32		errmsg_len;
 	uint32		line_len;
-	bool		line_buf_converted;
 
 	/* 'errmsg' follows */
 	/* 'line' follows */
 } copy_from_dispatch_error;
 
 /* Size of the struct, without padding at the end. */
-#define SizeOfCopyFromDispatchError (offsetof(copy_from_dispatch_error, line_buf_converted) + sizeof(bool))
+#define SizeOfCopyFromDispatchError (offsetof(copy_from_dispatch_error, line_len) + sizeof(uint32))
 
 extern void ReceiveCopyBegin(CopyFromState cstate);
 extern void ReceiveCopyBinaryHeader(CopyFromState cstate);
