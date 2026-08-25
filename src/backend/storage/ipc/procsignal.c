@@ -30,13 +30,10 @@
 #include "storage/shmem.h"
 #include "storage/sinval.h"
 #include "tcop/tcopprot.h"
-<<<<<<< HEAD
+#include "utils/memutils.h"
 #include "utils/resgroup.h"
 
 #include "cdb/cdbvars.h"
-=======
-#include "utils/memutils.h"
->>>>>>> 8ff1c94649f
 
 /*
  * The SIGUSR1 signal is multiplexed to support signaling multiple event
