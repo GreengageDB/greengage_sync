@@ -408,14 +408,6 @@ pg_do_encoding_conversion(unsigned char *src, int len,
 		MemoryContextAllocHuge(CurrentMemoryContext,
 							   (Size) len * MAX_CONVERSION_GROWTH + 1);
 
-<<<<<<< HEAD
-	OidFunctionCall5(proc,
-					 Int32GetDatum(src_encoding),
-					 Int32GetDatum(dest_encoding),
-					 CStringGetDatum((char *)src),
-					 CStringGetDatum((char *)result),
-					 Int32GetDatum(len));
-=======
 	(void) OidFunctionCall6(proc,
 							Int32GetDatum(src_encoding),
 							Int32GetDatum(dest_encoding),
@@ -423,7 +415,6 @@ pg_do_encoding_conversion(unsigned char *src, int len,
 							CStringGetDatum(result),
 							Int32GetDatum(len),
 							BoolGetDatum(false));
->>>>>>> 8ff1c94649f
 
 	/*
 	 * If the result is large, it's worth repalloc'ing to release any extra
