@@ -4538,9 +4538,12 @@ CheckConstraintFetch(Relation relation)
 		/* protect limited size of array */
 		if (found >= ncheck)
 <<<<<<< HEAD
-			elog(ERROR,
-			     "pg_class reports %d constraint record(s) for rel %s, but found extra in pg_constraint",
+		{
+			elog(WARNING,
+			     "pg_class reports %d constraint record(s) for relation %s, but found extra in pg_constraint",
 			     ncheck, RelationGetRelationName(relation));
+			break;
+		}
 =======
 		{
 			elog(WARNING, "unexpected pg_constraint record found for relation \"%s\"",
