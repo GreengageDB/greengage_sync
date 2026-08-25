@@ -279,17 +279,15 @@ ExplainQuery(ParseState *pstate, ExplainStmt *stmt,
 	/* if the summary was not set explicitly, set default value */
 	es->summary = (summary_set) ? es->summary : es->analyze;
 
-<<<<<<< HEAD
 	if (explain_memory_verbosity >= EXPLAIN_MEMORY_VERBOSITY_DETAIL)
 		es->memory_detail = true;
-=======
+
 	query = castNode(Query, stmt->query);
 	if (compute_query_id)
 		jstate = JumbleQuery(query, pstate->p_sourcetext);
 
 	if (post_parse_analyze_hook)
 		(*post_parse_analyze_hook) (pstate, query, jstate);
->>>>>>> 8ff1c94649f
 
 	/*
 	 * Parse analysis was done already, but we still have to run the rule
@@ -747,10 +745,9 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	/* Create textual dump of plan tree */
 	ExplainPrintPlan(es, queryDesc);
 
-<<<<<<< HEAD
 	if (cursorOptions & CURSOR_OPT_PARALLEL_RETRIEVE)
 		ExplainParallelRetrieveCursor(es, queryDesc);
-=======
+
 	if (es->verbose && plannedstmt->queryId != UINT64CONST(0))
 	{
 		char	buf[MAXINT8LEN+1];
@@ -758,7 +755,6 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 		pg_lltoa(plannedstmt->queryId, buf);
 		ExplainPropertyText("Query Identifier", buf, es);
 	}
->>>>>>> 8ff1c94649f
 
 	/* Show buffer usage in planning */
 	if (bufusage)
@@ -2684,7 +2680,6 @@ ExplainNode(PlanState *planstate, List *ancestors,
 		case T_Hash:
 			show_hash_info(castNode(HashState, planstate), es);
 			break;
-<<<<<<< HEAD
 		case T_Motion:
 			{
 				Motion	   *pMotion = (Motion *) plan;
@@ -2712,11 +2707,9 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			break;
 		case T_Append:
 			show_join_pruning_info(((Append *) plan)->join_prune_paramids, es);
-=======
 		case T_ResultCache:
 			show_resultcache_info(castNode(ResultCacheState, planstate),
 								  ancestors, es);
->>>>>>> 8ff1c94649f
 			break;
 		default:
 			break;
