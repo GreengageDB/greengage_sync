@@ -3950,18 +3950,13 @@ estimate_multivariate_ndistinct(PlannerInfo *root, RelOptInfo *rel,
 	int			nmatches_exprs;
 	Oid			statOid = InvalidOid;
 	MVNDistinct *stats;
-<<<<<<< HEAD
-	Bitmapset  *matched = NULL;
-	RangeTblEntry		*rte;
-=======
 	StatisticExtInfo *matched_info = NULL;
->>>>>>> 8ff1c94649f
+	RangeTblEntry		*rte;
 
 	/* bail out immediately if the table has no extended statistics */
 	if (!rel->statlist)
 		return false;
 
-<<<<<<< HEAD
 	/*
 	 * When dealing with regular inheritance trees, ignore extended stats
 	 * (which were built without data from child rels, and thus do not
@@ -3973,27 +3968,6 @@ estimate_multivariate_ndistinct(PlannerInfo *root, RelOptInfo *rel,
 	if (rte->inh && rte->relkind != RELKIND_PARTITIONED_TABLE)
 		return false;
 
-	/* Determine the attnums we're looking for */
-	foreach(lc, *varinfos)
-	{
-		GroupVarInfo *varinfo = (GroupVarInfo *) lfirst(lc);
-		AttrNumber	attnum;
-
-		Assert(varinfo->rel == rel);
-
-		if (!IsA(varinfo->var, Var))
-			continue;
-
-		attnum = ((Var *) varinfo->var)->varattno;
-
-		if (!AttrNumberIsForUserDefinedAttr(attnum))
-			continue;
-
-		attnums = bms_add_member(attnums, attnum);
-	}
-
-=======
->>>>>>> 8ff1c94649f
 	/* look for the ndistinct statistics matching the most vars */
 	nmatches_vars = 0;			/* we require at least two matches */
 	nmatches_exprs = 0;
