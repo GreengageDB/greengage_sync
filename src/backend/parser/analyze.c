@@ -53,10 +53,7 @@
 #include "utils/backend_status.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
-<<<<<<< HEAD
-=======
 #include "utils/queryjumble.h"
->>>>>>> 8ff1c94649f
 #include "utils/rel.h"
 
 #include "cdb/cdbhash.h"
@@ -3203,14 +3200,8 @@ transformDeclareCursorStmt(ParseState *pstate, DeclareCursorStmt *stmt)
 	Query	   *result;
 	Query	   *query;
 
-<<<<<<< HEAD
 	pstate->p_is_on_conflict_update = false;
 
-	/*
-	 * Don't allow both SCROLL and NO SCROLL to be specified
-	 */
-=======
->>>>>>> 8ff1c94649f
 	if ((stmt->options & CURSOR_OPT_SCROLL) &&
 		(stmt->options & CURSOR_OPT_NO_SCROLL))
 		ereport(ERROR,
