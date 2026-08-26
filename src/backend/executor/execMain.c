@@ -2260,12 +2260,14 @@ InitResultRelInfo(ResultRelInfo *resultRelInfo,
 	resultRelInfo->ri_newTupleSlot = NULL;
 	resultRelInfo->ri_oldTupleSlot = NULL;
 	resultRelInfo->ri_projectNewInfoValid = false;
+	resultRelInfo->ri_projectNewNeedsOld = false;
 	resultRelInfo->ri_FdwState = NULL;
 	resultRelInfo->ri_usesFdwDirectModify = false;
 	resultRelInfo->ri_ConstraintExprs = NULL;
 	resultRelInfo->ri_GeneratedExprs = NULL;
 	resultRelInfo->ri_segid_attno = InvalidAttrNumber;
 	resultRelInfo->ri_action_attno = InvalidAttrNumber;
+	resultRelInfo->ri_wholerow_attno = InvalidAttrNumber;
 	resultRelInfo->ri_projectReturning = NULL;
 	resultRelInfo->ri_onConflictArbiterIndexes = NIL;
 	resultRelInfo->ri_onConflict = NULL;
