@@ -106,7 +106,6 @@ check_and_dump_old_cluster(bool live_check, char **sequence_script_file_name)
 	check_for_isn_and_int8_passing_mismatch(&old_cluster);
 
 	/*
-<<<<<<< HEAD
 	 * Check for various Greenplum failure cases
 	 */
 	check_greenplum();
@@ -114,7 +113,8 @@ check_and_dump_old_cluster(bool live_check, char **sequence_script_file_name)
 	/* GPDB 7 removed support for SHA-256 hashed passwords */
 	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 905)
 		old_GPDB6_check_for_unsupported_sha256_password_hashes();
-=======
+
+	/*
 	 * PG 14 changed the function signature of encoding conversion functions.
 	 * Conversions from older versions cannot be upgraded automatically
 	 * because the user-defined functions used by the encoding conversions
@@ -122,7 +122,6 @@ check_and_dump_old_cluster(bool live_check, char **sequence_script_file_name)
 	 */
 	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 1300)
 		check_for_user_defined_encoding_conversions(&old_cluster);
->>>>>>> 8ff1c94649f
 
 	/*
 	 * Pre-PG 14 allowed user defined postfix operators, which are not
