@@ -26,6 +26,8 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
+#include "catalog/aocatalog.h"
+
 
 typedef struct
 {
@@ -903,8 +905,14 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 
 	if (relkind == RELKIND_RELATION ||
 		relkind == RELKIND_MATVIEW ||
-		relkind == RELKIND_PARTITIONED_TABLE)
+		relkind == RELKIND_PARTITIONED_TABLE ||
+		IsAppendonlyMetadataRelkind(relkind))
 	{
+		Oid			reloid;
+		Oid			vartypeid;
+		int32		type_mod;
+		Oid			type_coll;
+
 		/*
 		 * Emit CTID so that executor can find the row to update or delete.
 		 */
@@ -915,6 +923,21 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 					  InvalidOid,
 					  0);
 		add_row_identity_var(root, var, rtindex, "ctid");
+
+		/*
+		 * GPDB also needs gp_segment_id. ctid is only unique in the same
+		 * segment.
+		 */
+		reloid = RelationGetRelid(target_relation);
+		get_atttypetypmodcoll(reloid, GpSegmentIdAttributeNumber,
+							  &vartypeid, &type_mod, &type_coll);
+		var = makeVar(rtindex,
+					  GpSegmentIdAttributeNumber,
+					  vartypeid,
+					  type_mod,
+					  type_coll,
+					  0);
+		add_row_identity_var(root, var, rtindex, "gp_segment_id");
 	}
 	else if (relkind == RELKIND_FOREIGN_TABLE)
 	{
@@ -947,6 +970,11 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 			 (target_relation->trigdesc->trig_delete_after_row ||
 			  target_relation->trigdesc->trig_delete_before_row)))
 		{
+			Oid			reloid;
+			Oid			vartypeid;
+			int32		type_mod;
+			Oid			type_coll;
+
 			var = makeVar(rtindex,
 						  InvalidAttrNumber,
 						  RECORDOID,
@@ -954,6 +982,21 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 						  InvalidOid,
 						  0);
 			add_row_identity_var(root, var, rtindex, "wholerow");
+
+			/*
+			 * GPDB also needs gp_segment_id. ctid is only unique in the same
+			 * segment.
+			 */
+			reloid = RelationGetRelid(target_relation);
+			get_atttypetypmodcoll(reloid, GpSegmentIdAttributeNumber,
+								  &vartypeid, &type_mod, &type_coll);
+			var = makeVar(rtindex,
+						  GpSegmentIdAttributeNumber,
+						  vartypeid,
+						  type_mod,
+						  type_coll,
+						  0);
+			add_row_identity_var(root, var, rtindex, "gp_segment_id");
 		}
 	}
 }
