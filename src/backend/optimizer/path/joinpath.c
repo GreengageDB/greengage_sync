@@ -1766,6 +1766,7 @@ match_unsorted_outer(PlannerInfo *root,
 									  rcpath,
 									  merge_pathkeys,
 									  jointype,
+									  save_jointype,
 									  extra);
 			}
 
