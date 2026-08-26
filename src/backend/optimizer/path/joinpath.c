@@ -1959,7 +1959,7 @@ consider_parallel_nestloop(PlannerInfo *root,
 										  extra);
 			if (rcpath != NULL)
 				try_partial_nestloop_path(root, joinrel, outerpath, rcpath,
-										  pathkeys, jointype, extra);
+										  pathkeys, jointype, save_jointype, extra);
 		}
 	}
 }
