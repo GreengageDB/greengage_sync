@@ -62,7 +62,9 @@ static bool try_redistribute(PlannerInfo *root, CdbpathMfjRel *g,
 
 static SplitUpdatePath *make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti);
 
-static bool can_elide_explicit_motion(PlannerInfo *root, Index rti, Path *subpath, GpPolicy *policy);
+static bool can_elide_explicit_motion(PlannerInfo *root, Index rti,
+									  List *resultRelations, Path *subpath,
+									  GpPolicy *policy);
 /*
  * cdbpath_cost_motion
  *    Fills in the cost estimate fields in a MotionPath node.
@@ -2401,7 +2403,8 @@ create_motion_path_for_insert(PlannerInfo *root, GpPolicy *policy,
  * instead.
  */
 Path *
-create_motion_path_for_upddel(PlannerInfo *root, Index rti, GpPolicy *policy,
+create_motion_path_for_upddel(PlannerInfo *root, Index rti,
+							  List *resultRelations, GpPolicy *policy,
 							  Path *subpath)
 {
 	GpPolicyType	policyType = policy->ptype;
@@ -2409,7 +2412,7 @@ create_motion_path_for_upddel(PlannerInfo *root, Index rti, GpPolicy *policy,
 
 	if (policyType == POLICYTYPE_PARTITIONED)
 	{
-		if (can_elide_explicit_motion(root, rti, subpath, policy))
+		if (can_elide_explicit_motion(root, rti, resultRelations, subpath, policy))
 			return subpath;
 		else
 		{
@@ -2663,14 +2666,27 @@ make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti)
 }
 
 static bool
-can_elide_explicit_motion(PlannerInfo *root, Index rti, Path *subpath,
-						  GpPolicy *policy)
+can_elide_explicit_motion(PlannerInfo *root, Index rti, List *resultRelations,
+						  Path *subpath, GpPolicy *policy)
 {
+	ListCell   *lc;
+
 	/*
-	 * If there are no Motions between scan of the target relation and here,
-	 * no motion is required.
+	 * If there are no Motions between the scan of a target relation and here,
+	 * no motion is required for its rows.
+	 *
+	 * Every target relation has to qualify, not just the one whose policy we
+	 * were handed: sameslice_relids of an Append is the union over its
+	 * children, so a subpath that reaches one member without a Motion and
+	 * another through one would still need the Explicit Redistribute for the
+	 * latter's rows.
 	 */
-	if (bms_is_member(rti, subpath->sameslice_relids))
+	foreach(lc, resultRelations)
+	{
+		if (!bms_is_member(lfirst_int(lc), subpath->sameslice_relids))
+			break;
+	}
+	if (lc == NULL)
 		return true;
 
 	if (!CdbPathLocus_IsStrewn(subpath->locus))

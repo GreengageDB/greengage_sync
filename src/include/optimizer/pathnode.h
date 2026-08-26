@@ -320,7 +320,6 @@ extern ModifyTablePath *create_modifytable_path(PlannerInfo *root,
 												List *resultRelations,
 												List *updateColnosLists,
 												List *withCheckOptionLists, List *returningLists,
-												List *is_split_updates,
 												List *rowMarks, OnConflictExpr *onconflict,
 												int epqParam);
 extern Path *create_limit_path(PlannerInfo *root, RelOptInfo *rel,

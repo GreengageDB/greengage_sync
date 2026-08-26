@@ -2392,7 +2392,6 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 										updateColnosLists,
 										withCheckOptionLists,
 										returningLists,
-										list_make1_int(root->is_split_update),
 										rowMarks,
 										parse->onConflict,
 										assign_special_exec_param(root));

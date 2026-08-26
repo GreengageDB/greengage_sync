@@ -73,10 +73,13 @@ static List *reparameterize_pathlist_by_child(PlannerInfo *root,
 
 static bool set_append_path_locus(PlannerInfo *root, Path *pathnode, RelOptInfo *rel,
 					  List *pathkeys);
-static CdbPathLocus
-adjust_modifytable_subpaths(PlannerInfo *root, CmdType operation,
-							List *resultRelations, List *subpaths,
-							List *is_split_updates);
+static bool update_needs_split(PlannerInfo *root, List *resultRelations,
+							   Index nominalRelation);
+static CdbPathLocus adjust_modifytable_subpath(PlannerInfo *root,
+											   CmdType operation,
+											   List *resultRelations,
+											   bool isSplitUpdate,
+											   Path **subpath);
 
 /*****************************************************************************
  *		MISC. PATH UTILITIES
@@ -5307,11 +5310,11 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 						List *resultRelations,
 						List *updateColnosLists,
 						List *withCheckOptionLists, List *returningLists,
-						List *is_split_updates,
 						List *rowMarks, OnConflictExpr *onconflict,
 						int epqParam)
 {
 	ModifyTablePath *pathnode = makeNode(ModifyTablePath);
+	bool		isSplitUpdate;
 
 	Assert(operation == CMD_UPDATE ?
 		   list_length(resultRelations) == list_length(updateColnosLists) :
@@ -5320,7 +5323,18 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 		   list_length(resultRelations) == list_length(withCheckOptionLists));
 	Assert(returningLists == NIL ||
 		   list_length(resultRelations) == list_length(returningLists));
-	Assert(list_length(resultRelations) == list_length(is_split_updates));
+
+	/*
+	 * GPDB: decide whether this UPDATE has to run as a delete plus an insert.
+	 * A dummy subpath returns no rows, so there is nothing to move and no
+	 * point paying for a SplitUpdate node.
+	 */
+	if (operation == CMD_UPDATE &&
+		!(subpath->parent && IS_DUMMY_REL(subpath->parent)))
+		isSplitUpdate = update_needs_split(root, resultRelations,
+										   nominalRelation);
+	else
+		isSplitUpdate = false;
 
 	pathnode->path.pathtype = T_ModifyTable;
 	pathnode->path.parent = rel;
@@ -5334,34 +5348,26 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 	pathnode->path.pathkeys = NIL;
 
 	/*
-<<<<<<< HEAD
-	 * Put Motions on top of the subpaths as needed, and set the locus of the
+	 * Put a Motion on top of the subpath as needed, and set the locus of the
 	 * ModifyTable path itself.
 	 */
 	if (Gp_role == GP_ROLE_DISPATCH)
 		pathnode->path.locus =
-			adjust_modifytable_subpaths(root, operation,
-										resultRelations, subpaths,
-										is_split_updates);
+			adjust_modifytable_subpath(root, operation, resultRelations,
+									   isSplitUpdate, &subpath);
 	else
 	{
 		/* don't allow split updates in utility mode. */
-		if (Gp_role == GP_ROLE_UTILITY && operation == CMD_UPDATE &&
-			list_member_int(is_split_updates, (int) true))
-		{
-				ereport(ERROR,
-						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-						 errmsg("cannot update distribution key columns in utility mode")));
-		}
+		if (Gp_role == GP_ROLE_UTILITY && isSplitUpdate)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot update distribution key columns in utility mode")));
 
 		CdbPathLocus_MakeEntry(&pathnode->path.locus);
 	}
 
 	/*
-	 * Compute cost & rowcount as sum of subpath costs & rowcounts.
-=======
 	 * Compute cost & rowcount as subpath cost & rowcount (if RETURNING)
->>>>>>> 8ff1c94649f
 	 *
 	 * Currently, we don't charge anything extra for the actual table
 	 * modification work, nor for the WITH CHECK OPTIONS or RETURNING
@@ -5397,13 +5403,8 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 	pathnode->rootRelation = rootRelation;
 	pathnode->partColsUpdated = partColsUpdated;
 	pathnode->resultRelations = resultRelations;
-<<<<<<< HEAD
-	pathnode->is_split_updates = is_split_updates;
-	pathnode->subpaths = subpaths;
-	pathnode->subroots = subroots;
-=======
+	pathnode->isSplitUpdate = isSplitUpdate;
 	pathnode->updateColnosLists = updateColnosLists;
->>>>>>> 8ff1c94649f
 	pathnode->withCheckOptionLists = withCheckOptionLists;
 	pathnode->returningLists = returningLists;
 	pathnode->rowMarks = rowMarks;
@@ -5415,94 +5416,169 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 
 
 /*
- * Add Motions to children of a ModifyTable path, so that data
- * is modified on the correct segments.
+ * update_needs_split
+ *		GPDB: does this UPDATE have to run as a delete plus an insert?
  *
- * The input to a ModifyTable node must be distributed according to the
- * DISTRIBUTED BY of the target table. Add Motion paths to the child
- * plans for that. Returns a locus to represent the distribution of the
- * ModifyTable node itself.
+ * It does if it changes a distribution key column of any of the target
+ * relations, because the row may then belong on a different segment and a
+ * plain in-place update cannot move it.
+ *
+ * There is one plan for the whole target tree, so the answer is
+ * statement-wide: if any member needs the split, every row goes through the
+ * SplitUpdate node.  Rows from a member that does not need it are still split,
+ * but the node computes their target segment from that member's own policy
+ * (see create_splitupdate_plan), so they simply come back to the segment they
+ * were already on.
+ *
+ * Partitions always share their root's policy, so for a partitioned table this
+ * only ever inspects one policy's worth of information.  Old-style inheritance
+ * children may have policies of their own, with different key columns; their
+ * keys are matched to the nominal relation's columns through the appendrel
+ * translations, and a child key column that has no counterpart there cannot be
+ * changed by this statement and so cannot force a split.
  */
-static CdbPathLocus
-adjust_modifytable_subpaths(PlannerInfo *root, CmdType operation,
-							List *resultRelations, List *subpaths,
-							List *is_split_updates)
+static bool
+update_needs_split(PlannerInfo *root, List *resultRelations,
+				   Index nominalRelation)
 {
-	/*
-	 * The input plans must be distributed correctly.
-	 */
-	ListCell   *lcr,
-			   *lcp,
-			   *lci = NULL;
-	bool		all_subplans_entry = true,
-				all_subplans_replicated = true;
-	int			numsegments = -1;
+	ListCell   *lc;
 
-	if (operation == CMD_UPDATE)
-		lci = list_head(is_split_updates);
+	if (bms_is_empty(root->updateChangedCols))
+		return false;
 
-	forboth(lcr, resultRelations, lcp, subpaths)
+	foreach(lc, resultRelations)
 	{
-		int			rti = lfirst_int(lcr);
-		Path	   *subpath = (Path *) lfirst(lcp);
-		RangeTblEntry *rte = rt_fetch(rti, root->parse->rtable);
-		GpPolicy   *targetPolicy;
-		GpPolicyType targetPolicyType;
+		Index		rti = lfirst_int(lc);
+		RangeTblEntry *rte = planner_rt_fetch(rti, root);
+		GpPolicy   *policy;
+		List	   *changed_colnos;
+		bool		needs_split = false;
+		int			i;
 
 		Assert(rte->rtekind == RTE_RELATION);
 
-		targetPolicy = GpPolicyFetch(rte->relid);
-		targetPolicyType = targetPolicy->ptype;
+		policy = GpPolicyFetch(rte->relid);
+		if (policy->ptype != POLICYTYPE_PARTITIONED || policy->nattrs == 0)
+			continue;			/* randomly distributed, or not distributed */
 
-		numsegments = Max(targetPolicy->numsegments, numsegments);
+		/*
+		 * Express the changed columns in this relation's own attribute
+		 * numbering.  For the nominal relation itself there is nothing to
+		 * translate; for a leaf there is an appendrel entry to follow.
+		 */
+		changed_colnos = NIL;
+		i = -1;
+		while ((i = bms_next_member(root->updateChangedCols, i)) >= 0)
+			changed_colnos = lappend_int(changed_colnos, i);
 
-		if (targetPolicyType == POLICYTYPE_PARTITIONED)
-		{
-			all_subplans_entry = false;
-			all_subplans_replicated = false;
-		}
-		else if (targetPolicyType == POLICYTYPE_ENTRY)
-		{
-			/* Master-only table */
-			all_subplans_replicated = false;
-		}
-		else if (targetPolicyType == POLICYTYPE_REPLICATED)
-		{
-			all_subplans_entry = false;
-		}
-		else
-			elog(ERROR, "unrecognized policy type %u", targetPolicyType);
+		if (rti != nominalRelation)
+			changed_colnos = adjust_inherited_attnums_multilevel(root,
+																changed_colnos,
+																rti,
+																nominalRelation);
 
-		if (operation == CMD_INSERT)
+		for (i = 0; i < policy->nattrs; i++)
 		{
-			subpath = create_motion_path_for_insert(root, targetPolicy, subpath);
+			if (list_member_int(changed_colnos, policy->attrs[i]))
+			{
+				needs_split = true;
+				break;
+			}
 		}
-		else if (operation == CMD_DELETE)
-		{
-			subpath = create_motion_path_for_upddel(root, rti, targetPolicy, subpath);
-		}
-		else if (operation == CMD_UPDATE)
-		{
-			bool		is_split_update;
 
-			is_split_update = (bool) lfirst_int(lci);
+		list_free(changed_colnos);
+		pfree(policy);
 
-			if (is_split_update)
-				subpath = create_split_update_path(root, rti, targetPolicy, subpath);
-			else
-				subpath = create_motion_path_for_upddel(root, rti, targetPolicy, subpath);
-
-			lci = lnext(is_split_updates, lci);
-		}
-		lfirst(lcp) = subpath;
+		if (needs_split)
+			return true;
 	}
 
+	return false;
+}
+
+/*
+ * Add a Motion on top of a ModifyTable path's subpath, so that data
+ * is modified on the correct segments.
+ *
+ * The input to a ModifyTable node must be distributed according to the
+ * DISTRIBUTED BY of the target table.  *subpath is replaced by the wrapped
+ * path.  Returns a locus to represent the distribution of the ModifyTable
+ * node itself.
+ *
+ * One subpath means one Motion, even when the target is an inheritance tree
+ * whose members are distributed on different columns: the Motion an UPDATE or
+ * DELETE needs over a distributed table is an Explicit Redistribute, which
+ * routes each row by its gp_segment_id junk column and does not depend on any
+ * one relation's distribution key.  For a Split Update the target segment of
+ * the insert half is likewise computed per row, by the SplitUpdate node below.
+ *
+ * What one Motion cannot express is a target tree mixing policy *types*, since
+ * those want different kinds of Motion, so we reject that.  It is unreachable
+ * today: a partition's policy must match its root's, and a replicated table
+ * cannot take part in inheritance at all.
+ */
+static CdbPathLocus
+adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
+						   List *resultRelations, bool isSplitUpdate,
+						   Path **subpath)
+{
+	ListCell   *lc;
+	GpPolicyType commonPolicyType = POLICYTYPE_ENTRY;
+	GpPolicy   *commonPolicy = NULL;
+	Index		commonRti = 0;
+	int			numsegments = -1;
+	bool		first = true;
+	CdbPathLocus resultLocus;
+
 	/*
-	 * Set the distribution of the ModifyTable node itself. If there is only
-	 * one subplan, or all the subplans have a compatible distribution, then
-	 * we could mark the ModifyTable with the same distribution key. However,
-	 * currently, because a ModifyTable node can only be at the top of the
-	 * plan, it won't make any difference to the overall plan.
+	 * Work out the policy shared by the target relations, and complain if
+	 * there isn't one.
+	 */
+	foreach(lc, resultRelations)
+	{
+		Index		rti = lfirst_int(lc);
+		RangeTblEntry *rte = planner_rt_fetch(rti, root);
+		GpPolicy   *policy;
+
+		Assert(rte->rtekind == RTE_RELATION);
+
+		policy = GpPolicyFetch(rte->relid);
+
+		if (first)
+		{
+			commonPolicyType = policy->ptype;
+			commonPolicy = policy;
+			commonRti = rti;
+			first = false;
+		}
+		else if (policy->ptype != commonPolicyType)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot update or delete from an inheritance tree whose members have different kinds of distribution policy"),
+					 errdetail("Relations \"%s\" and \"%s\" are distributed differently.",
+							   get_rel_name(planner_rt_fetch(commonRti, root)->relid),
+							   get_rel_name(rte->relid))));
+
+		numsegments = Max(policy->numsegments, numsegments);
+	}
+
+	Assert(commonPolicy != NULL);
+
+	if (operation == CMD_INSERT)
+		*subpath = create_motion_path_for_insert(root, commonPolicy, *subpath);
+	else if (operation == CMD_UPDATE && isSplitUpdate)
+		*subpath = create_split_update_path(root, commonRti, commonPolicy,
+											*subpath);
+	else
+		*subpath = create_motion_path_for_upddel(root, commonRti,
+												 resultRelations, commonPolicy,
+												 *subpath);
+
+	/*
+	 * Set the distribution of the ModifyTable node itself.  Because a
+	 * ModifyTable node can only be at the top of the plan, this makes no
+	 * difference to the overall plan; it only matters for the RETURNING output
+	 * of a data-modifying CTE.
 	 *
 	 * GPDB_96_MERGE_FIXME: it might with e.g. a INSERT RETURNING in a CTE
 	 * I tried here, the locus setting is quite simple, but failed if it's not
@@ -5520,37 +5596,25 @@ adjust_modifytable_subpaths(PlannerInfo *root, CmdType operation,
 	 * without the WITH, what is the proper flow? FLOW_SINGLETON returns
 	 * nothing, FLOW_PARTITIONED without hashExprs(General locus has no
 	 * distkeys) returns duplication.
-	 *
-	 * GPDB_90_MERGE_FIXME: I've hacked a basic implementation of the above for
-	 * the case where all the subplans are POLICYTYPE_ENTRY, but it seems like
-	 * there should be a more general way to do this.
 	 */
-	if (all_subplans_entry)
+	switch (commonPolicyType)
 	{
-		CdbPathLocus resultLocus;
-
-		CdbPathLocus_MakeEntry(&resultLocus);
-		return resultLocus;
+		case POLICYTYPE_ENTRY:
+			CdbPathLocus_MakeEntry(&resultLocus);
+			break;
+		case POLICYTYPE_REPLICATED:
+			Assert(numsegments >= 0);
+			CdbPathLocus_MakeReplicated(&resultLocus, numsegments);
+			break;
+		case POLICYTYPE_PARTITIONED:
+			Assert(numsegments >= 0);
+			CdbPathLocus_MakeStrewn(&resultLocus, numsegments);
+			break;
+		default:
+			elog(ERROR, "unrecognized policy type %u", commonPolicyType);
 	}
-	else if (all_subplans_replicated)
-	{
-		CdbPathLocus resultLocus;
 
-		Assert(numsegments >= 0);
-
-		CdbPathLocus_MakeReplicated(&resultLocus, numsegments);
-		return resultLocus;
-	}
-	else
-	{
-		CdbPathLocus resultLocus;
-
-		Assert(numsegments >= 0);
-
-		CdbPathLocus_MakeStrewn(&resultLocus, numsegments);
-
-		return resultLocus;
-	}
+	return resultLocus;
 }
 
 /*

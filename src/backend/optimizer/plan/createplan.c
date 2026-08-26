@@ -349,7 +349,7 @@ static ModifyTable *make_modifytable(PlannerInfo *root, Plan *subplan,
 									 List *resultRelations,
 									 List *updateColnosLists,
 									 List *withCheckOptionLists, List *returningLists,
-									 List *is_split_updates,
+									 bool isSplitUpdate,
 									 List *rowMarks, OnConflictExpr *onconflict, int epqParam);
 static GatherMerge *create_gather_merge_plan(PlannerInfo *root,
 											 GatherMergePath *best_path);
@@ -3070,69 +3070,29 @@ static ModifyTable *
 create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 {
 	ModifyTable *plan;
-<<<<<<< HEAD
-	List	   *subplans = NIL;
-	ListCell   *subpaths,
-			   *subroots;
-	ListCell   *is_split_updates;
-
-	/* Build the plan for each input path */
-	forthree(subpaths, best_path->subpaths,
-			 subroots, best_path->subroots,
-			 is_split_updates, best_path->is_split_updates)
-	{
-		Path	   *subpath = (Path *) lfirst(subpaths);
-		PlannerInfo *subroot = (PlannerInfo *) lfirst(subroots);
-		bool		is_split_update = (bool) lfirst_int(is_split_updates);
-		Plan	   *subplan;
-		RangeTblEntry *rte = planner_rt_fetch(best_path->nominalRelation, root);
-		PlanSlice  *save_curSlice = subroot->curSlice;
-
-		subroot->curSlice = root->curSlice;
-
-		/* Try the Single-Row-Insert optimization first. */
-		subplan = cdbpathtoplan_create_sri_plan(rte, subroot, subpath, CP_EXACT_TLIST);
-
-		/*
-		 * In an inherited UPDATE/DELETE, reference the per-child modified
-		 * subroot while creating Plans from Paths for the child rel.  This is
-		 * a kluge, but otherwise it's too hard to ensure that Plan creation
-		 * functions (particularly in FDWs) don't depend on the contents of
-		 * "root" matching what they saw at Path creation time.  The main
-		 * downside is that creation functions for Plans that might appear
-		 * below a ModifyTable cannot expect to modify the contents of "root"
-		 * and have it "stick" for subsequent processing such as setrefs.c.
-		 * That's not great, but it seems better than the alternative.
-		 */
-		if (!subplan)
-		{
-			subplan = create_plan_recurse(subroot, subpath, CP_EXACT_TLIST);
-
-			/*
-			 * Transfer resname/resjunk labeling, too, to keep executor happy.
-			 * But not if it's a Split Update. A Split Update contains an extra
-			 * DMLActionExpr column in its target list, so it doesn't match
-			 * subroot->processed_tlist. The code to create the Split Update node
-			 * takes care to label junk columns correctly, instead.
-			 */
-			if (!is_split_update)
-				apply_tlist_labeling(subplan->targetlist, subroot->processed_tlist);
-		}
-
-		subplans = lappend(subplans, subplan);
-
-		subroot->curSlice = save_curSlice;
-	}
-=======
 	Path	   *subpath = best_path->subpath;
 	Plan	   *subplan;
+	RangeTblEntry *rte = planner_rt_fetch(best_path->nominalRelation, root);
 
-	/* Subplan must produce exactly the specified tlist */
-	subplan = create_plan_recurse(root, subpath, CP_EXACT_TLIST);
+	/* GPDB: try the Single-Row-Insert optimization first. */
+	subplan = cdbpathtoplan_create_sri_plan(rte, root, subpath, CP_EXACT_TLIST);
 
-	/* Transfer resname/resjunk labeling, too, to keep executor happy */
-	apply_tlist_labeling(subplan->targetlist, root->processed_tlist);
->>>>>>> 8ff1c94649f
+	if (!subplan)
+	{
+		/* Subplan must produce exactly the specified tlist */
+		subplan = create_plan_recurse(root, subpath, CP_EXACT_TLIST);
+
+		/*
+		 * Transfer resname/resjunk labeling, too, to keep executor happy.
+		 *
+		 * GPDB: but not for a Split Update.  Its targetlist carries an extra
+		 * DMLActionExpr column, so it does not line up with
+		 * root->processed_tlist; create_splitupdate_plan() labels the junk
+		 * columns itself instead.
+		 */
+		if (!best_path->isSplitUpdate)
+			apply_tlist_labeling(subplan->targetlist, root->processed_tlist);
+	}
 
 	plan = make_modifytable(root,
 							subplan,
@@ -3145,7 +3105,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 							best_path->updateColnosLists,
 							best_path->withCheckOptionLists,
 							best_path->returningLists,
-							best_path->is_split_updates,
+							best_path->isSplitUpdate,
 							best_path->rowMarks,
 							best_path->onconflict,
 							best_path->epqParam);
@@ -8326,7 +8286,7 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 				 List *resultRelations,
 				 List *updateColnosLists,
 				 List *withCheckOptionLists, List *returningLists,
-				 List *is_split_updates,
+				 bool isSplitUpdate,
 				 List *rowMarks, OnConflictExpr *onconflict, int epqParam)
 {
 	ModifyTable *node = makeNode(ModifyTable);
@@ -8342,7 +8302,6 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 		   list_length(resultRelations) == list_length(withCheckOptionLists));
 	Assert(returningLists == NIL ||
 		   list_length(resultRelations) == list_length(returningLists));
-	Assert(list_length(resultRelations) == list_length(is_split_updates));
 
 	node->plan.lefttree = subplan;
 	node->plan.righttree = NULL;
@@ -8388,7 +8347,7 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 	node->rowMarks = rowMarks;
 	node->epqParam = epqParam;
 
-	node->isSplitUpdates = is_split_updates;
+	node->isSplitUpdate = isSplitUpdate;
 	node->forceTupleRouting = false;
 
 	/*
