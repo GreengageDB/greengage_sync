@@ -1039,20 +1039,7 @@ build_joinrel_tlist(PlannerInfo *root, RelOptInfo *joinrel,
 			elog(ERROR, "unexpected node type in rel targetlist: %d",
 				 (int) nodeTag(var));
 
-<<<<<<< HEAD
-		/* Get the Var's original base rel */
-		baserel = find_base_rel(root, var->varno);
-
-        /* System-defined attribute, whole row, or user-defined attribute */
-        Assert(var->varattno >= baserel->min_attr &&
-               var->varattno <= baserel->max_attr);
-
-		/* Is it still needed above this joinrel? */
-		ndx = var->varattno - baserel->min_attr;
-		if (bms_nonempty_difference(baserel->attr_needed[ndx], relids))
-=======
 		if (var->varno == ROWID_VAR)
->>>>>>> 8ff1c94649f
 		{
 			/* UPDATE/DELETE row identity vars are always needed */
 			RowIdentityVarInfo *ridinfo = (RowIdentityVarInfo *)
@@ -1070,6 +1057,10 @@ build_joinrel_tlist(PlannerInfo *root, RelOptInfo *joinrel,
 
 			/* Get the Var's original base rel */
 			baserel = find_base_rel(root, var->varno);
+
+			/* System-defined attribute, whole row, or user-defined attribute */
+			Assert(var->varattno >= baserel->min_attr &&
+				   var->varattno <= baserel->max_attr);
 
 			/* Is it still needed above this joinrel? */
 			ndx = var->varattno - baserel->min_attr;

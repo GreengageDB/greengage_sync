@@ -587,7 +587,7 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	WRITE_NODE_FIELD(onConflictWhere);
 	WRITE_UINT_FIELD(exclRelRTI);
 	WRITE_NODE_FIELD(exclRelTlist);
-	WRITE_NODE_FIELD(isSplitUpdates);
+	WRITE_BOOL_FIELD(isSplitUpdate);
 	WRITE_BOOL_FIELD(forceTupleRouting);
 }
 

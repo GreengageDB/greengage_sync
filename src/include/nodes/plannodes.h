@@ -407,7 +407,15 @@ typedef struct ModifyTable
 	Node	   *onConflictWhere;	/* WHERE for ON CONFLICT UPDATE */
 	Index		exclRelRTI;		/* RTI of the EXCLUDED pseudo relation */
 	List	   *exclRelTlist;	/* tlist of the EXCLUDED pseudo relation */
-	List	   *isSplitUpdates;
+
+	/*
+	 * GPDB: true if this UPDATE is executed as a delete+insert pair, because
+	 * it may move a row to a different segment.  The SplitUpdate node below
+	 * emits the two halves and tags them with the "DMLAction" junk column.
+	 * The decision is statement-wide: there is a single subplan, hence a
+	 * single SplitUpdate, for the whole target inheritance tree.
+	 */
+	bool		isSplitUpdate;
 
 	bool		forceTupleRouting; /* dynamic scans require tuple routing */
 } ModifyTable;

@@ -1229,14 +1229,10 @@ planstate_walk_kids(PlanState *planstate,
 				break;
 			}
 
-		case T_ModifyTableState:
-			{
-				ModifyTableState *mts = (ModifyTableState *) planstate;
-
-				v = planstate_walk_array(mts->mt_plans, mts->mt_nplans, walker, context, flags);
-				Assert(!planstate->lefttree && !planstate->righttree);
-				break;
-			}
+		/*
+		 * ModifyTableState needs no case of its own: its single source of
+		 * tuples is the outer subplan, which the default branch walks.
+		 */
 
 		case T_SequenceState:
 			{

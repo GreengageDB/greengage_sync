@@ -1308,7 +1308,7 @@ typedef struct ModifyTableState
 
 	EPQState	mt_epqstate;	/* for evaluating EvalPlanQual rechecks */
 	bool		fireBSTriggers; /* do we need to fire stmt triggers? */
-	bool	   *mt_isSplitUpdates; /* per-subplan flag to indicate if it's a split update */
+	bool		mt_isSplitUpdate;	/* GPDB: UPDATE runs as delete+insert? */
 
 	/*
 	 * These fields are used for inherited UPDATE and DELETE, to track which

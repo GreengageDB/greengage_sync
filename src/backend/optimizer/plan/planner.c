@@ -822,7 +822,6 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	root->multiexpr_params = NIL;
 	root->eq_classes = NIL;
 	root->ec_merging_done = false;
-<<<<<<< HEAD
 	root->non_eq_clauses = NIL;
 	root->init_plans = NIL;
 
@@ -832,11 +831,9 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 		root->list_cteplaninfo = init_list_cteplaninfo(list_length(parse->cteList));
 	}
 
-=======
 	root->all_result_relids =
 		parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
 	root->leaf_result_relids = NULL;	/* we'll find out leaf-ness later */
->>>>>>> 8ff1c94649f
 	root->append_rel_list = NIL;
 	root->row_identity_vars = NIL;
 	root->rowMarks = NIL;
@@ -847,15 +844,11 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	root->grouping_map = NULL;
 	root->minmax_aggs = NIL;
 	root->qual_security_level = 0;
-<<<<<<< HEAD
-	root->inhTargetKind = INHKIND_NONE;
 	root->upd_del_replicated_table = 0;
 
 	Assert(config);
 	root->config = config;
 
-=======
->>>>>>> 8ff1c94649f
 	root->hasPseudoConstantQuals = false;
 	root->hasAlternativeSubPlans = false;
 	root->hasRecursion = hasRecursion;
