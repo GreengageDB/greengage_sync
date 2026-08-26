@@ -83,12 +83,7 @@ static bool check_outerjoin_delay(PlannerInfo *root, Relids *relids_p,
 static bool check_equivalence_delay(PlannerInfo *root,
 									RestrictInfo *restrictinfo);
 static bool check_redundant_nullability_qual(PlannerInfo *root, Node *clause);
-<<<<<<< HEAD
-=======
-static void check_mergejoinable(RestrictInfo *restrictinfo);
-static void check_hashjoinable(RestrictInfo *restrictinfo);
 static void check_resultcacheable(RestrictInfo *restrictinfo);
->>>>>>> 8ff1c94649f
 
 
 /*****************************************************************************
