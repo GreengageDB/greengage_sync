@@ -134,16 +134,14 @@ static SimpleOidList tabledata_exclude_oids = {NULL, NULL};
 static SimpleStringList foreign_servers_include_patterns = {NULL, NULL};
 static SimpleOidList foreign_servers_include_oids = {NULL, NULL};
 
-<<<<<<< HEAD
 static SimpleStringList relid_string_list = {NULL, NULL};
 static SimpleStringList funcid_string_list = {NULL, NULL};
 static SimpleOidList function_include_oids = {NULL, NULL};
 
 static SimpleOidList preassigned_oids = {NULL, NULL};
-=======
+
 static SimpleStringList extension_include_patterns = {NULL, NULL};
 static SimpleOidList extension_include_oids = {NULL, NULL};
->>>>>>> 8ff1c94649f
 
 static const CatalogId nilCatalogId = {0, 0};
 
@@ -521,11 +519,7 @@ main(int argc, char **argv)
 
 	InitDumpOptions(&dopt);
 
-<<<<<<< HEAD
-	while ((c = getopt_long(argc, argv, "abBcCd:E:f:F:h:j:n:N:oOp:RsS:t:T:U:vwWxZ:",
-=======
 	while ((c = getopt_long(argc, argv, "abBcCd:e:E:f:F:h:j:n:N:Op:RsS:t:T:U:vwWxZ:",
->>>>>>> 8ff1c94649f
 							long_options, &optindex)) != -1)
 	{
 		switch (c)
@@ -976,11 +970,10 @@ main(int argc, char **argv)
 
 	/* non-matching exclusion patterns aren't an error */
 
-<<<<<<< HEAD
 
 	expand_oid_patterns(&relid_string_list, &table_include_oids);
 	expand_oid_patterns(&funcid_string_list, &function_include_oids);
-=======
+
 	/* Expand extension selection patterns into OID lists */
 	if (extension_include_patterns.head != NULL)
 	{
@@ -990,7 +983,6 @@ main(int argc, char **argv)
 		if (extension_include_oids.head == NULL)
 			fatal("no matching extensions were found");
 	}
->>>>>>> 8ff1c94649f
 
 	/*
 	 * Dumping blobs is the default for dumps where an inclusion switch is not
@@ -8923,6 +8915,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	int			i_attcollation;
 	int			i_attfdwoptions;
 	int			i_attmissingval;
+	int			i_attcompression;
 	int			i_atthasdef;
 	int			i_attencoding;
 
@@ -9037,10 +9030,17 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 
 	if (fout->remoteVersion >= 120000)
 		appendPQExpBufferStr(q,
-							 "a.attgenerated\n");
+							 "a.attgenerated,\n");
 	else
 		appendPQExpBufferStr(q,
-							 "'' AS attgenerated\n");
+							 "'' AS attgenerated,\n");
+
+	if (fout->remoteVersion >= 140000)
+		appendPQExpBufferStr(q,
+							 "a.attcompression AS attcompression\n");
+	else
+		appendPQExpBufferStr(q,
+							 "'' AS attcompression\n");
 
 	/* need left join to pg_type to not fail on dropped columns ... */
 	appendPQExpBuffer(q,
@@ -9077,6 +9077,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	i_attcollation = PQfnumber(res, "attcollation");
 	i_attfdwoptions = PQfnumber(res, "attfdwoptions");
 	i_attmissingval = PQfnumber(res, "attmissingval");
+	i_attcompression = PQfnumber(res, "attcompression");
 	i_atthasdef = PQfnumber(res, "atthasdef");
 	i_attencoding = PQfnumber(res, "attencoding");
 
@@ -9119,7 +9120,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			fatal("unexpected column data for table \"%s\"",
 				  tbinfo->dobj.name);
 
-<<<<<<< HEAD
 		/* Save data for this table */
 		tbinfo->numatts = numatts;
 		tbinfo->attnames = (char **) pg_malloc(numatts * sizeof(char *));
@@ -9136,89 +9136,13 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		tbinfo->attislocal = (bool *) pg_malloc(numatts * sizeof(bool));
 		tbinfo->attoptions = (char **) pg_malloc(numatts * sizeof(char *));
 		tbinfo->attcollation = (Oid *) pg_malloc(numatts * sizeof(Oid));
+		tbinfo->attcompression = (char *) pg_malloc(numatts * sizeof(char));
 		tbinfo->attfdwoptions = (char **) pg_malloc(numatts * sizeof(char *));
 		tbinfo->attmissingval = (char **) pg_malloc(numatts * sizeof(char *));
 		tbinfo->notnull = (bool *) pg_malloc(numatts * sizeof(bool));
 		tbinfo->inhNotNull = (bool *) pg_malloc(numatts * sizeof(bool));
 		tbinfo->attrdefs = (AttrDefInfo **) pg_malloc(numatts * sizeof(AttrDefInfo *));
 		tbinfo->attencoding = (char **) pg_malloc(numatts * sizeof(char*));
-=======
-		if (fout->remoteVersion >= 140000)
-			appendPQExpBuffer(q,
-							  "a.attcompression AS attcompression,\n");
-		else
-			appendPQExpBuffer(q,
-							  "'' AS attcompression,\n");
-
-		if (fout->remoteVersion >= 90200)
-			appendPQExpBufferStr(q,
-								 "pg_catalog.array_to_string(ARRAY("
-								 "SELECT pg_catalog.quote_ident(option_name) || "
-								 "' ' || pg_catalog.quote_literal(option_value) "
-								 "FROM pg_catalog.pg_options_to_table(attfdwoptions) "
-								 "ORDER BY option_name"
-								 "), E',\n    ') AS attfdwoptions,\n");
-		else
-			appendPQExpBufferStr(q,
-								 "'' AS attfdwoptions,\n");
-
-		if (fout->remoteVersion >= 100000)
-			appendPQExpBufferStr(q,
-								 "a.attidentity,\n");
-		else
-			appendPQExpBufferStr(q,
-								 "'' AS attidentity,\n");
-
-		if (fout->remoteVersion >= 110000)
-			appendPQExpBufferStr(q,
-								 "CASE WHEN a.atthasmissing AND NOT a.attisdropped "
-								 "THEN a.attmissingval ELSE null END AS attmissingval,\n");
-		else
-			appendPQExpBufferStr(q,
-								 "NULL AS attmissingval,\n");
-
-		if (fout->remoteVersion >= 120000)
-			appendPQExpBufferStr(q,
-								 "a.attgenerated\n");
-		else
-			appendPQExpBufferStr(q,
-								 "'' AS attgenerated\n");
-
-		/* need left join here to not fail on dropped columns ... */
-		appendPQExpBuffer(q,
-						  "FROM pg_catalog.pg_attribute a LEFT JOIN pg_catalog.pg_type t "
-						  "ON a.atttypid = t.oid\n"
-						  "WHERE a.attrelid = '%u'::pg_catalog.oid "
-						  "AND a.attnum > 0::pg_catalog.int2\n"
-						  "ORDER BY a.attnum",
-						  tbinfo->dobj.catId.oid);
-
-		res = ExecuteSqlQuery(fout, q->data, PGRES_TUPLES_OK);
-
-		ntups = PQntuples(res);
-
-		tbinfo->numatts = ntups;
-		tbinfo->attnames = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->atttypnames = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->atttypmod = (int *) pg_malloc(ntups * sizeof(int));
-		tbinfo->attstattarget = (int *) pg_malloc(ntups * sizeof(int));
-		tbinfo->attstorage = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->typstorage = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attidentity = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attgenerated = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attisdropped = (bool *) pg_malloc(ntups * sizeof(bool));
-		tbinfo->attlen = (int *) pg_malloc(ntups * sizeof(int));
-		tbinfo->attalign = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attislocal = (bool *) pg_malloc(ntups * sizeof(bool));
-		tbinfo->attoptions = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->attcollation = (Oid *) pg_malloc(ntups * sizeof(Oid));
-		tbinfo->attcompression = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attfdwoptions = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->attmissingval = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->notnull = (bool *) pg_malloc(ntups * sizeof(bool));
-		tbinfo->inhNotNull = (bool *) pg_malloc(ntups * sizeof(bool));
-		tbinfo->attrdefs = (AttrDefInfo **) pg_malloc(ntups * sizeof(AttrDefInfo *));
->>>>>>> 8ff1c94649f
 		hasdefaults = false;
 
 		for (int j = 0; j < numatts; j++, r++)
@@ -9235,7 +9159,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			tbinfo->attidentity[j] = *(PQgetvalue(res, r, i_attidentity));
 			tbinfo->attgenerated[j] = *(PQgetvalue(res, r, i_attgenerated));
 			tbinfo->needs_override = tbinfo->needs_override || (tbinfo->attidentity[j] == ATTRIBUTE_IDENTITY_ALWAYS);
-<<<<<<< HEAD
 			tbinfo->attisdropped[j] = (PQgetvalue(res, r, i_attisdropped)[0] == 't');
 			tbinfo->attlen[j] = atoi(PQgetvalue(res, r, i_attlen));
 			tbinfo->attalign[j] = *(PQgetvalue(res, r, i_attalign));
@@ -9243,20 +9166,9 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			tbinfo->notnull[j] = (PQgetvalue(res, r, i_attnotnull)[0] == 't');
 			tbinfo->attoptions[j] = pg_strdup(PQgetvalue(res, r, i_attoptions));
 			tbinfo->attcollation[j] = atooid(PQgetvalue(res, r, i_attcollation));
+			tbinfo->attcompression[j] = *(PQgetvalue(res, r, i_attcompression));
 			tbinfo->attfdwoptions[j] = pg_strdup(PQgetvalue(res, r, i_attfdwoptions));
 			tbinfo->attmissingval[j] = pg_strdup(PQgetvalue(res, r, i_attmissingval));
-=======
-			tbinfo->attisdropped[j] = (PQgetvalue(res, j, PQfnumber(res, "attisdropped"))[0] == 't');
-			tbinfo->attlen[j] = atoi(PQgetvalue(res, j, PQfnumber(res, "attlen")));
-			tbinfo->attalign[j] = *(PQgetvalue(res, j, PQfnumber(res, "attalign")));
-			tbinfo->attislocal[j] = (PQgetvalue(res, j, PQfnumber(res, "attislocal"))[0] == 't');
-			tbinfo->notnull[j] = (PQgetvalue(res, j, PQfnumber(res, "attnotnull"))[0] == 't');
-			tbinfo->attoptions[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "attoptions")));
-			tbinfo->attcollation[j] = atooid(PQgetvalue(res, j, PQfnumber(res, "attcollation")));
-			tbinfo->attcompression[j] = *(PQgetvalue(res, j, PQfnumber(res, "attcompression")));
-			tbinfo->attfdwoptions[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "attfdwoptions")));
-			tbinfo->attmissingval[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "attmissingval")));
->>>>>>> 8ff1c94649f
 			tbinfo->attrdefs[j] = NULL; /* fix below */
 			if (PQgetvalue(res, r, i_atthasdef)[0] == 't')
 				hasdefaults = true;
@@ -12760,23 +12672,10 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	delqry = createPQExpBuffer();
 	asPart = createPQExpBuffer();
 
-<<<<<<< HEAD
 	if (!fout->is_prepared[PREPQUERY_DUMPFUNC])
 	{
 		/* Set up query for function-specific details */
 		appendPQExpBufferStr(query, "PREPARE dumpFunc(pg_catalog.oid) AS\n");
-=======
-	/* Fetch function-specific details */
-	appendPQExpBufferStr(query,
-						 "SELECT\n"
-						 "proretset,\n"
-						 "prosrc,\n"
-						 "probin,\n"
-						 "provolatile,\n"
-						 "proisstrict,\n"
-						 "prosecdef,\n"
-						 "lanname,\n");
->>>>>>> 8ff1c94649f
 
 		appendPQExpBufferStr(query,
 							 "SELECT\n"
@@ -12834,13 +12733,19 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 
 		if (fout->remoteVersion >= 120000)
 			appendPQExpBufferStr(query,
-								 "prosupport\n");
+								 "prosupport,\n");
 		else
 			appendPQExpBufferStr(query,
-								 "'-' AS prosupport\n");
+								 "'-' AS prosupport,\n");
+
+		if (fout->remoteVersion >= 140000)
+			appendPQExpBufferStr(query,
+								 "CASE WHEN prosrc IS NULL AND lanname = 'sql' THEN pg_get_function_sqlbody(p.oid) END AS prosqlbody\n");
+		else
+			appendPQExpBufferStr(query,
+								 "NULL AS prosqlbody\n");
 
 		appendPQExpBufferStr(query,
-<<<<<<< HEAD
 							 "FROM pg_catalog.pg_proc p, pg_catalog.pg_language l\n"
 							 "WHERE p.oid = $1 "
 							 "AND l.oid = p.prolang");
@@ -12848,78 +12753,15 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		ExecuteSqlStatement(fout, query->data);
 
 		fout->is_prepared[PREPQUERY_DUMPFUNC] = true;
-
-=======
-							 "pg_catalog.pg_get_function_arguments(p.oid) AS funcargs,\n"
-							 "pg_catalog.pg_get_function_identity_arguments(p.oid) AS funciargs,\n"
-							 "pg_catalog.pg_get_function_result(p.oid) AS funcresult,\n");
->>>>>>> 8ff1c94649f
 	}
 
-<<<<<<< HEAD
 	printfPQExpBuffer(query,
 					  "EXECUTE dumpFunc('%u')",
-=======
-	if (fout->remoteVersion >= 90200)
-		appendPQExpBufferStr(query,
-							 "proleakproof,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "false AS proleakproof,\n");
-
-	if (fout->remoteVersion >= 90500)
-		appendPQExpBufferStr(query,
-							 "array_to_string(protrftypes, ' ') AS protrftypes,\n");
-
-	if (fout->remoteVersion >= 90600)
-		appendPQExpBufferStr(query,
-							 "proparallel,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'u' AS proparallel,\n");
-
-	if (fout->remoteVersion >= 110000)
-		appendPQExpBufferStr(query,
-							 "prokind,\n");
-	else if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-							 "CASE WHEN proiswindow THEN 'w' ELSE 'f' END AS prokind,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'f' AS prokind,\n");
-
-	if (fout->remoteVersion >= 120000)
-		appendPQExpBufferStr(query,
-							 "prosupport,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'-' AS prosupport,\n");
-
-	if (fout->remoteVersion >= 140000)
-		appendPQExpBufferStr(query,
-							 "CASE WHEN prosrc IS NULL AND lanname = 'sql' THEN pg_get_function_sqlbody(p.oid) END AS prosqlbody\n");
-	else
-		appendPQExpBufferStr(query,
-							 "NULL AS prosqlbody\n");
-
-	appendPQExpBuffer(query,
-					  "FROM pg_catalog.pg_proc p, pg_catalog.pg_language l\n"
-					  "WHERE p.oid = '%u'::pg_catalog.oid "
-					  "AND l.oid = p.prolang",
->>>>>>> 8ff1c94649f
 					  finfo->dobj.catId.oid);
 
 	res = ExecuteSqlQueryForSingleRow(fout, query->data);
 
 	proretset = PQgetvalue(res, 0, PQfnumber(res, "proretset"));
-<<<<<<< HEAD
-	prosrc = PQgetvalue(res, 0, PQfnumber(res, "prosrc"));
-	probin = PQgetvalue(res, 0, PQfnumber(res, "probin"));
-	funcargs = PQgetvalue(res, 0, PQfnumber(res, "funcargs"));
-	funciargs = PQgetvalue(res, 0, PQfnumber(res, "funciargs"));
-	funcresult = PQgetvalue(res, 0, PQfnumber(res, "funcresult"));
-
-=======
 	if (PQgetisnull(res, 0, PQfnumber(res, "prosqlbody")))
 	{
 		prosrc = PQgetvalue(res, 0, PQfnumber(res, "prosrc"));
@@ -12932,21 +12774,10 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		probin = NULL;
 		prosqlbody = PQgetvalue(res, 0, PQfnumber(res, "prosqlbody"));
 	}
-	if (fout->remoteVersion >= 80400)
-	{
-		funcargs = PQgetvalue(res, 0, PQfnumber(res, "funcargs"));
-		funciargs = PQgetvalue(res, 0, PQfnumber(res, "funciargs"));
-		funcresult = PQgetvalue(res, 0, PQfnumber(res, "funcresult"));
-		proallargtypes = proargmodes = proargnames = NULL;
-	}
-	else
-	{
-		proallargtypes = PQgetvalue(res, 0, PQfnumber(res, "proallargtypes"));
-		proargmodes = PQgetvalue(res, 0, PQfnumber(res, "proargmodes"));
-		proargnames = PQgetvalue(res, 0, PQfnumber(res, "proargnames"));
-		funcargs = funciargs = funcresult = NULL;
-	}
->>>>>>> 8ff1c94649f
+	funcargs = PQgetvalue(res, 0, PQfnumber(res, "funcargs"));
+	funciargs = PQgetvalue(res, 0, PQfnumber(res, "funciargs"));
+	funcresult = PQgetvalue(res, 0, PQfnumber(res, "funcresult"));
+
 	if (PQfnumber(res, "protrftypes") != -1)
 		protrftypes = PQgetvalue(res, 0, PQfnumber(res, "protrftypes"));
 	else
@@ -12967,8 +12798,8 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	proexeclocation = PQgetvalue(res, 0, PQfnumber(res, "proexeclocation"));
 
 	/*
-	 * See backend/commands/define.c for details of how the 'AS' clause is
-	 * used. In GPDB Paris and up, an unused probin is NULL (here ""); previous8bc709b37411ba7ad0fd0f1f79c354714424af3d
+	 * See backend/commands/functioncmds.c for details of how the 'AS' clause
+	 * is used.  In 8.4 and up, an unused probin is NULL (here ""); previous
 	 * versions would set it to "-".  There are no known cases in which prosrc
 	 * is unused, so the tests below for "-" are probably useless.
 	 */
@@ -13024,24 +12855,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		configitems = NULL;
 		nconfigitems = 0;
 	}
-
-	funcsig_tag = format_function_signature(fout, finfo, false);
-
-	if (prokind[0] == PROKIND_PROCEDURE)
-		keyword = "PROCEDURE";
-	else
-	{
-		configitems = NULL;
-		nconfigitems = 0;
-	}
-
-
-	/* 8.4 or later; we rely on server-side code for most of the work */
-	funcfullsig = format_function_arguments(finfo, funcargs, false);
-	funcsig = format_function_arguments(finfo, funciargs, false);
-
-
-	funcsig_tag = format_function_signature(fout, finfo, false);
 
 	qual_funcsig = psprintf("%s.%s",
 							fmtId(finfo->dobj.namespace->dobj.name),
