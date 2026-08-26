@@ -15,7 +15,9 @@
 #include "postgres.h"
 
 #include "access/htup_details.h"
+#include "access/sysattr.h"
 #include "access/table.h"
+#include "catalog/aocatalog.h"
 #include "foreign/fdwapi.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
@@ -903,7 +905,8 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 
 	if (relkind == RELKIND_RELATION ||
 		relkind == RELKIND_MATVIEW ||
-		relkind == RELKIND_PARTITIONED_TABLE)
+		relkind == RELKIND_PARTITIONED_TABLE ||
+		IsAppendonlyMetadataRelkind(relkind))
 	{
 		/*
 		 * Emit CTID so that executor can find the row to update or delete.
@@ -915,6 +918,56 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 					  InvalidOid,
 					  0);
 		add_row_identity_var(root, var, rtindex, "ctid");
+
+		/*
+		 * GPDB also needs gp_segment_id: a ctid is only unique within one
+		 * segment, so the executor needs to know which segment the row came
+		 * from before it can apply the ctid.
+		 */
+		var = makeVar(rtindex,
+					  GpSegmentIdAttributeNumber,
+					  INT4OID,
+					  -1,
+					  InvalidOid,
+					  0);
+		add_row_identity_var(root, var, rtindex, "gp_segment_id");
+
+		/*
+		 * GPDB: an UPDATE of an old-style inheritance tree also needs the old
+		 * row in full.  The single subplan's targetlist is in the root
+		 * relation's column layout, so a child's extra columns are absent from
+		 * it and would be lost.  A RECORD-typed whole-row Var translates to
+		 * each child's own whole row rather than being coerced to the root
+		 * rowtype, so it carries them; that also spares us the TID re-fetch,
+		 * which append-optimized tables cannot serve.
+		 *
+		 * Partitions may only contain columns present in their parent, so they
+		 * never need this.  We do not check whether a child really does have
+		 * extra columns: that would mean opening every member before the tree
+		 * is expanded.
+		 */
+		if (commandType == CMD_UPDATE && relkind == RELKIND_RELATION)
+		{
+			RangeTblEntry *rootRte = planner_rt_fetch(root->parse->resultRelation,
+													  root);
+
+			/*
+			 * Note that we may be called for a leaf relation, from
+			 * expand_inherited_rtentry(); whether the query targets an
+			 * inheritance tree has to be read off the nominal result
+			 * relation, not off target_rte.
+			 */
+			if (rootRte->inh && rootRte->relkind == RELKIND_RELATION)
+			{
+				var = makeVar(rtindex,
+							  InvalidAttrNumber,
+							  RECORDOID,
+							  -1,
+							  InvalidOid,
+							  0);
+				add_row_identity_var(root, var, rtindex, "wholerow");
+			}
+		}
 	}
 	else if (relkind == RELKIND_FOREIGN_TABLE)
 	{
