@@ -2058,24 +2058,6 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 	final_rel->fdwroutine = current_rel->fdwroutine;
 	final_rel->exec_location = current_rel->exec_location;
 
-	if (root->is_split_update)
-	{
-		bool		all_dummy = true;
-
-		foreach(lc, current_rel->pathlist)
-		{
-			Path	   *path = (Path *) lfirst(lc);
-
-			if (!path->parent || !IS_DUMMY_REL(path->parent))
-			{
-				all_dummy = false;
-				break;
-			}
-		}
-		if (all_dummy)
-			root->is_split_update = false;
-	}
-
 	/*
 	 * Generate paths for the final_rel.  Insert all surviving paths, with
 	 * LockRows, Limit, and/or ModifyTable steps added if needed.
