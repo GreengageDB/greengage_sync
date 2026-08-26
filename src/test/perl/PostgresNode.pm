@@ -853,19 +853,11 @@ sub start
 	# connections in confusing ways.
 	local %ENV = $self->_get_env(PGAPPNAME => undef);
 
-<<<<<<< HEAD
-		# Note: We set the cluster_name here, not in postgresql.conf (in
-		# sub init) so that it does not get copied to standbys.
-		$ret = TestLib::system_log('pg_ctl', '-D', $self->data_dir, '-l',
-		$self->logfile, '-o', "--cluster-name=$name -c gp_role=utility --gp_dbid=$self->{_dbid} --gp_contentid=0",
-			'start');
-	}
-=======
 	# Note: We set the cluster_name here, not in postgresql.conf (in
 	# sub init) so that it does not get copied to standbys.
 	$ret = TestLib::system_log('pg_ctl', '-D', $self->data_dir, '-l',
-		$self->logfile, '-o', "--cluster-name=$name", 'start');
->>>>>>> 8ff1c94649f
+		$self->logfile, '-o', "--cluster-name=$name -c gp_role=utility --gp_dbid=$self->{_dbid} --gp_contentid=0",
+		'start');
 
 	if ($ret != 0)
 	{
@@ -1627,18 +1619,8 @@ sub psql
 	my $timeout           = undef;
 	my $timeout_exception = 'psql timed out';
 
-<<<<<<< HEAD
 	local $ENV{PGOPTIONS} = '-c gp_role=utility';
 
-	my @psql_params       = (
-		'psql',
-		'-XAtq',
-		'-d',
-		$self->connstr($dbname)
-		  . (defined $replication ? " replication=$replication" : ""),
-		'-f',
-		'-');
-=======
 	# Build the connection string.
 	my $psql_connstr;
 	if (defined $params{connstr})
@@ -1652,7 +1634,6 @@ sub psql
 	$psql_connstr .= defined $replication ? " replication=$replication" : "";
 
 	my @psql_params = ('psql', '-XAtq', '-d', $psql_connstr, '-f', '-');
->>>>>>> 8ff1c94649f
 
 	# If the caller wants an array and hasn't passed stdout/stderr
 	# references, allocate temporary ones to capture them so we
