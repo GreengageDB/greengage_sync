@@ -1573,11 +1573,6 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	interpret_AS_clause(languageOid, language, funcname, as_clause, stmt->sql_body,
 						parameterTypes_list, inParameterNames_list,
 						&prosrc_str, &probin_str, &prosqlbody);
-	
-	/* double check that we really have a function body */
-	/* prosrc_str doesn't point to a palloc()'d string in interpret_AS_clause() */
-	if (prosrc_str == NULL)
-		prosrc_str = "";
 
 	/* Handle the describe callback, if any */
 	if (describeQualName != NIL)
