@@ -1713,6 +1713,11 @@ _copySplitUpdate(const SplitUpdate *from)
 	COPY_POINTER_FIELD(hashAttnos, from->numHashAttrs * sizeof(AttrNumber));
 	COPY_POINTER_FIELD(hashFuncs, from->numHashAttrs * sizeof(Oid));
 
+	COPY_NODE_FIELD(policyRelids);
+	COPY_NODE_FIELD(policyAttnos);
+	COPY_NODE_FIELD(policyFuncs);
+	COPY_NODE_FIELD(policyNumSegments);
+
 	return newnode;
 }
 

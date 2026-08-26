@@ -2263,7 +2263,10 @@ typedef struct SplitUpdatePath
 {
 	Path		path;
 	Path	   *subpath;
-	Index		resultRelation;
+	Index		resultRelation;		/* nominal target relation */
+	List	   *resultRelations;	/* integer list of RT indexes of all
+									 * target relations, whose placement
+									 * policies may differ */
 } SplitUpdatePath;
 
 /*

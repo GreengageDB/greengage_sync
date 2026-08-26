@@ -124,6 +124,13 @@ static ResultCache *create_resultcache_plan(PlannerInfo *root,
 static Plan *create_unique_plan(PlannerInfo *root, UniquePath *best_path,
 								int flags);
 static Plan *create_motion_plan(PlannerInfo *root, CdbMotionPath *path);
+static AttrNumber update_colno_position(PlannerInfo *root, AttrNumber attnum);
+static void splitupdate_hash_policy(PlannerInfo *root, GpPolicy *policy,
+									TupleDesc tupdesc, TupleDesc nominaldesc,
+									List **attnos, List **funcs);
+static void build_splitupdate_policies(PlannerInfo *root, SplitUpdatePath *path,
+									   SplitUpdate *splitupdate,
+									   TupleDesc nominaldesc);
 static Plan *create_splitupdate_plan(PlannerInfo *root, SplitUpdatePath *path);
 static Gather *create_gather_plan(PlannerInfo *root, GatherPath *best_path);
 static Plan *create_projection_plan(PlannerInfo *root,
@@ -3398,6 +3405,184 @@ create_motion_plan(PlannerInfo *root, CdbMotionPath *path)
 }	/* create_motion_plan */
 
 /*
+ * update_colno_position
+ *		Position, in an UPDATE plan's output tuple, of a target column.
+ *
+ * The plan emits one non-junk column per entry of root->update_colnos, in that
+ * order.  Dropped columns have no entry, so a column's attribute number and its
+ * position only coincide when nothing has ever been dropped from the table.
+ * Returns 0 if the column is not carried by the plan at all.
+ */
+static AttrNumber
+update_colno_position(PlannerInfo *root, AttrNumber attnum)
+{
+	AttrNumber	pos = 1;
+	ListCell   *lc;
+
+	foreach(lc, root->update_colnos)
+	{
+		if (lfirst_int(lc) == attnum)
+			return pos;
+		pos++;
+	}
+	return 0;
+}
+
+/*
+ * splitupdate_hash_policy
+ *		Translate a distribution policy into instructions a SplitUpdate node
+ *		can follow to place the INSERT half of a split row.
+ *
+ * *attnos comes back as the positions, in the SplitUpdate's output tuple, of
+ * the policy's distribution key columns; *funcs as the matching hash
+ * functions.  Both are NIL if the relation is randomly distributed, or if one
+ * of its key columns is not carried by the plan.  Such a column cannot have
+ * been changed by this UPDATE, so the row has not moved and the caller keeps
+ * it where it is.
+ *
+ * "tupdesc" describes the relation the policy belongs to, "nominaldesc" the
+ * query's nominal result relation, in whose terms the plan's targetlist is
+ * expressed.  For an inheritance member the two differ, and a key column is
+ * matched to its counterpart by name -- the same rule ATTACH PARTITION and
+ * ALTER TABLE ... SET DISTRIBUTED BY use when they compare policies across a
+ * hierarchy (GpPolicyEqualByName).  A member's attribute numbers cannot be
+ * used directly, because attaching or inheriting does not preserve column
+ * order.
+ */
+static void
+splitupdate_hash_policy(PlannerInfo *root, GpPolicy *policy, TupleDesc tupdesc,
+						TupleDesc nominaldesc, List **attnos, List **funcs)
+{
+	int			i;
+
+	*attnos = NIL;
+	*funcs = NIL;
+
+	for (i = 0; i < policy->nattrs; i++)
+	{
+		Form_pg_attribute keyatt = TupleDescAttr(tupdesc, policy->attrs[i] - 1);
+		AttrNumber	nominal_attnum = InvalidAttrNumber;
+		AttrNumber	pos = 0;
+		Oid			opfamily;
+		int			j;
+
+		for (j = 0; j < nominaldesc->natts; j++)
+		{
+			Form_pg_attribute att = TupleDescAttr(nominaldesc, j);
+
+			if (!att->attisdropped &&
+				strcmp(NameStr(att->attname), NameStr(keyatt->attname)) == 0)
+			{
+				nominal_attnum = (AttrNumber) (j + 1);
+				break;
+			}
+		}
+
+		if (nominal_attnum != InvalidAttrNumber)
+			pos = update_colno_position(root, nominal_attnum);
+
+		if (pos == 0)
+		{
+			/* Key column not in the plan; the row cannot have moved. */
+			list_free(*attnos);
+			list_free(*funcs);
+			*attnos = NIL;
+			*funcs = NIL;
+			return;
+		}
+
+		opfamily = get_opclass_family(policy->opclasses[i]);
+
+		*attnos = lappend_int(*attnos, pos);
+		*funcs = lappend_oid(*funcs,
+							 cdb_hashproc_in_opfamily(opfamily,
+													  keyatt->atttypid));
+	}
+}
+
+/*
+ * build_splitupdate_policies
+ *		Record per-result-relation placement on a SplitUpdate node.
+ *
+ * Only needed when the target is an old-style inheritance tree: partitions are
+ * required to share their root's policy, so one policy describes them all.
+ * The lists are left NIL when every member places rows the same way as the
+ * node's own hashAttnos/hashFuncs already do, so the common case costs nothing
+ * at run time.
+ *
+ * "nominaldesc" is the query's nominal result relation, in whose column layout
+ * the plan's targetlist is expressed; see splitupdate_hash_policy().
+ */
+static void
+build_splitupdate_policies(PlannerInfo *root, SplitUpdatePath *path,
+						   SplitUpdate *splitupdate, TupleDesc nominaldesc)
+{
+	ListCell   *lc;
+	bool		all_same = true;
+
+	foreach(lc, path->resultRelations)
+	{
+		Index		rti = lfirst_int(lc);
+		Oid			relid = planner_rt_fetch(rti, root)->relid;
+		Relation	rel;
+		List	   *attnos;
+		List	   *funcs;
+		int			numsegments;
+
+		rel = relation_open(relid, NoLock);
+		splitupdate_hash_policy(root, rel->rd_cdbpolicy,
+								RelationGetDescr(rel), nominaldesc,
+								&attnos, &funcs);
+		numsegments = rel->rd_cdbpolicy->numsegments;
+		relation_close(rel, NoLock);
+
+		if (all_same && rti != path->resultRelation)
+		{
+			if (list_length(attnos) != splitupdate->numHashAttrs ||
+				numsegments != splitupdate->numHashSegments)
+				all_same = false;
+			else
+			{
+				ListCell   *lc2;
+				ListCell   *lc3;
+				int			i = 0;
+
+				/*
+				 * The hash functions have to match too, not just the columns:
+				 * an inheritance child may name the same column in its
+				 * distribution key under a different operator class, which
+				 * hashes differently.
+				 */
+				forboth(lc2, attnos, lc3, funcs)
+				{
+					if (lfirst_int(lc2) != splitupdate->hashAttnos[i] ||
+						lfirst_oid(lc3) != splitupdate->hashFuncs[i])
+					{
+						all_same = false;
+						break;
+					}
+					i++;
+				}
+			}
+		}
+
+		splitupdate->policyRelids = lappend_oid(splitupdate->policyRelids, relid);
+		splitupdate->policyAttnos = lappend(splitupdate->policyAttnos, attnos);
+		splitupdate->policyFuncs = lappend(splitupdate->policyFuncs, funcs);
+		splitupdate->policyNumSegments = lappend_int(splitupdate->policyNumSegments,
+													 numsegments);
+	}
+
+	if (all_same)
+	{
+		splitupdate->policyRelids = NIL;
+		splitupdate->policyAttnos = NIL;
+		splitupdate->policyFuncs = NIL;
+		splitupdate->policyNumSegments = NIL;
+	}
+}
+
+/*
  * create_splitupdate_plan
  */
 static Plan *
@@ -3408,16 +3593,29 @@ create_splitupdate_plan(PlannerInfo *root, SplitUpdatePath *path)
 	SplitUpdate *splitupdate;
 	Relation	resultRel;
 	TupleDesc	resultDesc;
+	Relation	nominalRel;
+	TupleDesc	nominalDesc;
 	GpPolicy   *cdbpolicy;
 	int			attrIdx;
 	ListCell   *lc;
 	int			lastresno;
-	Oid		   *hashFuncs;
 	int			i;
 
 	resultRel = relation_open(planner_rt_fetch(path->resultRelation, root)->relid, NoLock);
 	resultDesc = RelationGetDescr(resultRel);
 	cdbpolicy = resultRel->rd_cdbpolicy;
+
+	/*
+	 * Our targetlist is expressed in the column layout of the query's nominal
+	 * result relation -- see root->update_colnos -- which for an inheritance
+	 * tree is the root of the tree and not path->resultRelation, that being
+	 * merely the first of the leaves.  Column order is not preserved by
+	 * ATTACH PARTITION or INHERITS, so the two descriptors have to be kept
+	 * apart.
+	 */
+	nominalRel = relation_open(planner_rt_fetch(root->parse->resultRelation,
+												root)->relid, NoLock);
+	nominalDesc = RelationGetDescr(nominalRel);
 
 	subplan = create_plan_recurse(root, subpath, CP_EXACT_TLIST);
 
@@ -3448,32 +3646,30 @@ create_splitupdate_plan(PlannerInfo *root, SplitUpdatePath *path)
 	 * then computes the target segment. So deleteColIdx is needed for
 	 * ORCA, but we don't use it here.
 	 */
-	lc = list_head(subplan->targetlist);
-	for (attrIdx = 1; attrIdx <= resultDesc->natts; ++attrIdx)
+	attrIdx = 0;
+	for (lc = list_head(subplan->targetlist); lc != NULL;
+		 lc = lnext(subplan->targetlist, lc))
 	{
-		TargetEntry			*tle;
-		Form_pg_attribute	attr;
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
 
-		tle = (TargetEntry *) lfirst(lc);
-		lc = lnext(subplan->targetlist, lc);
-		Assert(tle);
+		if (tle->resjunk)
+			break;				/* junk columns come last; handled below */
 
-		attr = &resultDesc->attrs[attrIdx - 1];
-		if (attr->attisdropped)
-		{
-			Assert(IsA(tle->expr, Const) && ((Const *) tle->expr)->constisnull);
-		}
-		else
-		{
-			Assert(exprType((Node *) tle->expr) == attr->atttypid);
-		}
-
+		attrIdx++;
 		splitupdate->insertColIdx = lappend_int(splitupdate->insertColIdx, attrIdx);
 		splitupdate->deleteColIdx = lappend_int(splitupdate->deleteColIdx, -1);
 
 		splitupdate->plan.targetlist = lappend(splitupdate->plan.targetlist, tle);
 	}
 	lastresno = list_length(splitupdate->plan.targetlist);
+
+	/*
+	 * The non-junk columns we just copied are the target columns listed in
+	 * root->update_colnos, in the same order, so that list maps an attribute
+	 * number of the nominal relation to its position in our output tuple.
+	 * Dropped columns have no entry in either.
+	 */
+	Assert(list_length(root->update_colnos) == attrIdx);
 
 	/* Copy all junk attributes. */
 	for (; lc != NULL; lc = lnext(subplan->targetlist, lc))
@@ -3496,24 +3692,38 @@ create_splitupdate_plan(PlannerInfo *root, SplitUpdatePath *path)
 														   "DMLAction",
 														   true));
 
-	/* Look up the right hash functions for the hash expressions */
-	hashFuncs = palloc(cdbpolicy->nattrs * sizeof(Oid));
-	for (i = 0; i < cdbpolicy->nattrs; i++)
+	/*
+	 * Work out how to place the INSERT half of each split row: which columns
+	 * of our output tuple to hash, and with which functions.
+	 */
 	{
-		AttrNumber	attnum = cdbpolicy->attrs[i];
-		Oid			typeoid = resultDesc->attrs[attnum - 1].atttypid;
-		Oid			opfamily;
+		List	   *attnos;
+		List	   *funcs;
 
-		opfamily = get_opclass_family(cdbpolicy->opclasses[i]);
+		splitupdate_hash_policy(root, cdbpolicy, resultDesc, nominalDesc,
+								&attnos, &funcs);
 
-		hashFuncs[i] = cdb_hashproc_in_opfamily(opfamily, typeoid);
+		splitupdate->numHashAttrs = list_length(attnos);
+		splitupdate->hashAttnos = palloc(list_length(attnos) * sizeof(AttrNumber));
+		splitupdate->hashFuncs = palloc(list_length(funcs) * sizeof(Oid));
+		splitupdate->numHashSegments = cdbpolicy->numsegments;
+
+		i = 0;
+		foreach(lc, attnos)
+			splitupdate->hashAttnos[i++] = (AttrNumber) lfirst_int(lc);
+		i = 0;
+		foreach(lc, funcs)
+			splitupdate->hashFuncs[i++] = lfirst_oid(lc);
 	}
-	splitupdate->numHashAttrs = cdbpolicy->nattrs;
-	splitupdate->hashAttnos = palloc(cdbpolicy->nattrs * sizeof(AttrNumber));
-	memcpy(splitupdate->hashAttnos, cdbpolicy->attrs, cdbpolicy->nattrs * sizeof(AttrNumber));
-	splitupdate->hashFuncs = hashFuncs;
-	splitupdate->numHashSegments = cdbpolicy->numsegments;
 
+	/*
+	 * If the target is an old-style inheritance tree, its members may be
+	 * distributed on different columns, so record each one's placement for the
+	 * executor to select between by the row's "tableoid" junk column.
+	 */
+	build_splitupdate_policies(root, path, splitupdate, nominalDesc);
+
+	relation_close(nominalRel, NoLock);
 	relation_close(resultRel, NoLock);
 
 	/*

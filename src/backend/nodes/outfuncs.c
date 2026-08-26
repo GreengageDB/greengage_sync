@@ -1396,6 +1396,11 @@ _outSplitUpdate(StringInfo str, const SplitUpdate *node)
 	WRITE_ATTRNUMBER_ARRAY(hashAttnos, node->numHashAttrs);
 	WRITE_OID_ARRAY(hashFuncs, node->numHashAttrs);
 
+	WRITE_NODE_FIELD(policyRelids);
+	WRITE_NODE_FIELD(policyAttnos);
+	WRITE_NODE_FIELD(policyFuncs);
+	WRITE_NODE_FIELD(policyNumSegments);
+
 	_outPlanInfo(str, (Plan *) node);
 }
 

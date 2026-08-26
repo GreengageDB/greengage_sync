@@ -3121,8 +3121,23 @@ typedef struct SplitUpdateState
 
 	AttrNumber	input_segid_attno;		/* attribute number of "gp_segment_id" in subplan's target list */
 	AttrNumber	output_segid_attno;		/* attribute number of "gp_segment_id" in output target list */
+	AttrNumber	input_tableoid_attno;	/* attribute number of "tableoid" in subplan's target list, or 0 */
 
-	struct CdbHash *cdbhash;	/* hash api object */
+	struct CdbHash *cdbhash;	/* hash api object for the nominal relation */
+
+	/*
+	 * Per-result-relation placement, unpacked from the plan node's policy*
+	 * lists; empty when the plan node carries none.  policyHashes[i] is built
+	 * on first use and is NULL for a relation whose rows stay put.
+	 */
+	int			numPolicies;
+	Oid		   *policyRelids;
+	int		   *policyNumHashAttrs;
+	AttrNumber **policyAttnos;
+	Oid		  **policyFuncs;
+	int		   *policyNumSegments;
+	struct CdbHash **policyHashes;
+	int			lastPolicyIdx;	/* policy used for the previous row, or -1 */
 
 } SplitUpdateState;
 
