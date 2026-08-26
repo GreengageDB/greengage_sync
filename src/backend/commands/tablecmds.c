@@ -5476,7 +5476,7 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 						if (rel->rd_rel->relispartition)
 						{
 							/* We can only set policy of child table to the same with parent table */
-							Oid parent_oid = get_partition_parent(RelationGetRelid(rel));
+							Oid parent_oid = get_partition_parent(RelationGetRelid(rel), false);
 							/* Use AccessShareLock to allow set distributed in parallel */
 							Relation parent_rel = relation_open(parent_oid, AccessShareLock);
 							if (!GpPolicyEqualByName(RelationGetDescr(rel), policy,
@@ -21709,8 +21709,8 @@ ATExecDetachPartition(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		 * Now acquire locks in both relations again.  Note they may have been
 		 * removed in the meantime, so care is required.
 		 */
-		rel = try_relation_open(parentrelid, ShareUpdateExclusiveLock);
-		partRel = try_relation_open(partrelid, AccessExclusiveLock);
+		rel = try_relation_open(parentrelid, ShareUpdateExclusiveLock, false);
+		partRel = try_relation_open(partrelid, AccessExclusiveLock, false);
 
 		/* If the relations aren't there, something bad happened; bail out */
 		if (rel == NULL)
