@@ -3433,7 +3433,6 @@ looks_like_temp_rel_name(const char *name)
 	return true;
 }
 
-<<<<<<< HEAD
 /*
  * Synchronize all xlog files and pg_wal itself in pg_wal
  *
@@ -3450,7 +3449,7 @@ SyncAllXLogFiles(void)
 	walkdir("pg_wal", datadir_fsync_fname, false, LOG);
 	ereport(LOG, (errmsg("synchronization of the wal directory finishes.")));
 }
-=======
+
 #ifdef HAVE_SYNCFS
 static void
 do_syncfs(const char *path)
@@ -3472,7 +3471,6 @@ do_syncfs(const char *path)
 	CloseTransientFile(fd);
 }
 #endif
->>>>>>> 8ff1c94649f
 
 /*
  * Issue fsync recursively on PGDATA and all its contents, or issue syncfs for

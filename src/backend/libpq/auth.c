@@ -2424,19 +2424,13 @@ auth_peer(hbaPort *port)
 	 */
 	set_authn_id(port, pw->pw_name);
 
-<<<<<<< HEAD
 	/*
 	 * GPDB: check for port->hba == NULL here, because auth_peer is used
 	 * without an HBA entry in the short-circuited QD->QE authentication,
 	 * from internal_client_authentication().
 	 */
 	ret = check_usermap(port->hba ? port->hba->usermap : NULL, port->user_name,
-						peer_user, false);
-
-	pfree(peer_user);
-=======
-	ret = check_usermap(port->hba->usermap, port->user_name, port->authn_id, false);
->>>>>>> 8ff1c94649f
+						port->authn_id, false);
 
 	return ret;
 #else

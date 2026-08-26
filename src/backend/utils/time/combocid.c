@@ -53,16 +53,12 @@
 #include "utils/hsearch.h"
 #include "utils/memutils.h"
 
-<<<<<<< HEAD
 #include "cdb/cdbvars.h"
 #include "storage/proc.h"
 #include "storage/dsm.h"
 #include "utils/resowner.h"
 
-/* Hash table to lookup combo cids by cmin and cmax */
-=======
 /* Hash table to lookup combo CIDs by cmin and cmax */
->>>>>>> 8ff1c94649f
 static HTAB *comboHash = NULL;
 
 /* Key and entry structures for the hash table */

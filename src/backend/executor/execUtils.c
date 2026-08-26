@@ -2328,7 +2328,6 @@ ExecGetReturningSlot(EState *estate, ResultRelInfo *relInfo)
 }
 
 /*
-<<<<<<< HEAD
  * During attribute re-mapping for heterogeneous partitions, we use
  * this struct to identify which varno's attributes will be re-mapped.
  * Using this struct as a *context* during expression tree walking, we
@@ -2387,7 +2386,9 @@ change_varattnos_of_a_varno(Node *node, const AttrMap *newattno, Index varno)
 	attrMapCxt.varno = varno;
 
 	(void) change_varattnos_varno_walker(node, &attrMapCxt);
-=======
+}
+
+/*
  * Return the map needed to convert given child result relation's tuples to
  * the rowtype of the query's main target ("root") relation.  Note that a
  * NULL result is valid and means that no conversion is needed.
@@ -2411,7 +2412,6 @@ ExecGetChildToRootMap(ResultRelInfo *resultRelInfo)
 	}
 
 	return resultRelInfo->ri_ChildToRootMap;
->>>>>>> 8ff1c94649f
 }
 
 /* Return a bitmap representing columns being inserted */
