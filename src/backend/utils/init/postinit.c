@@ -1530,11 +1530,7 @@ ClientCheckTimeoutHandler(void)
 {
 	CheckClientConnectionPending = true;
 	InterruptPending = true;
-<<<<<<< HEAD
-	SetLatch(&MyProc->procLatch);
-=======
 	SetLatch(MyLatch);
->>>>>>> 8ff1c94649f
 }
 
 /*
