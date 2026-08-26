@@ -28,13 +28,10 @@
 #include "settings.h"
 #include "variables.h"
 
-<<<<<<< HEAD
 #include "catalog/gp_distribution_policy.h"
 #include "catalog/pg_foreign_server.h"
 
-=======
 static const char *map_typename_pattern(const char *pattern);
->>>>>>> 8ff1c94649f
 static bool describeOneTableDetails(const char *schemaname,
 									const char *relationname,
 									const char *oid,
@@ -1860,13 +1857,9 @@ describeOneTableDetails(const char *schemaname,
 				fdwopts_col = -1,
 				attstorage_col = -1,
 				attstattarget_col = -1,
-<<<<<<< HEAD
-				attdescr_col = -1;
-	int			attoptions_col = -1;
-=======
 				attdescr_col = -1,
 				attcompression_col = -1;
->>>>>>> 8ff1c94649f
+	int			attoptions_col = -1;
 	int			numrows;
 	struct
 	{
