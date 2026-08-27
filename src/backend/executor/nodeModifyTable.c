@@ -3404,11 +3404,26 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 * relation a given row came from.  Such plans ask for tuple routing on
 	 * every row (forceTupleRouting), for DELETE and UPDATE as well as INSERT,
 	 * so the routing state has to be built up front.
+	 *
+	 * GPDB: a split update re-inserts the row rather than updating in place,
+	 * so it moves the row between partitions through ExecSplitUpdate_Insert()
+	 * instead of ExecCrossPartitionUpdate(), and needs the state up front too.
 	 */
 	if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE &&
-		(operation == CMD_INSERT || node->forceTupleRouting))
+		(operation == CMD_INSERT || node->isSplitUpdate ||
+		 node->forceTupleRouting))
+	{
 		mtstate->mt_partition_tuple_routing =
 			ExecSetupPartitionTupleRouting(estate, rel);
+
+		/*
+		 * The re-inserted row starts out in the source leaf's layout and is
+		 * converted to the root's before being routed, which needs a slot of
+		 * the root's type.
+		 */
+		if (node->isSplitUpdate)
+			mtstate->mt_root_tuple_slot = table_slot_create(rel, NULL);
+	}
 
 	/*
 	 * Initialize any WITH CHECK OPTION constraints if needed.
