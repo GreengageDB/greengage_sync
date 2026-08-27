@@ -1570,25 +1570,15 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 		trftypes = NULL;
 	}
 
-<<<<<<< HEAD
-	interpret_AS_clause(languageOid, language, funcname, as_clause,
-						&prosrc_str, &probin_str);
-	
-	/* double check that we really have a function body */
-	/* prosrc_str doesn't point to a palloc()'d string in interpret_AS_clause() */
-	if (prosrc_str == NULL)
-		prosrc_str = "";
+	interpret_AS_clause(languageOid, language, funcname, as_clause, stmt->sql_body,
+						parameterTypes_list, inParameterNames_list,
+						&prosrc_str, &probin_str, &prosqlbody);
 
 	/* Handle the describe callback, if any */
 	if (describeQualName != NIL)
 		describeFuncOid = validate_describe_callback(describeQualName,
 													 prorettype,
 													 parameterModes);
-=======
-	interpret_AS_clause(languageOid, language, funcname, as_clause, stmt->sql_body,
-						parameterTypes_list, inParameterNames_list,
-						&prosrc_str, &probin_str, &prosqlbody);
->>>>>>> 8ff1c94649f
 
 	/*
 	 * Set default values for COST and ROWS depending on other parameters;

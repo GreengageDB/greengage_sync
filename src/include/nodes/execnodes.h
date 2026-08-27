@@ -501,7 +501,7 @@ typedef struct ResultRelInfo
 	 * the segment the target tuple came from. 'action' is used with
 	 * Split Updates.
 	 *
-	 * The target tuple's ctid is in ri_junkFilter->jf_junkAttNo, like in upstream.
+	 * The target tuple's ctid is in ri_RowIdAttNo, like in upstream.
 	 */
 	AttrNumber  ri_segid_attno;		/* gp_segment_id of old tuple */
 	AttrNumber	ri_action_attno;	/* is this an INSERT or DELETE ? */

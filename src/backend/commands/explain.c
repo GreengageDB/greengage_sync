@@ -2707,6 +2707,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			break;
 		case T_Append:
 			show_join_pruning_info(((Append *) plan)->join_prune_paramids, es);
+			break;
 		case T_ResultCache:
 			show_resultcache_info(castNode(ResultCacheState, planstate),
 								  ancestors, es);
