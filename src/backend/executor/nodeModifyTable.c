@@ -2909,25 +2909,27 @@ ExecModifyTable(PlanState *pstate)
 					if (DML_INSERT == action)
 					{
 						/*
-						 * GGDB: This child's column layout might be different
-						 * from nominal relation's. Project the row into the
-						 * child's layout first.
+						 * GGDB: the plan's row is neither in the table's
+						 * physical layout nor free of junk columns, so build
+						 * the tuple to re-insert the same way the non-split
+						 * arm below does.
 						 *
-						 * The presence of "wholerow" junk column indicates
-						 * that this reordering is needed, since it is only
-						 * emitted for inherited relations. See
-						 * add_row_identity_columns().
+						 * The old tuple is only read for an old-style
+						 * inheritance child with columns the nominal relation
+						 * lacks, and the plan carries "wholerow" in exactly
+						 * that case; otherwise it supplies every column the
+						 * projection needs.
 						 */
-						if (wholerow != NULL)
-						{
-							if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
-								ExecInitUpdateProjection(node, resultRelInfo);
+						if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
+							ExecInitUpdateProjection(node, resultRelInfo);
 
-							oldSlot = resultRelInfo->ri_oldTupleSlot;
+						oldSlot = resultRelInfo->ri_oldTupleSlot;
+						if (wholerow != NULL)
 							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
-							slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
-														 oldSlot);
-						}
+						else
+							ExecStoreAllNullTuple(oldSlot);
+						slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
+													 oldSlot);
 
 						slot = ExecSplitUpdate_Insert(node, routedResultRelInfo,
 													  slot, planSlot,

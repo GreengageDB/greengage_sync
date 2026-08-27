@@ -4382,13 +4382,13 @@ CTranslatorDXLToPlStmt::TranslateDXLDml(
 							 child_contexts, output_context);
 
 	// Pad the child plan's target list with NULLs for dropped columns, so that
-	// it matches the table's physical layout.  INSERT needs that, and so does
-	// a Split Update, whose INSERT half re-inserts the whole row.
+	// it matches the table's physical layout.  INSERT and DELETE need that.
 	//
-	// A plain UPDATE must not be padded: ExecBuildUpdateProjection() pairs each
-	// non-junk column of the subplan with an entry of updateColnosLists and
-	// rejects an assignment to a dropped column, nulling those itself.
-	BOOL pad_dropped_cols = !(CMD_UPDATE == m_cmd_type && !isSplit);
+	// An UPDATE must not be padded, split or not: ModifyTable builds the new
+	// tuple with ExecBuildUpdateProjection(), which pairs each non-junk column
+	// of the subplan with an entry of updateColnosLists and rejects an
+	// assignment to a dropped column, nulling those itself.
+	BOOL pad_dropped_cols = (CMD_UPDATE != m_cmd_type);
 	List *target_list_with_dropped_cols = dml_target_list;
 	if (pad_dropped_cols)
 	{
@@ -4450,10 +4450,9 @@ CTranslatorDXLToPlStmt::TranslateDXLDml(
 		// ModifyTable maps each non-junk column the subplan produces to its
 		// target-table attribute number through updateColnosLists.  The
 		// Postgres planner emits only the SET columns; ORCA emits the whole
-		// new row in physical column order, so the mapping is just each
-		// column's attribute number -- including the dropped ones when the
-		// target list was padded for them above, excluding them when it was
-		// not.  One list per result relation, and ORCA only ever has one.
+		// new row in physical column order, so the mapping is just each live
+		// column's attribute number.  One list per result relation, and ORCA
+		// only ever has one.
 		List *update_colnos = NIL;
 		const ULONG num_of_rel_cols = md_rel->ColumnCount();
 
@@ -4465,7 +4464,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDml(
 			{
 				continue;
 			}
-			if (md_col->IsDropped() && !pad_dropped_cols)
+			if (md_col->IsDropped())
 			{
 				continue;
 			}
