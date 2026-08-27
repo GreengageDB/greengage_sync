@@ -720,10 +720,10 @@ AtExecGPSplitPartition(Relation rel, AlterTableCmd *cmd)
 			GpAlterPartitionId *partid1 = into->partid;
 			GpAlterPartitionId *partid2 = (GpAlterPartitionId *) into->arg;
 
-            /*
-             * We want to include detach pending partitions to avoid collision
-             * with them in case the concurrent detach will abort
-             */
+			/*
+			 * We want to include detach-pending partitions to avoid collision
+			 * with them in case the concurrent detach abort
+			 */
 			Oid			intorel1 = GpFindTargetPartition(rel, partid1, true, true);
 			Oid			intorel2 = GpFindTargetPartition(rel, partid2, true, true);
 
