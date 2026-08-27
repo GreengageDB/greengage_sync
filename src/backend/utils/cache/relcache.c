@@ -4537,20 +4537,12 @@ CheckConstraintFetch(Relation relation)
 
 		/* protect limited size of array */
 		if (found >= ncheck)
-<<<<<<< HEAD
 		{
 			elog(WARNING,
 			     "pg_class reports %d constraint record(s) for relation %s, but found extra in pg_constraint",
 			     ncheck, RelationGetRelationName(relation));
 			break;
 		}
-=======
-		{
-			elog(WARNING, "unexpected pg_constraint record found for relation \"%s\"",
-				 RelationGetRelationName(relation));
-			break;
-		}
->>>>>>> 8ff1c94649f
 
 		check[found].ccvalid = conform->convalidated;
 		check[found].ccnoinherit = conform->connoinherit;
