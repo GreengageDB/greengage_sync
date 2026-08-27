@@ -5560,6 +5560,9 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 							   get_rel_name(rte->relid))));
 
 		numsegments = Max(policy->numsegments, numsegments);
+
+		if (policy != commonPolicy)
+			pfree(policy);
 	}
 
 	Assert(commonPolicy != NULL);
