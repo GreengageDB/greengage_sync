@@ -70,7 +70,7 @@ evalHashKey(SplitUpdateState *node, CdbHash *h,
 /*
  * Find the per-relation placement policy for a row, by the OID in its
  * "tableoid" junk column.  Returns -1 if the plan carries no per-relation
- * policies, or if the row's relation has none of its own.
+ * policies, or has no tableoid junk column to look one up by.
  *
  * Rows arrive grouped by relation in practice (the subplan is an Append over
  * the members), so remembering the previous answer avoids the search almost
@@ -102,6 +102,10 @@ lookupPolicyIdx(SplitUpdateState *node, Datum *values, bool *isnulls)
 		}
 	}
 
+	/*
+	 * This should be unreachable, since tableoid must match at least one
+	 * policy recorded in policyRelids
+	 */
 	elog(ERROR, "no split-update placement policy for relation %u", relid);
 }
 
