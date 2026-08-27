@@ -315,15 +315,11 @@ static IncrementalSort *make_incrementalsort_from_pathkeys(Plan *lefttree,
 static Sort *make_sort_from_groupcols(List *groupcls,
 									  AttrNumber *grpColIdx,
 									  Plan *lefttree);
-<<<<<<< HEAD
-=======
-static Material *make_material(Plan *lefttree);
 static ResultCache *make_resultcache(Plan *lefttree, Oid *hashoperators,
 									 Oid *collations,
 									 List *param_exprs,
 									 bool singlerow,
 									 uint32 est_entries);
->>>>>>> 8ff1c94649f
 static WindowAgg *make_windowagg(List *tlist, Index winref,
 								 int partNumCols, AttrNumber *partColIdx, Oid *partOperators, Oid *partCollations,
 								 int ordNumCols, AttrNumber *ordColIdx, Oid *ordOperators, Oid *ordCollations,
