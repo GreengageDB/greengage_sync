@@ -127,7 +127,7 @@ FormPartitionKeyDatumFromExpr(Relation rel, Node *expr, Datum *values, bool *isn
 
 static Oid
 GpFindTargetPartition(Relation parent, GpAlterPartitionId *partid,
-					  bool missing_ok)
+					  bool missing_ok, bool include_detached)
 {
 	Oid			target_relid = InvalidOid;
 
@@ -136,7 +136,7 @@ GpFindTargetPartition(Relation parent, GpAlterPartitionId *partid,
 		case AT_AP_IDDefault:
 			/* Find default partition */
 			target_relid =
-				get_default_oid_from_partdesc(RelationGetPartitionDesc(parent));
+				get_default_oid_from_partdesc(RelationGetPartitionDesc(parent, include_detached));
 			if (!OidIsValid(target_relid) && !missing_ok)
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -183,7 +183,7 @@ GpFindTargetPartition(Relation parent, GpAlterPartitionId *partid,
 				if (partRel->rd_rel->relispartition)
 				{
 					bool		    found = false;
-					PartitionDesc   partdesc = RelationGetPartitionDesc(parent);
+					PartitionDesc   partdesc = RelationGetPartitionDesc(parent, include_detached);
 					target_relid = RelationGetRelid(partRel);
 					table_close(partRel, AccessShareLock);
 					/*
@@ -221,7 +221,7 @@ GpFindTargetPartition(Relation parent, GpAlterPartitionId *partid,
 			{
 				Datum		values[PARTITION_MAX_KEYS];
 				bool		isnull[PARTITION_MAX_KEYS];
-				PartitionDesc partdesc = RelationGetPartitionDesc(parent);
+				PartitionDesc partdesc = RelationGetPartitionDesc(parent, include_detached);
 				int partidx;
 
 				FormPartitionKeyDatumFromExpr(parent, partid->partiddef, values, isnull);
@@ -239,7 +239,7 @@ GpFindTargetPartition(Relation parent, GpAlterPartitionId *partid,
 				}
 
 				if (partdesc->oids[partidx] ==
-					get_default_oid_from_partdesc(RelationGetPartitionDesc(parent)))
+					get_default_oid_from_partdesc(RelationGetPartitionDesc(parent, include_detached)))
 				{
 					ereport(ERROR,
 							(errcode(ERRCODE_WRONG_OBJECT_TYPE),
@@ -458,7 +458,7 @@ AtExecGPExchangePartition(Relation rel, AlterTableCmd *cmd)
 		Relation partrel;
 		HeapTuple tuple;
 
-		partrelid = GpFindTargetPartition(rel, pid, false);
+		partrelid = GpFindTargetPartition(rel, pid, false, false);
 		Assert(OidIsValid(partrelid));
 		partrel = table_open(partrelid, AccessShareLock);
 
@@ -612,11 +612,11 @@ AtExecGPSplitPartition(Relation rel, AlterTableCmd *cmd)
 		Relation partrel;
 		HeapTuple tuple;
 
-		partrelid = GpFindTargetPartition(rel, pid, false);
+		partrelid = GpFindTargetPartition(rel, pid, false, false);
 		Assert(OidIsValid(partrelid));
 		partrel = table_open(partrelid, AccessShareLock);
 
-		if (partrelid == get_default_oid_from_partdesc(RelationGetPartitionDesc(rel)))
+		if (partrelid == get_default_oid_from_partdesc(RelationGetPartitionDesc(rel, false)))
 			defaultpartname = pstrdup(RelationGetRelationName(partrel));
 		else
 			defaultpartname = NULL;
@@ -720,8 +720,12 @@ AtExecGPSplitPartition(Relation rel, AlterTableCmd *cmd)
 			GpAlterPartitionId *partid1 = into->partid;
 			GpAlterPartitionId *partid2 = (GpAlterPartitionId *) into->arg;
 
-			Oid			intorel1 = GpFindTargetPartition(rel, partid1, true);
-			Oid			intorel2 = GpFindTargetPartition(rel, partid2, true);
+            /*
+             * We want to include detach pending partitions to avoid collision
+             * with them in case the concurrent detach will abort
+             */
+			Oid			intorel1 = GpFindTargetPartition(rel, partid1, true, true);
+			Oid			intorel2 = GpFindTargetPartition(rel, partid2, true, true);
 
 			if (intorel1 != InvalidOid && intorel2 != InvalidOid)
 					ereport(ERROR,
@@ -1132,7 +1136,7 @@ ATExecGPPartCmds(Relation origrel, AlterTableCmd *cmd)
 							RelationGetRelationName(rel))));
 		}
 
-		partrelid = GpFindTargetPartition(rel, pid, false);
+		partrelid = GpFindTargetPartition(rel, pid, false, false);
 		Assert(OidIsValid(partrelid));
 
 		if (rel != origrel)
@@ -1166,7 +1170,7 @@ ATExecGPPartCmds(Relation origrel, AlterTableCmd *cmd)
 			RangeVar *rv;
 			Relation partrel;
 
-			partrelid = GpFindTargetPartition(rel, pid, false);
+			partrelid = GpFindTargetPartition(rel, pid, false, false);
 			Assert(OidIsValid(partrelid));
 			partrel = table_open(partrelid, AccessShareLock);
 			rv = makeRangeVar(get_namespace_name(RelationGetNamespace(partrel)),
@@ -1206,7 +1210,7 @@ ATExecGPPartCmds(Relation origrel, AlterTableCmd *cmd)
 				Oid firstchildoid;
 
 				Assert(temprel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE);
-				partdesc = RelationGetPartitionDesc(temprel);
+				partdesc = RelationGetPartitionDesc(temprel, false);
 
 				if (partdesc->nparts == 0)
 					ereport(ERROR,
@@ -1266,12 +1270,12 @@ ATExecGPPartCmds(Relation origrel, AlterTableCmd *cmd)
 			Relation partrel;
 			PartitionDesc partdesc;
 
-			partrelid = GpFindTargetPartition(rel, pid, pc->missing_ok);
+			partrelid = GpFindTargetPartition(rel, pid, pc->missing_ok, false);
 			if (!OidIsValid(partrelid))
 				break;
 
 			partrel = table_open(partrelid, AccessShareLock);
-			partdesc = RelationGetPartitionDesc(rel);
+			partdesc = RelationGetPartitionDesc(rel, false);
 
 			/*
 			 * If two drop partition cmds are specified in same alter table stmt,
@@ -1346,7 +1350,7 @@ ATExecGPPartCmds(Relation origrel, AlterTableCmd *cmd)
 			{
 				Relation firstrel;
 				Oid firstchildoid;
-				PartitionDesc partdesc = RelationGetPartitionDesc(rel);
+				PartitionDesc partdesc = RelationGetPartitionDesc(rel, false);
 
 				if (partdesc->nparts == 0)
 					ereport(ERROR,
@@ -1360,13 +1364,13 @@ ATExecGPPartCmds(Relation origrel, AlterTableCmd *cmd)
 							(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 								errmsg("level %d is not partitioned and hence can't set subpartition template for the same",
 									   level)));
-				if (RelationGetPartitionDesc(firstrel)->nparts == 0)
+				if (RelationGetPartitionDesc(firstrel, false)->nparts == 0)
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 								errmsg("GPDB SET SUBPARTITION TEMPLATE syntax needs at least one sibling to exist")));
 
 				/* if this is not leaf level partition then sub-partition must exist for next level */
-				if (!RelationGetPartitionDesc(firstrel)->is_leaf[0])
+				if (!RelationGetPartitionDesc(firstrel, false)->is_leaf[0])
 				{
 					if (GetGpPartitionTemplate(topParentrelid, level + 1) == NULL)
 					{
@@ -1420,7 +1424,7 @@ ATExecGPPartCmds(Relation origrel, AlterTableCmd *cmd)
 			Oid partrelid;
 			Relation targetrelation;
 
-			partrelid = GpFindTargetPartition(rel, pid, false);
+			partrelid = GpFindTargetPartition(rel, pid, false, false);
 			targetrelation = table_open(partrelid, AccessExclusiveLock);
 			strlcpy(targetrelname, RelationGetRelationName(targetrelation),
 					NAMEDATALEN);

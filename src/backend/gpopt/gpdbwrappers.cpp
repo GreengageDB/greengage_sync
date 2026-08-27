@@ -2580,7 +2580,7 @@ gpdb::GPDBRelationGetPartitionDesc(Relation rel)
 {
 	GP_WRAP_START;
 	{
-		return RelationGetPartitionDesc(rel);
+		return RelationGetPartitionDesc(rel, false);
 	}
 	GP_WRAP_END;
 }
