@@ -70,7 +70,7 @@ evalHashKey(SplitUpdateState *node, CdbHash *h,
 /*
  * Find the per-relation placement policy for a row, by the OID in its
  * "tableoid" junk column.  Returns -1 if the plan carries no per-relation
- * policies, or has no tableoid junk column to look one up by.
+ * policies, in which case the caller places the row by the nominal relation's.
  *
  * Rows arrive grouped by relation in practice (the subplan is an Append over
  * the members), so remembering the previous answer avoids the search almost
@@ -82,7 +82,7 @@ lookupPolicyIdx(SplitUpdateState *node, Datum *values, bool *isnulls)
 	Oid			relid;
 	int			idx;
 
-	if (node->numPolicies == 0 || node->input_tableoid_attno <= 0)
+	if (node->numPolicies == 0)
 		return -1;
 
 	if (isnulls[node->input_tableoid_attno - 1])
@@ -354,6 +354,9 @@ ExecInitSplitUpdate(SplitUpdate *node, EState *estate, int eflags)
 		Assert(list_length(node->policyAttnos) == npol);
 		Assert(list_length(node->policyFuncs) == npol);
 		Assert(list_length(node->policyNumSegments) == npol);
+
+		if (splitupdatestate->input_tableoid_attno <= 0)
+			elog(ERROR, "SplitUpdate has per-relation placement policies but no tableoid column");
 
 		splitupdatestate->policyRelids = (Oid *) palloc(npol * sizeof(Oid));
 		splitupdatestate->policyNumHashAttrs = (int *) palloc(npol * sizeof(int));
