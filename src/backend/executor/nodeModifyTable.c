@@ -2907,9 +2907,32 @@ ExecModifyTable(PlanState *pstate)
 						routedResultRelInfo = resultRelInfo;
 
 					if (DML_INSERT == action)
+					{
+						/*
+						 * GGDB: This child's column layout might be different
+						 * from nominal relation's. Project the row into the
+						 * child's layout first.
+						 *
+						 * The presence of "wholerow" junk column indicates
+						 * that this reordering is needed, since it is only
+						 * emitted for inherited relations. See
+						 * add_row_identity_columns().
+						 */
+						if (wholerow != NULL)
+						{
+							if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
+								ExecInitUpdateProjection(node, resultRelInfo);
+
+							oldSlot = resultRelInfo->ri_oldTupleSlot;
+							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
+							slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
+														 oldSlot);
+						}
+
 						slot = ExecSplitUpdate_Insert(node, routedResultRelInfo,
 													  slot, planSlot,
 													  estate, node->canSetTag);
+					}
 					else	/* DML_DELETE */
 						slot = ExecDelete(node, routedResultRelInfo, tupleid, segid,
 										  oldtuple, planSlot,
