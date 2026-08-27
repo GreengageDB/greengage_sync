@@ -8913,9 +8913,9 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	int			i_attnotnull;
 	int			i_attoptions;
 	int			i_attcollation;
+	int			i_attcompression;
 	int			i_attfdwoptions;
 	int			i_attmissingval;
-	int			i_attcompression;
 	int			i_atthasdef;
 	int			i_attencoding;
 
@@ -9001,6 +9001,13 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		appendPQExpBufferStr(q,
 							 "0 AS attcollation,\n");
 
+	if (fout->remoteVersion >= 140000)
+		appendPQExpBufferStr(q,
+							 "a.attcompression AS attcompression,\n");
+	else
+		appendPQExpBufferStr(q,
+							 "'' AS attcompression,\n");
+
 	if (fout->remoteVersion >= 90200)
 		appendPQExpBufferStr(q,
 							 "pg_catalog.array_to_string(ARRAY("
@@ -9030,17 +9037,10 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 
 	if (fout->remoteVersion >= 120000)
 		appendPQExpBufferStr(q,
-							 "a.attgenerated,\n");
+							 "a.attgenerated\n");
 	else
 		appendPQExpBufferStr(q,
-							 "'' AS attgenerated,\n");
-
-	if (fout->remoteVersion >= 140000)
-		appendPQExpBufferStr(q,
-							 "a.attcompression AS attcompression\n");
-	else
-		appendPQExpBufferStr(q,
-							 "'' AS attcompression\n");
+							 "'' AS attgenerated\n");
 
 	/* need left join to pg_type to not fail on dropped columns ... */
 	appendPQExpBuffer(q,
@@ -9075,9 +9075,9 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	i_attnotnull = PQfnumber(res, "attnotnull");
 	i_attoptions = PQfnumber(res, "attoptions");
 	i_attcollation = PQfnumber(res, "attcollation");
+	i_attcompression = PQfnumber(res, "attcompression");
 	i_attfdwoptions = PQfnumber(res, "attfdwoptions");
 	i_attmissingval = PQfnumber(res, "attmissingval");
-	i_attcompression = PQfnumber(res, "attcompression");
 	i_atthasdef = PQfnumber(res, "atthasdef");
 	i_attencoding = PQfnumber(res, "attencoding");
 
