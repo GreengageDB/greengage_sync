@@ -646,7 +646,7 @@ supplement_simply_updatable_targetlist(PlannerInfo *root, List *range_table, Lis
 	 * our ability to uniquely identify a tuple. Without inheritance, we omit tableoid
 	 * to avoid the overhead of carrying tableoid for each tuple in the result set.
 	 */
-	if (find_inheritance_children(reloid, NoLock) != NIL)
+	if (find_inheritance_children(reloid, false, NoLock) != NIL)
 	{
 		Var         *varTableoid = makeVar(varno,
 										   TableOidAttributeNumber,
