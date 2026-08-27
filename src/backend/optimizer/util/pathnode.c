@@ -5521,10 +5521,8 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 						   Path **subpath)
 {
 	ListCell   *lc;
-	GpPolicyType commonPolicyType = POLICYTYPE_ENTRY;
 	GpPolicy   *commonPolicy = NULL;
 	Index		commonRti = 0;
-	int			numsegments = -1;
 	bool		first = true;
 	CdbPathLocus resultLocus;
 
@@ -5544,12 +5542,11 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 
 		if (first)
 		{
-			commonPolicyType = policy->ptype;
 			commonPolicy = policy;
 			commonRti = rti;
 			first = false;
 		}
-		else if (policy->ptype != commonPolicyType)
+		else if (policy->ptype != commonPolicy->ptype)
 			ereport(ERROR,
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("cannot update or delete from an inheritance tree whose members have different kinds of distribution policy"),
@@ -5557,7 +5554,7 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 							   get_rel_name(planner_rt_fetch(commonRti, root)->relid),
 							   get_rel_name(rte->relid))));
 
-		numsegments = Max(policy->numsegments, numsegments);
+		commonPolicy->numsegments = Max(policy->numsegments, commonPolicy->numsegments);
 
 		if (policy != commonPolicy)
 			pfree(policy);
@@ -5598,21 +5595,21 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 	 * nothing, FLOW_PARTITIONED without hashExprs(General locus has no
 	 * distkeys) returns duplication.
 	 */
-	switch (commonPolicyType)
+	switch (commonPolicy->ptype)
 	{
 		case POLICYTYPE_ENTRY:
 			CdbPathLocus_MakeEntry(&resultLocus);
 			break;
 		case POLICYTYPE_REPLICATED:
-			Assert(numsegments >= 0);
-			CdbPathLocus_MakeReplicated(&resultLocus, numsegments);
+			Assert(commonPolicy->numsegments >= 0);
+			CdbPathLocus_MakeReplicated(&resultLocus, commonPolicy->numsegments);
 			break;
 		case POLICYTYPE_PARTITIONED:
-			Assert(numsegments >= 0);
-			CdbPathLocus_MakeStrewn(&resultLocus, numsegments);
+			Assert(commonPolicy->numsegments >= 0);
+			CdbPathLocus_MakeStrewn(&resultLocus, commonPolicy->numsegments);
 			break;
 		default:
-			elog(ERROR, "unrecognized policy type %u", commonPolicyType);
+			elog(ERROR, "unrecognized policy type %u", commonPolicy->ptype);
 	}
 
 	return resultLocus;
