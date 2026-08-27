@@ -61,7 +61,7 @@ static bool try_redistribute(PlannerInfo *root, CdbpathMfjRel *g,
 							 CdbpathMfjRel *o, List *redistribution_clauses);
 
 static SplitUpdatePath *make_splitupdate_path(PlannerInfo *root, Path *subpath,
-													  Index rti, List *resultRelations);
+											  Index rti, List *resultRelations);
 
 static bool can_elide_explicit_motion(PlannerInfo *root, Index rti,
 									  List *resultRelations, Path *subpath,

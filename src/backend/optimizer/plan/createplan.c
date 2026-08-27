@@ -3453,20 +3453,17 @@ static void
 splitupdate_hash_policy(PlannerInfo *root, GpPolicy *policy, TupleDesc tupdesc,
 						TupleDesc nominaldesc, List **attnos, List **funcs)
 {
-	int			i;
-
 	*attnos = NIL;
 	*funcs = NIL;
 
-	for (i = 0; i < policy->nattrs; i++)
+	for (int i = 0; i < policy->nattrs; i++)
 	{
 		Form_pg_attribute keyatt = TupleDescAttr(tupdesc, policy->attrs[i] - 1);
 		AttrNumber	nominal_attnum = InvalidAttrNumber;
 		AttrNumber	pos = 0;
 		Oid			opfamily;
-		int			j;
 
-		for (j = 0; j < nominaldesc->natts; j++)
+		for (int j = 0; j < nominaldesc->natts; j++)
 		{
 			Form_pg_attribute att = TupleDescAttr(nominaldesc, j);
 
