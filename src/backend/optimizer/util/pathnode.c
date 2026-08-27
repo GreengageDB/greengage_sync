@@ -5314,7 +5314,7 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 						int epqParam)
 {
 	ModifyTablePath *pathnode = makeNode(ModifyTablePath);
-	bool		isSplitUpdate;
+	bool		isSplitUpdate = false;
 
 	Assert(operation == CMD_UPDATE ?
 		   list_length(resultRelations) == list_length(updateColnosLists) :
@@ -5333,8 +5333,6 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 		!(subpath->parent && IS_DUMMY_REL(subpath->parent)))
 		isSplitUpdate = update_needs_split(root, resultRelations,
 										   nominalRelation);
-	else
-		isSplitUpdate = false;
 
 	pathnode->path.pathtype = T_ModifyTable;
 	pathnode->path.parent = rel;
