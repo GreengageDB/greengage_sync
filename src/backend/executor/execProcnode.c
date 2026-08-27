@@ -1229,11 +1229,6 @@ planstate_walk_kids(PlanState *planstate,
 				break;
 			}
 
-		/*
-		 * ModifyTableState needs no case of its own: its single source of
-		 * tuples is the outer subplan, which the default branch walks.
-		 */
-
 		case T_SequenceState:
 			{
 				SequenceState *ss = (SequenceState *) planstate;
