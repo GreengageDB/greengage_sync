@@ -5534,15 +5534,9 @@ create_distinct_paths(PlannerInfo *root,
 
 		distinctExprs = get_sortgrouplist_exprs(parse->distinctClause,
 												parse->targetList);
-<<<<<<< HEAD
 		numDistinctRowsTotal = estimate_num_groups(root, distinctExprs,
 												   numInputRowsTotal,
-												   NULL);
-=======
-		numDistinctRows = estimate_num_groups(root, distinctExprs,
-											  cheapest_input_path->rows,
-											  NULL, NULL);
->>>>>>> 8ff1c94649f
+												   NULL, NULL);
 	}
 
 	/*
