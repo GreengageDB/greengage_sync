@@ -117,11 +117,12 @@ find_inheritance_children(Oid parentrelId, bool include_detached,
 		{
 			TransactionId xmin;
 			Snapshot snap;
+			bool		setDistributedSnapshotIgnore;
 
 			xmin = HeapTupleHeaderGetXmin(inheritsTuple->t_data);
 			snap = GetActiveSnapshot();
 
-			if (!XidInMVCCSnapshot(xmin, snap))
+			if (XidInMVCCSnapshot(xmin, snap, true, &setDistributedSnapshotIgnore) != XID_IN_SNAPSHOT)
 				continue;
 		}
 
