@@ -355,11 +355,7 @@ static void
 deduceImplicitRangeBounds(ParseState *pstate, Relation parentrel, List *stmts, bool addpartition)
 {
 	PartitionKey key = RelationGetPartitionKey(parentrel);
-	/*
-	 * If this is ALTER TABLE ADD PARTITION, take detach-pending partitions into
-	 * account
-	 */
-	PartitionDesc desc = RelationGetPartitionDesc(parentrel, addpartition);
+	PartitionDesc desc = RelationGetPartitionDesc(parentrel, false);
 
 	list_qsort_arg(stmts, qsort_stmt_cmp, key);
 
