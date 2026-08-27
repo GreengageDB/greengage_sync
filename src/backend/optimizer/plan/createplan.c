@@ -3644,13 +3644,12 @@ create_splitupdate_plan(PlannerInfo *root, SplitUpdatePath *path)
 	 * ORCA, but we don't use it here.
 	 */
 	attrIdx = 0;
-	for (lc = list_head(subplan->targetlist); lc != NULL;
-		 lc = lnext(subplan->targetlist, lc))
+	foreach(lc, subplan->targetlist)
 	{
 		TargetEntry *tle = (TargetEntry *) lfirst(lc);
 
 		if (tle->resjunk)
-			break;				/* junk columns come last; handled below */
+			continue;
 
 		attrIdx++;
 		splitupdate->insertColIdx = lappend_int(splitupdate->insertColIdx, attrIdx);
@@ -3669,7 +3668,7 @@ create_splitupdate_plan(PlannerInfo *root, SplitUpdatePath *path)
 	Assert(list_length(root->update_colnos) == attrIdx);
 
 	/* Copy all junk attributes. */
-	for (; lc != NULL; lc = lnext(subplan->targetlist, lc))
+	foreach(lc, subplan->targetlist)
 	{
 		TargetEntry *tle = (TargetEntry *) lfirst(lc);
 		TargetEntry *newtle;
