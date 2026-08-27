@@ -13,6 +13,7 @@
  */
 
 #include "postgres.h"
+#include "access/detoast.h"
 #include "access/heaptoast.h"
 #include "access/tupmacs.h"
 #include "utils/datumstreamblock.h"
@@ -5495,10 +5496,13 @@ VarlenaInfoToBuffer(char *buffer, uint8 * p)
 {
 	uint32		alignment = (uint32) ((uint8 *) INTALIGN(p) - p);
 
-	if (VARATT_IS_EXTERNAL(p))
+	if (VARATT_IS_EXTERNAL_ONDISK(p))
 	{
-		struct varatt_external *ext = (struct varatt_external *) p;
-		bool		externalIsCompressed = (ext->va_extsize != ext->va_rawsize - VARHDRSZ);
+		struct varatt_external toast_pointer = {0};
+		bool		externalIsCompressed;
+
+		VARATT_EXTERNAL_GET_POINTER(toast_pointer, p);
+		externalIsCompressed = VARATT_EXTERNAL_IS_COMPRESSED(toast_pointer);
 
 		sprintf(buffer,
 			 "external (header ptr %p, header alignment %u, header 0x%.8x): "
@@ -5506,10 +5510,10 @@ VarlenaInfoToBuffer(char *buffer, uint8 * p)
 				p,
 				alignment,
 				*((uint32 *) p),
-				ext->va_rawsize,
-				ext->va_extsize,
-				ext->va_valueid,
-				ext->va_toastrelid,
+				toast_pointer.va_rawsize,
+				(int32) VARATT_EXTERNAL_GET_EXTSIZE(toast_pointer),
+				toast_pointer.va_valueid,
+				toast_pointer.va_toastrelid,
 				(externalIsCompressed ? "true" : "false"));
 	}
 	else if (VARATT_IS_SHORT(p))
@@ -5525,8 +5529,6 @@ VarlenaInfoToBuffer(char *buffer, uint8 * p)
 	}
 	else if (VARATT_IS_COMPRESSED(p))
 	{
-		varattrib_4b *comp = (varattrib_4b *) p;
-
 		sprintf(buffer,
 		   "compressed (header ptr %p, header alignment %u, header 0x%.8x): "
 				"va_rawsize: %d, "
@@ -5534,7 +5536,7 @@ VarlenaInfoToBuffer(char *buffer, uint8 * p)
 				p,
 				alignment,
 				*((uint32 *) p),
-				(int32) comp->va_compressed.va_rawsize,
+				(int32) VARDATA_COMPRESSED_GET_EXTSIZE(p),
 				(int32) VARSIZE_ANY(p),
 				VARDATA_ANY(p));
 	}
