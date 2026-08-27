@@ -721,8 +721,8 @@ AtExecGPSplitPartition(Relation rel, AlterTableCmd *cmd)
 			GpAlterPartitionId *partid2 = (GpAlterPartitionId *) into->arg;
 
 			/*
-			 * There possibly can be a detach-pending partition, but it's fine,
-			 * we will catch collision during partition creation. 
+			 * There may be a detach-pending partition here, but that's fine -
+			 * the collision will be caught during partition creation
 			 */
 			Oid			intorel1 = GpFindTargetPartition(rel, partid1, true);
 			Oid			intorel2 = GpFindTargetPartition(rel, partid2, true);
