@@ -356,7 +356,7 @@ deduceImplicitRangeBounds(ParseState *pstate, Relation parentrel, List *stmts, b
 {
 	PartitionKey key = RelationGetPartitionKey(parentrel);
 	/*
-	 * If this is ALTER TABLE ADD PARTITION take detach pending partitions into
+	 * If this is ALTER TABLE ADD PARTITION, take detach-pending partitions into
 	 * account
 	 */
 	PartitionDesc desc = RelationGetPartitionDesc(parentrel, addpartition);
