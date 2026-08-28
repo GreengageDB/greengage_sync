@@ -10083,8 +10083,8 @@ CreateFunctionStmt:
 					n->parameters = $5;
 					n->returnType = NULL;
 					n->options = $6;
-					n->options = list_concat(n->options, $8);
 					n->sql_body = $7;
+					n->options = list_concat(n->options, $8);
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace PROCEDURE func_name func_args_with_defaults
