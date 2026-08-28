@@ -704,6 +704,29 @@ adjust_inherited_attnums_multilevel(PlannerInfo *root, List *attnums,
 }
 
 /*
+ * adjust_attnums_for_result_rel
+ *		GGDB: attribute numbers of the query's nominal result relation, as
+ *		"rti" numbers the same columns.
+ *
+ * A ModifyTable's plan is expressed in the nominal result relation's column
+ * layout, but each target relation has a layout of its own -- neither ATTACH
+ * PARTITION nor INHERITS preserves column order.  Returns the input list
+ * unchanged when "rti" is the nominal relation itself, so callers that free
+ * the result should compare the two pointers first.
+ */
+List *
+adjust_attnums_for_result_rel(PlannerInfo *root, List *attnums, Index rti)
+{
+	Index		nominal_relid = root->parse->resultRelation;
+
+	if (rti == nominal_relid)
+		return attnums;
+
+	return adjust_inherited_attnums_multilevel(root, attnums, rti,
+											   nominal_relid);
+}
+
+/*
  * get_translated_update_targetlist
  *	  Get the processed_tlist of an UPDATE query, translated as needed to
  *	  match a child target relation.

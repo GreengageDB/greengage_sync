@@ -74,10 +74,11 @@ static List *reparameterize_pathlist_by_child(PlannerInfo *root,
 static bool set_append_path_locus(PlannerInfo *root, Path *pathnode, RelOptInfo *rel,
 					  List *pathkeys);
 static bool update_needs_split(PlannerInfo *root, List *resultRelations,
-							   Index nominalRelation);
+							   GpPolicy **policies);
 static CdbPathLocus adjust_modifytable_subpath(PlannerInfo *root,
 											   CmdType operation,
 											   List *resultRelations,
+											   GpPolicy **policies,
 											   bool isSplitUpdate,
 											   Path **subpath);
 
@@ -5314,7 +5315,10 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 						int epqParam)
 {
 	ModifyTablePath *pathnode = makeNode(ModifyTablePath);
+	GpPolicy  **policies;
 	bool		isSplitUpdate = false;
+	ListCell   *lc;
+	int			i = 0;
 
 	Assert(operation == CMD_UPDATE ?
 		   list_length(resultRelations) == list_length(updateColnosLists) :
@@ -5325,14 +5329,30 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 		   list_length(resultRelations) == list_length(returningLists));
 
 	/*
+	 * GPDB: fetch every target relation's distribution policy up front.  Both
+	 * of the steps below need them, and GpPolicyFetch() is a syscache lookup
+	 * per relation -- for a partitioned target, per partition.  They are left
+	 * for the planner context to reclaim, since the locus built from one of
+	 * them outlives this call.
+	 */
+	policies = (GpPolicy **) palloc(list_length(resultRelations) *
+									sizeof(GpPolicy *));
+	foreach(lc, resultRelations)
+	{
+		RangeTblEntry *rte = planner_rt_fetch(lfirst_int(lc), root);
+
+		Assert(rte->rtekind == RTE_RELATION);
+		policies[i++] = GpPolicyFetch(rte->relid);
+	}
+
+	/*
 	 * GPDB: decide whether this UPDATE has to run as a delete plus an insert.
 	 * A dummy subpath returns no rows, so there is nothing to move and no
 	 * point paying for a SplitUpdate node.
 	 */
 	if (operation == CMD_UPDATE &&
 		!(subpath->parent && IS_DUMMY_REL(subpath->parent)))
-		isSplitUpdate = update_needs_split(root, resultRelations,
-										   nominalRelation);
+		isSplitUpdate = update_needs_split(root, resultRelations, policies);
 
 	pathnode->path.pathtype = T_ModifyTable;
 	pathnode->path.parent = rel;
@@ -5352,7 +5372,7 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 	if (Gp_role == GP_ROLE_DISPATCH)
 		pathnode->path.locus =
 			adjust_modifytable_subpath(root, operation, resultRelations,
-									   isSplitUpdate, &subpath);
+									   policies, isSplitUpdate, &subpath);
 	else
 	{
 		/* don't allow split updates in utility mode. */
@@ -5437,60 +5457,55 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
  */
 static bool
 update_needs_split(PlannerInfo *root, List *resultRelations,
-				   Index nominalRelation)
+				   GpPolicy **policies)
 {
+	List	   *changed_colnos;
 	ListCell   *lc;
+	int			i;
+	int			relno = 0;
 
 	if (bms_is_empty(root->updateChangedCols))
 		return false;
 
+	/* The changed columns, in the nominal relation's attribute numbering. */
+	changed_colnos = NIL;
+	i = -1;
+	while ((i = bms_next_member(root->updateChangedCols, i)) >= 0)
+		changed_colnos = lappend_int(changed_colnos, i);
+
 	foreach(lc, resultRelations)
 	{
 		Index		rti = lfirst_int(lc);
-		RangeTblEntry *rte = planner_rt_fetch(rti, root);
-		GpPolicy   *policy;
-		List	   *changed_colnos;
+		GpPolicy   *policy = policies[relno++];
+		List	   *rel_colnos;
 		bool		needs_split = false;
-		int			i;
 
-		Assert(rte->rtekind == RTE_RELATION);
-
-		policy = GpPolicyFetch(rte->relid);
 		if (policy->ptype != POLICYTYPE_PARTITIONED || policy->nattrs == 0)
 			continue;			/* randomly distributed, or not distributed */
 
-		/*
-		 * Express the changed columns in this relation's own attribute
-		 * numbering.  For the nominal relation itself there is nothing to
-		 * translate; for a leaf there is an appendrel entry to follow.
-		 */
-		changed_colnos = NIL;
-		i = -1;
-		while ((i = bms_next_member(root->updateChangedCols, i)) >= 0)
-			changed_colnos = lappend_int(changed_colnos, i);
-
-		if (rti != nominalRelation)
-			changed_colnos = adjust_inherited_attnums_multilevel(root,
-																changed_colnos,
-																rti,
-																nominalRelation);
+		/* Re-express them in this relation's own numbering. */
+		rel_colnos = adjust_attnums_for_result_rel(root, changed_colnos, rti);
 
 		for (i = 0; i < policy->nattrs; i++)
 		{
-			if (list_member_int(changed_colnos, policy->attrs[i]))
+			if (list_member_int(rel_colnos, policy->attrs[i]))
 			{
 				needs_split = true;
 				break;
 			}
 		}
 
-		list_free(changed_colnos);
-		pfree(policy);
+		if (rel_colnos != changed_colnos)
+			list_free(rel_colnos);
 
 		if (needs_split)
+		{
+			list_free(changed_colnos);
 			return true;
+		}
 	}
 
+	list_free(changed_colnos);
 	return false;
 }
 
@@ -5517,16 +5532,19 @@ update_needs_split(PlannerInfo *root, List *resultRelations,
  */
 static CdbPathLocus
 adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
-						   List *resultRelations, bool isSplitUpdate,
-						   Path **subpath)
+						   List *resultRelations, GpPolicy **policies,
+						   bool isSplitUpdate, Path **subpath)
 {
 	ListCell   *lc;
-	GpPolicy   *commonPolicy = NULL;
-	Index		commonRti = 0;
-	bool		first = true;
+	GpPolicy   *commonPolicy;
+	Index		commonRti;
 	CdbPathLocus resultLocus;
+	int			relno = 0;
 
 	Assert(resultRelations != NIL);
+
+	commonPolicy = policies[0];
+	commonRti = linitial_int(resultRelations);
 
 	/*
 	 * Work out the policy shared by the target relations, and complain if
@@ -5535,34 +5553,19 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 	foreach(lc, resultRelations)
 	{
 		Index		rti = lfirst_int(lc);
-		RangeTblEntry *rte = planner_rt_fetch(rti, root);
-		GpPolicy   *policy;
+		GpPolicy   *policy = policies[relno++];
 
-		Assert(rte->rtekind == RTE_RELATION);
-
-		policy = GpPolicyFetch(rte->relid);
-
-		if (first)
-		{
-			commonPolicy = policy;
-			commonRti = rti;
-			first = false;
-		}
-		else if (policy->ptype != commonPolicy->ptype)
+		if (policy->ptype != commonPolicy->ptype)
 			ereport(ERROR,
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("cannot update or delete from an inheritance tree whose members have different kinds of distribution policy"),
 					 errdetail("Relations \"%s\" and \"%s\" are distributed differently.",
 							   get_rel_name(planner_rt_fetch(commonRti, root)->relid),
-							   get_rel_name(rte->relid))));
+							   get_rel_name(planner_rt_fetch(rti, root)->relid))));
 
-		commonPolicy->numsegments = Max(policy->numsegments, commonPolicy->numsegments);
-
-		if (policy != commonPolicy)
-			pfree(policy);
+		commonPolicy->numsegments = Max(policy->numsegments,
+										commonPolicy->numsegments);
 	}
-
-	Assert(commonPolicy != NULL);
 
 	if (operation == CMD_INSERT)
 		*subpath = create_motion_path_for_insert(root, commonPolicy, *subpath);
