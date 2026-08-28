@@ -887,6 +887,37 @@ add_row_identity_var(PlannerInfo *root, Var *orig_var,
 }
 
 /*
+ * child_has_extra_columns
+ *		GPDB: does this inheritance child have columns its parent does not?
+ *
+ * AppendRelInfo.parent_colnos already records which of the parent's columns
+ * each of the child's came from, or 0 for none, so this costs no catalog
+ * access.  Multi-level inheritance would mean following that up through each
+ * level; just answer yes there, since carrying the old row is always correct
+ * and only costs bandwidth.
+ */
+static bool
+child_has_extra_columns(PlannerInfo *root, Index rtindex, Relation childrel)
+{
+	AppendRelInfo *appinfo = root->append_rel_array[rtindex];
+	TupleDesc	tupdesc = RelationGetDescr(childrel);
+
+	if (appinfo == NULL)
+		return false;			/* not a child of anything */
+	if (appinfo->parent_relid != root->parse->resultRelation)
+		return true;			/* deeper than one level; assume it does */
+
+	for (int i = 0; i < appinfo->num_child_cols; i++)
+	{
+		if (appinfo->parent_colnos[i] == 0 &&
+			!TupleDescAttr(tupdesc, i)->attisdropped)
+			return true;
+	}
+
+	return false;
+}
+
+/*
  * add_row_identity_columns
  *
  * This function adds the row identity columns needed by the core code.
@@ -934,18 +965,17 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 		add_row_identity_var(root, var, rtindex, "gp_segment_id");
 
 		/*
-		 * GPDB: an UPDATE of an old-style inheritance tree also needs the old
-		 * row in full.  The single subplan's targetlist is in the root
-		 * relation's column layout, so a child's extra columns are absent from
-		 * it and would be lost.  A RECORD-typed whole-row Var translates to
-		 * each child's own whole row rather than being coerced to the root
-		 * rowtype, so it carries them; that also spares us the TID re-fetch,
-		 * which append-optimized tables cannot serve.
+		 * GPDB: an UPDATE of an old-style inheritance child that has columns
+		 * the nominal relation does not needs the old row in full.  The single
+		 * subplan's targetlist is in the nominal relation's column layout, so
+		 * those columns are absent from it and would be lost.  A RECORD-typed
+		 * whole-row Var translates to each child's own whole row rather than
+		 * being coerced to the root rowtype, so it carries them; that also
+		 * spares us the TID re-fetch, which append-optimized tables cannot
+		 * serve.
 		 *
 		 * Partitions may only contain columns present in their parent, so they
-		 * never need this.  We do not check whether a child really does have
-		 * extra columns: that would mean opening every member before the tree
-		 * is expanded.
+		 * never need this.
 		 */
 		if (commandType == CMD_UPDATE && relkind == RELKIND_RELATION)
 		{
@@ -958,7 +988,8 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 			 * inheritance tree has to be read off the nominal result
 			 * relation, not off target_rte.
 			 */
-			if (rootRte->inh && rootRte->relkind == RELKIND_RELATION)
+			if (rootRte->inh && rootRte->relkind == RELKIND_RELATION &&
+				child_has_extra_columns(root, rtindex, target_relation))
 			{
 				var = makeVar(rtindex,
 							  InvalidAttrNumber,
