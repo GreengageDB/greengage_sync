@@ -2088,6 +2088,11 @@ create_resultcache_path(PlannerInfo *root, RelOptInfo *rel, Path *subpath,
 	pathnode->path.parallel_workers = subpath->parallel_workers;
 	pathnode->path.pathkeys = subpath->pathkeys;
 
+	pathnode->path.locus = subpath->locus;
+	pathnode->path.motionHazard = subpath->motionHazard;
+	pathnode->path.rescannable = subpath->rescannable;
+	pathnode->path.sameslice_relids = subpath->sameslice_relids;
+
 	pathnode->subpath = subpath;
 	pathnode->hash_operators = hash_operators;
 	pathnode->param_exprs = param_exprs;
