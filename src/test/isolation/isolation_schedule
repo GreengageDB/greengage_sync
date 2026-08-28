@@ -76,8 +76,11 @@ test: deadlock-simple
 test: deadlock-hard
 test: deadlock-soft
 test: deadlock-soft-2
-<<<<<<< HEAD
 #test: deadlock-parallel
+#test: detach-partition-concurrently-1
+#test: detach-partition-concurrently-2
+#test: detach-partition-concurrently-3
+#test: detach-partition-concurrently-4
 #test: fk-contention
 #test: fk-deadlock
 #test: fk-deadlock2
@@ -87,22 +90,6 @@ test: deadlock-soft-2
 #test: eval-plan-qual-trigger
 #test: lock-update-delete
 #test: lock-update-traversal
-=======
-test: deadlock-parallel
-test: detach-partition-concurrently-1
-test: detach-partition-concurrently-2
-test: detach-partition-concurrently-3
-test: detach-partition-concurrently-4
-test: fk-contention
-test: fk-deadlock
-test: fk-deadlock2
-test: fk-partitioned-1
-test: fk-partitioned-2
-test: eval-plan-qual
-test: eval-plan-qual-trigger
-test: lock-update-delete
-test: lock-update-traversal
->>>>>>> 8ff1c94649f
 test: inherit-temp
 #test: insert-conflict-do-nothing
 #test: insert-conflict-do-nothing-2
