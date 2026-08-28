@@ -10052,8 +10052,8 @@ CreateFunctionStmt:
 					n->parameters = $5;
 					n->returnType = $7;
 					n->options = $8;
-					n->options = list_concat(n->options, $10);
 					n->sql_body = $9;
+					n->options = list_concat(n->options, $10);
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
