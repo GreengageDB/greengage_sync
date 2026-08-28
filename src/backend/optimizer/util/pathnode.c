@@ -5526,6 +5526,8 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 	bool		first = true;
 	CdbPathLocus resultLocus;
 
+	Assert(resultRelations != NIL);
+
 	/*
 	 * Work out the policy shared by the target relations, and complain if
 	 * there isn't one.

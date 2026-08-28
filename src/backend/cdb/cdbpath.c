@@ -2684,6 +2684,8 @@ can_elide_explicit_motion(PlannerInfo *root, Index rti, List *resultRelations,
 {
 	ListCell   *lc;
 
+	Assert(resultRelations != NIL);
+
 	/*
 	 * If there are no Motions between the scan of a target relation and here,
 	 * no motion is required for its rows.
