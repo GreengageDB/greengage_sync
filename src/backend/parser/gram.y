@@ -10068,8 +10068,8 @@ CreateFunctionStmt:
 					n->returnType = TableFuncTypeName($9);
 					n->returnType->location = @7;
 					n->options = $11;
-					n->options = list_concat(n->options, $13);
 					n->sql_body = $12;
+					n->options = list_concat(n->options, $13);
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
