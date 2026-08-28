@@ -1580,6 +1580,40 @@ _readRowIdExpr(void)
 	READ_DONE();
 }
 
+static StatsElem *
+_readStatsElem(void)
+{
+	READ_LOCALS(StatsElem);
+
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(expr);
+
+	READ_DONE();
+}
+
+static RowIdentityVarInfo *
+_readRowIdentityVarInfo(void)
+{
+	READ_LOCALS(RowIdentityVarInfo);
+
+	READ_NODE_FIELD(rowidvar);
+	READ_INT_FIELD(rowidwidth);
+	READ_STRING_FIELD(rowidname);
+	READ_BITMAPSET_FIELD(rowidrels);
+
+	READ_DONE();
+}
+
+static ReturnStmt *
+_readReturnStmt(void)
+{
+	READ_LOCALS(ReturnStmt);
+
+	READ_NODE_FIELD(returnval);
+
+	READ_DONE();
+}
+
 static Node *
 _readValue(NodeTag nt)
 {

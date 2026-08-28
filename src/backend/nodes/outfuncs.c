@@ -3154,7 +3154,6 @@ _outAppendRelInfo(StringInfo str, const AppendRelInfo *node)
 	WRITE_OID_FIELD(parent_reloid);
 }
 
-#ifndef COMPILING_BINARY_FUNCS
 static void
 _outRowIdentityVarInfo(StringInfo str, const RowIdentityVarInfo *node)
 {
@@ -3166,6 +3165,7 @@ _outRowIdentityVarInfo(StringInfo str, const RowIdentityVarInfo *node)
 	WRITE_BITMAPSET_FIELD(rowidrels);
 }
 
+#ifndef COMPILING_BINARY_FUNCS
 static void
 _outPlaceHolderInfo(StringInfo str, const PlaceHolderInfo *node)
 {
