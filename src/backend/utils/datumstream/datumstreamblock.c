@@ -5496,11 +5496,12 @@ VarlenaInfoToBuffer(char *buffer, uint8 * p)
 {
 	uint32		alignment = (uint32) ((uint8 *) INTALIGN(p) - p);
 
-	if (VARATT_IS_EXTERNAL_ONDISK(p))
+	if (VARATT_IS_EXTERNAL(p))
 	{
 		struct varatt_external toast_pointer = {0};
 		bool		externalIsCompressed;
 
+		/* Asserts a well-formed on-disk external pointer */
 		VARATT_EXTERNAL_GET_POINTER(toast_pointer, p);
 		externalIsCompressed = VARATT_EXTERNAL_IS_COMPRESSED(toast_pointer);
 
