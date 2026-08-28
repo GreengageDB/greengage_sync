@@ -3808,7 +3808,6 @@ update_index_statistics(LVRelState *vacrel)
 							InvalidMultiXactId,
 							false,
 							true /* isvacuum */);
-		pfree(istat);
 	}
 }
 
