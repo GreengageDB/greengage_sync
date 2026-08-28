@@ -5501,7 +5501,9 @@ VarlenaInfoToBuffer(char *buffer, uint8 * p)
 		struct varatt_external toast_pointer = {0};
 		bool		externalIsCompressed;
 
-		/* Asserts a well-formed on-disk external pointer */
+		/* datum-stream blocks only ever hold on-disk TOAST pointers */
+		Assert(VARATT_IS_EXTERNAL_ONDISK(p));
+
 		VARATT_EXTERNAL_GET_POINTER(toast_pointer, p);
 		externalIsCompressed = VARATT_EXTERNAL_IS_COMPRESSED(toast_pointer);
 
