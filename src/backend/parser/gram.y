@@ -10052,8 +10052,8 @@ CreateFunctionStmt:
 					n->parameters = $5;
 					n->returnType = $7;
 					n->options = $8;
-					n->options = list_concat(n->options, $9);
-					n->sql_body = $10;
+					n->options = list_concat(n->options, $10);
+					n->sql_body = $9;
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
@@ -10068,8 +10068,8 @@ CreateFunctionStmt:
 					n->returnType = TableFuncTypeName($9);
 					n->returnType->location = @7;
 					n->options = $11;
-					n->options = list_concat(n->options, $12);
-					n->sql_body = $13;
+					n->options = list_concat(n->options, $13);
+					n->sql_body = $12;
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
@@ -10083,8 +10083,8 @@ CreateFunctionStmt:
 					n->parameters = $5;
 					n->returnType = NULL;
 					n->options = $6;
-					n->options = list_concat(n->options, $7);
-					n->sql_body = $8;
+					n->options = list_concat(n->options, $8);
+					n->sql_body = $7;
 					$$ = (Node *)n;
 				}
 			| CREATE opt_or_replace PROCEDURE func_name func_args_with_defaults
