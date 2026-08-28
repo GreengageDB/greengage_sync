@@ -450,9 +450,10 @@ typedef struct ResultRelInfo
 	bool		ri_projectNewInfoValid;
 
 	/*
-	 * GPDB: does ri_projectNew actually read the old tuple?  It does not when
-	 * the plan supplies a value for every column, which for an UPDATE is the
-	 * usual case here -- see preprocess_targetlist().  Knowing this lets
+	 * GPDB: does ri_projectNew actually read the old tuple?  Answered by
+	 * ExecBuildUpdateProjection(), which is where it is decided: no, when the
+	 * plan supplies a value for every column, as GGDB's UPDATE targetlists
+	 * normally do -- see preprocess_targetlist().  Knowing this lets
 	 * ExecModifyTable() skip fetching the old tuple, which append-optimized
 	 * tables cannot do at all.
 	 */

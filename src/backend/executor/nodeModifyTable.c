@@ -509,27 +509,10 @@ ExecInitUpdateProjection(ModifyTableState *mtstate,
 		ExecBuildUpdateProjection(subplan->targetlist,
 								  updateColnos,
 								  relDesc,
+								  &resultRelInfo->ri_projectNewNeedsOld,
 								  mtstate->ps.ps_ExprContext,
 								  resultRelInfo->ri_newTupleSlot,
 								  &mtstate->ps);
-
-	/*
-	 * GPDB: does that projection read the old tuple at all?  Not if
-	 * updateColnos names every live column, which is the usual case here; the
-	 * exception is an old-style inheritance child with columns the nominal
-	 * relation lacks.  Mirrors the reasoning in ExecBuildUpdateProjection().
-	 */
-	{
-		int			nlive = 0;
-
-		for (int attnum = 1; attnum <= relDesc->natts; attnum++)
-		{
-			if (!TupleDescAttr(relDesc, attnum - 1)->attisdropped)
-				nlive++;
-		}
-		resultRelInfo->ri_projectNewNeedsOld =
-			(list_length(updateColnos) < nlive);
-	}
 
 	resultRelInfo->ri_projectNewInfoValid = true;
 }

@@ -329,6 +329,7 @@ extern ProjectionInfo *ExecBuildProjectionInfo(List *targetList,
 extern ProjectionInfo *ExecBuildUpdateProjection(List *subTargetList,
 												 List *targetColnos,
 												 TupleDesc relDesc,
+												 bool *needsOldTuple,
 												 ExprContext *econtext,
 												 TupleTableSlot *slot,
 												 PlanState *parent);
