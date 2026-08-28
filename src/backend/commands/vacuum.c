@@ -1062,7 +1062,7 @@ expand_vacuum_rel(VacuumRelation *vrel, int options)
 				Oid			parent_relid;
 				int			elevel = ((options & VACOPT_VERBOSE) ? LOG : DEBUG2);
 
-				parent_relid = get_partition_parent(child_relid);
+				parent_relid = get_partition_parent(child_relid, true);
 
 				/*
 				 * Only ANALYZE the parent if the stats can be updated by merging
