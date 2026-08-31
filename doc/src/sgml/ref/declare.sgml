@@ -26,13 +26,8 @@ PostgreSQL documentation
 
  <refsynopsisdiv>
 <synopsis>
-<<<<<<< HEAD
-DECLARE <replaceable class="parameter">name</replaceable> [ BINARY ] [ INSENSITIVE ] [ [ NO ] SCROLL ]
-  [ PARALLEL RETRIEVE ] CURSOR [ { WITH | WITHOUT } HOLD ] FOR <replaceable class="parameter">query</replaceable>
-=======
 DECLARE <replaceable class="parameter">name</replaceable> [ BINARY ] [ ASENSITIVE | INSENSITIVE ] [ [ NO ] SCROLL ]
     CURSOR [ { WITH | WITHOUT } HOLD ] FOR <replaceable class="parameter">query</replaceable>
->>>>>>> 8ff1c94649f
 </synopsis>
  </refsynopsisdiv>
 
