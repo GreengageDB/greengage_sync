@@ -2329,6 +2329,9 @@ readNodeBinary(void)
 			case T_AlterSeqStmt:
 				return_value = _readAlterSeqStmt();
 				break;
+			case T_CreateStatsStmt:
+				return_value = _readCreateStatsStmt();
+				break;
 			case T_ClusterStmt:
 				return_value = _readClusterStmt();
 				break;

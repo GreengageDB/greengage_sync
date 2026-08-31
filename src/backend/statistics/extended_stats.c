@@ -663,6 +663,20 @@ examine_expression(Node *expr, int stattarget)
 	stats->tupattnum = InvalidAttrNumber;
 
 	/*
+	 * GPDB: the HLL-based ndistinct estimator in compute_scalar_stats() and
+	 * compute_distinct_stats() reads the physical type layout from stats->attr
+	 * rather than from stats->attrtype.  The faked stats->attr above is
+	 * allocated with plain palloc(), so fill in the type layout fields from the
+	 * expression's type to avoid feeding uninitialised data to
+	 * gp_hyperloglog_add_item() while ANALYZE-ing a statistics object that has
+	 * expressions.
+	 */
+	stats->attr->attlen = stats->attrtype->typlen;
+	stats->attr->attbyval = stats->attrtype->typbyval;
+	stats->attr->attalign = stats->attrtype->typalign;
+	stats->attr->attcollation = stats->attrcollid;
+
+	/*
 	 * The fields describing the stats->stavalues[n] element types default to
 	 * the type of the data being analyzed, but the type-specific typanalyze
 	 * function can change them if it wants to store something else.

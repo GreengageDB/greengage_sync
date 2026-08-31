@@ -10335,6 +10335,18 @@ ATExecAddStatistics(AlteredTableInfo *tab, Relation rel,
 	/* The CreateStatsStmt has already been through transformStatsStmt */
 	Assert(stmt->transformed);
 
+	/*
+	 * GPDB: extended statistics catalogs (pg_statistic_ext and
+	 * pg_statistic_ext_data) are maintained only on the coordinator - plain
+	 * CREATE STATISTICS is never dispatched to the segments.  ALTER TABLE ...
+	 * ALTER COLUMN TYPE does dispatch this rebuild subcommand as part of the
+	 * AlterTableStmt, so the segments must skip it; otherwise CreateStatistics()
+	 * would try to allocate a synchronized OID for pg_statistic_ext on a QE and
+	 * PANIC.
+	 */
+	if (Gp_role == GP_ROLE_EXECUTE)
+		return InvalidObjectAddress;
+
 	address = CreateStatistics(stmt);
 
 	return address;
