@@ -2350,12 +2350,6 @@ SELECT encode(overlay(E'Th\\000omas'::bytea placing E'\\002\\003'::bytea from 5 
  Th\000o\x02\x03
 (1 row)
 
-<<<<<<< HEAD
--- Clean up GPDB-added tables
-DROP TABLE char_strings_tbl;
-DROP TABLE varchar_strings_tbl;
-DROP TABLE text_strings_tbl;
-=======
 SELECT bit_count('\x1234567890'::bytea);
  bit_count 
 -----------
@@ -2398,4 +2392,7 @@ ERROR:  invalid Unicode code point: 2FFFFF
 SELECT unistr('wrong: \xyz');
 ERROR:  invalid Unicode escape
 HINT:  Unicode escapes must be \XXXX, \+XXXXXX, \uXXXX, or \UXXXXXXXX.
->>>>>>> 8ff1c94649f
+-- Clean up GPDB-added tables
+DROP TABLE char_strings_tbl;
+DROP TABLE varchar_strings_tbl;
+DROP TABLE text_strings_tbl;
