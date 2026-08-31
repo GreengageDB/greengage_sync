@@ -2143,14 +2143,11 @@ ExecSplitUpdate_Insert(ModifyTableState *mtstate,
 			ExecPartitionCheckEmitError(resultRelInfo, slot, estate);
 
 		/*
-		 * resultRelInfo is one of the per-subplan resultRelInfos.  So we
-		 * should convert the tuple into root's tuple descriptor, since
-		 * ExecInsert() starts the search from root.  The tuple conversion
-		 * map list is in the order of mtstate->resultRelInfo[], so to
-		 * retrieve the one for this resultRel, we need to know the
-		 * position of the resultRel in mtstate->resultRelInfo[].
+		 * resultRelInfo is one of the per-relation resultRelInfos.  So we
+		 * should convert the tuple into root's tuple descriptor if needed,
+		 * since ExecInsert() starts the search from root.
 		 */
-		tupconv_map = resultRelInfo->ri_ChildToRootMap;
+		tupconv_map = ExecGetChildToRootMap(resultRelInfo);
 		if (tupconv_map != NULL)
 			slot = execute_attr_map_slot(tupconv_map->attrMap,
 										 slot,
