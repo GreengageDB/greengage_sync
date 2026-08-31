@@ -20,11 +20,7 @@ use Time::HiRes qw(usleep);
 
 if ($ENV{with_gssapi} eq 'yes')
 {
-<<<<<<< HEAD
-	plan tests => 35;
-=======
-	plan tests => 44;
->>>>>>> 8ff1c94649f
+	plan tests => 45;
 }
 else
 {
@@ -217,37 +213,6 @@ sub test_access
 	{
 		$node->connect_fails($connstr, $test_name, %params);
 	}
-<<<<<<< HEAD
-
-	# Verify specified log message is logged in the log file.
-	if ($expect_log_msg ne '')
-	{
-		my $current_logfiles = slurp_file($node->data_dir . '/current_logfiles');
-		note "current_logfiles = $current_logfiles";
-		like($current_logfiles, qr|^stderr log/gpdb-.*csv$|,
-			 'current_logfiles is sane');
-
-		my $lfname = $current_logfiles;
-		$lfname =~ s/^stderr //;
-		chomp $lfname;
-
-		# might need to retry if logging collector process is slow...
-		my $max_attempts = 180 * 10;
-		my $first_logfile;
-		for (my $attempts = 0; $attempts < $max_attempts; $attempts++)
-		{
-			$first_logfile = slurp_file($node->data_dir . '/' . $lfname);
-			last if $first_logfile =~ m/\Q$expect_log_msg\E/;
-			usleep(100_000);
-		}
-
-		like($first_logfile, qr/\Q$expect_log_msg\E/,
-			 'found expected log file content');
-	}
-
-	return;
-=======
->>>>>>> 8ff1c94649f
 }
 
 # As above, but test for an arbitrary query result.
