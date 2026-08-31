@@ -449,6 +449,16 @@ typedef struct ResultRelInfo
 	/* Have the projection and the slots above been initialized? */
 	bool		ri_projectNewInfoValid;
 
+	/*
+	 * GPDB: does ri_projectNew actually read the old tuple?  Answered by
+	 * ExecBuildUpdateProjection(), which is where it is decided: no, when the
+	 * plan supplies a value for every column, as GGDB's UPDATE targetlists
+	 * normally do -- see preprocess_targetlist().  Knowing this lets
+	 * ExecModifyTable() skip fetching the old tuple, which append-optimized
+	 * tables cannot do at all.
+	 */
+	bool		ri_projectNewNeedsOld;
+
 	/* triggers to be fired, if any */
 	TriggerDesc *ri_TrigDesc;
 
@@ -497,14 +507,21 @@ typedef struct ResultRelInfo
 	int			ri_NumGeneratedNeeded;
 
 	/*
-	 * Extra GPDB junk columns. ri_segid_attno is used with DELETE, to indicate
-	 * the segment the target tuple came from. 'action' is used with
-	 * Split Updates.
+	 * Extra GPDB junk columns.  ri_segid_attno says which segment the target
+	 * tuple came from; a ctid is only unique within one segment.
+	 * ri_action_attno is the DMLAction column of a Split Update, saying which
+	 * half of the split this row is.
+	 *
+	 * ri_wholerow_attno is set only for an UPDATE of an old-style inheritance
+	 * tree, where the plan carries the old row in full because the subplan's
+	 * targetlist is in the root relation's column layout and so cannot supply
+	 * a child's extra columns.  See add_row_identity_columns().
 	 *
 	 * The target tuple's ctid is in ri_RowIdAttNo, like in upstream.
 	 */
 	AttrNumber  ri_segid_attno;		/* gp_segment_id of old tuple */
 	AttrNumber	ri_action_attno;	/* is this an INSERT or DELETE ? */
+	AttrNumber	ri_wholerow_attno;	/* old tuple in toto, or 0 */
 
 	/* list of RETURNING expressions */
 	List	   *ri_returningList;
@@ -1308,7 +1325,6 @@ typedef struct ModifyTableState
 
 	EPQState	mt_epqstate;	/* for evaluating EvalPlanQual rechecks */
 	bool		fireBSTriggers; /* do we need to fire stmt triggers? */
-	bool	   *mt_isSplitUpdates; /* per-subplan flag to indicate if it's a split update */
 
 	/*
 	 * These fields are used for inherited UPDATE and DELETE, to track which
@@ -3121,8 +3137,23 @@ typedef struct SplitUpdateState
 
 	AttrNumber	input_segid_attno;		/* attribute number of "gp_segment_id" in subplan's target list */
 	AttrNumber	output_segid_attno;		/* attribute number of "gp_segment_id" in output target list */
+	AttrNumber	input_tableoid_attno;	/* attribute number of "tableoid" in subplan's target list, or 0 */
 
-	struct CdbHash *cdbhash;	/* hash api object */
+	struct CdbHash *cdbhash;	/* hash api object for the nominal relation */
+
+	/*
+	 * Per-result-relation placement, unpacked from the plan node's policy*
+	 * lists; empty when the plan node carries none.  policyHashes[i] is built
+	 * on first use and is NULL for a relation whose rows stay put.
+	 */
+	int			numPolicies;
+	Oid		   *policyRelids;
+	int		   *policyNumHashAttrs;
+	AttrNumber **policyAttnos;
+	Oid		  **policyFuncs;
+	int		   *policyNumSegments;
+	struct CdbHash **policyHashes;
+	int			lastPolicyIdx;	/* policy used for the previous row, or -1 */
 
 } SplitUpdateState;
 

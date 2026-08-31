@@ -509,6 +509,7 @@ ExecInitUpdateProjection(ModifyTableState *mtstate,
 		ExecBuildUpdateProjection(subplan->targetlist,
 								  updateColnos,
 								  relDesc,
+								  &resultRelInfo->ri_projectNewNeedsOld,
 								  mtstate->ps.ps_ExprContext,
 								  resultRelInfo->ri_newTupleSlot,
 								  &mtstate->ps);
@@ -2565,12 +2566,6 @@ ExecModifyTable(PlanState *pstate)
 	ResultRelInfo *resultRelInfo;
 	ResultRelInfo *routedResultRelInfo;
 	PlanState  *subplanstate;
-<<<<<<< HEAD
-	JunkFilter *junkfilter;
-	AttrNumber  action_attno;
-	AttrNumber  segid_attno;
-=======
->>>>>>> 8ff1c94649f
 	TupleTableSlot *slot;
 	TupleTableSlot *planSlot;
 	TupleTableSlot *oldSlot;
@@ -2578,6 +2573,8 @@ ExecModifyTable(PlanState *pstate)
 	ItemPointerData tuple_ctid;
 	HeapTupleData oldtupdata;
 	HeapTuple	oldtuple;
+	HeapTupleData wholerowdata;
+	HeapTuple	wholerow;
 	PartitionTupleRouting *proute = node->mt_partition_tuple_routing;
 	List	   *relinfos = NIL;
 	ListCell   *lc;
@@ -2632,16 +2629,8 @@ ExecModifyTable(PlanState *pstate)
 	}
 
 	/* Preload local variables */
-<<<<<<< HEAD
-	resultRelInfo = node->resultRelInfo + node->mt_whichplan;
-	subplanstate = node->mt_plans[node->mt_whichplan];
-	junkfilter = resultRelInfo->ri_junkFilter;
-	action_attno = resultRelInfo->ri_action_attno;
-	segid_attno = resultRelInfo->ri_segid_attno;
-=======
 	resultRelInfo = node->resultRelInfo + node->mt_lastResultIndex;
 	subplanstate = outerPlanState(node);
->>>>>>> 8ff1c94649f
 
 	/*
 	 * Fetch rows from subplan, and execute the required table modification
@@ -2669,27 +2658,7 @@ ExecModifyTable(PlanState *pstate)
 
 		/* No more tuples to process? */
 		if (TupIsNull(planSlot))
-<<<<<<< HEAD
-		{
-			/* advance to next subplan if any */
-			node->mt_whichplan++;
-			if (node->mt_whichplan < node->mt_nplans)
-			{
-				resultRelInfo = &node->resultRelInfo[node->mt_whichplan];
-				subplanstate = node->mt_plans[node->mt_whichplan];
-				junkfilter = resultRelInfo->ri_junkFilter;
-				action_attno = resultRelInfo->ri_action_attno;
-				segid_attno = resultRelInfo->ri_segid_attno;
-				EvalPlanQualSetPlan(&node->mt_epqstate, subplanstate->plan,
-									node->mt_arowmarks[node->mt_whichplan]);
-				continue;
-			}
-			else
-				break;
-		}
-=======
 			break;
->>>>>>> 8ff1c94649f
 
 		/*
 		 * When there are multiple result relations, each tuple contains a
@@ -2741,6 +2710,7 @@ ExecModifyTable(PlanState *pstate)
 
 		tupleid = NULL;
 		oldtuple = NULL;
+		wholerow = NULL;
 
 		/*
 		 * For UPDATE/DELETE, fetch the row identity info for the tuple to be
@@ -2758,7 +2728,8 @@ ExecModifyTable(PlanState *pstate)
 			relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
 			if (relkind == RELKIND_RELATION ||
 				relkind == RELKIND_MATVIEW ||
-				relkind == RELKIND_PARTITIONED_TABLE)
+				relkind == RELKIND_PARTITIONED_TABLE ||
+				IsAppendonlyMetadataRelkind(relkind))
 			{
 				/* ri_RowIdAttNo refers to a ctid attribute */
 				Assert(AttributeNumberIsValid(resultRelInfo->ri_RowIdAttNo));
@@ -2769,90 +2740,9 @@ ExecModifyTable(PlanState *pstate)
 				if (isNull)
 					elog(ERROR, "ctid is NULL");
 
-<<<<<<< HEAD
-				relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
-				if (relkind == RELKIND_RELATION || relkind == RELKIND_MATVIEW ||
-					relkind == RELKIND_PARTITIONED_TABLE ||
-					IsAppendonlyMetadataRelkind(relkind))
-				{
-					datum = ExecGetJunkAttribute(slot,
-												 junkfilter->jf_junkAttNo,
-												 &isNull);
-					/* shouldn't ever get a null result... */
-					if (isNull)
-						elog(ERROR, "ctid is NULL");
-
-					tupleid = (ItemPointer) DatumGetPointer(datum);
-					tuple_ctid = *tupleid;	/* be sure we don't free ctid!! */
-					tupleid = &tuple_ctid;
-				}
-
-				/*
-				 * Use the wholerow attribute, when available, to reconstruct
-				 * the old relation tuple.
-				 *
-				 * Foreign table updates have a wholerow attribute when the
-				 * relation has a row-level trigger.  Note that the wholerow
-				 * attribute does not carry system columns.  Foreign table
-				 * triggers miss seeing those, except that we know enough here
-				 * to set t_tableOid.  Quite separately from this, the FDW may
-				 * fetch its own junk attrs to identify the row.
-				 *
-				 * Other relevant relkinds, currently limited to views, always
-				 * have a wholerow attribute.
-				 */
-				else if (AttributeNumberIsValid(junkfilter->jf_junkAttNo))
-				{
-					datum = ExecGetJunkAttribute(slot,
-												 junkfilter->jf_junkAttNo,
-												 &isNull);
-					/* shouldn't ever get a null result... */
-					if (isNull)
-						elog(ERROR, "wholerow is NULL");
-
-					oldtupdata.t_data = DatumGetHeapTupleHeader(datum);
-					oldtupdata.t_len =
-						HeapTupleHeaderGetDatumLength(oldtupdata.t_data);
-					ItemPointerSetInvalid(&(oldtupdata.t_self));
-					/* Historically, view triggers see invalid t_tableOid. */
-					oldtupdata.t_tableOid =
-						(relkind == RELKIND_VIEW) ? InvalidOid :
-						RelationGetRelid(resultRelInfo->ri_RelationDesc);
-					oldtuple = &oldtupdata;
-				}
-				else
-					Assert(relkind == RELKIND_FOREIGN_TABLE);
-
-				/*
-				 * Extract GPDB-specific junk attributes.
-				 */
-				if (AttributeNumberIsValid(segid_attno))
-				{
-					datum = ExecGetJunkAttribute(slot,
-												 segid_attno,
-												 &isNull);
-					/* shouldn't ever get a null result... */
-					if (isNull)
-						elog(ERROR, "gp_segment_id is NULL");
-
-					segid = DatumGetInt32(datum);
-				}
-				if (AttributeNumberIsValid(action_attno))
-				{
-					datum = ExecGetJunkAttribute(slot,
-												 action_attno,
-												 &isNull);
-					/* shouldn't ever get a null result... */
-					if (isNull)
-						elog(ERROR, "action is NULL");
-
-					action = DatumGetInt32(datum);
-				}
-=======
 				tupleid = (ItemPointer) DatumGetPointer(datum);
 				tuple_ctid = *tupleid;	/* be sure we don't free ctid!! */
 				tupleid = &tuple_ctid;
->>>>>>> 8ff1c94649f
 			}
 
 			/*
@@ -2896,6 +2786,69 @@ ExecModifyTable(PlanState *pstate)
 				/* Only foreign tables are allowed to omit a row-ID attr */
 				Assert(relkind == RELKIND_FOREIGN_TABLE);
 			}
+
+			/*
+			 * GPDB: a ctid only identifies a row within one segment, so the
+			 * plan also carries the segment the row came from.
+			 */
+			if (AttributeNumberIsValid(resultRelInfo->ri_segid_attno))
+			{
+				datum = ExecGetJunkAttribute(slot,
+											 resultRelInfo->ri_segid_attno,
+											 &isNull);
+				if (isNull)
+					elog(ERROR, "gp_segment_id is NULL");
+
+				segid = DatumGetInt32(datum);
+			}
+
+			/*
+			 * GPDB: for a Split Update, which half of the split this row is.
+			 */
+			if (AttributeNumberIsValid(resultRelInfo->ri_action_attno))
+			{
+				datum = ExecGetJunkAttribute(slot,
+											 resultRelInfo->ri_action_attno,
+											 &isNull);
+				if (isNull)
+					elog(ERROR, "DMLAction is NULL");
+
+				action = DatumGetInt32(datum);
+			}
+
+			/*
+			 * GPDB: an UPDATE of an old-style inheritance tree ships the old
+			 * row in full, so that a child's extra columns -- absent from the
+			 * subplan's targetlist, which is in the root's column layout --
+			 * survive into the new tuple.
+			 *
+			 * This is kept apart from "oldtuple", which means something
+			 * narrower: that the relation has no TID, so the old row itself is
+			 * the row identity.  Conflating the two would hand the triggers a
+			 * tuple alongside a valid tupleid, which they take as licence to
+			 * skip locking the row -- and assert against.  ri_wholerow_attno is
+			 * only ever set for relations addressable by ctid, so the two are
+			 * never both present anyway.
+			 */
+			if (AttributeNumberIsValid(resultRelInfo->ri_wholerow_attno))
+			{
+				Assert(oldtuple == NULL);
+
+				datum = ExecGetJunkAttribute(slot,
+											 resultRelInfo->ri_wholerow_attno,
+											 &isNull);
+				if (isNull)
+					elog(ERROR, "wholerow is NULL");
+
+				wholerowdata.t_data = DatumGetHeapTupleHeader(datum);
+				wholerowdata.t_len =
+					HeapTupleHeaderGetDatumLength(wholerowdata.t_data);
+				ItemPointerSetInvalid(&(wholerowdata.t_self));
+				wholerowdata.t_tableOid =
+					RelationGetRelid(resultRelInfo->ri_RelationDesc);
+
+				wholerow = &wholerowdata;
+			}
 		}
 
 		switch (operation)
@@ -2909,48 +2862,74 @@ ExecModifyTable(PlanState *pstate)
 								  estate, node->canSetTag, false /* splitUpdate */);
 				break;
 			case CMD_UPDATE:
-<<<<<<< HEAD
 
 				/*
-				 * INSERT part of split update handles the routing by itself,
-				 * no need to force it
+				 * GPDB: a Split Update reaches us as two rows per original
+				 * row, tagged by the DMLAction junk column.  Neither half goes
+				 * through the ordinary update path: the row has already been
+				 * routed to its target segment by the Motion above the
+				 * SplitUpdate node, and all that is left is to insert the new
+				 * version and delete the old one.
 				 */
-				if (castNode(ModifyTable, node->ps.plan)->forceTupleRouting && DML_INSERT != action)
+				if (AttributeNumberIsValid(resultRelInfo->ri_action_attno))
 				{
-					PartitionTupleRouting *proute = node->mt_partition_tuple_routing;
+					/*
+					 * The INSERT half does its own tuple routing, so only
+					 * force it for the DELETE half.
+					 */
+					if (castNode(ModifyTable, node->ps.plan)->forceTupleRouting &&
+						DML_INSERT != action)
+					{
+						PartitionTupleRouting *proute = node->mt_partition_tuple_routing;
 
-					slot = ExecPrepareTupleRouting(node, estate, proute,
-												   resultRelInfo, slot,
-												   &routedResultRelInfo);
-				}
-				else
-					routedResultRelInfo = resultRelInfo;
+						slot = ExecPrepareTupleRouting(node, estate, proute,
+													   resultRelInfo, slot,
+													   &routedResultRelInfo);
+					}
+					else
+						routedResultRelInfo = resultRelInfo;
 
-				if (!AttributeNumberIsValid(action_attno))
-				{
-					/* normal non-split UPDATE */
-					slot = ExecUpdate(node, routedResultRelInfo, tupleid, oldtuple,
-									  slot, planSlot, segid,
-									  &node->mt_epqstate, estate,
-									  node->canSetTag);
+					if (DML_INSERT == action)
+					{
+						/*
+						 * GGDB: the plan's row is neither in the table's
+						 * physical layout nor free of junk columns, so build
+						 * the tuple to re-insert the same way the non-split
+						 * arm below does.
+						 *
+						 * The old tuple is only read for an old-style
+						 * inheritance child with columns the nominal relation
+						 * lacks, and the plan carries "wholerow" in exactly
+						 * that case; otherwise it supplies every column the
+						 * projection needs.
+						 */
+						if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
+							ExecInitUpdateProjection(node, resultRelInfo);
+
+						oldSlot = resultRelInfo->ri_oldTupleSlot;
+						if (wholerow != NULL)
+							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
+						else
+							ExecStoreAllNullTuple(oldSlot);
+						slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
+													 oldSlot);
+
+						slot = ExecSplitUpdate_Insert(node, routedResultRelInfo,
+													  slot, planSlot,
+													  estate, node->canSetTag);
+					}
+					else	/* DML_DELETE */
+						slot = ExecDelete(node, routedResultRelInfo, tupleid, segid,
+										  oldtuple, planSlot,
+										  &node->mt_epqstate, estate,
+										  false,	/* processReturning */
+										  false,	/* canSetTag */
+										  true, /* changingPart */
+										  true, /* splitUpdate */
+										  NULL, NULL);
+					break;
 				}
-				else if (DML_INSERT == action)
-				{
-					slot = ExecSplitUpdate_Insert(node, routedResultRelInfo, slot, planSlot,
-												  estate, node->canSetTag);
-				}
-				else /* DML_DELETE */
-				{
-					slot = ExecDelete(node, routedResultRelInfo, tupleid, segid,
-									  oldtuple, planSlot,
-									  &node->mt_epqstate, estate,
-									  false, /* processReturning */
-									  false, /* canSetTag */
-									  true,  /* changingPart */
-									  true,  /* splitUpdate */
-									  NULL, NULL);
-				}
-=======
+
 				/* Initialize projection info if first time for this table */
 				if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
 					ExecInitUpdateProjection(node, resultRelInfo);
@@ -2965,7 +2944,12 @@ ExecModifyTable(PlanState *pstate)
 					/* Use the wholerow junk attr as the old tuple. */
 					ExecForceStoreHeapTuple(oldtuple, oldSlot, false);
 				}
-				else
+				else if (wholerow != NULL)
+				{
+					/* GPDB: likewise, for an inheritance child that ships it. */
+					ExecForceStoreHeapTuple(wholerow, oldSlot, false);
+				}
+				else if (resultRelInfo->ri_projectNewNeedsOld)
 				{
 					/* Fetch the most recent version of old tuple. */
 					Relation	relation = resultRelInfo->ri_RelationDesc;
@@ -2976,14 +2960,44 @@ ExecModifyTable(PlanState *pstate)
 													   oldSlot))
 						elog(ERROR, "failed to fetch tuple being updated");
 				}
+				else
+				{
+					/*
+					 * GPDB: the plan supplies every column, so the projection
+					 * never reads the old tuple.  Skip the fetch, which an
+					 * append-optimized table could not serve anyway, but keep
+					 * the slot non-empty for the projection's Assert.
+					 */
+					ExecStoreAllNullTuple(oldSlot);
+				}
 				slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
 											 oldSlot);
 
+				/*
+				 * GPDB: an ORCA plan scans a partitioned table with a single
+				 * dynamic scan node, so the plan shape cannot say which
+				 * relation a row came from; route it to find out.  This has to
+				 * happen after the projection, which produces a tuple in
+				 * resultRelInfo's rowtype -- routing converts that to the
+				 * partition's, and it is the converted tuple ExecUpdate() must
+				 * write.
+				 */
+				if (castNode(ModifyTable, node->ps.plan)->forceTupleRouting)
+				{
+					PartitionTupleRouting *proute = node->mt_partition_tuple_routing;
+
+					slot = ExecPrepareTupleRouting(node, estate, proute,
+												   resultRelInfo, slot,
+												   &routedResultRelInfo);
+				}
+				else
+					routedResultRelInfo = resultRelInfo;
+
 				/* Now apply the update. */
-				slot = ExecUpdate(node, resultRelInfo, tupleid, oldtuple, slot,
-								  planSlot, &node->mt_epqstate, estate,
+				slot = ExecUpdate(node, routedResultRelInfo, tupleid, oldtuple,
+								  slot, planSlot, segid,
+								  &node->mt_epqstate, estate,
 								  node->canSetTag);
->>>>>>> 8ff1c94649f
 				break;
 			case CMD_DELETE:
 				if (castNode(ModifyTable, node->ps.plan)->forceTupleRouting)
@@ -3170,20 +3184,6 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	/* set up epqstate with dummy subplan data for the moment */
 	EvalPlanQualInit(&mtstate->mt_epqstate, estate, NULL, NIL, node->epqParam);
 
-	if (CMD_UPDATE == operation)
-	{
-		mtstate->mt_isSplitUpdates = (bool *) palloc0(nplans * sizeof(bool));
-		if (node->isSplitUpdates)
-		{
-			if (list_length(node->isSplitUpdates) != nplans)
-				elog(ERROR, "ModifyTable node is missing is-split-update information");
-
-			i = 0;
-			foreach(l, node->isSplitUpdates)
-				mtstate->mt_isSplitUpdates[i++] = (bool) lfirst_int(l);
-		}
-	}
-
 	/* GPDB: Don't fire statement-triggers in QE reader processes */
 	if (Gp_role != GP_ROLE_EXECUTE || Gp_is_writer)
 		mtstate->fireBSTriggers = true;
@@ -3229,7 +3229,6 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		 */
 		CheckValidResultRel(resultRelInfo, operation);
 
-<<<<<<< HEAD
 		/*
 		 * GPDB: We don't support SERIALIZABLE transaction isolation for
 		 * UPDATES/DELETES on AO/CO tables.
@@ -3249,25 +3248,9 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 								   "supported in serializable transactions")));
 		}
 
-		/*
-		 * If there are indices on the result relation, open them and save
-		 * descriptors in the result relation info, so that we can add new
-		 * index entries for the tuples we add/update.  We need not do this
-		 * for a DELETE, however, since deletion doesn't affect indexes. Also,
-		 * inside an EvalPlanQual operation, the indexes might be open
-		 * already, since we share the resultrel state with the original
-		 * query.
-		 */
-		if (resultRelInfo->ri_RelationDesc->rd_rel->relhasindex &&
-			operation != CMD_DELETE &&
-			resultRelInfo->ri_IndexRelationDescs == NULL)
-			ExecOpenIndices(resultRelInfo,
-							node->onConflictAction != ONCONFLICT_NONE);
-=======
 		resultRelInfo++;
 		i++;
 	}
->>>>>>> 8ff1c94649f
 
 	/*
 	 * Now we may initialize the subplan.
@@ -3281,14 +3264,10 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	{
 		resultRelInfo = &mtstate->resultRelInfo[i];
 
-<<<<<<< HEAD
 		if (resultRelInfo->ri_RelationDesc->rd_tableam)
 			table_dml_init(resultRelInfo->ri_RelationDesc);
 
 		/* Also let FDWs init themselves for foreign-table result rels */
-=======
-		/* Let FDWs init themselves for foreign-table result rels */
->>>>>>> 8ff1c94649f
 		if (!resultRelInfo->ri_usesFdwDirectModify &&
 			resultRelInfo->ri_FdwRoutine != NULL &&
 			resultRelInfo->ri_FdwRoutine->BeginForeignModify != NULL)
@@ -3315,12 +3294,46 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
 			if (relkind == RELKIND_RELATION ||
 				relkind == RELKIND_MATVIEW ||
-				relkind == RELKIND_PARTITIONED_TABLE)
+				relkind == RELKIND_PARTITIONED_TABLE ||
+				IsAppendonlyMetadataRelkind(relkind))
 			{
 				resultRelInfo->ri_RowIdAttNo =
 					ExecFindJunkAttributeInTlist(subplan->targetlist, "ctid");
 				if (!AttributeNumberIsValid(resultRelInfo->ri_RowIdAttNo))
 					elog(ERROR, "could not find junk ctid column");
+
+				/*
+				 * GPDB: a ctid is only unique within one segment, so we also
+				 * need to know which segment the row came from.  See
+				 * add_row_identity_columns().
+				 */
+				resultRelInfo->ri_segid_attno =
+					ExecFindJunkAttributeInTlist(subplan->targetlist,
+												 "gp_segment_id");
+				if (!AttributeNumberIsValid(resultRelInfo->ri_segid_attno))
+					elog(ERROR, "could not find junk gp_segment_id column");
+
+				/*
+				 * GPDB: a Split Update tags each row with which half of the
+				 * split it is.
+				 */
+				if (operation == CMD_UPDATE && node->isSplitUpdate)
+				{
+					resultRelInfo->ri_action_attno =
+						ExecFindJunkAttributeInTlist(subplan->targetlist,
+													 "DMLAction");
+					if (!AttributeNumberIsValid(resultRelInfo->ri_action_attno))
+						elog(ERROR, "could not find junk DMLAction column");
+				}
+
+				/*
+				 * GPDB: only an UPDATE of an old-style inheritance tree carries
+				 * the old row in full, so this one is optional.
+				 */
+				if (operation == CMD_UPDATE)
+					resultRelInfo->ri_wholerow_attno =
+						ExecFindJunkAttributeInTlist(subplan->targetlist,
+													 "wholerow");
 			}
 			else if (relkind == RELKIND_FOREIGN_TABLE)
 			{
@@ -3364,45 +3377,36 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	rel = mtstate->rootResultRelInfo->ri_RelationDesc;
 
 	/*
-<<<<<<< HEAD
-	 * GPDB dynamic scan nodes optimize memory usage by avoiding the need to
-	 * maintain a data structure for every partition node. In the plan tree
-	 * this is represented as a single dynamic scan node as opposed to an
-	 * append over many leaf partitions. The different plan representations
-	 * require different execution paths in modify table.
-	 *
-	 * In the case of append, a basic scan on a leaf partition requires no
-	 * tuple routing unless an update to the partition key causes the tuple to
-	 * be routed to another relation.
-	 *
-	 * In the case of dynamic scan, the node hierarchy always requires tuple
-	 * routing to find the corresponding relation. If update to a partition key
-	 * causes the tuple to be routed, then we must perform tuple routing a
-	 * second time.
-	 */
-	if (node->forceTupleRouting)
-		update_tuple_routing_needed = true;
-
-	/*
-	 * If it's not a partitioned table after all, UPDATE tuple routing should
-	 * not be attempted.
-	 */
-	if (rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE)
-		update_tuple_routing_needed = false;
-
-	/*
-	 * Build state for tuple routing if it's an INSERT or if it's an UPDATE of
-	 * partition key.
-=======
 	 * Build state for tuple routing if it's a partitioned INSERT.  An UPDATE
 	 * might need this too, but only if it actually moves tuples between
 	 * partitions; in that case setup is done by ExecCrossPartitionUpdate.
->>>>>>> 8ff1c94649f
+	 *
+	 * GPDB: ORCA plans a scan of a partitioned table as a single dynamic scan
+	 * node rather than an Append over the leaves, which saves having a data
+	 * structure per partition but leaves the plan shape unable to say which
+	 * relation a given row came from.  Such plans ask for tuple routing on
+	 * every row (forceTupleRouting), for DELETE and UPDATE as well as INSERT,
+	 * so the routing state has to be built up front.
+	 *
+	 * GPDB: a split update re-inserts the row rather than updating in place,
+	 * so it moves the row between partitions through ExecSplitUpdate_Insert()
+	 * instead of ExecCrossPartitionUpdate(), and needs the state up front too.
 	 */
 	if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE &&
-		operation == CMD_INSERT)
+		(operation == CMD_INSERT || node->isSplitUpdate ||
+		 node->forceTupleRouting))
+	{
 		mtstate->mt_partition_tuple_routing =
 			ExecSetupPartitionTupleRouting(estate, rel);
+
+		/*
+		 * The re-inserted row starts out in the source leaf's layout and is
+		 * converted to the root's before being routed, which needs a slot of
+		 * the root's type.
+		 */
+		if (node->isSplitUpdate)
+			mtstate->mt_root_tuple_slot = table_slot_create(rel, NULL);
+	}
 
 	/*
 	 * Initialize any WITH CHECK OPTION constraints if needed.
@@ -3558,7 +3562,6 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		if (rc->isParent)
 			continue;
 
-<<<<<<< HEAD
 		/*
 		 * Like in preprocess_targetlist, ignore distributed tables.
 		 */
@@ -3582,10 +3585,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			continue;
 		}
 
-		/* find ExecRowMark (same for all subplans) */
-=======
 		/* Find ExecRowMark and build ExecAuxRowMark */
->>>>>>> 8ff1c94649f
 		erm = ExecFindRowMark(estate, rc->rti, false);
 		aerm = ExecBuildAuxRowMark(erm, subplan->targetlist);
 		arowmarks = lappend(arowmarks, aerm);
@@ -3623,107 +3623,6 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			MTTargetRelLookup *mtlookup;
 			bool		found;
 
-<<<<<<< HEAD
-					if (tle->resjunk)
-					{
-						junk_filter_needed = true;
-						break;
-					}
-				}
-				break;
-			case CMD_UPDATE:
-			case CMD_DELETE:
-				junk_filter_needed = true;
-				break;
-			default:
-				elog(ERROR, "unknown operation");
-				break;
-		}
-
-		if (junk_filter_needed)
-		{
-			resultRelInfo = mtstate->resultRelInfo;
-			for (i = 0; i < nplans; i++)
-			{
-				JunkFilter *j;
-				TupleTableSlot *junkresslot;
-
-				subplan = mtstate->mt_plans[i]->plan;
-
-				junkresslot =
-					ExecInitExtraTupleSlot(estate, NULL,
-										   table_slot_callbacks(resultRelInfo->ri_RelationDesc));
-
-				/*
-				 * For an INSERT or UPDATE, the result tuple must always match
-				 * the target table's descriptor.  For a DELETE, it won't
-				 * (indeed, there's probably no non-junk output columns).
-				 */
-				if (operation == CMD_INSERT || operation == CMD_UPDATE)
-				{
-					ExecCheckPlanOutput(resultRelInfo->ri_RelationDesc,
-										subplan->targetlist);
-					j = ExecInitJunkFilterInsertion(subplan->targetlist,
-													RelationGetDescr(resultRelInfo->ri_RelationDesc),
-													junkresslot);
-				}
-				else
-					j = ExecInitJunkFilter(subplan->targetlist,
-										   junkresslot);
-
-				if (operation == CMD_UPDATE || operation == CMD_DELETE)
-				{
-					/* For UPDATE/DELETE, find the appropriate junk attr now */
-					char		relkind;
-
-					relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
-					if (relkind == RELKIND_RELATION ||
-						relkind == RELKIND_MATVIEW ||
-						relkind == RELKIND_PARTITIONED_TABLE ||
-						IsAppendonlyMetadataRelkind(relkind))
-					{
-						j->jf_junkAttNo = ExecFindJunkAttribute(j, "ctid");
-						if (!AttributeNumberIsValid(j->jf_junkAttNo))
-							elog(ERROR, "could not find junk ctid column");
-
-						/* Extra GPDB junk columns */
-						resultRelInfo->ri_segid_attno = ExecFindJunkAttribute(j, "gp_segment_id");
-						if (!AttributeNumberIsValid(resultRelInfo->ri_segid_attno))
-							elog(ERROR, "could not find junk gp_segment_id column");
-
-						if (operation == CMD_UPDATE && mtstate->mt_isSplitUpdates[i])
-						{
-							resultRelInfo->ri_action_attno = ExecFindJunkAttribute(j, "DMLAction");
-							if (!AttributeNumberIsValid(resultRelInfo->ri_action_attno))
-								elog(ERROR, "could not find junk action column");
-						}
-					}
-					else if (relkind == RELKIND_FOREIGN_TABLE)
-					{
-						/*
-						 * When there is a row-level trigger, there should be
-						 * a wholerow attribute.
-						 */
-						j->jf_junkAttNo = ExecFindJunkAttribute(j, "wholerow");
-					}
-					else
-					{
-						j->jf_junkAttNo = ExecFindJunkAttribute(j, "wholerow");
-						if (!AttributeNumberIsValid(j->jf_junkAttNo))
-							elog(ERROR, "could not find junk wholerow column");
-					}
-				}
-
-				resultRelInfo->ri_junkFilter = j;
-				resultRelInfo++;
-			}
-		}
-		else
-		{
-			if (operation == CMD_INSERT)
-				ExecCheckPlanOutput(mtstate->resultRelInfo->ri_RelationDesc,
-									subplan->targetlist);
-=======
 			resultRelInfo = &mtstate->resultRelInfo[i];
 			hashkey = RelationGetRelid(resultRelInfo->ri_RelationDesc);
 			mtlookup = (MTTargetRelLookup *)
@@ -3731,7 +3630,6 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 							HASH_ENTER, &found);
 			Assert(!found);
 			mtlookup->relationIndex = i;
->>>>>>> 8ff1c94649f
 		}
 	}
 	else

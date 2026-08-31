@@ -506,6 +506,12 @@ ExecBuildProjectionInfo(List *targetList,
  *
  * relDesc must describe the relation we intend to update.
  *
+ * GPDB: *needsOldTuple, if not NULL, is set to whether the projection reads
+ * the old tuple at all.  It does not when targetColnos covers every live
+ * column, which is what GGDB's UPDATE targetlists normally arrange for -- and
+ * the caller then has no need to fetch an old tuple, which append-optimized
+ * tables cannot do.
+ *
  * This is basically a specialized variant of ExecBuildProjectionInfo.
  * However, it also performs sanity checks equivalent to ExecCheckPlanOutput.
  * Since we never make a normal tlist equivalent to the whole
@@ -516,6 +522,7 @@ ProjectionInfo *
 ExecBuildUpdateProjection(List *subTargetList,
 						  List *targetColnos,
 						  TupleDesc relDesc,
+						  bool *needsOldTuple,
 						  ExprContext *econtext,
 						  TupleTableSlot *slot,
 						  PlanState *parent)
@@ -596,6 +603,10 @@ ExecBuildUpdateProjection(List *subTargetList,
 		deform.last_scan = attnum;
 		break;
 	}
+
+	/* GPDB: a zero here means no column comes from the old tuple. */
+	if (needsOldTuple)
+		*needsOldTuple = (deform.last_scan != 0);
 
 	ExecPushExprSlots(state, &deform);
 

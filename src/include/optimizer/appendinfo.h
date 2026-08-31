@@ -35,6 +35,8 @@ extern List *adjust_inherited_attnums_multilevel(PlannerInfo *root,
 												 List *attnums,
 												 Index child_relid,
 												 Index top_parent_relid);
+extern List *adjust_attnums_for_result_rel(PlannerInfo *root, List *attnums,
+										   Index rti);
 extern void get_translated_update_targetlist(PlannerInfo *root, Index relid,
 											 List **processed_tlist,
 											 List **update_colnos);

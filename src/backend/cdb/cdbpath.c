@@ -60,9 +60,12 @@ typedef struct
 static bool try_redistribute(PlannerInfo *root, CdbpathMfjRel *g,
 							 CdbpathMfjRel *o, List *redistribution_clauses);
 
-static SplitUpdatePath *make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti);
+static SplitUpdatePath *make_splitupdate_path(PlannerInfo *root, Path *subpath,
+											  Index rti, List *resultRelations);
 
-static bool can_elide_explicit_motion(PlannerInfo *root, Index rti, Path *subpath, GpPolicy *policy);
+static bool can_elide_explicit_motion(PlannerInfo *root, Index rti,
+									  List *resultRelations, Path *subpath,
+									  GpPolicy *policy);
 /*
  * cdbpath_cost_motion
  *    Fills in the cost estimate fields in a MotionPath node.
@@ -2401,7 +2404,8 @@ create_motion_path_for_insert(PlannerInfo *root, GpPolicy *policy,
  * instead.
  */
 Path *
-create_motion_path_for_upddel(PlannerInfo *root, Index rti, GpPolicy *policy,
+create_motion_path_for_upddel(PlannerInfo *root, Index rti,
+							  List *resultRelations, GpPolicy *policy,
 							  Path *subpath)
 {
 	GpPolicyType	policyType = policy->ptype;
@@ -2409,7 +2413,7 @@ create_motion_path_for_upddel(PlannerInfo *root, Index rti, GpPolicy *policy,
 
 	if (policyType == POLICYTYPE_PARTITIONED)
 	{
-		if (can_elide_explicit_motion(root, rti, subpath, policy))
+		if (can_elide_explicit_motion(root, rti, resultRelations, subpath, policy))
 			return subpath;
 		else
 		{
@@ -2507,7 +2511,8 @@ create_motion_path_for_upddel(PlannerInfo *root, Index rti, GpPolicy *policy,
  * 'rti' is the UPDATE target relation.
  */
 Path *
-create_split_update_path(PlannerInfo *root, Index rti, GpPolicy *policy, Path *subpath)
+create_split_update_path(PlannerInfo *root, Index rti, List *resultRelations,
+						 GpPolicy *policy, Path *subpath)
 {
 	GpPolicyType	policyType = policy->ptype;
 	CdbPathLocus	targetLocus;
@@ -2525,7 +2530,8 @@ create_split_update_path(PlannerInfo *root, Index rti, GpPolicy *policy, Path *s
 		 */
 		targetLocus = cdbpathlocus_for_insert(root, policy, subpath->pathtarget);
 
-		subpath = (Path *) make_splitupdate_path(root, subpath, rti);
+		subpath = (Path *) make_splitupdate_path(root, subpath, rti,
+												 resultRelations);
 		subpath = cdbpath_create_explicit_motion_path(root,
 													  subpath,
 													  targetLocus);
@@ -2604,15 +2610,13 @@ turn_volatile_seggen_to_singleqe(PlannerInfo *root, Path *path, Node *node)
 }
 
 static SplitUpdatePath *
-make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti)
+make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti,
+					  List *resultRelations)
 {
-	RangeTblEntry  *rte;
 	PathTarget		*splitUpdatePathTarget;
 	SplitUpdatePath	*splitupdatepath;
 	DMLActionExpr	*actionExpr;
-
-	/* Suppose we already hold locks before caller */
-	rte = planner_rt_fetch(rti, root);
+	ListCell	   *lc;
 
 	/*
 	 * Firstly, Trigger is not supported officially by Greenplum.
@@ -2631,11 +2635,22 @@ make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti)
 	 *
 	 * So an update trigger is not allowed when updating the
 	 * distribution key.
+	 *
+	 * Every target relation has to be checked, not just the nominal one: with
+	 * a single plan for the whole tree, one member's distribution key forces
+	 * the split on all of them, so a child with update triggers would
+	 * otherwise be silently turned into a delete plus an insert.
 	 */
-	if (has_update_triggers(rte->relid))
-		ereport(ERROR,
-				(errcode(ERRCODE_GP_FEATURE_NOT_YET),
-				 errmsg("UPDATE on distributed key column not allowed on relation with update triggers")));
+	foreach(lc, resultRelations)
+	{
+		/* Suppose we already hold locks before caller */
+		RangeTblEntry *rte = planner_rt_fetch(lfirst_int(lc), root);
+
+		if (has_update_triggers(rte->relid))
+			ereport(ERROR,
+					(errcode(ERRCODE_GP_FEATURE_NOT_YET),
+					 errmsg("UPDATE on distributed key column not allowed on relation with update triggers")));
+	}
 
 	/* Add action column at the end of targetlist */
 	actionExpr = makeNode(DMLActionExpr);
@@ -2658,19 +2673,35 @@ make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti)
 	splitupdatepath->path.locus = subpath->locus;
 	splitupdatepath->subpath = subpath;
 	splitupdatepath->resultRelation = rti;
+	splitupdatepath->resultRelations = resultRelations;
 
 	return splitupdatepath;
 }
 
 static bool
-can_elide_explicit_motion(PlannerInfo *root, Index rti, Path *subpath,
-						  GpPolicy *policy)
+can_elide_explicit_motion(PlannerInfo *root, Index rti, List *resultRelations,
+						  Path *subpath, GpPolicy *policy)
 {
+	ListCell   *lc;
+
+	Assert(resultRelations != NIL);
+
 	/*
-	 * If there are no Motions between scan of the target relation and here,
-	 * no motion is required.
+	 * If there are no Motions between the scan of a target relation and here,
+	 * no motion is required for its rows.
+	 *
+	 * Every target relation has to qualify, not just the one whose policy we
+	 * were handed: sameslice_relids of an Append is the union over its
+	 * children, so a subpath that reaches one member without a Motion and
+	 * another through one would still need the Explicit Redistribute for the
+	 * latter's rows.
 	 */
-	if (bms_is_member(rti, subpath->sameslice_relids))
+	foreach(lc, resultRelations)
+	{
+		if (!bms_is_member(lfirst_int(lc), subpath->sameslice_relids))
+			break;
+	}
+	if (lc == NULL)
 		return true;
 
 	if (!CdbPathLocus_IsStrewn(subpath->locus))

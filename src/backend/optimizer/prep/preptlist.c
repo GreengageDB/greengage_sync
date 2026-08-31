@@ -48,18 +48,16 @@
 #include "parser/parsetree.h"
 #include "utils/rel.h"
 
-<<<<<<< HEAD
 #include "catalog/gp_distribution_policy.h"     /* CDB: POLICYTYPE_PARTITIONED */
 #include "catalog/pg_inherits.h"
 #include "optimizer/plancat.h"
 #include "parser/parse_relation.h"
 #include "utils/lsyscache.h"
 
-static List *expand_targetlist(PlannerInfo *root, List *tlist, int command_type,
-=======
+static Bitmapset *find_update_changed_cols(List *tlist, Index result_relation);
+static List *drop_dropped_col_entries(List *tlist, Relation rel);
 static List *extract_update_colnos(List *tlist);
 static List *expand_targetlist(List *tlist, int command_type,
->>>>>>> 8ff1c94649f
 							   Index result_relation, Relation rel);
 static List *supplement_simply_updatable_targetlist(PlannerInfo *root,
 													List *range_table,
@@ -121,16 +119,43 @@ preprocess_targetlist(PlannerInfo *root)
 	 * renumber the processed_tlist entries to be consecutive.
 	 */
 	tlist = parse->targetList;
-<<<<<<< HEAD
-	if (command_type == CMD_INSERT || command_type == CMD_UPDATE)
-		tlist = expand_targetlist(root, tlist, command_type,
-=======
 	if (command_type == CMD_INSERT)
 		tlist = expand_targetlist(tlist, command_type,
->>>>>>> 8ff1c94649f
 								  result_relation, target_relation);
 	else if (command_type == CMD_UPDATE)
+	{
+		/*
+		 * GPDB: note which columns the SET clause assigns, before
+		 * expand_targetlist() fills in the rest.  create_modifytable_path()
+		 * tests these against each target relation's distribution key.
+		 * Attribute numbers are the nominal result relation's.
+		 */
+		root->updateChangedCols = find_update_changed_cols(tlist,
+														   result_relation);
+
+		/*
+		 * GPDB: the subplan of an UPDATE emits the complete new row, not just
+		 * the SET columns.  Upstream has ModifyTable re-fetch the old tuple by
+		 * TID and merge the unchanged columns in, which does not work here:
+		 * append-optimized tables cannot fetch a tuple by TID, and an UPDATE
+		 * of a distribution key column is executed as a delete plus an insert
+		 * by a SplitUpdate node that sits below the Motion redistributing the
+		 * row -- it has to hash the complete new row to pick a target segment.
+		 *
+		 * The cost is that unchanged columns travel through the plan.
+		 */
+		tlist = expand_targetlist(tlist, command_type,
+								  result_relation, target_relation);
+
+		/*
+		 * expand_targetlist() emits a NULL placeholder for each dropped
+		 * column, which ExecBuildUpdateProjection() would reject as an
+		 * assignment to a dropped column.  Nothing needs those values.
+		 */
+		tlist = drop_dropped_col_entries(tlist, target_relation);
+
 		root->update_colnos = extract_update_colnos(tlist);
+	}
 
 	/*
 	 * For non-inherited UPDATE/DELETE, register any junk column(s) needed to
@@ -275,7 +300,7 @@ preprocess_targetlist(PlannerInfo *root)
 	 */
 	if (parse->onConflict)
 		parse->onConflict->onConflictSet =
-			expand_targetlist(root, parse->onConflict->onConflictSet,
+			expand_targetlist(parse->onConflict->onConflictSet,
 							  CMD_UPDATE,
 							  result_relation,
 							  target_relation);
@@ -313,6 +338,81 @@ extract_update_colnos(List *tlist)
 	return update_colnos;
 }
 
+/*
+ * find_update_changed_cols
+ *		GPDB: Bitmapset of the target-table columns an UPDATE really changes.
+ *
+ * Must be called on the targetlist as the rewriter left it, i.e. before
+ * expand_targetlist() has filled in the untouched columns, because it relies
+ * on the resno of a non-resjunk entry still being the target column number.
+ *
+ * A column that the SET clause assigns its own old value to is not counted as
+ * changed.  That is not just an optimisation: "UPDATE t SET distkey = distkey"
+ * would otherwise be planned as a Split Update, turning a no-op into a
+ * delete/insert pair with all the trigger and visibility consequences that
+ * carries.
+ */
+static Bitmapset *
+find_update_changed_cols(List *tlist, Index result_relation)
+{
+	Bitmapset  *changed_cols = NULL;
+	ListCell   *lc;
+
+	foreach(lc, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
+
+		if (tle->resjunk)
+			continue;
+
+		if (IsA(tle->expr, Var))
+		{
+			Var		   *var = (Var *) tle->expr;
+
+			if (var->varno == result_relation && var->varattno == tle->resno)
+				continue;		/* assigns the column to itself */
+		}
+
+		changed_cols = bms_add_member(changed_cols, tle->resno);
+	}
+
+	return changed_cols;
+}
+
+/*
+ * drop_dropped_col_entries
+ *		GPDB: Remove the non-resjunk entries expand_targetlist() generated for
+ *		dropped columns.
+ *
+ * expand_targetlist() emits a NULL constant for every dropped column so that
+ * the result is positionally identical to the table's physical layout.  For an
+ * UPDATE we then hand the list to extract_update_colnos(), and
+ * ExecBuildUpdateProjection() refuses an assignment to a dropped column, so
+ * those entries have to go.  Resnos are left alone; extract_update_colnos()
+ * renumbers afterwards.
+ */
+static List *
+drop_dropped_col_entries(List *tlist, Relation rel)
+{
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+	List	   *result = NIL;
+	ListCell   *lc;
+
+	foreach(lc, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
+
+		if (!tle->resjunk &&
+			tle->resno <= tupdesc->natts &&
+			TupleDescAttr(tupdesc, tle->resno - 1)->attisdropped)
+			continue;
+
+		result = lappend(result, tle);
+	}
+
+	return result;
+}
+
 
 /*****************************************************************************
  *
@@ -331,14 +431,13 @@ extract_update_colnos(List *tlist)
  * is for ON CONFLICT UPDATE tlists, for which command_type is CMD_UPDATE.
  */
 static List *
-expand_targetlist(PlannerInfo *root, List *tlist, int command_type,
+expand_targetlist(List *tlist, int command_type,
 				  Index result_relation, Relation rel)
 {
 	List	   *new_tlist = NIL;
 	ListCell   *tlist_item;
 	int			attrno,
 				numattrs;
-	Bitmapset  *changed_cols = NULL;
 
 	tlist_item = list_head(tlist);
 
@@ -365,32 +464,6 @@ expand_targetlist(PlannerInfo *root, List *tlist, int command_type,
 				new_tle = old_tle;
 				tlist_item = lnext(tlist, tlist_item);
 			}
-		}
-
-		/*
-		 * GPDB: If it's an UPDATE, keep track of which columns are being
-		 * updated, and which ones are just passed through from old relation.
-		 * We need that information later, to determine whether this UPDATE
-		 * can move tuples from one segment to another.
-		 */
-		if (new_tle && command_type == CMD_UPDATE)
-		{
-			bool		col_changed = true;
-
-			/*
-			 * The column is unchanged, if the new value is a Var that refers
-			 * directly to the same attribute in the same table.
-			 */
-			if (IsA(new_tle->expr, Var))
-			{
-				Var		   *var = (Var *) new_tle->expr;
-
-				if (var->varno == result_relation && var->varattno == attrno)
-					col_changed = false;
-			}
-
-			if (col_changed)
-				changed_cols = bms_add_member(changed_cols, attrno);
 		}
 
 		if (new_tle == NULL)
@@ -490,45 +563,6 @@ expand_targetlist(PlannerInfo *root, List *tlist, int command_type,
 		}
 
 		new_tlist = lappend(new_tlist, new_tle);
-	}
-
-
-	/*
-	 * If an UPDATE can move the tuples from one segment to another, we will
-	 * need to create a Split Update node for it. The node is created later
-	 * in the planning.
-	 */
-	if (command_type == CMD_UPDATE)
-	{
-		GpPolicy   *targetPolicy;
-		bool		key_col_updated = false;
-
-		/* Was any distribution key column among the changed columns? */
-		targetPolicy = GpPolicyFetch(RelationGetRelid(rel));
-		if (targetPolicy->ptype == POLICYTYPE_PARTITIONED)
-		{
-			int			i;
-
-			for (i = 0; i < targetPolicy->nattrs; i++)
-			{
-				if (bms_is_member(targetPolicy->attrs[i], changed_cols))
-				{
-					key_col_updated = true;
-					break;
-				}
-			}
-		}
-
-		if (key_col_updated)
-		{
-			/*
-			 * Since we just went through a lot of work to determine whether a
-			 * Split Update is needed, memorize that in the PlannerInfo, so that
-			 * we don't need redo all that work later in the planner, when it's
-			 * time to actually create the ModifyTable, and SplitUpdate, node.
-			 */
-			root->is_split_update = true;
-		}
 	}
 
 	/*
