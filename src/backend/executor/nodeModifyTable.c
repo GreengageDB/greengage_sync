@@ -2822,6 +2822,13 @@ ExecModifyTable(PlanState *pstate)
 			 * subplan's targetlist, which is in the root's column layout --
 			 * survive into the new tuple.
 			 *
+			 * Only the members that have such columns emit it, but they all
+			 * share the one junk column, so the rest yield NULL here; see
+			 * add_row_identity_columns().  A whole-row Var over a scanned row
+			 * is never itself NULL, so NULL means just that: this relation
+			 * ships no old row, and the subplan's targetlist already holds
+			 * every column the projection needs.
+			 *
 			 * This is kept apart from "oldtuple", which means something
 			 * narrower: that the relation has no TID, so the old row itself is
 			 * the row identity.  Conflating the two would hand the triggers a
@@ -2837,17 +2844,17 @@ ExecModifyTable(PlanState *pstate)
 				datum = ExecGetJunkAttribute(slot,
 											 resultRelInfo->ri_wholerow_attno,
 											 &isNull);
-				if (isNull)
-					elog(ERROR, "wholerow is NULL");
+				if (!isNull)
+				{
+					wholerowdata.t_data = DatumGetHeapTupleHeader(datum);
+					wholerowdata.t_len =
+						HeapTupleHeaderGetDatumLength(wholerowdata.t_data);
+					ItemPointerSetInvalid(&(wholerowdata.t_self));
+					wholerowdata.t_tableOid =
+						RelationGetRelid(resultRelInfo->ri_RelationDesc);
 
-				wholerowdata.t_data = DatumGetHeapTupleHeader(datum);
-				wholerowdata.t_len =
-					HeapTupleHeaderGetDatumLength(wholerowdata.t_data);
-				ItemPointerSetInvalid(&(wholerowdata.t_self));
-				wholerowdata.t_tableOid =
-					RelationGetRelid(resultRelInfo->ri_RelationDesc);
-
-				wholerow = &wholerowdata;
+					wholerow = &wholerowdata;
+				}
 			}
 		}
 
@@ -3328,7 +3335,10 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 
 				/*
 				 * GPDB: only an UPDATE of an old-style inheritance tree carries
-				 * the old row in full, so this one is optional.
+				 * the old row in full, so this one is optional.  Finding the
+				 * column says only that some member of the tree ships an old
+				 * row, not that this relation does; ExecModifyTable() reads
+				 * that off the column's value being non-NULL.
 				 */
 				if (operation == CMD_UPDATE)
 					resultRelInfo->ri_wholerow_attno =
