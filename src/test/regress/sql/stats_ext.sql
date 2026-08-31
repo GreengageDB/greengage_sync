@@ -109,7 +109,6 @@ CREATE STATISTICS ab1_a_b_stats ON a, b FROM ab1;
 ANALYZE ab1;
 DROP TABLE ab1 CASCADE;
 
-<<<<<<< HEAD
 -- Tests for stats with inheritance
 CREATE TABLE stxdinh(a int, b int);
 CREATE TABLE stxdinh1() INHERITS(stxdinh);
@@ -141,7 +140,7 @@ VACUUM ANALYZE stxdinp; -- partitions are processed recursively
 SELECT 1 FROM pg_statistic_ext WHERE stxrelid = 'stxdinp'::regclass;
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinp GROUP BY 1, 2');
 DROP TABLE stxdinp;
-=======
+
 -- basic test for statistics on expressions
 CREATE TABLE ab1 (a INTEGER, b INTEGER, c TIMESTAMP, d TIMESTAMPTZ);
 
@@ -171,7 +170,6 @@ SELECT
     generate_series('2020-10-01'::timestamptz, '2020-10-10'::timestamptz, interval '1 day');
 ANALYZE ab1;
 DROP TABLE ab1;
->>>>>>> 8ff1c94649f
 
 -- Verify supported object types for extended statistics
 CREATE schema tststats;
@@ -739,17 +737,11 @@ SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE 
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a IN (1, 2, 51, 52) AND b = ALL (ARRAY[''1'', ''2''])');
 
-<<<<<<< HEAD
 RESET optimizer;
 
--- changing the type of column c causes its single-column stats to be dropped,
--- giving a default estimate of 0.001 * 5000 = 5 for (c = 1); check multiple
--- clauses estimated with functional dependencies does not exceed this
-=======
 -- changing the type of column c causes all its stats to be dropped, reverting
 -- to default estimates without any statistics, i.e. 0.5% selectivity for each
 -- condition
->>>>>>> 8ff1c94649f
 ALTER TABLE functional_dependencies ALTER COLUMN c TYPE numeric;
 
 SELECT * FROM check_estimated_rows('SELECT * FROM functional_dependencies WHERE a = 1 AND b = ''1'' AND c = 1');
