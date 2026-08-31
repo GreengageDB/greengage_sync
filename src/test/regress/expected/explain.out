@@ -99,7 +99,6 @@ select explain_filter('explain (analyze, buffers, format text) select * from int
 (8 rows)
 
 select explain_filter('explain (analyze, buffers, format json) select * from int8_tbl i8');
-<<<<<<< HEAD
                 explain_filter                
 ----------------------------------------------
  [                                           +
@@ -112,6 +111,7 @@ select explain_filter('explain (analyze, buffers, format json) select * from int
        "Segments": N,                        +
        "Gang Type": "primary reader",        +
        "Parallel Aware": false,              +
+       "Async Capable": false,               +
        "Startup Cost": N.N,                  +
        "Total Cost": N.N,                    +
        "Plan Rows": N,                       +
@@ -138,6 +138,7 @@ select explain_filter('explain (analyze, buffers, format json) select * from int
            "Segments": N,                    +
            "Gang Type": "primary reader",    +
            "Parallel Aware": false,          +
+           "Async Capable": false,           +
            "Relation Name": "int8_tbl",      +
            "Alias": "i8",                    +
            "Startup Cost": N.N,              +
@@ -196,59 +197,10 @@ select explain_filter('explain (analyze, buffers, format json) select * from int
      },                                      +
      "Execution Time": N.N                   +
    }                                         +
-=======
-           explain_filter           
-------------------------------------
- [                                 +
-   {                               +
-     "Plan": {                     +
-       "Node Type": "Seq Scan",    +
-       "Parallel Aware": false,    +
-       "Async Capable": false,     +
-       "Relation Name": "int8_tbl",+
-       "Alias": "i8",              +
-       "Startup Cost": N.N,        +
-       "Total Cost": N.N,          +
-       "Plan Rows": N,             +
-       "Plan Width": N,            +
-       "Actual Startup Time": N.N, +
-       "Actual Total Time": N.N,   +
-       "Actual Rows": N,           +
-       "Actual Loops": N,          +
-       "Shared Hit Blocks": N,     +
-       "Shared Read Blocks": N,    +
-       "Shared Dirtied Blocks": N, +
-       "Shared Written Blocks": N, +
-       "Local Hit Blocks": N,      +
-       "Local Read Blocks": N,     +
-       "Local Dirtied Blocks": N,  +
-       "Local Written Blocks": N,  +
-       "Temp Read Blocks": N,      +
-       "Temp Written Blocks": N    +
-     },                            +
-     "Planning": {                 +
-       "Shared Hit Blocks": N,     +
-       "Shared Read Blocks": N,    +
-       "Shared Dirtied Blocks": N, +
-       "Shared Written Blocks": N, +
-       "Local Hit Blocks": N,      +
-       "Local Read Blocks": N,     +
-       "Local Dirtied Blocks": N,  +
-       "Local Written Blocks": N,  +
-       "Temp Read Blocks": N,      +
-       "Temp Written Blocks": N    +
-     },                            +
-     "Planning Time": N.N,         +
-     "Triggers": [                 +
-     ],                            +
-     "Execution Time": N.N         +
-   }                               +
->>>>>>> 8ff1c94649f
  ]
 (1 row)
 
 select explain_filter('explain (analyze, buffers, format xml) select * from int8_tbl i8');
-<<<<<<< HEAD
                        explain_filter                       
 ------------------------------------------------------------
  <explain xmlns="http://www.postgresql.org/N/explain">     +
@@ -261,6 +213,7 @@ select explain_filter('explain (analyze, buffers, format xml) select * from int8
        <Segments>N</Segments>                              +
        <Gang-Type>primary reader</Gang-Type>               +
        <Parallel-Aware>false</Parallel-Aware>              +
+       <Async-Capable>false</Async-Capable>                +
        <Startup-Cost>N.N</Startup-Cost>                    +
        <Total-Cost>N.N</Total-Cost>                        +
        <Plan-Rows>N</Plan-Rows>                            +
@@ -287,6 +240,7 @@ select explain_filter('explain (analyze, buffers, format xml) select * from int8
            <Segments>N</Segments>                          +
            <Gang-Type>primary reader</Gang-Type>           +
            <Parallel-Aware>false</Parallel-Aware>          +
+           <Async-Capable>false</Async-Capable>            +
            <Relation-Name>int8_tbl</Relation-Name>         +
            <Alias>i8</Alias>                               +
            <Startup-Cost>N.N</Startup-Cost>                +
@@ -345,59 +299,10 @@ select explain_filter('explain (analyze, buffers, format xml) select * from int8
      </Statement-statistics>                               +
      <Execution-Time>N.N</Execution-Time>                  +
    </Query>                                                +
-=======
-                     explain_filter                     
---------------------------------------------------------
- <explain xmlns="http://www.postgresql.org/N/explain"> +
-   <Query>                                             +
-     <Plan>                                            +
-       <Node-Type>Seq Scan</Node-Type>                 +
-       <Parallel-Aware>false</Parallel-Aware>          +
-       <Async-Capable>false</Async-Capable>            +
-       <Relation-Name>int8_tbl</Relation-Name>         +
-       <Alias>i8</Alias>                               +
-       <Startup-Cost>N.N</Startup-Cost>                +
-       <Total-Cost>N.N</Total-Cost>                    +
-       <Plan-Rows>N</Plan-Rows>                        +
-       <Plan-Width>N</Plan-Width>                      +
-       <Actual-Startup-Time>N.N</Actual-Startup-Time>  +
-       <Actual-Total-Time>N.N</Actual-Total-Time>      +
-       <Actual-Rows>N</Actual-Rows>                    +
-       <Actual-Loops>N</Actual-Loops>                  +
-       <Shared-Hit-Blocks>N</Shared-Hit-Blocks>        +
-       <Shared-Read-Blocks>N</Shared-Read-Blocks>      +
-       <Shared-Dirtied-Blocks>N</Shared-Dirtied-Blocks>+
-       <Shared-Written-Blocks>N</Shared-Written-Blocks>+
-       <Local-Hit-Blocks>N</Local-Hit-Blocks>          +
-       <Local-Read-Blocks>N</Local-Read-Blocks>        +
-       <Local-Dirtied-Blocks>N</Local-Dirtied-Blocks>  +
-       <Local-Written-Blocks>N</Local-Written-Blocks>  +
-       <Temp-Read-Blocks>N</Temp-Read-Blocks>          +
-       <Temp-Written-Blocks>N</Temp-Written-Blocks>    +
-     </Plan>                                           +
-     <Planning>                                        +
-       <Shared-Hit-Blocks>N</Shared-Hit-Blocks>        +
-       <Shared-Read-Blocks>N</Shared-Read-Blocks>      +
-       <Shared-Dirtied-Blocks>N</Shared-Dirtied-Blocks>+
-       <Shared-Written-Blocks>N</Shared-Written-Blocks>+
-       <Local-Hit-Blocks>N</Local-Hit-Blocks>          +
-       <Local-Read-Blocks>N</Local-Read-Blocks>        +
-       <Local-Dirtied-Blocks>N</Local-Dirtied-Blocks>  +
-       <Local-Written-Blocks>N</Local-Written-Blocks>  +
-       <Temp-Read-Blocks>N</Temp-Read-Blocks>          +
-       <Temp-Written-Blocks>N</Temp-Written-Blocks>    +
-     </Planning>                                       +
-     <Planning-Time>N.N</Planning-Time>                +
-     <Triggers>                                        +
-     </Triggers>                                       +
-     <Execution-Time>N.N</Execution-Time>              +
-   </Query>                                            +
->>>>>>> 8ff1c94649f
  </explain>
 (1 row)
 
 select explain_filter('explain (analyze, buffers, format yaml) select * from int8_tbl i8');
-<<<<<<< HEAD
              explain_filter              
 -----------------------------------------
  - Plan:                                +
@@ -408,6 +313,7 @@ select explain_filter('explain (analyze, buffers, format yaml) select * from int
      Segments: N                        +
      Gang Type: "primary reader"        +
      Parallel Aware: false              +
+     Async Capable: false               +
      Startup Cost: N.N                  +
      Total Cost: N.N                    +
      Plan Rows: N                       +
@@ -433,6 +339,7 @@ select explain_filter('explain (analyze, buffers, format yaml) select * from int
          Segments: N                    +
          Gang Type: "primary reader"    +
          Parallel Aware: false          +
+         Async Capable: false           +
          Relation Name: "int8_tbl"      +
          Alias: "i8"                    +
          Startup Cost: N.N              +
@@ -477,47 +384,6 @@ select explain_filter('explain (analyze, buffers, format yaml) select * from int
          Maximum Memory Used: N         +
    Statement statistics:                +
      Memory used: N                     +
-=======
-        explain_filter         
--------------------------------
- - Plan:                      +
-     Node Type: "Seq Scan"    +
-     Parallel Aware: false    +
-     Async Capable: false     +
-     Relation Name: "int8_tbl"+
-     Alias: "i8"              +
-     Startup Cost: N.N        +
-     Total Cost: N.N          +
-     Plan Rows: N             +
-     Plan Width: N            +
-     Actual Startup Time: N.N +
-     Actual Total Time: N.N   +
-     Actual Rows: N           +
-     Actual Loops: N          +
-     Shared Hit Blocks: N     +
-     Shared Read Blocks: N    +
-     Shared Dirtied Blocks: N +
-     Shared Written Blocks: N +
-     Local Hit Blocks: N      +
-     Local Read Blocks: N     +
-     Local Dirtied Blocks: N  +
-     Local Written Blocks: N  +
-     Temp Read Blocks: N      +
-     Temp Written Blocks: N   +
-   Planning:                  +
-     Shared Hit Blocks: N     +
-     Shared Read Blocks: N    +
-     Shared Dirtied Blocks: N +
-     Shared Written Blocks: N +
-     Local Hit Blocks: N      +
-     Local Read Blocks: N     +
-     Local Dirtied Blocks: N  +
-     Local Written Blocks: N  +
-     Temp Read Blocks: N      +
-     Temp Written Blocks: N   +
-   Planning Time: N.N         +
-   Triggers:                  +
->>>>>>> 8ff1c94649f
    Execution Time: N.N
 (1 row)
 
@@ -530,7 +396,6 @@ select explain_filter('explain (buffers, format text) select * from int8_tbl i8'
 (3 rows)
 
 select explain_filter('explain (buffers, format json) select * from int8_tbl i8');
-<<<<<<< HEAD
                 explain_filter                
 ----------------------------------------------
  [                                           +
@@ -543,6 +408,7 @@ select explain_filter('explain (buffers, format json) select * from int8_tbl i8'
        "Segments": N,                        +
        "Gang Type": "primary reader",        +
        "Parallel Aware": false,              +
+       "Async Capable": false,               +
        "Startup Cost": N.N,                  +
        "Total Cost": N.N,                    +
        "Plan Rows": N,                       +
@@ -565,6 +431,7 @@ select explain_filter('explain (buffers, format json) select * from int8_tbl i8'
            "Segments": N,                    +
            "Gang Type": "primary reader",    +
            "Parallel Aware": false,          +
+           "Async Capable": false,           +
            "Relation Name": "int8_tbl",      +
            "Alias": "i8",                    +
            "Startup Cost": N.N,              +
@@ -598,46 +465,6 @@ select explain_filter('explain (buffers, format json) select * from int8_tbl i8'
        "Temp Written Blocks": N              +
      }                                       +
    }                                         +
-=======
-           explain_filter           
-------------------------------------
- [                                 +
-   {                               +
-     "Plan": {                     +
-       "Node Type": "Seq Scan",    +
-       "Parallel Aware": false,    +
-       "Async Capable": false,     +
-       "Relation Name": "int8_tbl",+
-       "Alias": "i8",              +
-       "Startup Cost": N.N,        +
-       "Total Cost": N.N,          +
-       "Plan Rows": N,             +
-       "Plan Width": N,            +
-       "Shared Hit Blocks": N,     +
-       "Shared Read Blocks": N,    +
-       "Shared Dirtied Blocks": N, +
-       "Shared Written Blocks": N, +
-       "Local Hit Blocks": N,      +
-       "Local Read Blocks": N,     +
-       "Local Dirtied Blocks": N,  +
-       "Local Written Blocks": N,  +
-       "Temp Read Blocks": N,      +
-       "Temp Written Blocks": N    +
-     },                            +
-     "Planning": {                 +
-       "Shared Hit Blocks": N,     +
-       "Shared Read Blocks": N,    +
-       "Shared Dirtied Blocks": N, +
-       "Shared Written Blocks": N, +
-       "Local Hit Blocks": N,      +
-       "Local Read Blocks": N,     +
-       "Local Dirtied Blocks": N,  +
-       "Local Written Blocks": N,  +
-       "Temp Read Blocks": N,      +
-       "Temp Written Blocks": N    +
-     }                             +
-   }                               +
->>>>>>> 8ff1c94649f
  ]
 (1 row)
 
@@ -784,11 +611,8 @@ select jsonb_pretty(
                      "Actual Rows": 0,                      +
                      "Actual Loops": 0,                     +
                      "Startup Cost": 0.0,                   +
-<<<<<<< HEAD
-                     "Sort Segments": 0,                    +
-=======
                      "Async Capable": false,                +
->>>>>>> 8ff1c94649f
+                     "Sort Segments": 0,                    +
                      "Parallel Aware": false,               +
                      "Executor Memory": 0,                  +
                      "Sort Space Used": 0,                  +
@@ -908,10 +732,14 @@ select jsonb_pretty(
 rollback;
 set compute_query_id = on;
 select explain_filter('explain (verbose) select * from int8_tbl i8');
-                         explain_filter                         
-----------------------------------------------------------------
- Seq Scan on public.int8_tbl i8  (cost=N.N..N.N rows=N width=N)
+                              explain_filter                              
+--------------------------------------------------------------------------
+ Gather Motion N:N  (slice1; segments: N)  (cost=N.N..N.N rows=N width=N)
    Output: q1, q2
+   ->  Seq Scan on public.int8_tbl i8  (cost=N.N..N.N rows=N width=N)
+         Output: q1, q2
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
  Query Identifier: N
-(3 rows)
+(7 rows)
 
