@@ -4953,7 +4953,7 @@ columnDef:	ColId Typename optColumnCompression create_generic_options ColQualLis
 					n->compression = $3;
 					n->inhcount = 0;
 					n->is_local = true;
-					n->encoding = $5;
+					n->encoding = $6;
 					n->is_not_null = false;
 					n->is_from_type = false;
 					n->storage = 0;

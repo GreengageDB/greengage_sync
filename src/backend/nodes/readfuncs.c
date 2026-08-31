@@ -2230,6 +2230,7 @@ _readColumnDef(void)
 
 	READ_STRING_FIELD(colname);
 	READ_NODE_FIELD(typeName);
+	READ_STRING_FIELD(compression);
 	READ_INT_FIELD(inhcount);
 	READ_BOOL_FIELD(is_local);
 	READ_BOOL_FIELD(is_not_null);
