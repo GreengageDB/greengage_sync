@@ -548,13 +548,11 @@ update some_tab set a = a + 1 where false;
                    QUERY PLAN                    
 -------------------------------------------------
  Update on public.some_tab
-   Update on public.some_tab
    ->  Result
-         Output: (a + 1), b, ctid, gp_segment_id
+         Output: (some_tab.a + 1), some_tab.b, NULL::oid, NULL::tid, NULL::integer
          One-Time Filter: false
  Optimizer: Postgres query optimizer
- Settings: optimizer=off
-(7 rows)
+(5 rows)
 
 update some_tab set a = a + 1 where false;
 explain (verbose, costs off)
@@ -562,16 +560,14 @@ update some_tab set a = a + 1 where false returning b, a;
                       QUERY PLAN                       
 -------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Output: b, a
+   Output: some_tab.b, some_tab.a
    ->  Update on public.some_tab
-         Output: b, a
-         Update on public.some_tab
+         Output: some_tab.b, some_tab.a
          ->  Result
-               Output: (a + 1), b, ctid, gp_segment_id
+               Output: (some_tab.a + 1), some_tab.b, NULL::oid, NULL::tid, NULL::integer
                One-Time Filter: false
  Optimizer: Postgres query optimizer
- Settings: optimizer=off
-(10 rows)
+(8 rows)
 
 update some_tab set a = a + 1 where false returning b, a;
  b | a 
