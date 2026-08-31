@@ -2877,12 +2877,47 @@ ExecModifyTable(PlanState *pstate)
 				 */
 				if (AttributeNumberIsValid(resultRelInfo->ri_action_attno))
 				{
+					bool		forceRouting =
+						castNode(ModifyTable, node->ps.plan)->forceTupleRouting;
+
+					/*
+					 * GGDB: the plan's row is neither in the table's physical
+					 * layout nor free of junk columns, so build the tuple the
+					 * same way the non-split arm below does.
+					 *
+					 * The INSERT half re-inserts the result.  The DELETE half
+					 * needs it too whenever we have to route: the plan's row
+					 * lists only the live columns, while ExecFindPartition()
+					 * picks the partition key out by attribute number, so a
+					 * dropped column ahead of the key would shift every
+					 * following column and route the row by the wrong one.
+					 * The Split emits the old values in those same positions
+					 * for that half, so this yields the old row.
+					 *
+					 * The old tuple is only read for an old-style inheritance
+					 * child with columns the nominal relation lacks, and the
+					 * plan carries "wholerow" in exactly that case; otherwise
+					 * it supplies every column the projection needs.
+					 */
+					if (DML_INSERT == action || forceRouting)
+					{
+						if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
+							ExecInitUpdateProjection(node, resultRelInfo);
+
+						oldSlot = resultRelInfo->ri_oldTupleSlot;
+						if (wholerow != NULL)
+							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
+						else
+							ExecStoreAllNullTuple(oldSlot);
+						slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
+													 oldSlot);
+					}
+
 					/*
 					 * The INSERT half does its own tuple routing, so only
 					 * force it for the DELETE half.
 					 */
-					if (castNode(ModifyTable, node->ps.plan)->forceTupleRouting &&
-						DML_INSERT != action)
+					if (forceRouting && DML_INSERT != action)
 					{
 						PartitionTupleRouting *proute = node->mt_partition_tuple_routing;
 
@@ -2895,29 +2930,6 @@ ExecModifyTable(PlanState *pstate)
 
 					if (DML_INSERT == action)
 					{
-						/*
-						 * GGDB: the plan's row is neither in the table's
-						 * physical layout nor free of junk columns, so build
-						 * the tuple to re-insert the same way the non-split
-						 * arm below does.
-						 *
-						 * The old tuple is only read for an old-style
-						 * inheritance child with columns the nominal relation
-						 * lacks, and the plan carries "wholerow" in exactly
-						 * that case; otherwise it supplies every column the
-						 * projection needs.
-						 */
-						if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
-							ExecInitUpdateProjection(node, resultRelInfo);
-
-						oldSlot = resultRelInfo->ri_oldTupleSlot;
-						if (wholerow != NULL)
-							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
-						else
-							ExecStoreAllNullTuple(oldSlot);
-						slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
-													 oldSlot);
-
 						slot = ExecSplitUpdate_Insert(node, routedResultRelInfo,
 													  slot, planSlot,
 													  estate, node->canSetTag);
