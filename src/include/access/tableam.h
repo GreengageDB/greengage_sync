@@ -1293,6 +1293,7 @@ table_index_fetch_tuple(struct IndexFetchTableData *scan,
 						TupleTableSlot *slot,
 						bool *call_again, bool *all_dead)
 {
+	slot->tts_tableOid = RelationGetRelid(scan->rel);
 	/*
 	 * We don't expect direct calls to table_index_fetch_tuple with valid
 	 * CheckXidAlive for catalog or regular tables.  See detailed comments in
@@ -2084,6 +2085,7 @@ table_scan_bitmap_next_tuple(TableScanDesc scan,
 							 struct TBMIterateResult *tbmres,
 							 TupleTableSlot *slot)
 {
+	slot->tts_tableOid = RelationGetRelid(scan->rs_rd);
 	/*
 	 * We don't expect direct calls to table_scan_bitmap_next_tuple with valid
 	 * CheckXidAlive for catalog or regular tables.  See detailed comments in
