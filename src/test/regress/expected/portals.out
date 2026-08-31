@@ -845,7 +845,7 @@ SELECT f1, f2 FROM uctest;
 -- commands should be visible in the cursor.  So here we make the
 -- changes with a command that is independent of the cursor.)
 BEGIN;
-DECLARE c1 INSENSITIVE CURSOR FOR SELECT * FROM uctest;
+DECLARE c1 INSENSITIVE CURSOR FOR SELECT f1, f2 FROM uctest;
 INSERT INTO uctest VALUES (10, 'ten');
 FETCH NEXT FROM c1;
  f1 |  f2   
@@ -865,7 +865,7 @@ FETCH NEXT FROM c1;  -- insert not visible
 (0 rows)
 
 COMMIT;
-SELECT * FROM uctest;
+SELECT f1, f2 FROM uctest;
  f1 |  f2   
 ----+-------
   3 | three
