@@ -1276,6 +1276,10 @@ set statement_mem='1000kB';
 set optimizer_force_three_stage_scalar_dqa=off;
 
 select count(distinct d) from qp_misc_jiras.tbl7286_test;
+reset statement_mem;
+reset gp_enable_agg_distinct;
+reset gp_enable_agg_distinct_pruning;
+reset optimizer_force_three_stage_scalar_dqa;
 drop table qp_misc_jiras.tbl7286_test;
 create table qp_misc_jiras.tbl7381_test (i int, t text, d date, ti time with time zone);
 alter table qp_misc_jiras.tbl7381_test alter column t set storage external;
