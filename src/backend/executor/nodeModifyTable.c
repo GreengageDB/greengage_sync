@@ -3423,7 +3423,8 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		 * converted to the root's before being routed, which needs a slot of
 		 * the root's type.
 		 */
-		if (node->isSplitUpdate)
+		if (node->isSplitUpdate ||
+			(node->forceTupleRouting && operation == CMD_UPDATE))
 			mtstate->mt_root_tuple_slot = table_slot_create(rel, NULL);
 	}
 
