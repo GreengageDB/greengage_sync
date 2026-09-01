@@ -2907,8 +2907,10 @@ ExecModifyTable(PlanState *pstate)
 						oldSlot = resultRelInfo->ri_oldTupleSlot;
 						if (wholerow != NULL)
 							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
-						else
+						else {
+							Assert(!resultRelInfo->ri_projectNewNeedsOld);
 							ExecStoreAllNullTuple(oldSlot);
+						}
 						slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
 													 oldSlot);
 					}
