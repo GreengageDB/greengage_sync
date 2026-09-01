@@ -638,16 +638,12 @@ SET extra_float_digits = 0;
 CREATE INDEX ON quad_point_tbl_ord_seq1 USING spgist(p) INCLUDE(dist);
 EXPLAIN (COSTS OFF)
 SELECT p, dist FROM quad_point_tbl_ord_seq1 ORDER BY p <-> '0,0' LIMIT 10;
-                                              QUERY PLAN                                               
--------------------------------------------------------------------------------------------------------
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
  Limit
-   ->  Gather Motion 3:1  (slice1; segments: 3)
-         Merge Key: ((p <-> '(0,0)'::point))
-         ->  Limit
-               ->  Index Only Scan using quad_point_tbl_ord_seq1_p_dist_idx on quad_point_tbl_ord_seq1
-                     Order By: (p <-> '(0,0)'::point)
- Optimizer: Postgres query optimizer
-(7 rows)
+   ->  Index Only Scan using quad_point_tbl_ord_seq1_p_dist_idx on quad_point_tbl_ord_seq1
+         Order By: (p <-> '(0,0)'::point)
+(3 rows)
 
 SELECT p, dist FROM quad_point_tbl_ord_seq1 ORDER BY p <-> '0,0' LIMIT 10;
      p     |       dist       
