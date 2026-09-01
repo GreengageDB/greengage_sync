@@ -380,6 +380,8 @@ RESET enable_bitmapscan;
 create table test_range_elem(i int4);
 create index test_range_elem_idx on test_range_elem (i);
 insert into test_range_elem select i from generate_series(1,100) i;
+-- GPDB: analyze for stable plan closer to upstream
+analyze test_range_elem;
 
 SET enable_seqscan    = f;
 
