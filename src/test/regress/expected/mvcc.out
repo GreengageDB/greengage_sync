@@ -14,7 +14,8 @@ SET LOCAL enable_bitmapscan = false;
 -- independent of the kill_prior_tuples optimization.
 CREATE TABLE clean_aborted_self(key int, data text);
 CREATE INDEX clean_aborted_self_key ON clean_aborted_self(key);
-INSERT INTO clean_aborted_self (key, data) VALUES (-1, 'just to allocate metapage');
+-- GPDB needs to allocate metapage on all segments.
+INSERT INTO clean_aborted_self (key, data) SELECT g.i, 'just to allocate metapage' FROM generate_series(-10, -1) g(i);
 -- save index size from before the changes, for comparison
 SELECT pg_relation_size('clean_aborted_self_key') AS clean_aborted_self_key_before \gset
 DO $$
