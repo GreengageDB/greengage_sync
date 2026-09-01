@@ -253,7 +253,18 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 	{
 		case COPY_FILE:
 			bytesread = fread(databuf, 1, datasize, cstate->copy_file);
-			if (feof(cstate->copy_file))
+
+			/*
+			 * GGDB: set raw_reached_eof only once a read comes back empty,
+			 * exactly like upstream.  Setting it eagerly on feof() -- while
+			 * this very read still returned data -- breaks the invariant
+			 * CopyReadBinaryData() relies on: after CopyLoadRawBuf() it
+			 * treats raw_reached_eof as "the load produced nothing" and
+			 * discards a freshly-filled buffer, so any COPY BINARY smaller
+			 * than RAW_BUF_SIZE failed with "COPY file signature not
+			 * recognized".
+			 */
+			if (bytesread == 0)
 				cstate->raw_reached_eof = true;
 			if (ferror(cstate->copy_file))
 			{
