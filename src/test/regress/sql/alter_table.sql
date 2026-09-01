@@ -2776,7 +2776,7 @@ ALTER TABLE range_parted2 DETACH PARTITION part_rp CONCURRENTLY;
 -- doesn't work for the default partition
 ALTER TABLE range_parted2 DETACH PARTITION part_rpd CONCURRENTLY;
 DROP TABLE part_rpd;
--- works fine
+-- GGDB: rejected in dispatch mode
 ALTER TABLE range_parted2 DETACH PARTITION part_rp CONCURRENTLY;
 \d+ range_parted2
 DROP TABLE range_parted2;

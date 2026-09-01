@@ -1561,8 +1561,7 @@ ProcessUtilitySlow(ParseState *pstate,
 							Gp_role == GP_ROLE_DISPATCH)
 							ereport(ERROR,
 									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									 errmsg("ALTER TABLE ... DETACH PARTITION ... FINALIZE is not supported"),
-									 errhint("Complete an interrupted concurrent detach in a utility-mode session.")));
+									 errmsg("ALTER TABLE ... DETACH PARTITION ... FINALIZE is not supported")));
 					}
 
 					/*
