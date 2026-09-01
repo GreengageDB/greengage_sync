@@ -2143,14 +2143,11 @@ ExecSplitUpdate_Insert(ModifyTableState *mtstate,
 			ExecPartitionCheckEmitError(resultRelInfo, slot, estate);
 
 		/*
-		 * resultRelInfo is one of the per-subplan resultRelInfos.  So we
-		 * should convert the tuple into root's tuple descriptor, since
-		 * ExecInsert() starts the search from root.  The tuple conversion
-		 * map list is in the order of mtstate->resultRelInfo[], so to
-		 * retrieve the one for this resultRel, we need to know the
-		 * position of the resultRel in mtstate->resultRelInfo[].
+		 * resultRelInfo is one of the per-relation resultRelInfos.  So we
+		 * should convert the tuple into root's tuple descriptor if needed,
+		 * since ExecInsert() starts the search from root.
 		 */
-		tupconv_map = resultRelInfo->ri_ChildToRootMap;
+		tupconv_map = ExecGetChildToRootMap(resultRelInfo);
 		if (tupconv_map != NULL)
 			slot = execute_attr_map_slot(tupconv_map->attrMap,
 										 slot,
@@ -2822,6 +2819,13 @@ ExecModifyTable(PlanState *pstate)
 			 * subplan's targetlist, which is in the root's column layout --
 			 * survive into the new tuple.
 			 *
+			 * Only the members that have such columns emit it, but they all
+			 * share the one junk column, so the rest yield NULL here; see
+			 * add_row_identity_columns().  A whole-row Var over a scanned row
+			 * is never itself NULL, so NULL means just that: this relation
+			 * ships no old row, and the subplan's targetlist already holds
+			 * every column the projection needs.
+			 *
 			 * This is kept apart from "oldtuple", which means something
 			 * narrower: that the relation has no TID, so the old row itself is
 			 * the row identity.  Conflating the two would hand the triggers a
@@ -2837,17 +2841,17 @@ ExecModifyTable(PlanState *pstate)
 				datum = ExecGetJunkAttribute(slot,
 											 resultRelInfo->ri_wholerow_attno,
 											 &isNull);
-				if (isNull)
-					elog(ERROR, "wholerow is NULL");
+				if (!isNull)
+				{
+					wholerowdata.t_data = DatumGetHeapTupleHeader(datum);
+					wholerowdata.t_len =
+						HeapTupleHeaderGetDatumLength(wholerowdata.t_data);
+					ItemPointerSetInvalid(&(wholerowdata.t_self));
+					wholerowdata.t_tableOid =
+						RelationGetRelid(resultRelInfo->ri_RelationDesc);
 
-				wholerowdata.t_data = DatumGetHeapTupleHeader(datum);
-				wholerowdata.t_len =
-					HeapTupleHeaderGetDatumLength(wholerowdata.t_data);
-				ItemPointerSetInvalid(&(wholerowdata.t_self));
-				wholerowdata.t_tableOid =
-					RelationGetRelid(resultRelInfo->ri_RelationDesc);
-
-				wholerow = &wholerowdata;
+					wholerow = &wholerowdata;
+				}
 			}
 		}
 
@@ -2873,12 +2877,47 @@ ExecModifyTable(PlanState *pstate)
 				 */
 				if (AttributeNumberIsValid(resultRelInfo->ri_action_attno))
 				{
+					bool		forceRouting =
+						castNode(ModifyTable, node->ps.plan)->forceTupleRouting;
+
+					/*
+					 * GGDB: the plan's row is neither in the table's physical
+					 * layout nor free of junk columns, so build the tuple the
+					 * same way the non-split arm below does.
+					 *
+					 * The INSERT half re-inserts the result.  The DELETE half
+					 * needs it too whenever we have to route: the plan's row
+					 * lists only the live columns, while ExecFindPartition()
+					 * picks the partition key out by attribute number, so a
+					 * dropped column ahead of the key would shift every
+					 * following column and route the row by the wrong one.
+					 * The Split emits the old values in those same positions
+					 * for that half, so this yields the old row.
+					 *
+					 * The old tuple is only read for an old-style inheritance
+					 * child with columns the nominal relation lacks, and the
+					 * plan carries "wholerow" in exactly that case; otherwise
+					 * it supplies every column the projection needs.
+					 */
+					if (DML_INSERT == action || forceRouting)
+					{
+						if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
+							ExecInitUpdateProjection(node, resultRelInfo);
+
+						oldSlot = resultRelInfo->ri_oldTupleSlot;
+						if (wholerow != NULL)
+							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
+						else
+							ExecStoreAllNullTuple(oldSlot);
+						slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
+													 oldSlot);
+					}
+
 					/*
 					 * The INSERT half does its own tuple routing, so only
 					 * force it for the DELETE half.
 					 */
-					if (castNode(ModifyTable, node->ps.plan)->forceTupleRouting &&
-						DML_INSERT != action)
+					if (forceRouting && DML_INSERT != action)
 					{
 						PartitionTupleRouting *proute = node->mt_partition_tuple_routing;
 
@@ -2891,29 +2930,6 @@ ExecModifyTable(PlanState *pstate)
 
 					if (DML_INSERT == action)
 					{
-						/*
-						 * GGDB: the plan's row is neither in the table's
-						 * physical layout nor free of junk columns, so build
-						 * the tuple to re-insert the same way the non-split
-						 * arm below does.
-						 *
-						 * The old tuple is only read for an old-style
-						 * inheritance child with columns the nominal relation
-						 * lacks, and the plan carries "wholerow" in exactly
-						 * that case; otherwise it supplies every column the
-						 * projection needs.
-						 */
-						if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
-							ExecInitUpdateProjection(node, resultRelInfo);
-
-						oldSlot = resultRelInfo->ri_oldTupleSlot;
-						if (wholerow != NULL)
-							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
-						else
-							ExecStoreAllNullTuple(oldSlot);
-						slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
-													 oldSlot);
-
 						slot = ExecSplitUpdate_Insert(node, routedResultRelInfo,
 													  slot, planSlot,
 													  estate, node->canSetTag);
@@ -3328,7 +3344,10 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 
 				/*
 				 * GPDB: only an UPDATE of an old-style inheritance tree carries
-				 * the old row in full, so this one is optional.
+				 * the old row in full, so this one is optional.  Finding the
+				 * column says only that some member of the tree ships an old
+				 * row, not that this relation does; ExecModifyTable() reads
+				 * that off the column's value being non-NULL.
 				 */
 				if (operation == CMD_UPDATE)
 					resultRelInfo->ri_wholerow_attno =
