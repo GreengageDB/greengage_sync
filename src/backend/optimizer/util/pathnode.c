@@ -5575,12 +5575,11 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 	if (operation == CMD_INSERT)
 		*subpath = create_motion_path_for_insert(root, commonPolicy, *subpath);
 	else if (operation == CMD_UPDATE && isSplitUpdate)
-		*subpath = create_split_update_path(root, commonRti, resultRelations,
-											commonPolicy, *subpath);
+		*subpath = create_split_update_path(root, commonRti, commonPolicy,
+											*subpath, resultRelations);
 	else
-		*subpath = create_motion_path_for_upddel(root, resultRelations,
-												 policies, commonPolicy,
-												 *subpath);
+		*subpath = create_motion_path_for_upddel(root, commonPolicy, *subpath,
+												 resultRelations, policies);
 
 	/*
 	 * Set the distribution of the ModifyTable node itself.  Because a

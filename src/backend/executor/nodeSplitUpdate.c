@@ -37,9 +37,8 @@ static void SplitTupleTableSlot(TupleTableSlot *slot,
  * Evaluate the hash keys, and compute the target segment ID for the new row.
  */
 static uint32
-evalHashKey(SplitUpdateState *node, CdbHash *h,
-			int numHashAttrs, AttrNumber *hashAttnos,
-			Datum *values, bool *isnulls)
+evalHashKey(SplitUpdateState *node, Datum *values, bool *isnulls,
+			CdbHash *h, int numHashAttrs, AttrNumber *hashAttnos)
 {
 	ExprContext *econtext = node->ps.ps_ExprContext;
 	MemoryContext oldContext;
@@ -223,8 +222,8 @@ SplitTupleTableSlot(TupleTableSlot *slot,
 			int32		target_seg;
 
 			Assert(h != NULL);
-			target_seg = evalHashKey(node, h, numHashAttrs, hashAttnos,
-									 insert_values, insert_nulls);
+			target_seg = evalHashKey(node, insert_values, insert_nulls,
+									 h, numHashAttrs, hashAttnos);
 
 			insert_values[node->output_segid_attno - 1] = Int32GetDatum(target_seg);
 		}

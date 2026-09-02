@@ -509,10 +509,10 @@ ExecInitUpdateProjection(ModifyTableState *mtstate,
 		ExecBuildUpdateProjection(subplan->targetlist,
 								  updateColnos,
 								  relDesc,
-								  &resultRelInfo->ri_projectNewNeedsOld,
 								  mtstate->ps.ps_ExprContext,
 								  resultRelInfo->ri_newTupleSlot,
-								  &mtstate->ps);
+								  &mtstate->ps,
+								  &resultRelInfo->ri_projectNewNeedsOld);
 
 	resultRelInfo->ri_projectNewInfoValid = true;
 }
