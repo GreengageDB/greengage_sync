@@ -684,7 +684,7 @@ cdbdisp_buildPlanQueryParms(struct QueryDesc *queryDesc,
 	GetUserIdAndSecContext(&save_userid, &queryDesc->ddesc->secContext);
 	sddesc = serializeNode((Node *) queryDesc->ddesc, &sddesc_len, NULL /* uncompressed_size */ );
 
-	pQueryParms->strCommand = queryDesc->sourceText;
+	pQueryParms->strCommand = queryDesc->sourceText ? queryDesc->sourceText : "";
 	pQueryParms->serializedPlantree = splan;
 	pQueryParms->serializedPlantreelen = splan_len;
 	pQueryParms->serializedQueryDispatchDesc = sddesc;

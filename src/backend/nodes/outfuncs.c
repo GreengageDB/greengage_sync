@@ -3826,6 +3826,7 @@ _outCreateFunctionStmt(StringInfo str, const CreateFunctionStmt *node)
 	WRITE_NODE_FIELD(parameters);
 	WRITE_NODE_FIELD(returnType);
 	WRITE_NODE_FIELD(options);
+	WRITE_NODE_FIELD(sql_body);
 }
 
 static void

@@ -3960,6 +3960,7 @@ _readCreateFunctionStmt(void)
 	READ_NODE_FIELD(parameters);
 	READ_NODE_FIELD(returnType);
 	READ_NODE_FIELD(options);
+	READ_NODE_FIELD(sql_body);
 
 	READ_DONE();
 }
