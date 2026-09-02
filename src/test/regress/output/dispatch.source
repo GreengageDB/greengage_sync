@@ -8,8 +8,6 @@ CREATE EXTENSION IF NOT EXISTS gp_inject_fault;
 -- s/^ \(seg\d .*:\d+\)//
 -- m/^DETAIL:  Internal error: No motion listener port \(seg\d.*:.*\)/
 -- s/^DETAIL:  Internal error: No motion listener port \(seg\d.*:.*\)/DETAIL:  Internal error: No motion listener port/
--- m/WARNING:.*Any temporary tables for this session have been dropped because the gang was disconnected/
--- s/session id \=\s*\d+/session id \= DUMMY/gm
 -- m/WARNING:  Connection \(seg\d.*:.*\) is broken/
 -- s/WARNING:  Connection \(seg\d.*:.*\) is broken/WARNING:  Connection seg0 slice1 is broken/
 -- # Newer libpq prefixes connection failures with "could not connect to
@@ -786,7 +784,6 @@ select * from disp_temp_test1 where c1 / 0 = 9;
 ERROR:  division by zero  (seg2 slice1 127.0.0.1:25434 pid=27218)
 rollback to savepoint s1;
 WARNING:  writer gang of current global transaction is lost
-WARNING:  Any temporary tables for this session have been dropped because the gang was disconnected (session id = 104)
 ERROR:  Could not rollback to savepoint (ROLLBACK TO SAVEPOINT s1)
 rollback;
 -- session is reset, temp table is dropped.
