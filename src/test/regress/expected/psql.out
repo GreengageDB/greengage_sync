@@ -5193,11 +5193,13 @@ List of access methods
                              List of functions
    Schema   |     Name     | Result data type | Argument data types | Type 
 ------------+--------------+------------------+---------------------+------
+ pg_catalog | complex_sqrt | complex          | complex             | func
  pg_catalog | dsqrt        | double precision | double precision    | func
  pg_catalog | numeric_sqrt | numeric          | numeric             | func
+ pg_catalog | sqrt         | complex          | complex             | func
  pg_catalog | sqrt         | double precision | double precision    | func
  pg_catalog | sqrt         | numeric          | numeric             | func
-(4 rows)
+(6 rows)
 
 \df *sqrt num*
                              List of functions
@@ -5349,7 +5351,7 @@ ROLLBACK;
 -- misc SQL commands
 -- (non SELECT output is sent to stderr, thus is not shown in expected results)
 SELECT 'ok' AS "begin" \;
-CREATE TABLE psql_comics(s TEXT) \;
+CREATE TABLE psql_comics(s TEXT) DISTRIBUTED REPLICATED \;
 INSERT INTO psql_comics VALUES ('Calvin'), ('hobbes') \;
 COPY psql_comics FROM STDIN \;
 UPDATE psql_comics SET s = 'Hobbes' WHERE s = 'hobbes' \;
