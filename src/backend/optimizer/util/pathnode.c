@@ -5578,8 +5578,8 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 		*subpath = create_split_update_path(root, commonRti, resultRelations,
 											commonPolicy, *subpath);
 	else
-		*subpath = create_motion_path_for_upddel(root, commonRti,
-												 resultRelations, commonPolicy,
+		*subpath = create_motion_path_for_upddel(root, resultRelations,
+												 policies, commonPolicy,
 												 *subpath);
 
 	/*

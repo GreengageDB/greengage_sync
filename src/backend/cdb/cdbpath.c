@@ -63,9 +63,8 @@ static bool try_redistribute(PlannerInfo *root, CdbpathMfjRel *g,
 static SplitUpdatePath *make_splitupdate_path(PlannerInfo *root, Path *subpath,
 											  Index rti, List *resultRelations);
 
-static bool can_elide_explicit_motion(PlannerInfo *root, Index rti,
-									  List *resultRelations, Path *subpath,
-									  GpPolicy *policy);
+static bool can_elide_explicit_motion(PlannerInfo *root, List *resultRelations,
+									  GpPolicy **policies, Path *subpath);
 /*
  * cdbpath_cost_motion
  *    Fills in the cost estimate fields in a MotionPath node.
@@ -2404,8 +2403,8 @@ create_motion_path_for_insert(PlannerInfo *root, GpPolicy *policy,
  * instead.
  */
 Path *
-create_motion_path_for_upddel(PlannerInfo *root, Index rti,
-							  List *resultRelations, GpPolicy *policy,
+create_motion_path_for_upddel(PlannerInfo *root, List *resultRelations,
+							  GpPolicy **policies, GpPolicy *policy,
 							  Path *subpath)
 {
 	GpPolicyType	policyType = policy->ptype;
@@ -2413,7 +2412,7 @@ create_motion_path_for_upddel(PlannerInfo *root, Index rti,
 
 	if (policyType == POLICYTYPE_PARTITIONED)
 	{
-		if (can_elide_explicit_motion(root, rti, resultRelations, subpath, policy))
+		if (can_elide_explicit_motion(root, resultRelations, policies, subpath))
 			return subpath;
 		else
 		{
@@ -2679,10 +2678,11 @@ make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti,
 }
 
 static bool
-can_elide_explicit_motion(PlannerInfo *root, Index rti, List *resultRelations,
-						  Path *subpath, GpPolicy *policy)
+can_elide_explicit_motion(PlannerInfo *root, List *resultRelations,
+						  GpPolicy **policies, Path *subpath)
 {
 	ListCell   *lc;
+	int			relno;
 
 	Assert(resultRelations != NIL);
 
@@ -2704,10 +2704,27 @@ can_elide_explicit_motion(PlannerInfo *root, Index rti, List *resultRelations,
 	if (lc == NULL)
 		return true;
 
+	/*
+	 * Otherwise the rows still reach the segments they belong on if the
+	 * subpath is distributed just like the target relation is.
+	 *
+	 * This too has to hold for every target relation: there is one plan for
+	 * the whole tree, so a Motion below us brought all of their rows to the
+	 * segments of one distribution.  Old-style inheritance children may be
+	 * distributed on keys of their own, so we have to check all of them.
+	 */
 	if (!CdbPathLocus_IsStrewn(subpath->locus))
 	{
-		CdbPathLocus    resultrelation_locus = cdbpathlocus_from_policy(root, rti, policy);
-		return cdbpathlocus_equal(subpath->locus, resultrelation_locus);
+		relno = 0;
+		foreach(lc, resultRelations)
+		{
+			Index		rti = lfirst_int(lc);
+			GpPolicy   *policy = policies[relno++];
+			CdbPathLocus resultrelation_locus = cdbpathlocus_from_policy(root, rti, policy);
+			if (!cdbpathlocus_equal(subpath->locus, resultrelation_locus))
+				return false;
+		}
+		return true;
 	}
 
 	return false;
