@@ -2834,7 +2834,7 @@ ExecModifyTable(PlanState *pstate)
 			}
 
 			/*
-			 * GPDB: a ctid only identifies a row within one segment, so the
+			 * GGDB: a ctid only identifies a row within one segment, so the
 			 * plan also carries the segment the row came from.
 			 */
 			if (AttributeNumberIsValid(resultRelInfo->ri_segid_attno))
@@ -2849,7 +2849,7 @@ ExecModifyTable(PlanState *pstate)
 			}
 
 			/*
-			 * GPDB: for a Split Update, which half of the split this row is.
+			 * GGDB: for a Split Update, which half of the split this row is.
 			 */
 			if (AttributeNumberIsValid(resultRelInfo->ri_action_attno))
 			{
@@ -2863,7 +2863,7 @@ ExecModifyTable(PlanState *pstate)
 			}
 
 			/*
-			 * GPDB: an UPDATE of an old-style inheritance tree ships the old
+			 * GGDB: an UPDATE of an old-style inheritance tree ships the old
 			 * row in full, so that a child's extra columns -- absent from the
 			 * subplan's targetlist, which is in the root's column layout --
 			 * survive into the new tuple.
@@ -2917,7 +2917,7 @@ ExecModifyTable(PlanState *pstate)
 			case CMD_UPDATE:
 
 				/*
-				 * GPDB: a Split Update reaches us as two rows per original
+				 * GGDB: a Split Update reaches us as two rows per original
 				 * row, tagged by the DMLAction junk column.  Neither half goes
 				 * through the ordinary update path: the row has already been
 				 * routed to its target segment by the Motion above the
@@ -3008,7 +3008,7 @@ ExecModifyTable(PlanState *pstate)
 											 oldSlot);
 
 				/*
-				 * GPDB: an ORCA plan scans a partitioned table with a single
+				 * GGDB: an ORCA plan scans a partitioned table with a single
 				 * dynamic scan node, so the plan shape cannot say which
 				 * relation a row came from; route it to find out.  This has to
 				 * happen after the projection, which produces a tuple in
@@ -3337,7 +3337,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 					elog(ERROR, "could not find junk ctid column");
 
 				/*
-				 * GPDB: a ctid is only unique within one segment, so we also
+				 * GGDB: a ctid is only unique within one segment, so we also
 				 * need to know which segment the row came from.  See
 				 * add_row_identity_columns().
 				 */
@@ -3348,7 +3348,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 					elog(ERROR, "could not find junk gp_segment_id column");
 
 				/*
-				 * GPDB: a Split Update tags each row with which half of the
+				 * GGDB: a Split Update tags each row with which half of the
 				 * split it is.
 				 */
 				if (operation == CMD_UPDATE && node->isSplitUpdate)
@@ -3361,7 +3361,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 				}
 
 				/*
-				 * GPDB: only an UPDATE of an old-style inheritance tree carries
+				 * GGDB: only an UPDATE of an old-style inheritance tree carries
 				 * the old row in full, so this one is optional.  Finding the
 				 * column says only that some member of the tree ships an old
 				 * row, not that this relation does; ExecModifyTable() reads
@@ -3418,14 +3418,14 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 * might need this too, but only if it actually moves tuples between
 	 * partitions; in that case setup is done by ExecCrossPartitionUpdate.
 	 *
-	 * GPDB: ORCA plans a scan of a partitioned table as a single dynamic scan
+	 * GGDB: ORCA plans a scan of a partitioned table as a single dynamic scan
 	 * node rather than an Append over the leaves, which saves having a data
 	 * structure per partition but leaves the plan shape unable to say which
 	 * relation a given row came from.  Such plans ask for tuple routing on
 	 * every row (forceTupleRouting), for DELETE and UPDATE as well as INSERT,
 	 * so the routing state has to be built up front.
 	 *
-	 * GPDB: a split update re-inserts the row rather than updating in place,
+	 * GGDB: a split update re-inserts the row rather than updating in place,
 	 * so it moves the row between partitions through ExecSplitUpdate_Insert()
 	 * instead of ExecCrossPartitionUpdate(), and needs the state up front too.
 	 */

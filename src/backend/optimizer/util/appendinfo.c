@@ -911,7 +911,7 @@ add_row_identity_var(PlannerInfo *root, Var *orig_var,
 
 /*
  * child_has_extra_columns
- *		GPDB: does this inheritance child have columns its parent does not?
+ *		GGDB: does this inheritance child have columns its parent does not?
  *
  * AppendRelInfo.parent_colnos already records which of the parent's columns
  * each of the child's came from, or 0 for none, so this costs no catalog
@@ -975,7 +975,7 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 		add_row_identity_var(root, var, rtindex, "ctid");
 
 		/*
-		 * GPDB also needs gp_segment_id: a ctid is only unique within one
+		 * GGDB also needs gp_segment_id: a ctid is only unique within one
 		 * segment, so the executor needs to know which segment the row came
 		 * from before it can apply the ctid.
 		 */
@@ -988,7 +988,7 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 		add_row_identity_var(root, var, rtindex, "gp_segment_id");
 
 		/*
-		 * GPDB: an UPDATE of an old-style inheritance child that has columns
+		 * GGDB: an UPDATE of an old-style inheritance child that has columns
 		 * the nominal relation does not needs the old row in full.  The single
 		 * subplan's targetlist is in the nominal relation's column layout, so
 		 * those columns are absent from it and would be lost.  A RECORD-typed

@@ -2286,7 +2286,7 @@ typedef struct ModifyTablePath
 	Index		rootRelation;	/* Root RT index, if target is partitioned */
 	bool		partColsUpdated;	/* some part key in hierarchy updated? */
 	List	   *resultRelations;	/* integer list of RT indexes */
-	bool		isSplitUpdate;	/* GPDB: UPDATE runs as delete+insert? */
+	bool		isSplitUpdate;	/* GGDB: UPDATE runs as delete+insert? */
 	List	   *updateColnosLists;	/* per-target-table update_colnos lists */
 	List	   *withCheckOptionLists;	/* per-target-table WCO lists */
 	List	   *returningLists; /* per-target-table RETURNING tlists */

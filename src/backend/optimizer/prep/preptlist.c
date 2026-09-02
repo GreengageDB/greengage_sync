@@ -125,7 +125,7 @@ preprocess_targetlist(PlannerInfo *root)
 	else if (command_type == CMD_UPDATE)
 	{
 		/*
-		 * GPDB: note which columns the SET clause assigns, before
+		 * GGDB: note which columns the SET clause assigns, before
 		 * expand_targetlist() fills in the rest.  create_modifytable_path()
 		 * tests these against each target relation's distribution key.
 		 * Attribute numbers are the nominal result relation's.
@@ -134,7 +134,7 @@ preprocess_targetlist(PlannerInfo *root)
 														   result_relation);
 
 		/*
-		 * GPDB: the subplan of an UPDATE emits the complete new row, not just
+		 * GGDB: the subplan of an UPDATE emits the complete new row, not just
 		 * the SET columns.  Upstream has ModifyTable re-fetch the old tuple by
 		 * TID and merge the unchanged columns in, which does not work here:
 		 * append-optimized tables cannot fetch a tuple by TID, and an UPDATE
@@ -340,7 +340,7 @@ extract_update_colnos(List *tlist)
 
 /*
  * find_update_changed_cols
- *		GPDB: Bitmapset of the target-table columns an UPDATE really changes.
+ *		GGDB: Bitmapset of the target-table columns an UPDATE really changes.
  *
  * Must be called on the targetlist as the rewriter left it, i.e. before
  * expand_targetlist() has filled in the untouched columns, because it relies
@@ -381,7 +381,7 @@ find_update_changed_cols(List *tlist, Index result_relation)
 
 /*
  * drop_dropped_col_entries
- *		GPDB: Remove the non-resjunk entries expand_targetlist() generated for
+ *		GGDB: Remove the non-resjunk entries expand_targetlist() generated for
  *		dropped columns.
  *
  * expand_targetlist() emits a NULL constant for every dropped column so that

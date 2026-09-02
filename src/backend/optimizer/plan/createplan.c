@@ -3079,7 +3079,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 	Plan	   *subplan;
 	RangeTblEntry *rte = planner_rt_fetch(best_path->nominalRelation, root);
 
-	/* GPDB: try the Single-Row-Insert optimization first. */
+	/* GGDB: try the Single-Row-Insert optimization first. */
 	subplan = cdbpathtoplan_create_sri_plan(rte, root, subpath, CP_EXACT_TLIST);
 
 	if (!subplan)
@@ -3090,7 +3090,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 		/*
 		 * Transfer resname/resjunk labeling, too, to keep executor happy.
 		 *
-		 * GPDB: but not for a Split Update.  Its targetlist carries an extra
+		 * GGDB: but not for a Split Update.  Its targetlist carries an extra
 		 * DMLActionExpr column, so it does not line up with
 		 * root->processed_tlist; create_splitupdate_plan() labels the junk
 		 * columns itself instead.

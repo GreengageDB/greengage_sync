@@ -5329,7 +5329,7 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 		   list_length(resultRelations) == list_length(returningLists));
 
 	/*
-	 * GPDB: fetch every target relation's distribution policy up front.  Both
+	 * GGDB: fetch every target relation's distribution policy up front.  Both
 	 * of the steps below need them, and GpPolicyFetch() is a syscache lookup
 	 * per relation -- for a partitioned target, per partition.  They are left
 	 * for the planner context to reclaim, since the locus built from one of
@@ -5346,7 +5346,7 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 	}
 
 	/*
-	 * GPDB: decide whether this UPDATE has to run as a delete plus an insert.
+	 * GGDB: decide whether this UPDATE has to run as a delete plus an insert.
 	 * A dummy subpath returns no rows, so there is nothing to move and no
 	 * point paying for a SplitUpdate node.
 	 */
@@ -5435,7 +5435,7 @@ create_modifytable_path(PlannerInfo *root, RelOptInfo *rel,
 
 /*
  * update_needs_split
- *		GPDB: does this UPDATE have to run as a delete plus an insert?
+ *		GGDB: does this UPDATE have to run as a delete plus an insert?
  *
  * It does if it changes a distribution key column of any of the target
  * relations, because the row may then belong on a different segment and a
