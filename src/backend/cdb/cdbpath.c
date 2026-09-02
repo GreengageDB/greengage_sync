@@ -63,8 +63,9 @@ static bool try_redistribute(PlannerInfo *root, CdbpathMfjRel *g,
 static SplitUpdatePath *make_splitupdate_path(PlannerInfo *root, Path *subpath,
 											  Index rti, List *resultRelations);
 
-static bool can_elide_explicit_motion(PlannerInfo *root, List *resultRelations,
-									  GpPolicy **policies, Path *subpath);
+static bool can_elide_explicit_motion(PlannerInfo *root, Path *subpath,
+									  List *resultRelations,
+									  GpPolicy **policies);
 /*
  * cdbpath_cost_motion
  *    Fills in the cost estimate fields in a MotionPath node.
@@ -2403,16 +2404,16 @@ create_motion_path_for_insert(PlannerInfo *root, GpPolicy *policy,
  * instead.
  */
 Path *
-create_motion_path_for_upddel(PlannerInfo *root, List *resultRelations,
-							  GpPolicy **policies, GpPolicy *policy,
-							  Path *subpath)
+create_motion_path_for_upddel(PlannerInfo *root, GpPolicy *policy,
+							  Path *subpath, List *resultRelations,
+							  GpPolicy **policies)
 {
 	GpPolicyType	policyType = policy->ptype;
 	CdbPathLocus	targetLocus;
 
 	if (policyType == POLICYTYPE_PARTITIONED)
 	{
-		if (can_elide_explicit_motion(root, resultRelations, policies, subpath))
+		if (can_elide_explicit_motion(root, subpath, resultRelations, policies))
 			return subpath;
 		else
 		{
@@ -2510,8 +2511,8 @@ create_motion_path_for_upddel(PlannerInfo *root, List *resultRelations,
  * 'rti' is the UPDATE target relation.
  */
 Path *
-create_split_update_path(PlannerInfo *root, Index rti, List *resultRelations,
-						 GpPolicy *policy, Path *subpath)
+create_split_update_path(PlannerInfo *root, Index rti, GpPolicy *policy,
+						 Path *subpath, List *resultRelations)
 {
 	GpPolicyType	policyType = policy->ptype;
 	CdbPathLocus	targetLocus;
@@ -2678,8 +2679,8 @@ make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti,
 }
 
 static bool
-can_elide_explicit_motion(PlannerInfo *root, List *resultRelations,
-						  GpPolicy **policies, Path *subpath)
+can_elide_explicit_motion(PlannerInfo *root, Path *subpath,
+						  List *resultRelations, GpPolicy **policies)
 {
 	ListCell   *lc;
 	int			relno;

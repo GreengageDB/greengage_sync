@@ -522,10 +522,10 @@ ProjectionInfo *
 ExecBuildUpdateProjection(List *subTargetList,
 						  List *targetColnos,
 						  TupleDesc relDesc,
-						  bool *needsOldTuple,
 						  ExprContext *econtext,
 						  TupleTableSlot *slot,
-						  PlanState *parent)
+						  PlanState *parent,
+						  bool *needsOldTuple)
 {
 	ProjectionInfo *projInfo = makeNode(ProjectionInfo);
 	ExprState  *state;

@@ -43,12 +43,12 @@ extern Path *cdbpath_create_redistribute_motion_path_for_exprs(PlannerInfo *root
 extern Path *create_motion_path_for_ctas(PlannerInfo *root, GpPolicy *policy, Path *subpath);
 extern Path *create_motion_path_for_insert(PlannerInfo *root, GpPolicy *targetPolicy, Path *subpath);
 extern Path *create_motion_path_for_upddel(PlannerInfo *root,
+										   GpPolicy *targetPolicy, Path *subpath,
 										   List *resultRelations,
-										   GpPolicy **policies,
-										   GpPolicy *targetPolicy, Path *subpath);
+										   GpPolicy **policies);
 extern Path *create_split_update_path(PlannerInfo *root, Index rti,
-									  List *resultRelations,
-									  GpPolicy *targetPolicy, Path *subpath);
+									  GpPolicy *targetPolicy, Path *subpath,
+									  List *resultRelations);
 
 extern CdbPathLocus
 cdbpath_motion_for_join(PlannerInfo    *root,
