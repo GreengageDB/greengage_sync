@@ -559,6 +559,55 @@ ExecGetInsertNewTuple(ResultRelInfo *relinfo,
 }
 
 /*
+ * ExecStoreUpdateOldTuple
+ *		Fill the result relation's old-tuple slot for an UPDATE projection,
+ *		and return it.
+ */
+static TupleTableSlot *
+ExecStoreUpdateOldTuple(ResultRelInfo *relinfo,
+						HeapTuple oldtuple,
+						HeapTuple wholerow,
+						ItemPointer tupleid)
+{
+	TupleTableSlot *oldSlot = relinfo->ri_oldTupleSlot;
+
+	if (oldtuple != NULL || wholerow != NULL)
+	{
+		/*
+		 * The plan shipped the old row: as the row identity itself, in the
+		 * wholerow junk attr, or -- GGDB -- as the whole-row copy an
+		 * inheritance child sends when it has columns the subplan's
+		 * targetlist does not.
+		 */
+		ExecForceStoreHeapTuple(oldtuple != NULL ? oldtuple : wholerow,
+								oldSlot, false);
+	}
+	else if (relinfo->ri_projectNewNeedsOld)
+	{
+		/* Fetch the most recent version of old tuple. */
+		Relation	relation = relinfo->ri_RelationDesc;
+
+		Assert(tupleid != NULL);
+		if (!table_tuple_fetch_row_version(relation, tupleid,
+										   SnapshotAny,
+										   oldSlot))
+			elog(ERROR, "failed to fetch tuple being updated");
+	}
+	else
+	{
+		/*
+		 * GGDB: the plan supplies every column, so the projection never reads
+		 * the old tuple.  Skip the fetch, which an append-optimized table
+		 * could not serve anyway, but keep the slot non-empty for the
+		 * projection's Assert.
+		 */
+		ExecStoreAllNullTuple(oldSlot);
+	}
+
+	return oldSlot;
+}
+
+/*
  * ExecGetUpdateNewTuple
  *		This prepares a "new" tuple by combining an UPDATE subplan's output
  *		tuple (which contains values of changed columns) with unchanged
@@ -2904,13 +2953,10 @@ ExecModifyTable(PlanState *pstate)
 						if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
 							ExecInitUpdateProjection(node, resultRelInfo);
 
-						oldSlot = resultRelInfo->ri_oldTupleSlot;
-						if (wholerow != NULL)
-							ExecForceStoreHeapTuple(wholerow, oldSlot, false);
-						else {
-							Assert(!resultRelInfo->ri_projectNewNeedsOld);
-							ExecStoreAllNullTuple(oldSlot);
-						}
+						Assert(wholerow != NULL ||
+							   !resultRelInfo->ri_projectNewNeedsOld);
+						oldSlot = ExecStoreUpdateOldTuple(resultRelInfo, oldtuple,
+														  wholerow, tupleid);
 						slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
 													 oldSlot);
 					}
@@ -2956,38 +3002,8 @@ ExecModifyTable(PlanState *pstate)
 				 * Make the new tuple by combining plan's output tuple with
 				 * the old tuple being updated.
 				 */
-				oldSlot = resultRelInfo->ri_oldTupleSlot;
-				if (oldtuple != NULL)
-				{
-					/* Use the wholerow junk attr as the old tuple. */
-					ExecForceStoreHeapTuple(oldtuple, oldSlot, false);
-				}
-				else if (wholerow != NULL)
-				{
-					/* GPDB: likewise, for an inheritance child that ships it. */
-					ExecForceStoreHeapTuple(wholerow, oldSlot, false);
-				}
-				else if (resultRelInfo->ri_projectNewNeedsOld)
-				{
-					/* Fetch the most recent version of old tuple. */
-					Relation	relation = resultRelInfo->ri_RelationDesc;
-
-					Assert(tupleid != NULL);
-					if (!table_tuple_fetch_row_version(relation, tupleid,
-													   SnapshotAny,
-													   oldSlot))
-						elog(ERROR, "failed to fetch tuple being updated");
-				}
-				else
-				{
-					/*
-					 * GPDB: the plan supplies every column, so the projection
-					 * never reads the old tuple.  Skip the fetch, which an
-					 * append-optimized table could not serve anyway, but keep
-					 * the slot non-empty for the projection's Assert.
-					 */
-					ExecStoreAllNullTuple(oldSlot);
-				}
+				oldSlot = ExecStoreUpdateOldTuple(resultRelInfo, oldtuple,
+												  wholerow, tupleid);
 				slot = ExecGetUpdateNewTuple(resultRelInfo, planSlot,
 											 oldSlot);
 
