@@ -3075,7 +3075,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 	Plan	   *subplan;
 	RangeTblEntry *rte = planner_rt_fetch(best_path->nominalRelation, root);
 
-	/* GPDB: try the Single-Row-Insert optimization first. */
+	/* GGDB: try the Single-Row-Insert optimization first. */
 	subplan = cdbpathtoplan_create_sri_plan(rte, root, subpath, CP_EXACT_TLIST);
 
 	if (!subplan)
@@ -3086,7 +3086,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 		/*
 		 * Transfer resname/resjunk labeling, too, to keep executor happy.
 		 *
-		 * GPDB: but not for a Split Update.  Its targetlist carries an extra
+		 * GGDB: but not for a Split Update.  Its targetlist carries an extra
 		 * DMLActionExpr column, so it does not line up with
 		 * root->processed_tlist; create_splitupdate_plan() labels the junk
 		 * columns itself instead.
@@ -3113,48 +3113,21 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 
 	copy_generic_path_info(&plan->plan, &best_path->path);
 
-	if (list_length(plan->resultRelations) > 0 && Gp_role == GP_ROLE_DISPATCH)
+	/*
+	 * GGDB: a modification of a distributed table runs in a writer gang.
+	 *
+	 * create_modifytable_path() already settled which policy the target
+	 * relations have in common -- they must share a policy type, or it raises
+	 * an error -- and built our locus from it, over the widest of them.  So
+	 * the locus answers both questions here, and none of the policies has to
+	 * be fetched a second time.
+	 */
+	if (list_length(plan->resultRelations) > 0 && Gp_role == GP_ROLE_DISPATCH &&
+		!CdbPathLocus_IsEntry(best_path->path.locus))
 	{
-		GpPolicyType policyType = POLICYTYPE_ENTRY;
-		bool		isfirst = true;
-		ListCell   *lc;
-
-		foreach (lc, plan->resultRelations)
-		{
-			int			idx = lfirst_int(lc);
-			Oid			reloid = planner_rt_fetch(idx, root)->relid;
-			GpPolicy   *policy = GpPolicyFetch(reloid);
-
-			/*
-			 * We cannot update tables on segments and on the entry DB in the
-			 * same process.
-			 */
-			if (isfirst)
-				policyType = policy->ptype;
-			else
-			{
-				if (policy->ptype != policyType)
-					ereport(ERROR,
-							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-							 errmsg("ModifyTable mixes distributed and entry-only tables")));
-			}
-
-			if (policyType != POLICYTYPE_ENTRY)
-			{
-				if (isfirst)
-				{
-					root->curSlice->gangType = GANGTYPE_PRIMARY_WRITER;
-					root->curSlice->numsegments = policy->numsegments;
-				}
-				else
-				{
-					Assert(root->curSlice->gangType == GANGTYPE_PRIMARY_WRITER);
-					root->curSlice->numsegments =
-						Max(root->curSlice->numsegments, policy->numsegments);
-				}
-			}
-			isfirst = false;
-		}
+		root->curSlice->gangType = GANGTYPE_PRIMARY_WRITER;
+		root->curSlice->numsegments =
+			CdbPathLocus_NumSegments(best_path->path.locus);
 	}
 
 	return plan;

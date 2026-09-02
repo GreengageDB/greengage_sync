@@ -409,7 +409,7 @@ typedef struct ModifyTable
 	List	   *exclRelTlist;	/* tlist of the EXCLUDED pseudo relation */
 
 	/*
-	 * GPDB: true if this UPDATE is executed as a delete+insert pair, because
+	 * GGDB: true if this UPDATE is executed as a delete+insert pair, because
 	 * it may move a row to a different segment.  The SplitUpdate node below
 	 * emits the two halves and tags them with the "DMLAction" junk column.
 	 * The decision is statement-wide: there is a single subplan, hence a
