@@ -307,8 +307,10 @@ set default_with_oids to f;
 -- Should not allow to set it to true.
 set default_with_oids to t;
 
-SET "request.header.user-agent" = 'curl/7.29.0';
-SHOW "request.header.user-agent";
+-- GUC name needs quoting when dispatched to segments (see DispatchSetPGVariable);
+-- "table" is a reserved word, so an unquoted dispatch would be a syntax error there.
+SET "table.foo" = 'curl/7.29.0';
+SHOW "table.foo";
 
 -- Test function with SET search_path
 create schema n1;

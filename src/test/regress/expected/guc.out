@@ -558,7 +558,6 @@ LISTEN foo_event;
 SET vacuum_cost_delay = 13;
 CREATE TEMP TABLE tmp_foo (data text) ON COMMIT DELETE ROWS;
 CREATE ROLE regress_guc_user;
-NOTICE:  resource queue required -- using default resource queue "pg_default"
 SET SESSION AUTHORIZATION regress_guc_user;
 -- look changes
 SELECT pg_listening_channels();
@@ -754,8 +753,8 @@ WARNING:  "work_mem": setting is deprecated, and may be removed in a future rele
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 select myfunc(0);
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
-WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 ERROR:  division by zero
+WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 CONTEXT:  SQL statement "SELECT 1/$1"
 PL/pgSQL function myfunc(integer) line 4 at PERFORM
 select current_setting('work_mem');
@@ -816,9 +815,6 @@ create function func_with_bad_set() returns int as $$ select 1 $$
 language sql
 set default_text_search_config = no_such_config;
 NOTICE:  text search configuration "no_such_config" does not exist
-NOTICE:  text search configuration "no_such_config" does not exist  (seg0 172.17.0.7:7002 pid=136792)
-NOTICE:  text search configuration "no_such_config" does not exist  (seg2 172.17.0.7:7004 pid=136796)
-NOTICE:  text search configuration "no_such_config" does not exist  (seg1 172.17.0.7:7003 pid=136795)
 select func_with_bad_set();
 ERROR:  invalid value for parameter "default_text_search_config": "no_such_config"
 reset check_function_bodies;
@@ -826,11 +822,15 @@ set default_with_oids to f;
 -- Should not allow to set it to true.
 set default_with_oids to t;
 ERROR:  tables declared WITH OIDS are not supported
-SET "request.header.user-agent" = 'curl/7.29.0';
-ERROR:  invalid configuration parameter name "request.header.user-agent"
-DETAIL:  Custom parameter names must be of the form "identifier.identifier".
-SHOW "request.header.user-agent";
-ERROR:  unrecognized configuration parameter "request.header.user-agent"
+-- GUC name needs quoting when dispatched to segments (see DispatchSetPGVariable);
+-- "table" is a reserved word, so an unquoted dispatch would be a syntax error there.
+SET "table.foo" = 'curl/7.29.0';
+SHOW "table.foo";
+  table.foo  
+-------------
+ curl/7.29.0
+(1 row)
+
 -- Test function with SET search_path
 create schema n1;
 create type ty1 as (i int);
@@ -855,6 +855,7 @@ NOTICE:  table "t1" does not exist, skipping
 
 -- After funtion drop table, public schema is still in search_path
 create table public.t1(i ty1);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause, and no column type is suitable for a distribution key. Creating a NULL policy entry.
 drop table public.t1;
 drop type public.ty1;
 drop function n1.drop_table(v_schema character varying, v_table character varying);
