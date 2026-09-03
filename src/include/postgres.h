@@ -260,7 +260,7 @@ typedef struct
  * Externally visible TOAST macros begin here.
  */
 
-/* In Postgres, VARHDRSZ_EXTERNAL is 2, but in GPDB, it's 4, due to padding */
+/* In Postgres, this is 2, but in GPDB, it's 4, due to padding */
 #define VARHDRSZ_EXTERNAL		offsetof(varattrib_1b_e, va_data)
 #define VARHDRSZ_COMPRESSED		offsetof(varattrib_4b, va_compressed.va_data)
 #define VARHDRSZ_SHORT			offsetof(varattrib_1b, va_data)

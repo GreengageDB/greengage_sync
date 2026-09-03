@@ -5761,6 +5761,10 @@ ATRewriteCatalogs(List **wqueue, LOCKMODE lockmode,
 
 /*
  * ATExecCmd: dispatch a subcommand to appropriate execution routine
+ *
+ * NOTE: we need to use a pointer to Relation here since the relation
+ * address may be changed by ATPExecPartSplit(). This is different
+ * behavior from Postgres upstream.
  */
 static void
 ATExecCmd(List **wqueue, AlteredTableInfo *tab,
@@ -6145,6 +6149,10 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			Assert(rel->rd_rel->relkind == RELKIND_INDEX);
 			ATExecAlterCollationRefreshVersion(rel, cmd->object);
 			break;
+		default:				/* oops */
+			elog(ERROR, "unrecognized alter table type: %d",
+				 (int) cmd->subtype);
+			break;
 
 		case AT_PartAdd:
 		case AT_PartDrop:
@@ -6159,11 +6167,6 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			 */
 			cmd->queryString = context->queryString;
 			ATExecGPPartCmds(rel, cmd);
-			break;
-
-		default:				/* oops */
-			elog(ERROR, "unrecognized alter table type: %d",
-				 (int) cmd->subtype);
 			break;
 	}
 
@@ -10329,17 +10332,20 @@ ATExecAddStatistics(AlteredTableInfo *tab, Relation rel,
 
 	Assert(IsA(stmt, CreateStatsStmt));
 
+	/* The CreateStatsStmt has already been through transformStatsStmt */
+	Assert(stmt->transformed);
+
 	/*
-	 * GPDB: extended statistics objects exist only on the QD (CREATE
-	 * STATISTICS is not dispatched), so the rebuild-after-ALTER-TYPE must
-	 * not run on QEs — it would assign an OID in a synchronized catalog
-	 * without QD coordination.
+	 * GPDB: extended statistics catalogs (pg_statistic_ext and
+	 * pg_statistic_ext_data) are maintained only on the coordinator - plain
+	 * CREATE STATISTICS is never dispatched to the segments.  ALTER TABLE ...
+	 * ALTER COLUMN TYPE does dispatch this rebuild subcommand as part of the
+	 * AlterTableStmt, so the segments must skip it; otherwise CreateStatistics()
+	 * would try to allocate a synchronized OID for pg_statistic_ext on a QE and
+	 * PANIC.
 	 */
 	if (Gp_role == GP_ROLE_EXECUTE)
 		return InvalidObjectAddress;
-
-	/* The CreateStatsStmt has already been through transformStatsStmt */
-	Assert(stmt->transformed);
 
 	address = CreateStatistics(stmt);
 

@@ -1196,7 +1196,7 @@ static struct config_bool ConfigureNamesBool[] =
 	{
 		{"geqo", PGC_USERSET, DEFUNCT_OPTIONS,
 			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
-			NULL,
+            NULL,
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
 		&defunct_bool,
@@ -3557,6 +3557,17 @@ static struct config_int ConfigureNamesInt[] =
 	},
 
 	{
+		{"client_connection_check_interval", PGC_USERSET, CLIENT_CONN_OTHER,
+			gettext_noop("Sets the time interval between checks for disconnection while running queries."),
+			NULL,
+			GUC_UNIT_MS
+		},
+		&client_connection_check_interval,
+		0, 0, INT_MAX,
+		check_client_connection_check_interval, NULL, NULL
+	},
+
+	{
 		{"huge_page_size", PGC_POSTMASTER, RESOURCES_MEM,
 			gettext_noop("The size of huge page that should be requested."),
 			NULL,
@@ -3588,17 +3599,6 @@ static struct config_int ConfigureNamesInt[] =
 		0, 0, 0,
 #endif	/* not CLOBBER_CACHE_ENABLED */
 		NULL, NULL, NULL
-	},
-
-	{
-		{"client_connection_check_interval", PGC_USERSET, CLIENT_CONN_OTHER,
-			gettext_noop("Sets the time interval between checks for disconnection while running queries."),
-			NULL,
-			GUC_UNIT_MS
-		},
-		&client_connection_check_interval,
-		0, 0, INT_MAX,
-		check_client_connection_check_interval, NULL, NULL
 	},
 
 	/* End-of-list marker */
@@ -12474,7 +12474,7 @@ check_client_connection_check_interval(int *newval, void **extra, GucSource sour
 	/* Linux and OSX only, for now.  See pq_check_connection(). */
 	if (*newval != 0)
 	{
-		GUC_check_errdetail("client_connection_check_interval must be set to 0 on platforms that lack POLLRDHUP and are not macOS.");
+		GUC_check_errdetail("client_connection_check_interval must be set to 0 on platforms that lack POLLRDHUP and not OSX.");
 		return false;
 	}
 #endif

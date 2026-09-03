@@ -823,6 +823,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	root->eq_classes = NIL;
 	root->ec_merging_done = false;
 	root->non_eq_clauses = NIL;
+	root->init_plans = NIL;
 
 	root->list_cteplaninfo = NIL;
 	if (parse->cteList != NIL)

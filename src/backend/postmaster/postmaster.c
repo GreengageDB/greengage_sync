@@ -2904,37 +2904,22 @@ canAcceptConnections(int backend_type)
 	{
 		if (Shutdown > NoShutdown)
 			return CAC_SHUTDOWN;	/* shutdown is pending */
-		else if (!FatalError && pmState == PM_STARTUP)
-			return CAC_STARTUP; /* normal startup */
-
-		/*
-		 * GPDB: a mirror runs with hot_standby off and stays in PM_RECOVERY
-		 * for its whole life, so the upstream PM_RECOVERY ->
-		 * CAC_NOTCONSISTENT branch below would shadow the mirror-ready state
-		 * for good.  CAC_NOTCONSISTENT has no FTS exemption in
-		 * ProcessStartupPacket, so FTS could neither probe nor promote a
-		 * mirror, and gprecoverseg could not read the version it expects
-		 * from the CAC_MIRROR_READY error.  Once the wal receiver has been
-		 * launched at least once, report the mirror as ready.  Keep the
-		 * upstream fail-fast CAC_NOTCONSISTENT behavior for genuine hot
-		 * standby servers that just haven't reached consistency yet.
-		 */
-		else if (!EnableHotStandby && GetMirrorReadyFlag())
-			return CAC_MIRROR_READY;
-		else if (!FatalError && pmState == PM_RECOVERY)
-			return CAC_NOTCONSISTENT;	/* not yet at consistent recovery
-										 * state */
 		/*
 		 * If the wal receiver has been launched at least once, return that
 		 * the mirror is ready.
 		 */
 		else if (GetMirrorReadyFlag())
 			return CAC_MIRROR_READY;
+		else if (!FatalError && pmState == PM_STARTUP)
+			return CAC_STARTUP; /* normal startup */
+		else if (!FatalError && pmState == PM_RECOVERY)
+			return CAC_NOTCONSISTENT;	/* not yet at consistent recovery
+										 * state */
 		else if (pmState == PM_STARTUP || pmState == PM_RECOVERY)
 			return CAC_RECOVERY;	/* else must be crash recovery */
 		else
-			/*
-			 * otherwise must be resetting: could be PM_WAIT_BACKENDS,
+			/* 
+			 * otherwise must be resetting: could be PM_WAIT_BACKENDS, 
 			 * PM_WAIT_DEAD_END or PM_NO_CHILDREN.
 			 */
 			return CAC_RESET;
