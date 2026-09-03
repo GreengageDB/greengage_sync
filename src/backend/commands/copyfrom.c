@@ -1705,7 +1705,7 @@ BeginCopyFrom(ParseState *pstate,
 	/*
 	 * Look up encoding conversion function.
 	 *
-	 * GPDB: the QD used to skip transcoding in COPY_DISPATCH mode and
+	 * GGDB: the QD used to skip transcoding in COPY_DISPATCH mode and
 	 * forward raw client-encoded lines to the QEs, relying on the (now
 	 * removed) encoding_embeds_ascii/mblen logic in CopyReadLineText to
 	 * parse unconverted multi-byte data.  With the chunked encoding
@@ -1730,7 +1730,7 @@ BeginCopyFrom(ParseState *pstate,
 	}
 
 	/*
-	 * GPDB: external tables with custom formatters do their own encoding
+	 * GGDB: external tables with custom formatters do their own encoding
 	 * conversion, using this conversion proc.
 	 */
 	setEncodingConversionProc(&cstate->enc_conversion_proc,
@@ -1749,7 +1749,7 @@ BeginCopyFrom(ParseState *pstate,
 	/* Initialize state variables */
 	cstate->reached_eof = false;
 	/*
-	 * GPDB: don't reset eol_type to EOL_UNKNOWN here; it was set from
+	 * GGDB: don't reset eol_type to EOL_UNKNOWN here; it was set from
 	 * cstate->opts.eol_type above, to honor the NEWLINE option.
 	 */
 	cstate->cur_relname = RelationGetRelationName(cstate->rel);
@@ -1768,7 +1768,7 @@ BeginCopyFrom(ParseState *pstate,
 	cstate->raw_reached_eof = false;
 
 	/*
-	 * GPDB: in COPY_EXECUTOR mode we need line_buf even for binary COPY,
+	 * GGDB: in COPY_EXECUTOR mode we need line_buf even for binary COPY,
 	 * because the QD forwards the input line in the QD->QE stream and
 	 * NextCopyFromExecute() reads it into line_buf.
 	 */

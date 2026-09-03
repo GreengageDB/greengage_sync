@@ -989,7 +989,7 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 		relkind == RELKIND_AOVISIMAP)
 	{
 		/*
-		 * GPDB: append-optimized auxiliary relations are heap-storage
+		 * GGDB: append-optimized auxiliary relations are heap-storage
 		 * catalogs; UPDATE/DELETE on them identifies rows by ctid like any
 		 * table (the executor groups them with plain relations).  Without
 		 * this they fell through with no row identity at all and
@@ -1008,7 +1008,7 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 		add_row_identity_var(root, var, rtindex, "ctid");
 
 		/*
-		 * GPDB: Also emit gp_segment_id.  In an MPP cluster the executor must
+		 * GGDB: Also emit gp_segment_id.  In an MPP cluster the executor must
 		 * know which segment the target row lives on so that the Explicit
 		 * Motion can route the modified/deleted row back to its home segment
 		 * (see cdbpathtoplan_create_motion_plan()).  This mirrors the ctid
@@ -1025,7 +1025,7 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 		add_row_identity_var(root, var, rtindex, "gp_segment_id");
 
 		/*
-		 * GPDB: for an UPDATE on an old-style inheritance tree also emit a
+		 * GGDB: for an UPDATE on an old-style inheritance tree also emit a
 		 * whole-row Var.  If the update changes the distribution key it is
 		 * planned as a SplitUpdate, and the INSERT half must rebuild the
 		 * complete new tuple of the source child relation on a different

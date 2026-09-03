@@ -236,7 +236,7 @@ ReceiveCopyBinaryHeader(CopyFromState cstate)
 /*
  * CopyGetData reads data from the source (file or frontend)
  *
- * GPDB: we attempt to read 'datasize' bytes from the source.  The actual
+ * GGDB: we attempt to read 'datasize' bytes from the source.  The actual
  * number of bytes read is returned; if this is less than 'datasize', EOF
  * was detected.  (Upstream reads between 'minread' and 'maxread' bytes,
  * but the QD->QE COPY stream needs exact-size reads.)
@@ -537,7 +537,7 @@ CopyConvertBuf(CopyFromState cstate)
 }
 
 /*
- * GPDB: one step of CopyReadLineText's CSV quote/escape tracking.  Used by
+ * GGDB: one step of CopyReadLineText's CSV quote/escape tracking.  Used by
  * CopyConsumeBadInputLine() to replay/continue the quoting state of the
  * current line.  Must match the corresponding logic in CopyReadLineText().
  */
@@ -554,7 +554,7 @@ CopyCSVQuoteStep(char c, char quotec, char escapec,
 }
 
 /*
- * GPDB: helper for CopyConsumeBadInputLine().  Flush the scanned raw
+ * GGDB: helper for CopyConsumeBadInputLine().  Flush the scanned raw
  * segment [*segstart, *pos) to line_buf, consume it from the pipeline, and
  * load more raw data.  On return, *pos and *segstart point at the first
  * not-yet-scanned byte (the buffer contents may have moved).
@@ -585,7 +585,7 @@ CopyConsumeBadRefill(CopyFromState cstate, int *pos, int *segstart)
 }
 
 /*
- * GPDB: single-row error handling (SREH) support for encoding
+ * GGDB: single-row error handling (SREH) support for encoding
  * verification/conversion errors.
  *
  * The upstream pipeline verifies/converts the input in chunks
@@ -843,7 +843,7 @@ CopyConversionError(CopyFromState cstate)
 	Assert(cstate->input_reached_error);
 
 	/*
-	 * GPDB: under single-row error handling, attribute the error to the
+	 * GGDB: under single-row error handling, attribute the error to the
 	 * current physical input line: place the line's raw bytes in line_buf
 	 * for the error handler (HandleCopyError) to log, and consume the line
 	 * so that the next NextCopyFrom() attempt makes forward progress.  See
@@ -1858,7 +1858,7 @@ HandleQDErrorFrame(CopyFromState cstate, char *p, int len)
 	cdbsreh->rawdata->data = line;
 
 	/*
-	 * GPDB: use the transmitted length, not strlen(): when the rejected
+	 * GGDB: use the transmitted length, not strlen(): when the rejected
 	 * line was an encoding error, the raw bytes may contain embedded NUL
 	 * bytes, and strlen() would truncate the logged data at the first
 	 * one.
@@ -1951,7 +1951,7 @@ CopyReadLine(CopyFromState cstate)
 	cstate->line_buf_valid = true;
 
 	/*
-	 * GPDB: the data was already converted to server encoding, in
+	 * GGDB: the data was already converted to server encoding, in
 	 * CopyConvertBuf, before it entered input_buf and line_buf.  Mark
 	 * line_buf as converted, for the benefit of the single-row error
 	 * handling (is_server_enc) and the QD->QE error forwarding.

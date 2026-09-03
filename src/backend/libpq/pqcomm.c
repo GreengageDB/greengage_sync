@@ -2067,7 +2067,7 @@ pq_check_connection(void)
 	poll_ev_aux = POLLRDHUP;
 #elif defined(__darwin__)
 	/*
-	 * GPDB: OSX is able to detect closed sockets via single POSIX-compliant
+	 * GGDB: OSX is able to detect closed sockets via single POSIX-compliant
 	 * POLLHUP option
 	 */
 	poll_ev_aux = 0;

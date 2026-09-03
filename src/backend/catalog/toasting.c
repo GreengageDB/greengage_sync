@@ -245,7 +245,7 @@ create_toast_table(Relation rel, Oid toastOid, Oid toastIndexOid,
 	TupleDescAttr(tupdesc, 2)->attcompression = InvalidCompressionMethod;
 
 	/*
-	 * GPDB: namespaceid was already computed near the top of this function,
+	 * GGDB: namespaceid was already computed near the top of this function,
 	 * before the binary-upgrade OID preassignment lookup which needs it.
 	 */
 

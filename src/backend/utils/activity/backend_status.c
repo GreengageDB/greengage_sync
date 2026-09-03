@@ -451,7 +451,7 @@ pgstat_bestart(void)
 	PGSTAT_END_WRITE_ACTIVITY(vbeentry);
 
 	/*
-	 * GPDB: Initialize per-portal statistics hash for resource queues.
+	 * GGDB: Initialize per-portal statistics hash for resource queues.
 	 */
 	pgstat_init_localportalhash();
 

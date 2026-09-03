@@ -410,7 +410,7 @@ ExecInitInsertProjection(ModifyTableState *mtstate,
 	/*
 	 * Extract non-junk columns of the subplan's result tlist.
 	 *
-	 * GPDB: the projection is evaluated against the subplan's OUTPUT tuple
+	 * GGDB: the projection is evaluated against the subplan's OUTPUT tuple
 	 * (planSlot), but the tlist expressions reference the subplan's own
 	 * child.  For planner-generated plans the non-junk entries precede all
 	 * junk ones, so re-evaluating them happens to read the right columns;
@@ -2984,7 +2984,7 @@ ExecModifyTable(PlanState *pstate)
 			case CMD_UPDATE:
 
 				/*
-				 * GPDB: A Split Update is delivered as a stream of separate
+				 * GGDB: A Split Update is delivered as a stream of separate
 				 * DELETE and INSERT action rows, tagged by the DMLActionExpr
 				 * junk column (action_attno).  It is used when an UPDATE may
 				 * change a distribution key column, so the modified tuple can
@@ -3092,7 +3092,7 @@ ExecModifyTable(PlanState *pstate)
 						 RELKIND_PARTITIONED_TABLE)
 				{
 					/*
-					 * GPDB: append-optimized tables cannot fetch the old tuple
+					 * GGDB: append-optimized tables cannot fetch the old tuple
 					 * by TID (appendonly_fetch_row_version is unsupported).
 					 * Their UPDATE plan supplies the full new tuple --
 					 * preprocess_targetlist() expanded the targetlist to every
@@ -3133,7 +3133,7 @@ ExecModifyTable(PlanState *pstate)
 					else
 					{
 						/*
-						 * GPDB: no old tuple is available or needed -- the
+						 * GGDB: no old tuple is available or needed -- the
 						 * expanded targetlist supplies every column from the
 						 * subplan, so the update projection
 						 * (ExecGetUpdateNewTuple below) reads only planSlot,
@@ -3165,7 +3165,7 @@ ExecModifyTable(PlanState *pstate)
 											 oldSlot);
 
 				/*
-				 * GPDB: dynamic scans over a partitioned target (ORCA plans)
+				 * GGDB: dynamic scans over a partitioned target (ORCA plans)
 				 * require routing the tuple to locate the leaf partition's
 				 * result relation.
 				 */
@@ -3501,7 +3501,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 					elog(ERROR, "could not find junk ctid column");
 
 				/*
-				 * GPDB: locate the extra junk columns added for MPP
+				 * GGDB: locate the extra junk columns added for MPP
 				 * UPDATE/DELETE.  "gp_segment_id" identifies the segment a
 				 * row lives on (ctid is only unique within a segment);
 				 * "DMLAction" is present only when the plan contains a
@@ -3549,7 +3549,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			}
 
 			/*
-			 * GPDB: "wholerow" also carries the old child tuple for UPDATEs
+			 * GGDB: "wholerow" also carries the old child tuple for UPDATEs
 			 * on old-style inheritance trees whose children's layouts can
 			 * diverge from the root's; see ExecInhRebuildNewTuple() and the
 			 * old-slot restore in ExecModifyTable().  It is only present when
@@ -3584,7 +3584,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 * partitions; in that case setup is normally done by
 	 * ExecCrossPartitionUpdate.
 	 *
-	 * GPDB: two additional cases need routing set up up front:
+	 * GGDB: two additional cases need routing set up up front:
 	 *
 	 * - GPDB dynamic scan nodes (ORCA plans, node->forceTupleRouting)
 	 *   optimize memory usage by avoiding the need to maintain a data

@@ -510,7 +510,7 @@ typedef struct ResultRelInfo
 	AttrNumber	ri_action_attno;	/* is this an INSERT or DELETE ? */
 
 	/*
-	 * GPDB: split-update support for old-style inheritance children whose
+	 * GGDB: split-update support for old-style inheritance children whose
 	 * column layout differs from the root's.  The "wholerow" junk column
 	 * carries the old child tuple; the re-inserted tuple is rebuilt from it
 	 * plus the root-layout new values (matched by column name).
@@ -3138,7 +3138,7 @@ typedef struct SplitUpdateState
 	struct CdbHash *cdbhash;	/* hash api object */
 
 	/*
-	 * GPDB: per-result-relation placement, for old-style inheritance trees
+	 * GGDB: per-result-relation placement, for old-style inheritance trees
 	 * whose members' distribution policies differ.  The row's source relation
 	 * is identified by the "tableoid" junk column; its policy decides the
 	 * target segment of the INSERT half.  A NULL CdbHash entry means the row

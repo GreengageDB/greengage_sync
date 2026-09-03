@@ -3071,7 +3071,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 	RangeTblEntry *rte = planner_rt_fetch(best_path->nominalRelation, root);
 
 	/*
-	 * GPDB: try the Single-Row-Insert direct-dispatch optimization first.
+	 * GGDB: try the Single-Row-Insert direct-dispatch optimization first.
 	 *
 	 * For a constant INSERT ... VALUES, cdbpathtoplan_create_sri_plan()
 	 * replaces the redistribute Motion with a per-writer-segment hash filter
@@ -3092,7 +3092,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 			list_length(subplan->targetlist) > list_length(root->processed_tlist))
 		{
 			/*
-			 * GPDB: a Split Update appends a junk DMLAction column to the
+			 * GGDB: a Split Update appends a junk DMLAction column to the
 			 * subplan's targetlist, but root->processed_tlist was built by
 			 * expand_targetlist() before the SplitUpdate node was added and so
 			 * does not include it. Label only the columns processed_tlist
@@ -3432,7 +3432,7 @@ create_splitupdate_plan(PlannerInfo *root, SplitUpdatePath *path)
 	int			i;
 
 	/*
-	 * GPDB: the subplan's targetlist is labeled with root->processed_tlist
+	 * GGDB: the subplan's targetlist is labeled with root->processed_tlist
 	 * (below), i.e. it is in the column layout of the *nominal* target
 	 * relation, not of path->resultRelation.  For an UPDATE of a partitioned
 	 * table the latter is a leaf partition whose physical column order can
@@ -3541,7 +3541,7 @@ create_splitupdate_plan(PlannerInfo *root, SplitUpdatePath *path)
 	splitupdate->numHashSegments = cdbpolicy->numsegments;
 
 	/*
-	 * GPDB: an old-style inheritance tree's members can each have their own
+	 * GGDB: an old-style inheritance tree's members can each have their own
 	 * distribution policy (different key columns and/or numsegments), unlike
 	 * the partitions of a partitioned table.  A single set of hash attnos
 	 * computed from the nominal relation would then mis-place the rows of

@@ -2307,7 +2307,7 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 												  resultRelation);
 
 					/*
-					 * GPDB: one is-split-update flag per result relation.  All
+					 * GGDB: one is-split-update flag per result relation.  All
 					 * leaf partitions share the parent's distribution policy,
 					 * so the split-update decision (root->is_split_update) is
 					 * uniform across them.  This list must stay the same length

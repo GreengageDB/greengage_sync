@@ -158,7 +158,7 @@ SplitTupleTableSlot(TupleTableSlot *slot,
 		AttrNumber *hashAttnos = plannode->hashAttnos;
 
 		/*
-		 * GPDB: for an old-style inheritance target, the members' policies
+		 * GGDB: for an old-style inheritance target, the members' policies
 		 * can differ; select the source relation's own policy by the
 		 * "tableoid" junk column.  A NULL hash object means the relation's
 		 * placement cannot change (randomly distributed, or its key does not
@@ -300,7 +300,7 @@ ExecInitSplitUpdate(SplitUpdate *node, EState *estate, int eflags)
 		ExecFindJunkAttributeInTlist(node->plan.targetlist, "gp_segment_id");
 
 	/*
-	 * GPDB: set up the per-result-relation placement policies of an
+	 * GGDB: set up the per-result-relation placement policies of an
 	 * old-style inheritance target (see SplitUpdate in plannodes.h).  The
 	 * row's source relation is identified by the "tableoid" junk column.
 	 */

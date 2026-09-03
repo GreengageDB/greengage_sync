@@ -350,7 +350,7 @@ external_rescan(FileScanDesc scan)
 	scan->fs_pstate->raw_buf_index = 0;
 
 	/*
-	 * GPDB: the PG14 chunked-conversion pipeline (f82de5c46bd) keeps
+	 * GGDB: the PG14 chunked-conversion pipeline (f82de5c46bd) keeps
 	 * additional read state; a rescan after EOF or a conversion error must
 	 * clear it too, or the new scan starts already-exhausted.
 	 */

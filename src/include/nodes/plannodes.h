@@ -1541,7 +1541,7 @@ typedef struct SplitUpdate
 	int			numHashSegments;	/* # of segs to use in hash computation */
 
 	/*
-	 * GPDB: per-result-relation placement policies, used when the target is
+	 * GGDB: per-result-relation placement policies, used when the target is
 	 * an old-style inheritance tree whose members' distribution policies can
 	 * differ (key columns and/or numsegments).  Each row's source relation is
 	 * identified at run time by the "tableoid" junk column, and the matching

@@ -2077,7 +2077,7 @@ aoco_scan_bitmap_next_tuple(TableScanDesc scan,
 			ExecStoreVirtualTuple(slot);
 
 			/*
-			 * GPDB: keep tts_tableOid valid.  The bitmap fetch reuses a slot
+			 * GGDB: keep tts_tableOid valid.  The bitmap fetch reuses a slot
 			 * whose tableOid is not stamped by the scan-slot init path, and a
 			 * zero there made the per-row result-relation lookup fall
 			 * through to the wrong table (heap_delete with an AO TID).

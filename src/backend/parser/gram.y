@@ -10051,7 +10051,7 @@ CreateFunctionStmt:
 					n->parameters = $5;
 					n->returnType = $7;
 					n->options = $8;
-					/* GPDB: legacy WITH (describe=..., etc.) attribute list */
+					/* GGDB: legacy WITH (describe=..., etc.) attribute list */
 					n->options = list_concat(n->options, $9);
 					n->sql_body = $10;
 					$$ = (Node *)n;
@@ -10067,7 +10067,7 @@ CreateFunctionStmt:
 					n->returnType = TableFuncTypeName($9);
 					n->returnType->location = @7;
 					n->options = $11;
-					/* GPDB: legacy WITH (describe=..., etc.) attribute list */
+					/* GGDB: legacy WITH (describe=..., etc.) attribute list */
 					n->options = list_concat(n->options, $12);
 					n->sql_body = $13;
 					$$ = (Node *)n;
@@ -10082,7 +10082,7 @@ CreateFunctionStmt:
 					n->parameters = $5;
 					n->returnType = NULL;
 					n->options = $6;
-					/* GPDB: legacy WITH (describe=..., etc.) attribute list */
+					/* GGDB: legacy WITH (describe=..., etc.) attribute list */
 					n->options = list_concat(n->options, $7);
 					n->sql_body = $8;
 					$$ = (Node *)n;

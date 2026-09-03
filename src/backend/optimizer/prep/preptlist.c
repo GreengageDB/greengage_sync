@@ -129,7 +129,7 @@ preprocess_targetlist(PlannerInfo *root)
 	else if (command_type == CMD_UPDATE)
 	{
 		/*
-		 * GPDB: Decide up front whether this UPDATE modifies a distribution
+		 * GGDB: Decide up front whether this UPDATE modifies a distribution
 		 * key column and therefore needs a Split Update (which can move the
 		 * tuple to a different segment).  We must know this *before* deciding
 		 * how to shape the targetlist:
@@ -202,7 +202,7 @@ preprocess_targetlist(PlannerInfo *root)
 			else
 			{
 				/*
-				 * GPDB: like the branch above, but a Split Update's expanded
+				 * GGDB: like the branch above, but a Split Update's expanded
 				 * tlist keeps NULL placeholders for dropped columns (its
 				 * INSERT half wants resno == attno).  Leave those attnos out
 				 * of update_colnos: translating them to an inheritance child
@@ -719,7 +719,7 @@ check_splitupdate(List *tlist, Index result_relation, Relation rel, bool inh)
 	}
 
 	/*
-	 * GPDB: an old-style inheritance child can have its own distribution
+	 * GGDB: an old-style inheritance child can have its own distribution
 	 * policy, with different key columns than the parent's.  The UPDATE runs
 	 * as a single plan over the whole tree, so if the changed columns cover
 	 * *any* member's distribution key, the whole UPDATE must run as a Split

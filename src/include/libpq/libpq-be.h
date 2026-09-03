@@ -80,8 +80,8 @@ typedef enum CAC_state
 	CAC_NOTCONSISTENT,
 	CAC_TOOMANY,
 	CAC_SUPERUSER,
-	CAC_MIRROR_READY,			/* GPDB: connection to a ready mirror */
-	CAC_RESET					/* GPDB: postmaster is resetting */
+	CAC_MIRROR_READY,			/* GGDB: connection to a ready mirror */
+	CAC_RESET					/* GGDB: postmaster is resetting */
 } CAC_state;
 
 

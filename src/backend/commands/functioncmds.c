@@ -1319,7 +1319,7 @@ ObjectAddress
 CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 {
 	/*
-	 * GPDB: snapshot the statement for QE dispatch BEFORE interpret_AS_clause
+	 * GGDB: snapshot the statement for QE dispatch BEFORE interpret_AS_clause
 	 * transforms a SQL-standard body (sql_body) in place; dispatching the
 	 * mutated tree makes the QE re-transform an already-transformed body
 	 * ("unexpected non-SELECT command in SubLink").

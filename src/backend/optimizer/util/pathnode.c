@@ -2090,7 +2090,7 @@ create_resultcache_path(PlannerInfo *root, RelOptInfo *rel, Path *subpath,
 	pathnode->path.rescannable = subpath->rescannable;
 
 	/*
-	 * GPDB: a Result Cache inherits the distribution (locus) of its subpath.
+	 * GGDB: a Result Cache inherits the distribution (locus) of its subpath.
 	 * Without this the path reaches join-motion planning with an
 	 * uninitialized CdbPathLocus (FailedAssertion cdbpathlocus_is_valid).
 	 */

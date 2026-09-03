@@ -71,7 +71,7 @@ typedef struct AlteredTableInfo
 	 * returns control.  This can be exploited by ATExecCmd subroutines to
 	 * close/reopen across transaction boundaries.
 	 *
-	 * GPDB: like oldDesc, this is never serialized (see outfuncs.c); each
+	 * GGDB: like oldDesc, this is never serialized (see outfuncs.c); each
 	 * node manages its own relcache pointer.
 	 */
 	Relation	rel;

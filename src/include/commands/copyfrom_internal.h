@@ -46,7 +46,7 @@ typedef struct CopyFromStateData
 	CopySrcDest	copy_src;		/* type of copy source */
 	FILE	   *copy_file;		/* used if copy_src == COPY_FILE */
 	StringInfo	fe_msgbuf;		/* used if copy_src == COPY_FRONTEND */
-	bool		reached_eof;	/* GPDB: true if we read to end of copy data.
+	bool		reached_eof;	/* GGDB: true if we read to end of copy data.
 								 * Not maintained by the upstream raw_buf/
 								 * input_buf pipeline (see raw_reached_eof and
 								 * input_reached_eof below); still set and
@@ -130,7 +130,7 @@ typedef struct CopyFromStateData
 	 */
 	StringInfoData line_buf;
 	bool		line_buf_valid; /* contains the row being processed? */
-	bool		line_buf_converted; /* GPDB: line_buf in server encoding?
+	bool		line_buf_converted; /* GGDB: line_buf in server encoding?
 									 * With the chunked encoding conversion
 									 * (input_buf) pipeline this is true for
 									 * every fully read line; it is kept for
