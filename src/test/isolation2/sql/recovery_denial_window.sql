@@ -1,0 +1,40 @@
+-- Test the connection-denial contract of a segment in the
+-- pre-walreceiver recovery window (PM_RECOVERY -> CAC_NOTCONSISTENT).
+-- Since upstream df9384492b8 this state answers "the database system is
+-- not (yet) accepting connections"; GGDB's FTS probe and gang-creation
+-- retry logic recognize that wording and parse the replayed-LSN detail,
+-- and FTS/fault-injector connections must be let through to a mirror in
+-- this state.
+--
+-- The window is held open deterministically: stall WAL apply on the
+-- running mirror with recovery_min_apply_delay, pile up a backlog of
+-- commit records, and restart the mirror.  Replay then stalls inside its
+-- local pg_wal, before the walreceiver (and with it the CAC_MIRROR_READY
+-- fast path) can start.  Requires a cluster with mirrors.
+
+-- save the mirror's coordinates
+!\retcode psql -At -p ${PGPORT} -d postgres -c "select datadir from gp_segment_configuration where content=0 and role='m'" > /tmp/recovery_denial_window.${PGPORT}; test -s /tmp/recovery_denial_window.${PGPORT};
+
+create table t_denial_window(a int);
+insert into t_denial_window select generate_series(1,1000);
+
+-- stall apply on the running mirror, then build a replay backlog
+!\retcode MDIR=$(cat /tmp/recovery_denial_window.${PGPORT}); echo "recovery_min_apply_delay = '600s'" >> ${MDIR}/postgresql.auto.conf; pg_ctl -D ${MDIR} reload;
+insert into t_denial_window select generate_series(1,20000);
+
+-- restart the mirror into the held-open window
+!\retcode sleep 2; MDIR=$(cat /tmp/recovery_denial_window.${PGPORT}); pg_ctl -D ${MDIR} restart -w -m fast -l /dev/null;
+
+-- 1. The denial message must carry both the wording and the
+--    recovery-progress detail that checkIfFailedDueToNormalRestart()
+--    and segment_failure_due_to_recovery() depend on.
+!\retcode MPORT=$(psql -At -p ${PGPORT} -d postgres -c "select port from gp_segment_configuration where content=0 and role='m'"); msg=; for i in $(seq 30); do msg=$(PGOPTIONS='-c gp_role=utility' psql -p ${MPORT} -d postgres -c 'select 1' 2>&1); echo "${msg}" | grep -q "accepting connections" && break; sleep 1; done; echo "${msg}" | grep -q "accepting connections" && echo "${msg}" | grep -q "last replayed record at";
+
+-- 2. The FTS/fault-injector connection must be let through to the
+--    mirror while it sits in this window.
+select gp_inject_fault('all', 'reset', dbid) from gp_segment_configuration where content=0 and role='m';
+
+-- release the window and restore the mirror
+!\retcode MDIR=$(cat /tmp/recovery_denial_window.${PGPORT}); sed -i "/recovery_min_apply_delay/d" ${MDIR}/postgresql.auto.conf; pg_ctl -D ${MDIR} restart -w -m fast -l /dev/null; rm -f /tmp/recovery_denial_window.${PGPORT};
+select wait_until_all_segments_synchronized();
+drop table t_denial_window;
