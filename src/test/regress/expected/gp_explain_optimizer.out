@@ -257,6 +257,7 @@ explain (format json, costs off) SELECT * FROM dummy_ext_tab;
        "Segments": 3,                         +
        "Gang Type": "primary reader",         +
        "Parallel Aware": false,               +
+       "Async Capable": false,                +
        "Plans": [                             +
          {                                    +
            "Node Type": "Foreign Scan",       +
@@ -266,6 +267,7 @@ explain (format json, costs off) SELECT * FROM dummy_ext_tab;
            "Segments": 3,                     +
            "Gang Type": "primary reader",     +
            "Parallel Aware": false,           +
+           "Async Capable": false,            +
            "Relation Name": "dummy_ext_tab",  +
            "Alias": "dummy_ext_tab"           +
          }                                    +
@@ -291,6 +293,7 @@ explain (format yaml, costs off) SELECT * FROM dummy_aotab;
      Segments: 3                          +
      Gang Type: "primary reader"          +
      Parallel Aware: false                +
+     Async Capable: false                 +
      Plans:                               +
        - Node Type: "Seq Scan"            +
          Parent Relationship: "Outer"     +
@@ -298,6 +301,7 @@ explain (format yaml, costs off) SELECT * FROM dummy_aotab;
          Segments: 3                      +
          Gang Type: "primary reader"      +
          Parallel Aware: false            +
+         Async Capable: false             +
          Relation Name: "dummy_aotab"     +
          Alias: "dummy_aotab"             +
    Optimizer: "Pivotal Optimizer (GPORCA)"
@@ -316,16 +320,18 @@ explain (format xml, costs off) insert into dummy_aotab values (1);
        <Segments>1</Segments>                                      +
        <Gang-Type>primary writer</Gang-Type>                       +
        <Parallel-Aware>false</Parallel-Aware>                      +
+       <Async-Capable>false</Async-Capable>                        +
        <Relation-Name>dummy_aotab</Relation-Name>                  +
        <Alias>dummy_aotab</Alias>                                  +
        <Plans>                                                     +
          <Plan>                                                    +
            <Node-Type>Result</Node-Type>                           +
-           <Parent-Relationship>Member</Parent-Relationship>       +
+           <Parent-Relationship>Outer</Parent-Relationship>        +
            <Slice>0</Slice>                                        +
            <Segments>1</Segments>                                  +
            <Gang-Type>primary writer</Gang-Type>                   +
            <Parallel-Aware>false</Parallel-Aware>                  +
+           <Async-Capable>false</Async-Capable>                    +
            <Plans>                                                 +
              <Plan>                                                +
                <Node-Type>Result</Node-Type>                       +
@@ -334,6 +340,7 @@ explain (format xml, costs off) insert into dummy_aotab values (1);
                <Segments>1</Segments>                              +
                <Gang-Type>primary writer</Gang-Type>               +
                <Parallel-Aware>false</Parallel-Aware>              +
+               <Async-Capable>false</Async-Capable>                +
                <Plans>                                             +
                  <Plan>                                            +
                    <Node-Type>Result</Node-Type>                   +
@@ -342,6 +349,7 @@ explain (format xml, costs off) insert into dummy_aotab values (1);
                    <Segments>1</Segments>                          +
                    <Gang-Type>primary writer</Gang-Type>           +
                    <Parallel-Aware>false</Parallel-Aware>          +
+                   <Async-Capable>false</Async-Capable>            +
                  </Plan>                                           +
                </Plans>                                            +
              </Plan>                                               +
@@ -429,6 +437,7 @@ explain (slicetable, costs off, format json) SELECT * FROM explaintest;
        "Segments": 3,                          +
        "Gang Type": "primary reader",          +
        "Parallel Aware": false,                +
+       "Async Capable": false,                 +
        "Plans": [                              +
          {                                     +
            "Node Type": "Seq Scan",            +
@@ -437,6 +446,7 @@ explain (slicetable, costs off, format json) SELECT * FROM explaintest;
            "Segments": 3,                      +
            "Gang Type": "primary reader",      +
            "Parallel Aware": false,            +
+           "Async Capable": false,             +
            "Relation Name": "explaintest",     +
            "Alias": "explaintest"              +
          }                                     +
