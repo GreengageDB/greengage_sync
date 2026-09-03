@@ -100,6 +100,9 @@ WHERE t1.unique1 < 1000;
 SET work_mem TO '64kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 SET enable_mergejoin TO off;
+-- GPDB: also disable sort, otherwise a distributed Merge Join is chosen over the
+-- Nested Loop + Result Cache plan this test needs.
+SET enable_sort TO off;
 -- Ensure we get some evictions.  We're unable to validate the hits and misses
 -- here as the number of entries that fit in the cache at once will vary
 -- between different machines.
@@ -123,41 +126,42 @@ WHERE t2.unique1 < 1200;', true);
  Optimizer: Pivotal Optimizer (GPORCA)
 (12 rows)
 
+RESET enable_sort;
 RESET enable_mergejoin;
 RESET work_mem;
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 RESET force_parallel_mode;
-RESET enable_bitmapscan;
-RESET enable_hashjoin;
--- Test parallel plans with Result Cache.
+-- Test Result Cache plans.  GPDB has no intra-segment parallel workers, so
+-- upstream's "parallel plan" is just the ordinary distributed plan here.  We
+-- keep enable_hashjoin/enable_bitmapscan off (see above) so the planner sticks
+-- to the Nested Loop + Result Cache shape.
 SET min_parallel_table_scan_size TO 0;
 SET parallel_setup_cost TO 0;
 SET parallel_tuple_cost TO 0;
 SET max_parallel_workers_per_gather TO 2;
--- Ensure we get a parallel plan.
+-- Ensure we get a Result Cache plan.
 EXPLAIN (COSTS OFF)
 SELECT COUNT(*),AVG(t2.unique1) FROM tenk1 t1,
 LATERAL (SELECT t2.unique1 FROM tenk1 t2 WHERE t1.twenty = t2.unique1) t2
 WHERE t1.unique1 < 1000;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
-               ->  Hash Join
-                     Hash Cond: (t2.unique1 = t1.twenty)
-                     ->  Seq Scan on tenk1 t2
-                     ->  Hash
-                           ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                                 Hash Key: t1.twenty
-                                 ->  Bitmap Heap Scan on tenk1 t1
-                                       Recheck Cond: (unique1 < 1000)
-                                       ->  Bitmap Index Scan on tenk1_unique1
-                                             Index Cond: (unique1 < 1000)
+               ->  Nested Loop
+                     ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                           Hash Key: t1.twenty
+                           ->  Seq Scan on tenk1 t1
+                                 Filter: (unique1 < 1000)
+                     ->  Result Cache
+                           Cache Key: t1.twenty
+                           ->  Index Only Scan using tenk1_unique1 on tenk1 t2
+                                 Index Cond: (unique1 = t1.twenty)
  Optimizer: Postgres query optimizer
-(14 rows)
+(13 rows)
 
--- And ensure the parallel plan gives us the correct results.
+-- And ensure the plan gives us the correct results.
 SELECT COUNT(*),AVG(t2.unique1) FROM tenk1 t1,
 LATERAL (SELECT t2.unique1 FROM tenk1 t2 WHERE t1.twenty = t2.unique1) t2
 WHERE t1.unique1 < 1000;
@@ -170,3 +174,5 @@ RESET max_parallel_workers_per_gather;
 RESET parallel_tuple_cost;
 RESET parallel_setup_cost;
 RESET min_parallel_table_scan_size;
+RESET enable_bitmapscan;
+RESET enable_hashjoin;
