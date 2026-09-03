@@ -303,6 +303,7 @@ IsMemoryIntensiveOperator(Node *node, PlannedStmt *stmt)
 		case T_WindowAgg:
 		case T_TableFunctionScan:
 		case T_FunctionScan:
+		case T_ResultCache:
 			return true;
 		case T_Agg:
 			{

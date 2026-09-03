@@ -794,6 +794,7 @@ ExecSquelchNode(PlanState *node)
 		case T_PartitionSelectorState:
 		case T_WorkTableScanState:
 		case T_ResultState:
+		case T_ResultCacheState:
 		case T_ProjectSetState:
 			ExecSquelchNode(outerPlanState(node));
 			ExecSquelchNode(innerPlanState(node));
