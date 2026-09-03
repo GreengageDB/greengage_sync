@@ -1523,9 +1523,45 @@ ProcessUtilitySlow(ParseState *pstate,
 						if (cmd->subtype == AT_DetachPartition)
 						{
 							if (((PartitionCmd *) cmd->def)->concurrent)
+							{
 								PreventInTransactionBlock(isTopLevel,
 														  "ALTER TABLE ... DETACH CONCURRENTLY");
+
+								/*
+								 * GGDB: the concurrent path commits inside
+								 * the command (like CREATE INDEX
+								 * CONCURRENTLY), which does not fit the QD's
+								 * assign-then-dispatch OID model: the
+								 * partition constraint's OID is assigned
+								 * before the internal commit, but the
+								 * statement is dispatched to the QEs only
+								 * once, at the end.  Reject it in dispatch
+								 * mode; in utility mode there is no dispatch
+								 * and the command works as in upstream (the
+								 * src/test/isolation suite relies on that --
+								 * it runs with gp_role=utility).
+								 */
+								if (Gp_role == GP_ROLE_DISPATCH)
+									ereport(ERROR,
+											(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+											 errmsg("ALTER TABLE ... DETACH PARTITION ... CONCURRENTLY is not supported"),
+											 errhint("Use ALTER TABLE ... DETACH PARTITION without CONCURRENTLY.")));
+							}
 						}
+
+						/*
+						 * GGDB: FINALIZE completes an interrupted concurrent
+						 * detach, and with CONCURRENTLY rejected above the
+						 * only way such pending state can exist is a
+						 * utility-mode session on the coordinator.  The QEs
+						 * never have it, so a dispatched FINALIZE could only
+						 * diverge; reject it in dispatch mode as well.
+						 */
+						if (cmd->subtype == AT_DetachPartitionFinalize &&
+							Gp_role == GP_ROLE_DISPATCH)
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("ALTER TABLE ... DETACH PARTITION ... FINALIZE is not supported")));
 					}
 
 					/*
