@@ -214,9 +214,10 @@ $node->connect_fails(
 	"CRL belonging to a different CA",
 	expected_stderr => qr/SSL error: certificate verify failed/);
 
-# The same for CRL directory
+# The same for CRL directory.  sslcrl='' is added here to override the
+# invalid default, so as this does not interfere with this case.
 $node->connect_fails(
-	"$common_connstr sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrldir=ssl/client-crldir",
+	"$common_connstr sslcrl='' sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrldir=ssl/client-crldir",
 	"directory CRL belonging to a different CA",
 	expected_stderr => qr/SSL error: certificate verify failed/);
 
@@ -347,8 +348,10 @@ $node->connect_fails(
 	"$common_connstr sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrl=ssl/root+server.crl",
 	"does not connect with client-side CRL file",
 	expected_stderr => qr/SSL error: certificate verify failed/);
+# sslcrl='' is added here to override the invalid default, so as this
+# does not interfere with this case.
 $node->connect_fails(
-	"$common_connstr sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrldir=ssl/root+server-crldir",
+	"$common_connstr sslcrl='' sslrootcert=ssl/root+server_ca.crt sslmode=verify-ca sslcrldir=ssl/root+server-crldir",
 	"does not connect with client-side CRL directory",
 	expected_stderr => qr/SSL error: certificate verify failed/);
 
