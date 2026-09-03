@@ -2959,26 +2959,26 @@ SELECT id+1  FROM project( TABLE( SELECT * FROM history ), 1) order by 1;
 (18 rows)
 
 SELECT extract(day from "time") FROM project( TABLE( SELECT * FROM history ), 2) order by 1;
- date_part 
------------
-        19
-        19
-        19
-        19
-        19
-        20
-        20
-        20
-        20
-        20
-        21
-        21
-        21
-        21
-        21
-        21
-        22
-        22
+ extract 
+---------
+      19
+      19
+      19
+      19
+      19
+      20
+      20
+      20
+      20
+      20
+      21
+      21
+      21
+      21
+      21
+      21
+      22
+      22
 (18 rows)
 
 SELECT * FROM project( TABLE( SELECT * FROM pg_am ),
@@ -3017,7 +3017,7 @@ SELECT * FROM project( TABLE( SELECT * FROM pg_am ),
 
 -- ERROR: invalid operations demonstrating different return types
 SELECT extract(day from id) FROM project( TABLE( SELECT * FROM history ), 1);
-ERROR:  function pg_catalog.date_part(unknown, integer) does not exist
+ERROR:  function pg_catalog.extract(unknown, integer) does not exist
 LINE 1: SELECT extract(day from id) FROM project( TABLE( SELECT * FR...
                ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.

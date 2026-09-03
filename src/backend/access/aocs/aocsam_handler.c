@@ -2075,6 +2075,14 @@ aoco_scan_bitmap_next_tuple(TableScanDesc scan,
 		{
 			/* OK to return this tuple */
 			ExecStoreVirtualTuple(slot);
+
+			/*
+			 * GGDB: keep tts_tableOid valid.  The bitmap fetch reuses a slot
+			 * whose tableOid is not stamped by the scan-slot init path, and a
+			 * zero there made the per-row result-relation lookup fall
+			 * through to the wrong table (heap_delete with an AO TID).
+			 */
+			slot->tts_tableOid = RelationGetRelid(aocsBitmapScan->rs_base.rs_rd);
 			pgstat_count_heap_fetch(aocsBitmapScan->rs_base.rs_rd);
 
 			return true;

@@ -319,8 +319,6 @@ typedef struct StdRdOptions
 	int			compresslevel;  /* compression level (AO rels only) */
 	char		compresstype[NAMEDATALEN]; /* compression type (AO rels only) */
 	bool		checksum;		/* checksum (AO rels only) */
-	bool		parallel_insert_enabled;	/* enables planner's use of
-											 * parallel insert */
 } StdRdOptions;
 
 #define HEAP_MIN_FILLFACTOR			10
@@ -440,20 +438,6 @@ typedef struct ViewOptions
 	 (relation)->rd_options &&												\
 	 ((ViewOptions *) (relation)->rd_options)->check_option ==				\
 	  VIEW_OPTION_CHECK_OPTION_CASCADED)
-
-/*
- * RelationGetParallelInsert
- *		Returns the relation's parallel_insert_enabled reloption setting.
- *		Note multiple eval of argument!
- *
- * GPDB: partitioned tables use the same StdRdOptions layout as regular
- * heap tables (see partitioned_table_reloptions()), not a dedicated
- * struct, so no relkind-based branch is needed here.
- */
-#define RelationGetParallelInsert(relation, defaultpd) 						\
-	((relation)->rd_options ?												\
-	 ((StdRdOptions *) (relation)->rd_options)->parallel_insert_enabled :		\
-	 (defaultpd))
 
 /*
  * RelationIsValid
@@ -639,6 +623,13 @@ typedef struct ViewOptions
 	} while (0)
 
 /*
+ * RelationIsPermanent
+ *		True if relation is permanent.
+ */
+#define RelationIsPermanent(relation) \
+	((relation)->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT)
+
+/*
  * RelationNeedsWAL
  *		True if relation needs WAL.
  *
@@ -647,8 +638,7 @@ typedef struct ViewOptions
  * RelFileNode" in src/backend/access/transam/README.
  */
 #define RelationNeedsWAL(relation)										\
-	((relation)->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT &&	\
-	 (XLogIsNeeded() ||													\
+	(RelationIsPermanent(relation) && (XLogIsNeeded() ||				\
 	  (relation->rd_createSubid == InvalidSubTransactionId &&			\
 	   relation->rd_firstRelfilenodeSubid == InvalidSubTransactionId)))
 
@@ -732,7 +722,8 @@ typedef struct ViewOptions
  *		WAL stream.
  *
  * We don't log information for unlogged tables (since they don't WAL log
- * anyway) and for system tables (their content is hard to make sense of, and
+ * anyway), for foreign tables (since they don't WAL log, either),
+ * and for system tables (their content is hard to make sense of, and
  * it would complicate decoding slightly for little gain). Note that we *do*
  * log information for user defined catalog tables since they presumably are
  * interesting to the user...
@@ -740,6 +731,7 @@ typedef struct ViewOptions
 #define RelationIsLogicallyLogged(relation) \
 	(XLogLogicalInfoActive() && \
 	 RelationNeedsWAL(relation) && \
+	 (relation)->rd_rel->relkind != RELKIND_FOREIGN_TABLE &&	\
 	 !IsCatalogRelation(relation))
 
 /* routines in utils/cache/relcache.c */

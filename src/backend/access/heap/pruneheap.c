@@ -56,11 +56,30 @@ typedef struct
 	OffsetNumber redirected[MaxHeapTuplesPerPage * 2];
 	OffsetNumber nowdead[MaxHeapTuplesPerPage];
 	OffsetNumber nowunused[MaxHeapTuplesPerPage];
-	/* marked[i] is true if item i is entered in one of the above arrays */
+
+	/*
+	 * marked[i] is true if item i is entered in one of the above arrays.
+	 *
+	 * This needs to be MaxHeapTuplesPerPage + 1 long as FirstOffsetNumber is
+	 * 1. Otherwise every access would need to subtract 1.
+	 */
 	bool		marked[MaxHeapTuplesPerPage + 1];
+
+	/*
+	 * Tuple visibility is only computed once for each tuple, for correctness
+	 * and efficiency reasons; see comment in heap_page_prune() for
+	 * details. This is of type int8[,] intead of HTSV_Result[], so we can use
+	 * -1 to indicate no visibility has been computed, e.g. for LP_DEAD items.
+	 *
+	 * Same indexing as ->marked.
+	 */
+	int8		htsv[MaxHeapTuplesPerPage + 1];
 } PruneState;
 
 /* Local functions */
+static HTSV_Result heap_prune_satisfies_vacuum(PruneState *prstate,
+											   HeapTuple tup,
+											   Buffer buffer);
 static int	heap_prune_chain(Buffer buffer,
 							 OffsetNumber rootoffnum,
 							 PruneState *prstate);
@@ -182,13 +201,10 @@ heap_page_prune_opt(Relation relation, Buffer buffer)
 		 */
 		if (PageIsFull(page) || PageGetHeapFreeSpace(page) < minfree)
 		{
-			TransactionId ignore = InvalidTransactionId;	/* return value not
-															 * needed */
-
 			/* OK to prune */
 			(void) heap_page_prune(relation, buffer, vistest,
 								   limited_xmin, limited_ts,
-								   true, &ignore, NULL);
+								   true, NULL);
 		}
 
 		/* And release buffer lock */
@@ -213,8 +229,6 @@ heap_page_prune_opt(Relation relation, Buffer buffer)
  * send its own new total to pgstats, and we don't want this delta applied
  * on top of that.)
  *
- * Sets latestRemovedXid for caller on return.
- *
  * off_loc is the offset location required by the caller to use in error
  * callback.
  *
@@ -225,7 +239,7 @@ heap_page_prune(Relation relation, Buffer buffer,
 				GlobalVisState *vistest,
 				TransactionId old_snap_xmin,
 				TimestampTz old_snap_ts,
-				bool report_stats, TransactionId *latestRemovedXid,
+				bool report_stats,
 				OffsetNumber *off_loc)
 {
 	int			ndeleted = 0;
@@ -233,6 +247,7 @@ heap_page_prune(Relation relation, Buffer buffer,
 	OffsetNumber offnum,
 				maxoff;
 	PruneState	prstate;
+	HeapTupleData tup;
 
 	/*
 	 * Our strategy is to scan the page and make lists of items to change,
@@ -251,12 +266,64 @@ heap_page_prune(Relation relation, Buffer buffer,
 	prstate.old_snap_xmin = old_snap_xmin;
 	prstate.old_snap_ts = old_snap_ts;
 	prstate.old_snap_used = false;
-	prstate.latestRemovedXid = *latestRemovedXid;
+	prstate.latestRemovedXid = InvalidTransactionId;
 	prstate.nredirected = prstate.ndead = prstate.nunused = 0;
 	memset(prstate.marked, 0, sizeof(prstate.marked));
 
-	/* Scan the page */
 	maxoff = PageGetMaxOffsetNumber(page);
+	tup.t_tableOid = RelationGetRelid(prstate.rel);
+
+	/*
+	 * Determine HTSV for all tuples.
+	 *
+	 * This is required for correctness to deal with cases where running HTSV
+	 * twice could result in different results (e.g. RECENTLY_DEAD can turn to
+	 * DEAD if another checked item causes GlobalVisTestIsRemovableFullXid()
+	 * to update the horizon, INSERT_IN_PROGRESS can change to DEAD if the
+	 * inserting transaction aborts, ...). That in turn could cause
+	 * heap_prune_chain() to behave incorrectly if a tuple is reached twice,
+	 * once directly via a heap_prune_chain() and once following a HOT chain.
+	 *
+	 * It's also good for performance. Most commonly tuples within a page are
+	 * stored at decreasing offsets (while the items are stored at increasing
+	 * offsets). When processing all tuples on a page this leads to reading
+	 * memory at decreasing offsets within a page, with a variable stride.
+	 * That's hard for CPU prefetchers to deal with. Processing the items in
+	 * reverse order (and thus the tuples in increasing order) increases
+	 * prefetching efficiency significantly / decreases the number of cache
+	 * misses.
+	 */
+	for (offnum = maxoff;
+		 offnum >= FirstOffsetNumber;
+		 offnum = OffsetNumberPrev(offnum))
+	{
+		ItemId		itemid = PageGetItemId(page, offnum);
+		HeapTupleHeader htup;
+
+		/* Nothing to do if slot doesn't contain a tuple */
+		if (!ItemIdIsNormal(itemid))
+		{
+			prstate.htsv[offnum] = -1;
+			continue;
+		}
+
+		htup = (HeapTupleHeader) PageGetItem(page, itemid);
+		tup.t_data = htup;
+		tup.t_len = ItemIdGetLength(itemid);
+		ItemPointerSet(&(tup.t_self), BufferGetBlockNumber(buffer), offnum);
+
+		/*
+		 * Set the offset number so that we can display it along with any
+		 * error that occurred while processing this tuple.
+		 */
+		if (off_loc)
+			*off_loc = offnum;
+
+		prstate.htsv[offnum] = heap_prune_satisfies_vacuum(&prstate, &tup,
+														   buffer);
+	}
+
+	/* Scan the page */
 	for (offnum = FirstOffsetNumber;
 		 offnum <= maxoff;
 		 offnum = OffsetNumberNext(offnum))
@@ -267,10 +334,7 @@ heap_page_prune(Relation relation, Buffer buffer,
 		if (prstate.marked[offnum])
 			continue;
 
-		/*
-		 * Set the offset number so that we can display it along with any
-		 * error that occurred while processing this tuple.
-		 */
+		/* see preceding loop */
 		if (off_loc)
 			*off_loc = offnum;
 
@@ -318,17 +382,41 @@ heap_page_prune(Relation relation, Buffer buffer,
 		MarkBufferDirty(buffer);
 
 		/*
-		 * Emit a WAL XLOG_HEAP2_CLEAN record showing what we did
+		 * Emit a WAL XLOG_HEAP2_PRUNE record showing what we did
 		 */
 		if (RelationNeedsWAL(relation))
 		{
+			xl_heap_prune xlrec;
 			XLogRecPtr	recptr;
 
-			recptr = log_heap_clean(relation, buffer,
-									prstate.redirected, prstate.nredirected,
-									prstate.nowdead, prstate.ndead,
-									prstate.nowunused, prstate.nunused,
-									prstate.latestRemovedXid);
+			xlrec.latestRemovedXid = prstate.latestRemovedXid;
+			xlrec.nredirected = prstate.nredirected;
+			xlrec.ndead = prstate.ndead;
+
+			XLogBeginInsert();
+			XLogRegisterData((char *) &xlrec, SizeOfHeapPrune);
+
+			XLogRegisterBuffer(0, buffer, REGBUF_STANDARD);
+
+			/*
+			 * The OffsetNumber arrays are not actually in the buffer, but we
+			 * pretend that they are.  When XLogInsert stores the whole
+			 * buffer, the offset arrays need not be stored too.
+			 */
+			if (prstate.nredirected > 0)
+				XLogRegisterBufData(0, (char *) prstate.redirected,
+									prstate.nredirected *
+									sizeof(OffsetNumber) * 2);
+
+			if (prstate.ndead > 0)
+				XLogRegisterBufData(0, (char *) prstate.nowdead,
+									prstate.ndead * sizeof(OffsetNumber));
+
+			if (prstate.nunused > 0)
+				XLogRegisterBufData(0, (char *) prstate.nowunused,
+									prstate.nunused * sizeof(OffsetNumber));
+
+			recptr = XLogInsert(RM_HEAP2_ID, XLOG_HEAP2_PRUNE);
 
 			PageSetLSN(BufferGetPage(buffer), recptr);
 		}
@@ -362,8 +450,6 @@ heap_page_prune(Relation relation, Buffer buffer,
 	 */
 	if (report_stats && ndeleted > prstate.ndead)
 		pgstat_update_heap_dead_tuples(relation, ndeleted - prstate.ndead);
-
-	*latestRemovedXid = prstate.latestRemovedXid;
 
 	/*
 	 * XXX Should we update the FSM information of this page ?
@@ -471,17 +557,14 @@ heap_prune_satisfies_vacuum(PruneState *prstate, HeapTuple tup, Buffer buffer)
  * the HOT chain is pruned by removing all DEAD tuples at the start of the HOT
  * chain.  We also prune any RECENTLY_DEAD tuples preceding a DEAD tuple.
  * This is OK because a RECENTLY_DEAD tuple preceding a DEAD tuple is really
- * DEAD, the OldestXmin test is just too coarse to detect it.
+ * DEAD, our visibility test is just too coarse to detect it.
  *
  * The root line pointer is redirected to the tuple immediately after the
  * latest DEAD tuple.  If all tuples in the chain are DEAD, the root line
  * pointer is marked LP_DEAD.  (This includes the case of a DEAD simple
  * tuple, which we treat as a chain of length 1.)
  *
- * OldestXmin is the cutoff XID used to identify dead tuples.
- *
- * We don't actually change the page here, except perhaps for hint-bit updates
- * caused by HeapTupleSatisfiesVacuum.  We just add entries to the arrays in
+ * We don't actually change the page here. We just add entries to the arrays in
  * prstate showing the changes to be made.  Items to be redirected are added
  * to the redirected[] array (two entries per redirection); items to be set to
  * LP_DEAD state are added to nowdead[]; and items to be set to LP_UNUSED
@@ -503,9 +586,6 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 	OffsetNumber chainitems[MaxHeapTuplesPerPage];
 	int			nchain = 0,
 				i;
-	HeapTupleData tup;
-
-	tup.t_tableOid = RelationGetRelid(prstate->rel);
 
 	rootlp = PageGetItemId(dp, rootoffnum);
 
@@ -514,11 +594,8 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 	 */
 	if (ItemIdIsNormal(rootlp))
 	{
+		Assert(prstate->htsv[rootoffnum] != -1);
 		htup = (HeapTupleHeader) PageGetItem(dp, rootlp);
-
-		tup.t_data = htup;
-		tup.t_len = ItemIdGetLength(rootlp);
-		ItemPointerSet(&(tup.t_self), BufferGetBlockNumber(buffer), rootoffnum);
 
 		if (HeapTupleHeaderIsHeapOnly(htup))
 		{
@@ -540,8 +617,8 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 			 * either here or while following a chain below.  Whichever path
 			 * gets there first will mark the tuple unused.
 			 */
-			if (heap_prune_satisfies_vacuum(prstate, &tup, buffer)
-				== HEAPTUPLE_DEAD && !HeapTupleHeaderIsHotUpdated(htup))
+			if (prstate->htsv[rootoffnum] == HEAPTUPLE_DEAD &&
+				!HeapTupleHeaderIsHotUpdated(htup))
 			{
 				heap_prune_record_unused(prstate, rootoffnum);
 				HeapTupleHeaderAdvanceLatestRemovedXid(htup,
@@ -601,11 +678,8 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 			break;
 
 		Assert(ItemIdIsNormal(lp));
+		Assert(prstate->htsv[offnum] != -1);
 		htup = (HeapTupleHeader) PageGetItem(dp, lp);
-
-		tup.t_data = htup;
-		tup.t_len = ItemIdGetLength(lp);
-		ItemPointerSet(&(tup.t_self), BufferGetBlockNumber(buffer), offnum);
 
 		/*
 		 * Check the tuple XMIN against prior XMAX, if any
@@ -624,7 +698,7 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 		 */
 		tupdead = recent_dead = false;
 
-		switch (heap_prune_satisfies_vacuum(prstate, &tup, buffer))
+		switch ((HTSV_Result) prstate->htsv[offnum])
 		{
 			case HEAPTUPLE_DEAD:
 				tupdead = true;
@@ -809,12 +883,8 @@ heap_prune_record_unused(PruneState *prstate, OffsetNumber offnum)
 
 /*
  * Perform the actual page changes needed by heap_page_prune.
- * It is expected that the caller has suitable pin and lock on the
- * buffer, and is inside a critical section.
- *
- * This is split out because it is also used by heap_xlog_clean()
- * to replay the WAL record when needed after a crash.  Note that the
- * arguments are identical to those of log_heap_clean().
+ * It is expected that the caller has a super-exclusive lock on the
+ * buffer.
  */
 void
 heap_page_prune_execute(Buffer buffer,
@@ -825,6 +895,9 @@ heap_page_prune_execute(Buffer buffer,
 	Page		page = (Page) BufferGetPage(buffer);
 	OffsetNumber *offnum;
 	int			i;
+
+	/* Shouldn't be called unless there's something to do */
+	Assert(nredirected > 0 || ndead > 0 || nunused > 0);
 
 	/* Update all redirected line pointers */
 	offnum = redirected;
@@ -946,6 +1019,10 @@ heap_get_root_tuples(Page page, OffsetNumber *root_offsets)
 		 */
 		for (;;)
 		{
+			/* Sanity check */
+			if (nextoffnum < FirstOffsetNumber || nextoffnum > maxoff)
+				break;
+
 			lp = PageGetItemId(page, nextoffnum);
 
 			/* Check for broken chains */

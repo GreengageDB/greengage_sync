@@ -202,10 +202,10 @@ SELECT nr, isempty(nr), lower(nr), upper(nr) FROM numrange_test;
     nr     | isempty | lower | upper 
 -----------+---------+-------+-------
  (,)       | f       |       |      
- [3,)      | f       |     3 |      
  (,5)      | f       |       |     5
- [1.1,2.2) | f       |   1.1 |   2.2
+ [3,)      | f       |     3 |      
  empty     | t       |       |      
+ [1.1,2.2) | f       |   1.1 |   2.2
  [1.7,1.7] | f       |   1.7 |   1.7
 (6 rows)
 
@@ -213,11 +213,11 @@ SELECT nr, lower_inc(nr), lower_inf(nr), upper_inc(nr), upper_inf(nr) FROM numra
     nr     | lower_inc | lower_inf | upper_inc | upper_inf 
 -----------+-----------+-----------+-----------+-----------
  (,)       | f         | t         | f         | t
- [3,)      | t         | f         | f         | t
  (,5)      | f         | t         | f         | f
  [1.1,2.2) | t         | f         | f         | f
- empty     | f         | f         | f         | f
  [1.7,1.7] | t         | f         | t         | f
+ [3,)      | t         | f         | f         | t
+ empty     | f         | f         | f         | f
 (6 rows)
 
 SELECT * FROM numrange_test WHERE range_contains(nr, numrange(1.9,1.91));
@@ -244,9 +244,9 @@ SELECT * FROM numrange_test WHERE range_contained_by(numrange(-1e7,-10000.1), nr
 SELECT * FROM numrange_test WHERE 1.9 <@ nr;
     nr     
 -----------
+ [1.1,2.2)
  (,)
  (,5)
- [1.1,2.2)
 (3 rows)
 
 select * from numrange_test where nr = 'empty';
@@ -290,12 +290,12 @@ select * from numrange_test where nr < numrange(0.0, 1.0,'[]');
 select * from numrange_test where nr < numrange(1000.0, 1001.0,'[]');
     nr     
 -----------
- (,)
  [3,)
- (,5)
- [1.1,2.2)
  empty
+ [1.1,2.2)
  [1.7,1.7]
+ (,)
+ (,5)
 (6 rows)
 
 select * from numrange_test where nr <= 'empty';
@@ -307,19 +307,19 @@ select * from numrange_test where nr <= 'empty';
 select * from numrange_test where nr >= 'empty';
     nr     
 -----------
- (,)
  [3,)
+ empty
+ (,)
  (,5)
  [1.1,2.2)
- empty
  [1.7,1.7]
 (6 rows)
 
 select * from numrange_test where nr > 'empty';
     nr     
 -----------
- (,)
  [3,)
+ (,)
  (,5)
  [1.1,2.2)
  [1.7,1.7]
@@ -623,31 +623,31 @@ INSERT INTO textrange_test VALUES(textrange('d', 'd', '[]'));
 SELECT tr, isempty(tr), lower(tr), upper(tr) FROM textrange_test;
   tr   | isempty | lower | upper 
 -------+---------+-------+-------
- (,)   | f       |       | 
  [a,)  | f       | a     | 
- (,q)  | f       |       | q
  [b,g) | f       | b     | g
- empty | t       |       | 
  [d,d] | f       | d     | d
+ (,)   | f       |       | 
+ (,q)  | f       |       | q
+ empty | t       |       | 
 (6 rows)
 
 SELECT tr, lower_inc(tr), lower_inf(tr), upper_inc(tr), upper_inf(tr) FROM textrange_test;
   tr   | lower_inc | lower_inf | upper_inc | upper_inf 
 -------+-----------+-----------+-----------+-----------
- (,)   | f         | t         | f         | t
  [a,)  | t         | f         | f         | t
- (,q)  | f         | t         | f         | f
  [b,g) | t         | f         | f         | f
- empty | f         | f         | f         | f
  [d,d] | t         | f         | t         | f
+ empty | f         | f         | f         | f
+ (,)   | f         | t         | f         | t
+ (,q)  | f         | t         | f         | f
 (6 rows)
 
 SELECT * FROM textrange_test WHERE range_contains(tr, textrange('f', 'fx'));
   tr   
 -------
  (,)
- [a,)
  (,q)
+ [a,)
  [b,g)
 (4 rows)
 
@@ -668,10 +668,10 @@ SELECT * FROM textrange_test WHERE range_contained_by(textrange('0','9'), tr);
 SELECT * FROM textrange_test WHERE 'e'::text <@ tr;
   tr   
 -------
- (,)
  [a,)
- (,q)
  [b,g)
+ (,)
+ (,q)
 (4 rows)
 
 select * from textrange_test where tr = 'empty';
@@ -1422,12 +1422,36 @@ RESET enable_bitmapscan;
 create table test_range_elem(i int4);
 create index test_range_elem_idx on test_range_elem (i);
 insert into test_range_elem select i from generate_series(1,100) i;
+SET enable_seqscan    = f;
 select count(*) from test_range_elem where i <@ int4range(10,50);
  count 
 -------
     40
 (1 row)
 
+-- also test spgist index on anyrange expression
+create index on test_range_elem using spgist(int4range(i,i+10));
+explain (costs off)
+select count(*) from test_range_elem where int4range(i,i+10) <@ int4range(10,30);
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Finalize Aggregate
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         ->  Partial Aggregate
+               ->  Bitmap Heap Scan on test_range_elem
+                     Recheck Cond: (int4range(i, (i + 10)) <@ '[10,30)'::int4range)
+                     ->  Bitmap Index Scan on test_range_elem_int4range_idx
+                           Index Cond: (int4range(i, (i + 10)) <@ '[10,30)'::int4range)
+ Optimizer: Postgres query optimizer
+(8 rows)
+
+select count(*) from test_range_elem where int4range(i,i+10) <@ int4range(10,30);
+ count 
+-------
+    11
+(1 row)
+
+RESET enable_seqscan;
 drop table test_range_elem;
 --
 -- Btree_gist is not included by default, so to test exclusion
@@ -1448,13 +1472,13 @@ insert into test_range_excl
   values(1, int4range(123, 123, '[]'), int4range(2, 2, '[]'), '[2010-01-02 11:00, 2010-01-02 12:00)');
 insert into test_range_excl
   values(1, int4range(123, 123, '[]'), int4range(3, 3, '[]'), '[2010-01-02 10:10, 2010-01-02 11:00)');
-ERROR:  conflicting key value violates exclusion constraint "test_range_excl_room_during_excl"  (seg0 127.0.0.1:25432 pid=8632)
+ERROR:  conflicting key value violates exclusion constraint "test_range_excl_room_during_excl"  (seg2 172.17.0.7:7004 pid=129465)
 DETAIL:  Key (room, during)=([123,124), ["Sat Jan 02 10:10:00 2010","Sat Jan 02 11:00:00 2010")) conflicts with existing key (room, during)=([123,124), ["Sat Jan 02 10:00:00 2010","Sat Jan 02 11:00:00 2010")).
 insert into test_range_excl
   values(1, int4range(124, 124, '[]'), int4range(3, 3, '[]'), '[2010-01-02 10:10, 2010-01-02 11:10)');
 insert into test_range_excl
   values(1, int4range(125, 125, '[]'), int4range(1, 1, '[]'), '[2010-01-02 10:10, 2010-01-02 11:00)');
-ERROR:  conflicting key value violates exclusion constraint "test_range_excl_speaker_during_excl"  (seg0 127.0.0.1:25432 pid=8632)
+ERROR:  conflicting key value violates exclusion constraint "test_range_excl_speaker_during_excl"  (seg2 172.17.0.7:7004 pid=129465)
 DETAIL:  Key (speaker, during)=([1,2), ["Sat Jan 02 10:10:00 2010","Sat Jan 02 11:00:00 2010")) conflicts with existing key (speaker, during)=([1,2), ["Sat Jan 02 10:00:00 2010","Sat Jan 02 11:00:00 2010")).
 -- test bigint ranges
 select int8range(10000000000::int8, 20000000000::int8,'(]');

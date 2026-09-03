@@ -19,6 +19,7 @@
 #include "access/tupconvert.h"
 #include "executor/instrument.h"
 #include "fmgr.h"
+#include "lib/ilist.h"
 #include "lib/pairingheap.h"
 #include "nodes/params.h"
 #include "nodes/parsenodes.h"
@@ -371,10 +372,6 @@ typedef struct ProjectionInfo
  *						attribute numbers of the "original" tuple and the
  *						attribute numbers of the "clean" tuple.
  *	  resultSlot:		tuple slot used to hold cleaned tuple.
- *	  junkAttNo:		not used by junkfilter code.  Can be used by caller
- *						to remember the attno of a specific junk attribute
- *						(nodeModifyTable.c keeps the "ctid" or "wholerow"
- *						attno here).
  * ----------------
  */
 typedef struct JunkFilter
@@ -384,7 +381,6 @@ typedef struct JunkFilter
 	TupleDesc	jf_cleanTupType;
 	AttrNumber *jf_cleanMap;
 	TupleTableSlot *jf_resultSlot;
-	AttrNumber	jf_junkAttNo;
 } JunkFilter;
 
 /*
@@ -437,6 +433,21 @@ typedef struct ResultRelInfo
 
 	/* array of key/attr info for indices */
 	IndexInfo **ri_IndexRelationInfo;
+
+	/*
+	 * For UPDATE/DELETE result relations, the attribute number of the row
+	 * identity junk attribute in the source plan's output tuples
+	 */
+	AttrNumber	ri_RowIdAttNo;
+
+	/* Projection to generate new tuple in an INSERT/UPDATE */
+	ProjectionInfo *ri_projectNew;
+	/* Slot to hold that tuple */
+	TupleTableSlot *ri_newTupleSlot;
+	/* Slot to hold the old tuple being updated */
+	TupleTableSlot *ri_oldTupleSlot;
+	/* Have the projection and the slots above been initialized? */
+	bool		ri_projectNewInfoValid;
 
 	/* triggers to be fired, if any */
 	TriggerDesc *ri_TrigDesc;
@@ -498,6 +509,16 @@ typedef struct ResultRelInfo
 	AttrNumber  ri_segid_attno;		/* gp_segment_id of old tuple */
 	AttrNumber	ri_action_attno;	/* is this an INSERT or DELETE ? */
 
+	/*
+	 * GGDB: split-update support for old-style inheritance children whose
+	 * column layout differs from the root's.  The "wholerow" junk column
+	 * carries the old child tuple; the re-inserted tuple is rebuilt from it
+	 * plus the root-layout new values (matched by column name).
+	 */
+	AttrNumber	ri_wholerow_attno;	/* "wholerow" junk attno, or invalid */
+	TupleTableSlot *ri_inhNewSlot;	/* slot for the rebuilt child tuple */
+	AttrNumber *ri_inhRootMap;		/* child attno -> root-layout resno (0 = keep old) */
+
 	/* list of RETURNING expressions */
 	List	   *ri_returningList;
 
@@ -531,14 +552,32 @@ typedef struct ResultRelInfo
 
 	/*
 	 * Map to convert child result relation tuples to the format of the table
-	 * actually mentioned in the query (called "root").  Set only if
-	 * transition tuple capture or update partition row movement is active.
+	 * actually mentioned in the query (called "root").  Computed only if
+	 * needed.  A NULL map value indicates that no conversion is needed, so we
+	 * must have a separate flag to show if the map has been computed.
 	 */
 	TupleConversionMap *ri_ChildToRootMap;
+	bool		ri_ChildToRootMapValid;
 
 	/* for use by copyfrom.c when performing multi-inserts */
 	struct CopyMultiInsertBuffer *ri_CopyMultiInsertBuffer;
 } ResultRelInfo;
+
+/* ----------------
+ *	  AsyncRequest
+ *
+ * State for an asynchronous tuple request.
+ * ----------------
+ */
+typedef struct AsyncRequest
+{
+	struct PlanState *requestor;	/* Node that wants a tuple */
+	struct PlanState *requestee;	/* Node from which a tuple is wanted */
+	int			request_index;	/* Scratch space for requestor */
+	bool		callback_pending;	/* Callback is needed */
+	bool		request_complete;	/* Request complete, result valid */
+	TupleTableSlot *result;		/* Result (NULL if no more tuples) */
+} AsyncRequest;
 
 /* ----------------
  *	  EState information
@@ -745,10 +784,7 @@ typedef struct ExecRowMark
  * Each LockRows and ModifyTable node keeps a list of the rowmarks it needs to
  * deal with.  In addition to a pointer to the related entry in es_rowmarks,
  * this struct carries the column number(s) of the resjunk columns associated
- * with the rowmark (see comments for PlanRowMark for more detail).  In the
- * case of ModifyTable, there has to be a separate ExecAuxRowMark list for
- * each child plan, because the resjunk columns could be at different physical
- * column positions in different subplans.
+ * with the rowmark (see comments for PlanRowMark for more detail).
  */
 typedef struct ExecAuxRowMark
 {
@@ -1175,9 +1211,8 @@ extern uint64 PlanStateOperatorMemKB(const PlanState *ps);
  * EvalPlanQualSlot), and/or found using the rowmark mechanism (non-locking
  * rowmarks by the EPQ machinery itself, locking ones by the caller).
  *
- * While the plan to be checked may be changed using EvalPlanQualSetPlan() -
- * e.g. so all source plans for a ModifyTable node can be processed - all such
- * plans need to share the same EState.
+ * While the plan to be checked may be changed using EvalPlanQualSetPlan(),
+ * all such plans need to share the same EState.
  */
 typedef struct EPQState
 {
@@ -1273,23 +1308,31 @@ typedef struct ModifyTableState
 	CmdType		operation;		/* INSERT, UPDATE, or DELETE */
 	bool		canSetTag;		/* do we set the command tag/es_processed? */
 	bool		mt_done;		/* are we done? */
-	PlanState **mt_plans;		/* subplans (one per target rel) */
-	int			mt_nplans;		/* number of plans in the array */
-	int			mt_whichplan;	/* which one is being executed (0..n-1) */
-	TupleTableSlot **mt_scans;	/* input tuple corresponding to underlying
-								 * plans */
-	ResultRelInfo *resultRelInfo;	/* per-subplan target relations */
+	int			mt_nrels;		/* number of entries in resultRelInfo[] */
+	ResultRelInfo *resultRelInfo;	/* info about target relation(s) */
 
 	/*
 	 * Target relation mentioned in the original statement, used to fire
-	 * statement-level triggers and as the root for tuple routing.
+	 * statement-level triggers and as the root for tuple routing.  (This
+	 * might point to one of the resultRelInfo[] entries, but it can also be a
+	 * distinct struct.)
 	 */
 	ResultRelInfo *rootResultRelInfo;
 
-	List	  **mt_arowmarks;	/* per-subplan ExecAuxRowMark lists */
 	EPQState	mt_epqstate;	/* for evaluating EvalPlanQual rechecks */
 	bool		fireBSTriggers; /* do we need to fire stmt triggers? */
 	bool	   *mt_isSplitUpdates; /* per-subplan flag to indicate if it's a split update */
+
+	/*
+	 * These fields are used for inherited UPDATE and DELETE, to track which
+	 * target relation a given tuple is from.  If there are a lot of target
+	 * relations, we use a hash table to translate table OIDs to
+	 * resultRelInfo[] indexes; otherwise mt_resultOidHash is NULL.
+	 */
+	int			mt_resultOidAttno;	/* resno of "tableoid" junk attr */
+	Oid			mt_lastResultOid;	/* last-seen value of tableoid */
+	int			mt_lastResultIndex; /* corresponding index in resultRelInfo[] */
+	HTAB	   *mt_resultOidHash;	/* optional hash table to speed lookups */
 
 	/*
 	 * Slot for storing tuples in the root partitioned table's rowtype during
@@ -1311,12 +1354,12 @@ typedef struct ModifyTableState
  *	 AppendState information
  *
  *		nplans				how many plans are in the array
- *		whichplan			which plan is being executed (0 .. n-1), or a
- *							special negative value. See nodeAppend.c.
+ *		whichplan			which synchronous plan is being executed (0 .. n-1)
+ *							or a special negative value. See nodeAppend.c.
  *		prune_state			details required to allow partitions to be
  *							eliminated from the scan, or NULL if not possible.
- *		valid_subplans		for runtime pruning, valid appendplans indexes to
- *							scan.
+ *		valid_subplans		for runtime pruning, valid synchronous appendplans
+ *							indexes to scan.
  * ----------------
  */
 
@@ -1332,12 +1375,25 @@ struct AppendState
 	PlanState **appendplans;	/* array of PlanStates for my inputs */
 	int			as_nplans;
 	int			as_whichplan;
+	bool		as_begun;		/* false means need to initialize */
+	Bitmapset  *as_asyncplans;	/* asynchronous plans indexes */
+	int			as_nasyncplans;	/* # of asynchronous plans */
+	AsyncRequest **as_asyncrequests;	/* array of AsyncRequests */
+	TupleTableSlot **as_asyncresults;	/* unreturned results of async plans */
+	int			as_nasyncresults;	/* # of valid entries in as_asyncresults */
+	bool		as_syncdone;	/* true if all synchronous plans done in
+								 * asynchronous mode, else false */
+	int			as_nasyncremain;	/* # of remaining asynchronous plans */
+	Bitmapset  *as_needrequest;	/* asynchronous plans needing a new request */
+	struct WaitEventSet *as_eventset;	/* WaitEventSet used to configure
+										 * file descriptor wait events */
 	int			as_first_partial_plan;	/* Index of 'appendplans' containing
 										 * the first partial plan */
 	ParallelAppendState *as_pstate; /* parallel coordination info */
 	Size		pstate_len;		/* size of parallel coordination info */
 	struct PartitionPruneState *as_prune_state;
 	Bitmapset  *as_valid_subplans;
+	Bitmapset  *as_valid_asyncplans;	/* valid asynchronous plans indexes */
 	bool		(*choose_next_subplan) (AppendState *);
 };
 
@@ -2368,6 +2424,71 @@ typedef struct MaterialState
 								 * when this node has outputted its last row? */
 } MaterialState;
 
+struct ResultCacheEntry;
+struct ResultCacheTuple;
+struct ResultCacheKey;
+
+typedef struct ResultCacheInstrumentation
+{
+	uint64		cache_hits;		/* number of rescans where we've found the
+								 * scan parameter values to be cached */
+	uint64		cache_misses;	/* number of rescans where we've not found the
+								 * scan parameter values to be cached. */
+	uint64		cache_evictions;	/* number of cache entries removed due to
+									 * the need to free memory */
+	uint64		cache_overflows;	/* number of times we've had to bypass the
+									 * cache when filling it due to not being
+									 * able to free enough space to store the
+									 * current scan's tuples. */
+	uint64		mem_peak;		/* peak memory usage in bytes */
+} ResultCacheInstrumentation;
+
+/* ----------------
+ *	 Shared memory container for per-worker resultcache information
+ * ----------------
+ */
+typedef struct SharedResultCacheInfo
+{
+	int			num_workers;
+	ResultCacheInstrumentation sinstrument[FLEXIBLE_ARRAY_MEMBER];
+} SharedResultCacheInfo;
+
+/* ----------------
+ *	 ResultCacheState information
+ *
+ *		resultcache nodes are used to cache recent and commonly seen results
+ *		from a parameterized scan.
+ * ----------------
+ */
+typedef struct ResultCacheState
+{
+	ScanState	ss;				/* its first field is NodeTag */
+	int			rc_status;		/* value of ExecResultCache state machine */
+	int			nkeys;			/* number of cache keys */
+	struct resultcache_hash *hashtable; /* hash table for cache entries */
+	TupleDesc	hashkeydesc;	/* tuple descriptor for cache keys */
+	TupleTableSlot *tableslot;	/* min tuple slot for existing cache entries */
+	TupleTableSlot *probeslot;	/* virtual slot used for hash lookups */
+	ExprState  *cache_eq_expr;	/* Compare exec params to hash key */
+	ExprState **param_exprs;	/* exprs containing the parameters to this
+								 * node */
+	FmgrInfo   *hashfunctions;	/* lookup data for hash funcs nkeys in size */
+	Oid		   *collations;		/* collation for comparisons nkeys in size */
+	uint64		mem_used;		/* bytes of memory used by cache */
+	uint64		mem_limit;		/* memory limit in bytes for the cache */
+	MemoryContext tableContext; /* memory context to store cache data */
+	dlist_head	lru_list;		/* least recently used entry list */
+	struct ResultCacheTuple *last_tuple;	/* Used to point to the last tuple
+											 * returned during a cache hit and
+											 * the tuple we last stored when
+											 * populating the cache. */
+	struct ResultCacheEntry *entry; /* the entry that 'last_tuple' belongs to
+									 * or NULL if 'last_tuple' is NULL. */
+	bool		singlerow;		/* true if the cache entry is to be marked as
+								 * complete after caching the first tuple. */
+	ResultCacheInstrumentation stats;	/* execution statistics */
+	SharedResultCacheInfo *shared_info; /* statistics for parallel workers */
+} ResultCacheState;
 
 /* ----------------
  *	 When performing sorting by multiple keys, it's possible that the input
@@ -3016,6 +3137,22 @@ typedef struct SplitUpdateState
 
 	struct CdbHash *cdbhash;	/* hash api object */
 
+	/*
+	 * GGDB: per-result-relation placement, for old-style inheritance trees
+	 * whose members' distribution policies differ.  The row's source relation
+	 * is identified by the "tableoid" junk column; its policy decides the
+	 * target segment of the INSERT half.  A NULL CdbHash entry means the row
+	 * keeps its old segment (its own distribution key is unchanged or the
+	 * relation is randomly distributed).
+	 */
+	AttrNumber	input_tableoid_attno;	/* "tableoid" junk attno in subplan's
+										 * target list, or invalid */
+	int			numPolicies;	/* # of per-relation policy entries */
+	Oid		   *policyRelids;	/* source relation OIDs */
+	struct CdbHash **policyCdbHash; /* per-rel hash object, or NULL */
+	AttrNumber **policyAttnos;	/* per-rel hash key positions in output tuple */
+	int		   *policyNattrs;	/* per-rel # of hash keys */
+	int			lastPolicyIdx;	/* cache of the last matched entry */
 } SplitUpdateState;
 
 /*

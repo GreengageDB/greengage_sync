@@ -627,7 +627,6 @@ SELECT oldcnt(*) AS cnt_1000 FROM onek;
 SELECT sum2(q1,q2) FROM int8_tbl;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-CONTEXT:  SQL function "sum3" during startup
        sum2        
 -------------------
  18271560493827981
@@ -640,11 +639,11 @@ group by ten
 having exists (select 1 from onek b where sum(distinct a.four) = b.four);
  ten | sum 
 -----+-----
-   2 |   2
    6 |   2
    0 |   2
-   8 |   2
    4 |   2
+   2 |   2
+   8 |   2
 (5 rows)
 
 -- this should fail because subquery has an agg of its own in WHERE
@@ -765,8 +764,6 @@ CREATE TEMPORARY TABLE bitwise_test(
   x INT2,
   y BIT(4)
 );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i2' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- empty case
 SELECT
   BIT_AND(i2) AS "?",
@@ -849,8 +846,6 @@ CREATE TEMPORARY TABLE bool_test(
   b2 BOOL,
   b3 BOOL,
   b4 BOOL);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'b1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- empty case
 SELECT
   BOOL_AND(b1)   AS "n",
@@ -914,7 +909,7 @@ explain (costs off)
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 select min(unique1) from tenk1;
@@ -931,7 +926,7 @@ explain (costs off)
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 select max(unique1) from tenk1;
@@ -942,14 +937,14 @@ select max(unique1) from tenk1;
 
 explain (costs off)
   select max(unique1) from tenk1 where unique1 < 42;
-                        QUERY PLAN                         
------------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Index Only Scan using tenk1_unique1 on tenk1
                      Index Cond: (unique1 < 42)
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
 
 select max(unique1) from tenk1 where unique1 < 42;
@@ -960,14 +955,14 @@ select max(unique1) from tenk1 where unique1 < 42;
 
 explain (costs off)
   select max(unique1) from tenk1 where unique1 > 42;
-                   QUERY PLAN                   
-------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Index Only Scan using tenk1_unique1 on tenk1
                      Index Cond: (unique1 > 42)
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
 
 select max(unique1) from tenk1 where unique1 > 42;
@@ -987,14 +982,14 @@ set local enable_seqscan=off;
 set local enable_bitmapscan=off;
 explain (costs off)
   select max(unique1) from tenk1 where unique1 > 42000;
-                        QUERY PLAN                         
------------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Index Only Scan using tenk1_unique1 on tenk1
                      Index Cond: (unique1 > 42000)
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
 
 select max(unique1) from tenk1 where unique1 > 42000;
@@ -1007,14 +1002,14 @@ rollback;
 -- multi-column index (uses tenk1_thous_tenthous)
 explain (costs off)
   select max(tenthous) from tenk1 where thousand = 33;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Index Only Scan using tenk1_thous_tenthous on tenk1
                      Index Cond: (thousand = 33)
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
 
 select max(tenthous) from tenk1 where thousand = 33;
@@ -1025,14 +1020,14 @@ select max(tenthous) from tenk1 where thousand = 33;
 
 explain (costs off)
   select min(tenthous) from tenk1 where thousand = 33;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Index Only Scan using tenk1_thous_tenthous on tenk1
                      Index Cond: (thousand = 33)
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (6 rows)
 
 select min(tenthous) from tenk1 where thousand = 33;
@@ -1059,7 +1054,7 @@ explain (costs off)
                  ->  Materialize
                        ->  Gather Motion 3:1  (slice2; segments: 3)
                              ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (11 rows)
 
 select f1, (select min(unique1) from tenk1 where unique1 > f1) AS gt
@@ -1067,10 +1062,10 @@ select f1, (select min(unique1) from tenk1 where unique1 > f1) AS gt
      f1      | gt 
 -------------+----
       123456 |   
- -2147483647 |  0
-           0 |  1
      -123456 |  0
+           0 |  1
   2147483647 |   
+ -2147483647 |  0
 (5 rows)
 
 -- check some cases that were handled incorrectly in 8.3.0
@@ -1082,7 +1077,7 @@ explain (costs off)
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 select distinct max(unique2) from tenk1;
@@ -1101,7 +1096,7 @@ explain (costs off)
          ->  Gather Motion 3:1  (slice1; segments: 3)
                ->  Partial Aggregate
                      ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (7 rows)
 
 select max(unique2) from tenk1 order by 1;
@@ -1120,7 +1115,7 @@ explain (costs off)
          ->  Gather Motion 3:1  (slice1; segments: 3)
                ->  Partial Aggregate
                      ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA) version 2.55.21
+ Optimizer: Pivotal Optimizer (GPORCA)
 (7 rows)
 
 select max(unique2) from tenk1 order by max(unique2);
@@ -1140,7 +1135,7 @@ explain (costs off)
                ->  Gather Motion 3:1  (slice1; segments: 3)
                      ->  Partial Aggregate
                            ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (8 rows)
 
 select max(unique2) from tenk1 order by max(unique2)+1;
@@ -1174,13 +1169,13 @@ select max(unique2), generate_series(1,3) as g from tenk1 order by g desc;
 -- interesting corner case: constant gets optimized into a seqscan
 explain (costs off)
   select max(100) from tenk1;
-                      QUERY PLAN                      
-------------------------------------------------------
+                   QUERY PLAN                   
+------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Seq Scan on tenk1
- Optimizer: Pivotal Optimizer (GPORCA) version 3.78.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 select max(100) from tenk1;
@@ -1191,8 +1186,6 @@ select max(100) from tenk1;
 
 -- try it on an inheritance tree
 create table minmaxtest(f1 int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table minmaxtest1() inherits (minmaxtest);
 NOTICE:  table has parent, setting distribution columns to match parent table
 create table minmaxtest2() inherits (minmaxtest);
@@ -1311,11 +1304,11 @@ create temp table t2 (x int, y int, z int, primary key (x, y));
 create temp table t3 (a int, b int, c int, primary key(a, b) deferrable);
 -- Non-primary-key columns can be removed from GROUP BY
 explain (costs off) select * from t1 group by a,b,c,d;
-                      QUERY PLAN                      
-------------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on t1
- Optimizer: Pivotal Optimizer (GPORCA) version 3.78.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 
 -- No removal can happen if the complete PK is not present in GROUP BY
@@ -1330,7 +1323,7 @@ explain (costs off) select a,c from t1 group by a,c,d;
                ->  Redistribute Motion 3:3  (slice2; segments: 3)
                      Hash Key: a, c, d
                      ->  Seq Scan on t1
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (9 rows)
 
 -- Test removal across multiple relations
@@ -1364,18 +1357,16 @@ group by t1.a,t1.b,t1.c,t1.d,t2.x,t2.z;
 (7 rows)
 
 -- Cannot optimize when PK is deferrable
--- start_ignore
--- GPDB_96_MERGE_FIXME: ORCA does it anyway.
--- end_ignore
 explain (costs off) select * from t3 group by a,b,c;
-                      QUERY PLAN                      
-------------------------------------------------------
+                QUERY PLAN                
+------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on t3
- Optimizer: Pivotal Optimizer (GPORCA) version 3.78.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (3 rows)
 
 create temp table t1c () inherits (t1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 -- Ensure we don't remove any columns when t1 has a child table
 explain (costs off) select * from t1 group by a,b,c,d;
 INFO:  GPORCA failed to produce a plan, falling back to planner
@@ -1412,7 +1403,9 @@ create temp table p_t1 (
   primary key(a,b)
 ) partition by list(a);
 create temp table p_t1_1 partition of p_t1 for values in(1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 create temp table p_t1_2 partition of p_t1 for values in(2);
+NOTICE:  table has parent, setting distribution columns to match parent table
 -- Ensure we can remove non-PK columns for partitioned tables.
 explain (costs off) select * from p_t1 group by a,b,c,d;
                      QUERY PLAN                     
@@ -1433,6 +1426,10 @@ drop table p_t1;
 --
 create temp table t1(f1 int, f2 bigint);
 create temp table t2(f1 bigint, f22 bigint);
+-- start_ignore
+-- FIXME: ORCA CTranslatorQueryToDXL.cpp:4067: Failed assertion: ((((const Node*)(join_alias_node))->type) == T_Var) || ((((const Node*)(join_alias_node))->type) == T_CoalesceExpr)
+SET optimizer_trace_fallback = off;
+-- end_ignore
 select f1 from t1 left join t2 using (f1) group by f1;
  f1 
 ----
@@ -1448,6 +1445,9 @@ select t1.f1 from t1 left join t2 using (f1) group by t1.f1;
 ----
 (0 rows)
 
+-- start_ignore
+SET optimizer_trace_fallback = on;
+-- end_ignore
 -- only this one should fail:
 select t1.f1 from t1 left join t2 using (f1) group by f1;
 ERROR:  column "t1.f1" must appear in the GROUP BY clause or be used in an aggregate function
@@ -1518,7 +1518,6 @@ select aggfstr(a,b,c)
   from (values (1,3,'foo'),(0,null,null),(2,2,'bar'),(3,1,'baz')) v(a,b,c);
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggf_trans" during startup
                 aggfstr                
 ---------------------------------------
  {"(1,3,foo)","(2,2,bar)","(3,1,baz)"}
@@ -1528,7 +1527,6 @@ select aggfns(a,b,c)
   from (values (1,3,'foo'),(0,null,null),(2,2,'bar'),(3,1,'baz')) v(a,b,c);
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
                     aggfns                     
 -----------------------------------------------
  {"(1,3,foo)","(0,,)","(2,2,bar)","(3,1,baz)"}
@@ -1539,7 +1537,6 @@ select aggfstr(distinct a,b,c)
        generate_series(1,3) i;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggf_trans" during startup
                 aggfstr                
 ---------------------------------------
  {"(1,3,foo)","(2,2,bar)","(3,1,baz)"}
@@ -1550,7 +1547,6 @@ select aggfns(distinct a,b,c)
        generate_series(1,3) i;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
                     aggfns                     
 -----------------------------------------------
  {"(0,,)","(1,3,foo)","(2,2,bar)","(3,1,baz)"}
@@ -1561,7 +1557,6 @@ select aggfstr(distinct a,b,c order by b)
        generate_series(1,3) i;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggf_trans" during startup
                 aggfstr                
 ---------------------------------------
  {"(3,1,baz)","(2,2,bar)","(1,3,foo)"}
@@ -1572,7 +1567,6 @@ select aggfns(distinct a,b,c order by b)
        generate_series(1,3) i;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
                     aggfns                     
 -----------------------------------------------
  {"(3,1,baz)","(2,2,bar)","(1,3,foo)","(0,,)"}
@@ -1584,7 +1578,6 @@ select aggfns(distinct a,a,c order by c using ~<~,a)
        generate_series(1,2) i;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
                      aggfns                     
 ------------------------------------------------
  {"(2,2,bar)","(3,3,baz)","(1,1,foo)","(0,0,)"}
@@ -1595,7 +1588,6 @@ select aggfns(distinct a,a,c order by c using ~<~)
        generate_series(1,2) i;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
                      aggfns                     
 ------------------------------------------------
  {"(2,2,bar)","(3,3,baz)","(1,1,foo)","(0,0,)"}
@@ -1606,7 +1598,6 @@ select aggfns(distinct a,a,c order by a)
        generate_series(1,2) i;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
                      aggfns                     
 ------------------------------------------------
  {"(0,0,)","(1,1,foo)","(2,2,bar)","(3,3,baz)"}
@@ -1617,13 +1608,17 @@ select aggfns(distinct a,b,c order by a,c using ~<~,b)
        generate_series(1,2) i;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
                     aggfns                     
 -----------------------------------------------
  {"(0,,)","(1,3,foo)","(2,2,bar)","(3,1,baz)"}
 (1 row)
 
 -- check node I/O via view creation and usage, also deparsing logic
+-- start_ignore
+-- pg_get_viewdef() runs some internal queries on catalogs, and we don't want
+-- fallback notices about those.
+reset optimizer_trace_fallback;
+-- end_ignore
 create view agg_view1 as
   select aggfns(a,b,c)
     from (values (1,3,'foo'),(0,null,null),(2,2,'bar'),(3,1,'baz')) v(a,b,c);
@@ -1743,6 +1738,9 @@ select pg_get_viewdef('agg_view1'::regclass);
 (1 row)
 
 drop view agg_view1;
+-- start_ignore
+SET optimizer_trace_fallback to on;
+-- end_ignore
 -- incorrect DISTINCT usage errors
 select aggfns(distinct a,b,c order by i)
   from (values (1,1,'foo')) v(a,b,c), generate_series(1,2) i;
@@ -1825,16 +1823,16 @@ INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
  ten | sum 
 -----+-----
+   4 |    
+   2 |    
+   8 |    
+   7 |    
+   3 |    
    0 |    
    1 |    
-   2 |    
-   3 |    
-   4 |    
-   5 |    
-   6 |    
-   7 |    
-   8 |    
    9 |    
+   6 |    
+   5 |    
 (10 rows)
 
 select ten, sum(distinct four) filter (where four > 10) from onek a
@@ -1844,11 +1842,11 @@ INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
  ten | sum 
 -----+-----
-   0 |    
-   2 |    
    4 |    
-   6 |    
+   2 |    
    8 |    
+   0 |    
+   6 |    
 (5 rows)
 
 select max(foo COLLATE "C") filter (where (bar collate "POSIX") > '0')
@@ -1920,7 +1918,6 @@ INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
           aggfns           
 ---------------------------
  {"(2,2,bar)","(3,1,baz)"}
@@ -2158,6 +2155,11 @@ select ten,
        rank(5,'AZZZZ',50) within group (order by hundred, string4 desc, hundred)
   from tenk1
  group by ten order by ten;
+-- start_ignore
+-- pg_get_viewdef() runs some internal queries on catalogs, and we don't want
+-- fallback notices about those.
+reset optimizer_trace_fallback;
+-- end_ignore
 select pg_get_viewdef('aggordview1');
                                                         pg_get_viewdef                                                         
 -------------------------------------------------------------------------------------------------------------------------------
@@ -2170,6 +2172,9 @@ select pg_get_viewdef('aggordview1');
    ORDER BY tenk1.ten;
 (1 row)
 
+-- start_ignore
+SET optimizer_trace_fallback to on;
+-- end_ignore
 select * from aggordview1 order by ten;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
@@ -2192,7 +2197,6 @@ drop view aggordview1;
 select least_agg(q1,q2) from int8_tbl;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-CONTEXT:  SQL function "least_accum" during startup
      least_agg     
 -------------------
  -4567890123456789
@@ -2208,8 +2212,6 @@ DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
 
 -- string_agg bytea tests
 create table bytea_test_table(gpDistKey int, v bytea);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'gpdistkey' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 select string_agg(v, '') from bytea_test_table;
  string_agg 
 ------------
@@ -2266,16 +2268,16 @@ INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
  ten | sum 
 -----+-----
+   9 |    
+   6 |    
+   5 |    
+   4 |    
+   2 |    
+   8 |    
+   7 |    
+   3 |    
    0 |    
    1 |    
-   2 |    
-   3 |    
-   4 |    
-   5 |    
-   6 |    
-   7 |    
-   8 |    
-   9 |    
 (10 rows)
 
 select ten, sum(distinct four) filter (where four > 10) from onek a
@@ -2285,11 +2287,11 @@ INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
  ten | sum 
 -----+-----
-   0 |    
-   2 |    
    4 |    
-   6 |    
+   2 |    
    8 |    
+   0 |    
+   6 |    
 (5 rows)
 
 select max(foo COLLATE "C") filter (where (bar collate "POSIX") > '0')
@@ -2361,7 +2363,6 @@ INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: ROW EXPRESSION
-CONTEXT:  SQL function "aggfns_trans" during startup
           aggfns           
 ---------------------------
  {"(2,2,bar)","(3,1,baz)"}
@@ -2493,14 +2494,14 @@ DETAIL:  Feature not supported: Non-default collation
 -----+--------
    0 | HHHHxx
    1 | OOOOxx
+   5 | HHHHxx
+   6 | OOOOxx
+   9 | VVVVxx
    2 | VVVVxx
    3 | OOOOxx
    4 | HHHHxx
-   5 | HHHHxx
-   6 | OOOOxx
    7 | AAAAxx
    8 | VVVVxx
-   9 | VVVVxx
 (10 rows)
 
 select percentile_disc(array[0.25,0.5,0.75]) within group (order by x)
@@ -2599,6 +2600,11 @@ select ten,
        rank(5,'AZZZZ',50) within group (order by hundred, string4 desc, hundred)
   from tenk1
  group by ten order by ten;
+-- start_ignore
+-- pg_get_viewdef() runs some internal queries on catalogs, and we don't want
+-- fallback notices about those.
+reset optimizer_trace_fallback;
+-- end_ignore
 select pg_get_viewdef('aggordview1');
                                                         pg_get_viewdef                                                         
 -------------------------------------------------------------------------------------------------------------------------------
@@ -2611,6 +2617,9 @@ select pg_get_viewdef('aggordview1');
    ORDER BY tenk1.ten;
 (1 row)
 
+-- start_ignore
+SET optimizer_trace_fallback to on;
+-- end_ignore
 select * from aggordview1 order by ten;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Aggregate functions with FILTER
@@ -2633,7 +2642,6 @@ drop view aggordview1;
 select least_agg(q1,q2) from int8_tbl;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
-CONTEXT:  SQL function "least_accum" during startup
      least_agg     
 -------------------
  -4567890123456789
@@ -3077,7 +3085,7 @@ EXPLAIN (COSTS OFF) SELECT balk(hundred) FROM tenk1;
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
                ->  Seq Scan on tenk1
- Optimizer: Postgres query optimizer
+ Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 SELECT balk(hundred) FROM tenk1;
@@ -3231,6 +3239,7 @@ select v||'a', case when v||'a' = 'aa' then 1 else 0 end, count(*)
 -- Make sure that generation of HashAggregate for uniqification purposes
 -- does not lead to array overflow due to unexpected duplicate hash keys
 -- see CAFeeJoKKu0u+A_A9R9316djW-YW3-+Gtgvy3ju655qRHR3jtdA@mail.gmail.com
+set enable_resultcache to off;
 explain (costs off)
   select 1 from tenk1
    where (hundred, thousand) in (select twothousand, twothousand from onek);
@@ -3254,6 +3263,7 @@ DETAIL:  Feature not supported: Non-Scalar Subquery
  Optimizer: Postgres query optimizer
 (14 rows)
 
+reset enable_resultcache;
 --
 -- Hash Aggregation Spill tests
 --
@@ -3351,7 +3361,6 @@ select g%10000 as c1, sum(g::numeric) as c2, count(*) as c3
 create table agg_group_1 as
 select g%10000 as c1, sum(g::numeric) as c2, count(*) as c3
   from agg_data_20k group by g%10000;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
 /* GPDB_13_MERGE_FIXME: enable this test
 create table agg_group_2 as
 select * from
@@ -3368,11 +3377,9 @@ set jit_above_cost to default;
 create table agg_group_3 as
 select (g/2)::numeric as c1, sum(7::int4) as c2, count(*) as c3
   from agg_data_2k group by g/2;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
 create table agg_group_4 as
 select (g/2)::numeric as c1, array_agg(g::numeric order by g) as c2, count(*) as c3
   from agg_data_2k group by g/2;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Hash aggregation with ORDER BY
 -- Produce results with hash aggregation
@@ -3396,7 +3403,6 @@ select g%10000 as c1, sum(g::numeric) as c2, count(*) as c3
 create table agg_hash_1 as
 select g%10000 as c1, sum(g::numeric) as c2, count(*) as c3
   from agg_data_20k group by g%10000;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
 /* GPDB_13_MERGE_FIXME: enable this test
 create table agg_hash_2 as
 select * from
@@ -3413,11 +3419,9 @@ set jit_above_cost to default;
 create table agg_hash_3 as
 select (g/2)::numeric as c1, sum(7::int4) as c2, count(*) as c3
   from agg_data_2k group by g/2;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
 create table agg_hash_4 as
 select (g/2)::numeric as c1, array_agg(g::numeric order by g) as c2, count(*) as c3
   from agg_data_2k group by g/2;
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Hash aggregation with ORDER BY
 set enable_sort = true;
@@ -3462,17 +3466,17 @@ drop table agg_hash_4;
 explain analyze select count(*) from pg_class,  (select count(*) >0 from  (select count(*) from pg_class where relname like 't%')x)y;
 INFO:  GPORCA failed to produce a plan, falling back to planner
 DETAIL:  Feature not supported: Queries on master-only tables
-                                                      QUERY PLAN                                                       
------------------------------------------------------------------------------------------------------------------------
- Aggregate  (cost=10000000017.74..10000000017.75 rows=1 width=8) (actual time=0.142..0.142 rows=1 loops=1)
-   ->  Nested Loop  (cost=10000000000.02..10000000016.44 rows=520 width=0) (actual time=0.016..0.114 rows=686 loops=1)
-         ->  Aggregate  (cost=0.02..0.03 rows=1 width=1) (actual time=0.003..0.003 rows=1 loops=1)
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=10000000101.23..10000000101.24 rows=1 width=8) (actual time=0.367..0.368 rows=1 loops=1)
+   ->  Nested Loop  (cost=10000000000.02..10000000093.76 rows=2986 width=0) (actual time=0.011..0.312 rows=973 loops=1)
+         ->  Aggregate  (cost=0.02..0.03 rows=1 width=1) (actual time=0.002..0.003 rows=1 loops=1)
                ->  Result  (cost=0.00..0.01 rows=1 width=8) (actual time=0.001..0.001 rows=1 loops=1)
-         ->  Seq Scan on pg_class  (cost=0.00..11.20 rows=520 width=0) (actual time=0.012..0.071 rows=686 loops=1)
- Planning Time: 1.961 ms
-   (slice0)    Executor memory: 50K bytes.
- Memory used:  128000kB
+         ->  Seq Scan on pg_class  (cost=0.00..63.86 rows=2986 width=0) (actual time=0.008..0.248 rows=973 loops=1)
  Optimizer: Postgres query optimizer
- Execution Time: 0.198 ms
+ Planning Time: 4.989 ms
+   (slice0)    Executor memory: 35K bytes.
+ Memory used:  256000kB
+ Execution Time: 0.399 ms
 (10 rows)
 

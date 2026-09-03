@@ -123,6 +123,7 @@
 #include "catalog/dependency.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_database.h"
+#include "catalog/pg_inherits.h"
 #include "commands/dbcommands.h"
 #include "commands/vacuum.h"
 #include "lib/ilist.h"
@@ -2055,6 +2056,7 @@ do_autovacuum(void)
 	int			effective_multixact_freeze_max_age;
 	bool		did_vacuum = false;
 	bool		found_concurrent_worker = false;
+	bool		updated = false;
 	int			i;
 
 	/*
@@ -2140,12 +2142,19 @@ do_autovacuum(void)
 	/*
 	 * Scan pg_class to determine which tables to vacuum.
 	 *
-	 * We do this in two passes: on the first one we collect the list of plain
-	 * relations and materialized views, and on the second one we collect
-	 * TOAST tables. The reason for doing the second pass is that during it we
-	 * want to use the main relation's pg_class.reloptions entry if the TOAST
-	 * table does not have any, and we cannot obtain it unless we know
-	 * beforehand what's the main table OID.
+	 * We do this in three passes: First we let pgstat collector know about
+	 * the partitioned table ancestors of all partitions that have recently
+	 * acquired rows for analyze.  This informs the second pass about the
+	 * total number of tuple count in partitioning hierarchies.
+	 *
+	 * On the second pass, we collect the list of plain relations,
+	 * materialized views and partitioned tables.  On the third one we collect
+	 * TOAST tables.
+	 *
+	 * The reason for doing the third pass is that during it we want to use
+	 * the main relation's pg_class.reloptions entry if the TOAST table does
+	 * not have any, and we cannot obtain it unless we know beforehand what's
+	 * the main table OID.
 	 *
 	 * We need to check TOAST tables separately because in cases with short,
 	 * wide tables there might be proportionally much more activity in the
@@ -2154,7 +2163,44 @@ do_autovacuum(void)
 	relScan = table_beginscan_catalog(classRel, 0, NULL);
 
 	/*
-	 * On the first pass, we collect main tables to vacuum, and also the main
+	 * First pass: before collecting the list of tables to vacuum, let stat
+	 * collector know about partitioned-table ancestors of each partition.
+	 */
+	while ((tuple = heap_getnext(relScan, ForwardScanDirection)) != NULL)
+	{
+		Form_pg_class classForm = (Form_pg_class) GETSTRUCT(tuple);
+		Oid			relid = classForm->oid;
+		PgStat_StatTabEntry *tabentry;
+
+		/* Only consider permanent leaf partitions */
+		if (!classForm->relispartition ||
+			classForm->relkind == RELKIND_PARTITIONED_TABLE ||
+			classForm->relpersistence == RELPERSISTENCE_TEMP)
+			continue;
+
+		/*
+		 * No need to do this for partitions that haven't acquired any rows.
+		 */
+		tabentry = pgstat_fetch_stat_tabentry(relid);
+		if (tabentry &&
+			tabentry->changes_since_analyze -
+			tabentry->changes_since_analyze_reported > 0)
+		{
+			pgstat_report_anl_ancestors(relid);
+			updated = true;
+		}
+	}
+
+	/* Acquire fresh stats for the next passes, if needed */
+	if (updated)
+	{
+		autovac_refresh_stats();
+		dbentry = pgstat_fetch_stat_dbentry(MyDatabaseId);
+		shared = pgstat_fetch_stat_dbentry(InvalidOid);
+	}
+
+	/*
+	 * On the second pass, we collect main tables to vacuum, and also the main
 	 * table relid to TOAST relid mapping.
 	 */
 	while ((tuple = heap_getnext(relScan, ForwardScanDirection)) != NULL)
@@ -2171,7 +2217,8 @@ do_autovacuum(void)
 			classForm->relkind != RELKIND_MATVIEW &&
 			classForm->relkind != RELKIND_AOSEGMENTS &&
 			classForm->relkind != RELKIND_AOBLOCKDIR &&
-			classForm->relkind != RELKIND_AOVISIMAP)
+			classForm->relkind != RELKIND_AOVISIMAP &&
+			classForm->relkind != RELKIND_PARTITIONED_TABLE)
 			continue;
 
 		relid = classForm->oid;
@@ -2253,7 +2300,7 @@ do_autovacuum(void)
 
 	table_endscan(relScan);
 
-	/* second pass: check TOAST tables */
+	/* third pass: check TOAST tables */
 	ScanKeyInit(&key,
 				Anum_pg_class_relkind,
 				BTEqualStrategyNumber, F_CHAREQ,
@@ -2850,8 +2897,8 @@ extract_autovac_opts(HeapTuple tup, TupleDesc pg_class_desc)
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_TOASTVALUE ||
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_AOSEGMENTS ||
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_AOBLOCKDIR ||
-		   ((Form_pg_class) GETSTRUCT(tup))->relkind ==  RELKIND_AOVISIMAP);
-
+		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_AOVISIMAP ||
+		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_PARTITIONED_TABLE);
 
 	relopts = extractRelOptions(tup, pg_class_desc, NULL);
 	if (relopts == NULL)
@@ -3274,7 +3321,56 @@ relation_needs_vacanalyze(Oid relid,
 	 */
 	if (PointerIsValid(tabentry) && AutoVacuumingActive())
 	{
-		reltuples = classForm->reltuples;
+		if (classForm->relkind != RELKIND_PARTITIONED_TABLE)
+		{
+			reltuples = classForm->reltuples;
+		}
+		else
+		{
+			/*
+			 * If the relation is a partitioned table, we must add up
+			 * children's reltuples.
+			 */
+			List	   *children;
+			ListCell   *lc;
+
+			reltuples = 0;
+
+			/* Find all members of inheritance set taking AccessShareLock */
+			children = find_all_inheritors(relid, AccessShareLock, NULL);
+
+			foreach(lc, children)
+			{
+				Oid			childOID = lfirst_oid(lc);
+				HeapTuple	childtuple;
+				Form_pg_class childclass;
+
+				childtuple = SearchSysCache1(RELOID, ObjectIdGetDatum(childOID));
+
+				/*
+				 * The child may have been dropped concurrently: we found it
+				 * in pg_inherits under our catalog snapshot, but autovacuum
+				 * held no lock on it until find_all_inheritors() above, so
+				 * the syscache lookup can come up empty.  Just skip it.
+				 * (Upstream removed this whole loop in 0e69f705cc1a for
+				 * exactly this reason.)
+				 */
+				if (!HeapTupleIsValid(childtuple))
+					continue;
+
+				childclass = (Form_pg_class) GETSTRUCT(childtuple);
+
+				/* Skip a partitioned table and foreign partitions */
+				if (RELKIND_HAS_STORAGE(childclass->relkind))
+				{
+					/* Sum up the child's reltuples for its parent table */
+					reltuples += childclass->reltuples;
+				}
+				ReleaseSysCache(childtuple);
+			}
+
+			list_free(children);
+		}
 		vactuples = tabentry->n_dead_tuples;
 		instuples = tabentry->inserts_since_vacuum;
 		anltuples = tabentry->changes_since_analyze;

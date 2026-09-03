@@ -2166,7 +2166,7 @@ fetch_multi_dqas_info(PlannerInfo *root,
 			dNumDistinctGroups += estimate_num_groups(root,
 			                                          this_dqa_group_exprs,
 			                                          num_total_input_rows,
-			                                          NULL);
+			                                          NULL, NULL);
 		}
 
 		/* compute-and-apply on the SAME partial node */
@@ -2301,7 +2301,7 @@ fetch_single_dqa_info(PlannerInfo *root,
 	info->dNumDistinctGroups = estimate_num_groups(root,
 												   dqa_group_exprs,
 												   num_total_input_rows,
-												   NULL);
+												   NULL, NULL);
 }
 
 /*

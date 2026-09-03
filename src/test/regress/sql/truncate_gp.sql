@@ -3,6 +3,13 @@
 -- m/segfile.*,/
 -- s/segfile:\d+\/\d+/segfile###/
 -- end_matchsubs
+-- The stat_table_segfile_size column header is centered on the pre-mask value
+-- width, which depends on the (variable-length) dboid/relfilenode OIDs, so its
+-- padding (leading/trailing spaces around the lone column name) drifts between
+-- runs.  Ignore that header line; the masked data rows and row count still diff.
+-- start_matchignore
+-- m/^ +stat_table_segfile_size +$/
+-- end_matchignore
 
 -- start_ignore
 CREATE EXTENSION plpython3u;
@@ -35,7 +42,7 @@ for dbid, datadir in db_instances.items():
     absolute_path_to_dboid_dir = '%s/base/%d' % (datadir, dboid)
     i = i+1
     try:
-        for relfilenode in os.listdir(absolute_path_to_dboid_dir):
+        for relfilenode in sorted(os.listdir(absolute_path_to_dboid_dir)):
             relfilenode_prefix = relfilenode.split('.')[0]
             if relfilenodes[i] != relfilenode_prefix:
                 continue

@@ -2053,23 +2053,22 @@ bool
 pq_check_connection(void)
 {
 	struct pollfd pollfd;
-	int         rc;
+	int			rc;
 	short		poll_ev_aux;
 
 #if defined(POLLRDHUP)
 	/*
-	 * POLLRDHUP is a Linux extension to poll(2) to detect sockets closed by the
-	 * other end.
-	 * We don't have a portable way to do that without actually trying to read
-	 * or write data on other systems. We don't want to read because that would
-	 * be confused by pipelined queries and COPY data. Perhaps in future we'll
-	 * try to write a heartbeat message instead.
+	 * POLLRDHUP is a Linux extension to poll(2) to detect sockets closed by
+	 * the other end.  We don't have a portable way to do that without
+	 * actually trying to read or write data on other systems.  We don't want
+	 * to read because that would be confused by pipelined queries and COPY
+	 * data. Perhaps in future we'll try to write a heartbeat message instead.
 	 */
 	poll_ev_aux = POLLRDHUP;
 #elif defined(__darwin__)
 	/*
-	 * OSX is able to detect closed sockets via single POSIX-compliant POLLHUP
-	 * option
+	 * GGDB: OSX is able to detect closed sockets via single POSIX-compliant
+	 * POLLHUP option
 	 */
 	poll_ev_aux = 0;
 #else

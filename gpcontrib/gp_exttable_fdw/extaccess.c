@@ -304,6 +304,19 @@ external_beginscan(Relation relation, uint32 scancounter,
 		scan->fs_formatter = (FormatterData *) palloc0(sizeof(FormatterData));
 		initStringInfo(&scan->fs_formatter->fmt_databuf);
 		scan->fs_formatter->fmt_perrow_ctx = scan->fs_pstate->rowcontext;
+
+		/*
+		 * GGDB: decide whether the formatter has to run the input through
+		 * pg_custom_to_server().  This cannot reuse pstate->need_transcoding:
+		 * since f82de5c46bd that flag is false when the file encoding equals
+		 * the database encoding, which is safe for the text/csv pipeline only
+		 * because CopyConvertBuf() still verifies every chunk -- a formatter
+		 * never reaches that pipeline, and pg_custom_to_server() is its only
+		 * validation step.
+		 */
+		scan->fs_needs_transcoding =
+			(scan->fs_pstate->file_encoding != GetDatabaseEncoding() ||
+			 pg_database_encoding_max_length() > 1);
 	}
 
 	/* pgstat_initstats(relation); */
@@ -335,6 +348,17 @@ external_rescan(FileScanDesc scan)
 	scan->fs_pstate->cur_attname = NULL;
 	scan->fs_pstate->raw_buf_len = 0;
 	scan->fs_pstate->raw_buf_index = 0;
+
+	/*
+	 * GGDB: the PG14 chunked-conversion pipeline (f82de5c46bd) keeps
+	 * additional read state; a rescan after EOF or a conversion error must
+	 * clear it too, or the new scan starts already-exhausted.
+	 */
+	scan->fs_pstate->raw_reached_eof = false;
+	scan->fs_pstate->input_buf_index = 0;
+	scan->fs_pstate->input_buf_len = 0;
+	scan->fs_pstate->input_reached_eof = false;
+	scan->fs_pstate->input_reached_error = false;
 }
 
 /* ----------------
@@ -937,7 +961,7 @@ externalgettup_custom(FileScanDesc scan)
 						scan->typioparams,
 						pstate->reached_eof,
 						pstate->rowcontext,
-						pstate->need_transcoding,
+						scan->fs_needs_transcoding,
 						pstate->enc_conversion_proc,
 						pstate->file_encoding);
 				(void) FunctionCallInvoke(fcinfo);

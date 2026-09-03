@@ -13,6 +13,7 @@
  */
 
 #include "postgres.h"
+#include "storage/latch.h"
 
 #include "common/ip.h"
 #include "nodes/execnodes.h"	/* ExecSlice, SliceTable */

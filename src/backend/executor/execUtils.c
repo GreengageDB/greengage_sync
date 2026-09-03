@@ -1724,6 +1724,16 @@ void mppExecutorCleanup(QueryDesc *queryDesc)
 
 	/* caller must have switched into per-query memory context already */
 	estate = queryDesc->estate;
+
+	/*
+	 * The executor state may not have been created yet, e.g. when an error is
+	 * thrown during operator-memory assignment in standard_ExecutorStart()
+	 * before queryDesc->estate is set. There is nothing GP-specific to clean
+	 * up in that case.
+	 */
+	if (estate == NULL)
+		return;
+
 	ds = estate->dispatcherState;
 
 	/* GPDB hook for collecting query info */
@@ -2386,6 +2396,32 @@ change_varattnos_of_a_varno(Node *node, const AttrMap *newattno, Index varno)
 	attrMapCxt.varno = varno;
 
 	(void) change_varattnos_varno_walker(node, &attrMapCxt);
+}
+
+/*
+ * Return the map needed to convert given child result relation's tuples to
+ * the rowtype of the query's main target ("root") relation.  Note that a
+ * NULL result is valid and means that no conversion is needed.
+ */
+TupleConversionMap *
+ExecGetChildToRootMap(ResultRelInfo *resultRelInfo)
+{
+	/* If we didn't already do so, compute the map for this child. */
+	if (!resultRelInfo->ri_ChildToRootMapValid)
+	{
+		ResultRelInfo *rootRelInfo = resultRelInfo->ri_RootResultRelInfo;
+
+		if (rootRelInfo)
+			resultRelInfo->ri_ChildToRootMap =
+				convert_tuples_by_name(RelationGetDescr(resultRelInfo->ri_RelationDesc),
+									   RelationGetDescr(rootRelInfo->ri_RelationDesc));
+		else					/* this isn't a child result rel */
+			resultRelInfo->ri_ChildToRootMap = NULL;
+
+		resultRelInfo->ri_ChildToRootMapValid = true;
+	}
+
+	return resultRelInfo->ri_ChildToRootMap;
 }
 
 /* Return a bitmap representing columns being inserted */

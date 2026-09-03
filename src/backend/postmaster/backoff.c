@@ -26,6 +26,7 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres.h"
+#include "storage/latch.h"
 
 #ifndef HAVE_GETRUSAGE
 #include "rusagestub.h"

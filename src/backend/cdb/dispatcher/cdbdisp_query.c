@@ -877,7 +877,12 @@ static char *
 buildGpQueryString(DispatchCommandQueryParms *pQueryParms,
 				   int *finalLen)
 {
-	const char *command = pQueryParms->strCommand;
+	/*
+	 * strCommand can be NULL: e.g. a query from a SQL-standard function body
+	 * (prosqlbody, PG14) has no source text.  Cope, like upstream's
+	 * b3ee4c50387 did for parallel workers.
+	 */
+	const char *command = pQueryParms->strCommand ? pQueryParms->strCommand : "";
 	int			command_len;
 	const char *plantree = pQueryParms->serializedPlantree;
 	int			plantree_len = pQueryParms->serializedPlantreelen;

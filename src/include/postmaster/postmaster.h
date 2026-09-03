@@ -49,6 +49,9 @@ extern int	postmaster_alive_fds[2];
 #define POSTMASTER_IN_STARTUP_MSG "the database system is starting up"
 #define POSTMASTER_IN_RESET_MSG "the database system is resetting"
 #define POSTMASTER_IN_RECOVERY_MSG "the database system is in recovery mode"
+/* PG14 (df9384492b8) split the not-accepting-connections states: */
+#define POSTMASTER_NOT_YET_ACCEPTING_MSG "the database system is not yet accepting connections"
+#define POSTMASTER_NOT_ACCEPTING_MSG "the database system is not accepting connections"
 #define POSTMASTER_IN_RECOVERY_DETAIL_MSG "last replayed record at"
 /* gpstate must be updated if this message changes */
 #define POSTMASTER_MIRROR_VERSION_DETAIL_MSG "- VERSION:"

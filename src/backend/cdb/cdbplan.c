@@ -202,7 +202,6 @@ plan_tree_mutator(Node *node,
 
 				FLATCOPY(newmt, mt, ModifyTable);
 				PLANMUTATE(newmt, mt);
-				MUTATE(newmt->plans, mt->plans, List *);
 				MUTATE(newmt->onConflictSet, mt->onConflictSet, List *);
 				MUTATE(newmt->onConflictWhere, mt->onConflictWhere , Node *);
 				MUTATE(newmt->withCheckOptionLists, mt->withCheckOptionLists, List *);
@@ -617,6 +616,19 @@ plan_tree_mutator(Node *node,
 				FLATCOPY(newmaterial, material, Material);
 				PLANMUTATE(newmaterial, material);
 				return (Node *) newmaterial;
+			}
+			break;
+		case T_ResultCache:
+			{
+				ResultCache *rc = (ResultCache *) node;
+				ResultCache *newrc;
+
+				FLATCOPY(newrc, rc, ResultCache);
+				PLANMUTATE(newrc, rc);
+				COPYARRAY(newrc, rc, numKeys, hashOperators);
+				COPYARRAY(newrc, rc, numKeys, collations);
+				MUTATE(newrc->param_exprs, rc->param_exprs, List *);
+				return (Node *) newrc;
 			}
 			break;
 

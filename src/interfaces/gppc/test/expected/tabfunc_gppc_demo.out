@@ -3311,16 +3311,16 @@ ERROR:  DESCRIBE is not supported for functions with OUT parameters
 
     -- extract function, which takes timestamp type as input
     SELECT extract(day from "time") FROM project( TABLE( SELECT * FROM history where time >'2011-08-21'), 2) order by 1;
- date_part 
------------
-        21
-        21
-        21
-        21
-        21
-        21
-        22
-        22
+ extract 
+---------
+      21
+      21
+      21
+      21
+      21
+      21
+      22
+      22
 (8 rows)
 
     -- create describe (callback) function

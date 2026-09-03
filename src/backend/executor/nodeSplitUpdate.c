@@ -37,13 +37,12 @@ static void SplitTupleTableSlot(TupleTableSlot *slot,
  * Evaluate the hash keys, and compute the target segment ID for the new row.
  */
 static uint32
-evalHashKey(SplitUpdateState *node, Datum *values, bool *isnulls)
+evalHashKey(SplitUpdateState *node, CdbHash *h, int numHashAttrs,
+			AttrNumber *hashAttnos, Datum *values, bool *isnulls)
 {
-	SplitUpdate *plannode = (SplitUpdate *) node->ps.plan;
 	ExprContext *econtext = node->ps.ps_ExprContext;
 	MemoryContext oldContext;
 	unsigned int target_seg;
-	CdbHash	   *h = node->cdbhash;
 
 	ResetExprContext(econtext);
 
@@ -51,9 +50,9 @@ evalHashKey(SplitUpdateState *node, Datum *values, bool *isnulls)
 
 	cdbhashinit(h);
 
-	for (int i = 0; i < plannode->numHashAttrs; i++)
+	for (int i = 0; i < numHashAttrs; i++)
 	{
-		AttrNumber	keyattno = plannode->hashAttnos[i];
+		AttrNumber	keyattno = hashAttnos[i];
 
 		/*
 		 * Compute the hash function
@@ -154,8 +153,54 @@ SplitTupleTableSlot(TupleTableSlot *slot,
 	if (node->output_segid_attno > 0)
 	{
 		int32		target_seg;
+		CdbHash	   *h = node->cdbhash;
+		int			numHashAttrs = plannode->numHashAttrs;
+		AttrNumber *hashAttnos = plannode->hashAttnos;
 
-		target_seg = evalHashKey(node, insert_values, insert_nulls);
+		/*
+		 * GGDB: for an old-style inheritance target, the members' policies
+		 * can differ; select the source relation's own policy by the
+		 * "tableoid" junk column.  A NULL hash object means the relation's
+		 * placement cannot change (randomly distributed, or its key does not
+		 * exist in the nominal layout): keep the row on its old segment.
+		 */
+		if (node->numPolicies > 0 && node->input_tableoid_attno > 0 &&
+			!nulls[node->input_tableoid_attno - 1])
+		{
+			Oid			relid = DatumGetObjectId(values[node->input_tableoid_attno - 1]);
+			int			idx = node->lastPolicyIdx;
+
+			if (idx < 0 || node->policyRelids[idx] != relid)
+			{
+				idx = -1;
+				for (int i = 0; i < node->numPolicies; i++)
+				{
+					if (node->policyRelids[i] == relid)
+					{
+						idx = i;
+						break;
+					}
+				}
+				node->lastPolicyIdx = idx;
+			}
+
+			if (idx >= 0)
+			{
+				h = node->policyCdbHash[idx];
+				numHashAttrs = node->policyNattrs[idx];
+				hashAttnos = node->policyAttnos[idx];
+			}
+		}
+
+		if (h != NULL && numHashAttrs > 0)
+			target_seg = evalHashKey(node, h, numHashAttrs, hashAttnos,
+									 insert_values, insert_nulls);
+		else
+		{
+			/* keep the row on its old segment */
+			Assert(!nulls[node->input_segid_attno - 1]);
+			target_seg = DatumGetInt32(values[node->input_segid_attno - 1]);
+		}
 
 		insert_values[node->output_segid_attno - 1] = Int32GetDatum(target_seg);
 		insert_nulls[node->output_segid_attno - 1] = false;
@@ -253,6 +298,68 @@ ExecInitSplitUpdate(SplitUpdate *node, EState *estate, int eflags)
 		ExecFindJunkAttributeInTlist(outerPlan->targetlist, "gp_segment_id");
 	splitupdatestate->output_segid_attno =
 		ExecFindJunkAttributeInTlist(node->plan.targetlist, "gp_segment_id");
+
+	/*
+	 * GGDB: set up the per-result-relation placement policies of an
+	 * old-style inheritance target (see SplitUpdate in plannodes.h).  The
+	 * row's source relation is identified by the "tableoid" junk column.
+	 */
+	splitupdatestate->input_tableoid_attno =
+		ExecFindJunkAttributeInTlist(outerPlan->targetlist, "tableoid");
+	splitupdatestate->numPolicies = list_length(node->policyRelids);
+	splitupdatestate->lastPolicyIdx = -1;
+	if (splitupdatestate->numPolicies > 0)
+	{
+		int			npol = splitupdatestate->numPolicies;
+		int			i;
+		ListCell   *lcrelid;
+		ListCell   *lcattnos;
+		ListCell   *lcfuncs;
+		ListCell   *lcnumsegs;
+
+		Assert(list_length(node->policyAttnos) == npol);
+		Assert(list_length(node->policyFuncs) == npol);
+		Assert(list_length(node->policyNumSegments) == npol);
+
+		splitupdatestate->policyRelids = (Oid *) palloc(npol * sizeof(Oid));
+		splitupdatestate->policyCdbHash = (CdbHash **) palloc0(npol * sizeof(CdbHash *));
+		splitupdatestate->policyAttnos = (AttrNumber **) palloc0(npol * sizeof(AttrNumber *));
+		splitupdatestate->policyNattrs = (int *) palloc0(npol * sizeof(int));
+
+		i = 0;
+		forfour(lcrelid, node->policyRelids,
+				lcattnos, node->policyAttnos,
+				lcfuncs, node->policyFuncs,
+				lcnumsegs, node->policyNumSegments)
+		{
+			List	   *attnos = (List *) lfirst(lcattnos);
+			List	   *funcs = (List *) lfirst(lcfuncs);
+			int			nattrs = list_length(attnos);
+
+			splitupdatestate->policyRelids[i] = lfirst_oid(lcrelid);
+			if (nattrs > 0)
+			{
+				AttrNumber *attnoarr = (AttrNumber *) palloc(nattrs * sizeof(AttrNumber));
+				Oid		   *funcarr = (Oid *) palloc(nattrs * sizeof(Oid));
+				ListCell   *lc2;
+				int			j;
+
+				Assert(list_length(funcs) == nattrs);
+				j = 0;
+				foreach(lc2, attnos)
+					attnoarr[j++] = (AttrNumber) lfirst_int(lc2);
+				j = 0;
+				foreach(lc2, funcs)
+					funcarr[j++] = lfirst_oid(lc2);
+
+				splitupdatestate->policyAttnos[i] = attnoarr;
+				splitupdatestate->policyNattrs[i] = nattrs;
+				splitupdatestate->policyCdbHash[i] =
+					makeCdbHash(lfirst_int(lcnumsegs), nattrs, funcarr);
+			}
+			i++;
+		}
+	}
 
 	/*
 	 * DML nodes do not project.

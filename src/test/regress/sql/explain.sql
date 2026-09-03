@@ -23,7 +23,7 @@ begin
     for ln in execute $1
     loop
         -- Replace any numeric word with just 'N'
-        ln := regexp_replace(ln, '\m\d+\M', 'N', 'g');
+        ln := regexp_replace(ln, '-?\m\d+\M', 'N', 'g');
         -- In sort output, the above won't match units-suffixed numbers
         ln := regexp_replace(ln, '\m\d+kB', 'NkB', 'g');
         -- Ignore text-mode buffers output because it varies depending
@@ -54,6 +54,16 @@ begin
     return data::jsonb;
 end;
 $$;
+
+-- GGDB: the JIT regression jobs run with jit enabled and lowered jit cost
+-- thresholds, so EXPLAIN (VERBOSE) emits a "Settings: jit = ..." line. That line
+-- is ignored by init_file, but its width still perturbs the explain_filter output
+-- column and breaks the otherwise-identical non-jit jobs. Pin the jit GUCs to
+-- their boot defaults so EXPLAIN output is the same under both job types (the JSON
+-- cases below already strip jit for the same "varies in test environment" reason).
+set jit = off;
+set jit_above_cost = 100000;
+set optimizer_jit_above_cost = 7500;
 
 -- Simple cases
 
@@ -111,3 +121,6 @@ select jsonb_pretty(
 );
 
 rollback;
+
+set compute_query_id = on;
+select explain_filter('explain (verbose) select * from int8_tbl i8');

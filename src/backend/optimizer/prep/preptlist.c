@@ -3,30 +3,26 @@
  * preptlist.c
  *	  Routines to preprocess the parse tree target list
  *
- * For INSERT and UPDATE queries, the targetlist must contain an entry for
- * each attribute of the target relation in the correct order.  For UPDATE and
- * DELETE queries, it must also contain junk tlist entries needed to allow the
- * executor to identify the rows to be updated or deleted.  For all query
- * types, we may need to add junk tlist entries for Vars used in the RETURNING
- * list and row ID information needed for SELECT FOR UPDATE locking and/or
- * EvalPlanQual checking.
+ * For an INSERT, the targetlist must contain an entry for each attribute of
+ * the target relation in the correct order.
+ *
+ * For an UPDATE, the targetlist just contains the expressions for the new
+ * column values.
+ *
+ * For UPDATE and DELETE queries, the targetlist must also contain "junk"
+ * tlist entries needed to allow the executor to identify the rows to be
+ * updated or deleted; for example, the ctid of a heap row.  (The planner
+ * adds these; they're not in what we receive from the planner/rewriter.)
+ *
+ * For all query types, there can be additional junk tlist entries, such as
+ * sort keys, Vars needed for a RETURNING list, and row ID information needed
+ * for SELECT FOR UPDATE locking and/or EvalPlanQual checking.
  *
  * The query rewrite phase also does preprocessing of the targetlist (see
  * rewriteTargetListIU).  The division of labor between here and there is
- * partially historical, but it's not entirely arbitrary.  In particular,
- * consider an UPDATE across an inheritance tree.  What rewriteTargetListIU
- * does need be done only once (because it depends only on the properties of
- * the parent relation).  What's done here has to be done over again for each
- * child relation, because it depends on the properties of the child, which
- * might be of a different relation type, or have more columns and/or a
- * different column order than the parent.
- *
- * The fact that rewriteTargetListIU sorts non-resjunk tlist entries by column
- * position, which expand_targetlist depends on, violates the above comment
- * because the sorting is only valid for the parent relation.  In inherited
- * UPDATE cases, adjust_inherited_tlist runs in between to take care of fixing
- * the tlists for child tables to keep expand_targetlist happy.  We do it like
- * that because it's faster in typical non-inherited cases.
+ * partially historical, but it's not entirely arbitrary.  The stuff done
+ * here is closely connected to physical access to tables, whereas the
+ * rewriter's work is more concerned with SQL semantics.
  *
  *
  * Portions Copyright (c) 2006-2008, Greenplum inc
@@ -42,26 +38,31 @@
 
 #include "postgres.h"
 
-#include "access/sysattr.h"
 #include "access/table.h"
-#include "catalog/pg_type.h"
 #include "nodes/makefuncs.h"
+#include "optimizer/appendinfo.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/prep.h"
 #include "optimizer/tlist.h"
 #include "parser/parse_coerce.h"
 #include "parser/parsetree.h"
-#include "rewrite/rewriteHandler.h"
 #include "utils/rel.h"
 
+#include "access/htup_details.h"
 #include "catalog/gp_distribution_policy.h"     /* CDB: POLICYTYPE_PARTITIONED */
 #include "catalog/pg_inherits.h"
+#include "commands/tablecmds.h"
 #include "optimizer/plancat.h"
 #include "parser/parse_relation.h"
 #include "utils/lsyscache.h"
+#include "utils/syscache.h"
 
+static List *extract_update_colnos(List *tlist);
 static List *expand_targetlist(PlannerInfo *root, List *tlist, int command_type,
 							   Index result_relation, Relation rel);
+static bool check_splitupdate(List *tlist, Index result_relation, Relation rel,
+							  bool inh);
+static bool rel_has_appendoptimized_partition(Relation rel);
 static List *supplement_simply_updatable_targetlist(PlannerInfo *root,
 													List *range_table,
 													List *tlist);
@@ -71,12 +72,15 @@ static List *supplement_simply_updatable_targetlist(PlannerInfo *root,
  * preprocess_targetlist
  *	  Driver for preprocessing the parse tree targetlist.
  *
- *	  Returns the new targetlist.
+ * The preprocessed targetlist is returned in root->processed_tlist.
+ * Also, if this is an UPDATE, we return a list of target column numbers
+ * in root->update_colnos.  (Resnos in processed_tlist will be consecutive,
+ * so do not look at that to find out which columns are targets!)
  *
  * As a side effect, if there's an ON CONFLICT UPDATE clause, its targetlist
  * is also preprocessed (and updated in-place).
  */
-List *
+void
 preprocess_targetlist(PlannerInfo *root)
 {
 	Query	   *parse = root->parse;
@@ -110,23 +114,137 @@ preprocess_targetlist(PlannerInfo *root)
 		Assert(command_type == CMD_SELECT);
 
 	/*
-	 * For UPDATE/DELETE, add any junk column(s) needed to allow the executor
-	 * to identify the rows to be updated or deleted.  Note that this step
-	 * scribbles on parse->targetList, which is not very desirable, but we
-	 * keep it that way to avoid changing APIs used by FDWs.
-	 */
-	if (command_type == CMD_UPDATE || command_type == CMD_DELETE)
-		rewriteTargetListUD(parse, target_rte, target_relation);
-
-	/*
-	 * for heap_form_tuple to work, the targetlist must match the exact order
-	 * of the attributes. We also need to fill in any missing attributes. -ay
-	 * 10/94
+	 * In an INSERT, the executor expects the targetlist to match the exact
+	 * order of the target table's attributes, including entries for
+	 * attributes not mentioned in the source query.
+	 *
+	 * In an UPDATE, we don't rearrange the tlist order, but we need to make a
+	 * separate list of the target attribute numbers, in tlist order, and then
+	 * renumber the processed_tlist entries to be consecutive.
 	 */
 	tlist = parse->targetList;
-	if (command_type == CMD_INSERT || command_type == CMD_UPDATE)
+	if (command_type == CMD_INSERT)
 		tlist = expand_targetlist(root, tlist, command_type,
 								  result_relation, target_relation);
+	else if (command_type == CMD_UPDATE)
+	{
+		/*
+		 * GGDB: Decide up front whether this UPDATE modifies a distribution
+		 * key column and therefore needs a Split Update (which can move the
+		 * tuple to a different segment).  We must know this *before* deciding
+		 * how to shape the targetlist:
+		 *
+		 *  - A plain UPDATE keeps only the SET columns; the executor
+		 *    (ExecBuildUpdateProjection) fills the unchanged columns from the
+		 *    old tuple using ModifyTable.updateColnosLists, which planner.c
+		 *    builds from root->update_colnos.  So we just record the SET
+		 *    column numbers (and renumber the tlist to be consecutive, as
+		 *    upstream).
+		 *
+		 *  - A Split Update is executed as delete+insert and needs the full
+		 *    new tuple, so we expand the targetlist to every attribute
+		 *    (GPDB's expand_targetlist), and must therefore *not* renumber
+		 *    the SET resnos beforehand (expand_targetlist matches
+		 *    resno == attno).
+		 */
+		root->is_split_update = check_splitupdate(tlist, result_relation,
+												  target_relation,
+												  target_rte->inh);
+		if (root->is_split_update ||
+			RelationIsAppendOptimized(target_relation) ||
+			rel_has_appendoptimized_partition(target_relation))
+		{
+			/*
+			 * Both a Split Update and an append-optimized UPDATE need the full
+			 * new tuple, so expand the targetlist to every attribute first.  A
+			 * Split Update runs as delete+insert; an AO/AOCS UPDATE likewise
+			 * re-inserts the row and cannot fetch the old tuple by TID to fill
+			 * in the unmodified columns (appendonly_fetch_row_version is
+			 * unsupported).
+			 *
+			 * We must take the assign-column list from the *expanded* tlist:
+			 * the plan emits one non-junk column per table attribute, so
+			 * root->update_colnos has to have one entry per column too,
+			 * otherwise ExecBuildUpdateProjection() rejects the plan with
+			 * "targetColnos does not match subplan target list".  We must not
+			 * renumber the SET resnos beforehand, because expand_targetlist()
+			 * relies on resno == attno.
+			 */
+			tlist = expand_targetlist(root, tlist, command_type,
+									  result_relation, target_relation);
+
+			if (!root->is_split_update)
+			{
+				/*
+				 * ExecBuildUpdateProjection() pairs each non-junk tlist entry
+				 * with its update_colnos target and rejects dropped target
+				 * columns, so strip the NULL placeholders expand_targetlist()
+				 * emitted for them; the executor sets dropped columns of the
+				 * new tuple to NULL itself.  A Split Update keeps the
+				 * placeholders: it runs as delete+insert and its INSERT half
+				 * wants the full physical row with resno == attno.
+				 */
+				TupleDesc	tupdesc = RelationGetDescr(target_relation);
+				List	   *full_tlist = tlist;
+				ListCell   *lc2;
+
+				tlist = NIL;
+				foreach(lc2, full_tlist)
+				{
+					TargetEntry *tle = (TargetEntry *) lfirst(lc2);
+
+					if (tle->resjunk ||
+						!TupleDescAttr(tupdesc, tle->resno - 1)->attisdropped)
+						tlist = lappend(tlist, tle);
+				}
+				root->update_colnos = extract_update_colnos(tlist);
+			}
+			else
+			{
+				/*
+				 * GGDB: like the branch above, but a Split Update's expanded
+				 * tlist keeps NULL placeholders for dropped columns (its
+				 * INSERT half wants resno == attno).  Leave those attnos out
+				 * of update_colnos: translating them to an inheritance child
+				 * has no Var to map to ("attribute N of relation does not
+				 * exist"), and nothing stores dropped columns anyway.
+				 */
+				TupleDesc	tupdesc = RelationGetDescr(target_relation);
+				ListCell   *lc2;
+
+				root->update_colnos = NIL;
+				foreach(lc2, tlist)
+				{
+					TargetEntry *tle = (TargetEntry *) lfirst(lc2);
+
+					if (!tle->resjunk &&
+						!TupleDescAttr(tupdesc, tle->resno - 1)->attisdropped)
+						root->update_colnos =
+							lappend_int(root->update_colnos, tle->resno);
+				}
+			}
+		}
+		else
+			root->update_colnos = extract_update_colnos(tlist);
+	}
+
+	/*
+	 * For non-inherited UPDATE/DELETE, register any junk column(s) needed to
+	 * allow the executor to identify the rows to be updated or deleted.  In
+	 * the inheritance case, we do nothing now, leaving this to be dealt with
+	 * when expand_inherited_rtentry() makes the leaf target relations.  (But
+	 * there might not be any leaf target relations, in which case we must do
+	 * this in distribute_row_identity_vars().)
+	 */
+	if ((command_type == CMD_UPDATE || command_type == CMD_DELETE) &&
+		!target_rte->inh)
+	{
+		/* row-identity logic expects to add stuff to processed_tlist */
+		root->processed_tlist = tlist;
+		add_row_identity_columns(root, result_relation,
+								 target_rte, target_relation);
+		tlist = root->processed_tlist;
+	}
 
 	/* simply updatable cursors */
 	if (root->glob->simplyUpdatableRel != InvalidOid)
@@ -138,6 +256,14 @@ preprocess_targetlist(PlannerInfo *root)
 	 * rechecking.  See comments for PlanRowMark in plannodes.h.  If you
 	 * change this stanza, see also expand_inherited_rtentry(), which has to
 	 * be able to add on junk columns equivalent to these.
+	 *
+	 * (Someday it might be useful to fold these resjunk columns into the
+	 * row-identity-column management used for UPDATE/DELETE.  Today is not
+	 * that day, however.  One notable issue is that it seems important that
+	 * the whole-row Vars made here use the real table rowtype, not RECORD, so
+	 * that conversion to/from child relations' rowtypes will happen.  Also,
+	 * since these entries don't potentially bloat with more and more child
+	 * relations, there's not really much need for column sharing.)
 	 */
 	foreach(lc, root->rowMarks)
 	{
@@ -237,6 +363,8 @@ preprocess_targetlist(PlannerInfo *root)
 		list_free(vars);
 	}
 
+	root->processed_tlist = tlist;
+
 	/*
 	 * If there's an ON CONFLICT UPDATE clause, preprocess its targetlist too
 	 * while we have the relation open.
@@ -250,8 +378,35 @@ preprocess_targetlist(PlannerInfo *root)
 
 	if (target_relation)
 		table_close(target_relation, NoLock);
+}
 
-	return tlist;
+/*
+ * extract_update_colnos
+ * 		Extract a list of the target-table column numbers that
+ * 		an UPDATE's targetlist wants to assign to, then renumber.
+ *
+ * The convention in the parser and rewriter is that the resnos in an
+ * UPDATE's non-resjunk TLE entries are the target column numbers
+ * to assign to.  Here, we extract that info into a separate list, and
+ * then convert the tlist to the sequential-numbering convention that's
+ * used by all other query types.
+ */
+static List *
+extract_update_colnos(List *tlist)
+{
+	List	   *update_colnos = NIL;
+	AttrNumber	nextresno = 1;
+	ListCell   *lc;
+
+	foreach(lc, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
+
+		if (!tle->resjunk)
+			update_colnos = lappend_int(update_colnos, tle->resno);
+		tle->resno = nextresno++;
+	}
+	return update_colnos;
 }
 
 
@@ -266,6 +421,10 @@ preprocess_targetlist(PlannerInfo *root)
  *	  Given a target list as generated by the parser and a result relation,
  *	  add targetlist entries for any missing attributes, and ensure the
  *	  non-junk attributes appear in proper field order.
+ *
+ * command_type is a bit of an archaism now: it's CMD_INSERT when we're
+ * processing an INSERT, all right, but the only other use of this function
+ * is for ON CONFLICT UPDATE tlists, for which command_type is CMD_UPDATE.
  */
 static List *
 expand_targetlist(PlannerInfo *root, List *tlist, int command_type,
@@ -498,6 +657,184 @@ expand_targetlist(PlannerInfo *root, List *tlist, int command_type,
 
 
 /*
+ * check_splitupdate
+ *		Decide whether an UPDATE needs a Split Update.
+ *
+ * A Split Update is required when the UPDATE may change a distribution key
+ * column: the modified tuple might then belong on a different segment and has
+ * to be re-routed (executed as a delete + insert).  We inspect the
+ * (not-yet-expanded) UPDATE targetlist -- a SET column whose new value is not
+ * simply a Var referencing the same attribute of the target relation counts as
+ * changed.  Return true if any distribution key column is changed.  The actual
+ * SplitUpdate node is created later in planning; memorizing the decision in
+ * root->is_split_update avoids redoing this work.
+ */
+static bool
+check_splitupdate(List *tlist, Index result_relation, Relation rel, bool inh)
+{
+	ListCell   *lc;
+	Bitmapset  *changed_cols = NULL;
+	GpPolicy   *targetPolicy;
+	bool		key_col_updated = false;
+
+	foreach(lc, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
+		AttrNumber	attrno = tle->resno;
+		bool		col_changed = true;
+
+		if (tle->resjunk)
+			continue;
+
+		/*
+		 * The column is unchanged if its new value is a Var referring directly
+		 * to the same attribute of the target relation.
+		 */
+		if (IsA(tle->expr, Var))
+		{
+			Var		   *var = (Var *) tle->expr;
+
+			if (var->varno == result_relation && var->varattno == attrno)
+				col_changed = false;
+		}
+
+		if (col_changed)
+			changed_cols = bms_add_member(changed_cols, attrno);
+	}
+
+	/* Was any distribution key column among the changed columns? */
+	targetPolicy = GpPolicyFetch(RelationGetRelid(rel));
+	if (targetPolicy->ptype == POLICYTYPE_PARTITIONED)
+	{
+		int			i;
+
+		for (i = 0; i < targetPolicy->nattrs; i++)
+		{
+			if (bms_is_member(targetPolicy->attrs[i], changed_cols))
+			{
+				key_col_updated = true;
+				break;
+			}
+		}
+	}
+
+	/*
+	 * GGDB: an old-style inheritance child can have its own distribution
+	 * policy, with different key columns than the parent's.  The UPDATE runs
+	 * as a single plan over the whole tree, so if the changed columns cover
+	 * *any* member's distribution key, the whole UPDATE must run as a Split
+	 * Update; the executor then re-places each row according to its source
+	 * relation's own policy (see SplitUpdate in plannodes.h).  Partitions of
+	 * a partitioned table always share the root's policy, so this scan is
+	 * needed only for old-style inheritance.  Child key columns are matched
+	 * to the parent's by name; a child-only key column cannot be changed
+	 * through the parent.
+	 */
+	if (!key_col_updated && inh &&
+		rel->rd_rel->relkind == RELKIND_RELATION &&
+		targetPolicy->ptype == POLICYTYPE_PARTITIONED)
+	{
+		TupleDesc	tupdesc = RelationGetDescr(rel);
+		List	   *children;
+		ListCell   *lcc;
+
+		/*
+		 * NoLock: the target root is already locked at the statement's
+		 * rellockmode, which serializes any DDL that could change the
+		 * inheritance tree; children get properly locked during
+		 * inheritance expansion.  We only read catalog entries here.
+		 */
+		children = find_all_inheritors(RelationGetRelid(rel),
+									   NoLock, NULL);
+		foreach(lcc, children)
+		{
+			Oid			childrelid = lfirst_oid(lcc);
+			GpPolicy   *childPolicy;
+
+			if (childrelid == RelationGetRelid(rel))
+				continue;
+
+			childPolicy = GpPolicyFetch(childrelid);
+			if (childPolicy->ptype == POLICYTYPE_PARTITIONED)
+			{
+				for (int i = 0; i < childPolicy->nattrs; i++)
+				{
+					char	   *attname = get_attname(childrelid,
+													  childPolicy->attrs[i],
+													  false);
+
+					for (int j = 0; j < tupdesc->natts; j++)
+					{
+						Form_pg_attribute att = TupleDescAttr(tupdesc, j);
+
+						if (!att->attisdropped &&
+							strcmp(NameStr(att->attname), attname) == 0)
+						{
+							if (bms_is_member(j + 1, changed_cols))
+								key_col_updated = true;
+							break;
+						}
+					}
+					pfree(attname);
+					if (key_col_updated)
+						break;
+				}
+			}
+			pfree(childPolicy);
+			if (key_col_updated)
+				break;
+		}
+		list_free(children);
+	}
+
+	bms_free(changed_cols);
+	return key_col_updated;
+}
+
+/*
+ * rel_has_appendoptimized_partition
+ *		Does any leaf partition of this relation use an
+ *		append-optimized access method?
+ *
+ * A partitioned root has no access method of its own, so
+ * RelationIsAppendOptimized() is always false for it, but the executor
+ * restriction that forces targetlist expansion -- an AO relation cannot
+ * fetch the old tuple by TID to fill in unchanged columns, so the plan
+ * must supply the full new tuple -- applies per leaf.
+ */
+static bool
+rel_has_appendoptimized_partition(Relation rel)
+{
+	List	   *children;
+	ListCell   *lc;
+	bool		result = false;
+
+	if (rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE)
+		return false;
+
+	/* NoLock: see check_splitupdate() */
+	children = find_all_inheritors(RelationGetRelid(rel), NoLock,
+								   NULL);
+	foreach(lc, children)
+	{
+		Oid			childrelid = lfirst_oid(lc);
+		HeapTuple	tuple;
+
+		tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(childrelid));
+		if (!HeapTupleIsValid(tuple))
+			continue;
+		if (IsAccessMethodAO(((Form_pg_class) GETSTRUCT(tuple))->relam))
+			result = true;
+		ReleaseSysCache(tuple);
+		if (result)
+			break;
+	}
+	list_free(children);
+	return result;
+}
+
+
+/*
  * Locate PlanRowMark for given RT index, or return NULL if none
  *
  * This probably ought to be elsewhere, but there's no very good place
@@ -583,7 +920,7 @@ supplement_simply_updatable_targetlist(PlannerInfo *root, List *range_table, Lis
 	 * our ability to uniquely identify a tuple. Without inheritance, we omit tableoid
 	 * to avoid the overhead of carrying tableoid for each tuple in the result set.
 	 */
-	if (find_inheritance_children(reloid, NoLock) != NIL)
+	if (find_inheritance_children(reloid, true, NoLock) != NIL)
 	{
 		Var         *varTableoid = makeVar(varno,
 										   TableOidAttributeNumber,
