@@ -2686,16 +2686,34 @@ retry1:
 						   (uint32) (recptr >> 32), (uint32) recptr)));
 			break;
 		case CAC_NOTCONSISTENT:
+
+			/*
+			 * GGDB: same treatment as CAC_STARTUP above, which covered this
+			 * pmState before df9384492b8 split PM_RECOVERY out: let FTS and
+			 * fault-injector connections through to a mirror, and attach the
+			 * last replayed LSN so that the FTS probe and gang-creation retry
+			 * logic can both recognize the message and measure recovery
+			 * progress (see checkIfFailedDueToNormalRestart()).
+			 */
+			if ((am_ftshandler || am_faulthandler) && am_mirror)
+				break;
+
+			recptr = last_xlog_replay_location();
+
 			if (EnableHotStandby)
 				ereport(FATAL,
 						(errcode(ERRCODE_CANNOT_CONNECT_NOW),
-						 errmsg("the database system is not yet accepting connections"),
-						 errdetail("Consistent recovery state has not been yet reached.")));
+						 errmsg(POSTMASTER_NOT_YET_ACCEPTING_MSG),
+						 errdetail("Consistent recovery state has not been yet reached. "
+								   POSTMASTER_IN_RECOVERY_DETAIL_MSG " %X/%X",
+								   (uint32) (recptr >> 32), (uint32) recptr)));
 			else
 				ereport(FATAL,
 						(errcode(ERRCODE_CANNOT_CONNECT_NOW),
-						 errmsg("the database system is not accepting connections"),
-						 errdetail("Hot standby mode is disabled.")));
+						 errmsg(POSTMASTER_NOT_ACCEPTING_MSG),
+						 errdetail("Hot standby mode is disabled. "
+								   POSTMASTER_IN_RECOVERY_DETAIL_MSG " %X/%X",
+								   (uint32) (recptr >> 32), (uint32) recptr)));
 			break;
 		case CAC_SHUTDOWN:
 			ereport(FATAL,
