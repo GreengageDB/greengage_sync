@@ -482,7 +482,7 @@ static void restore_vacuum_error_info(LVRelState *vacrel,
 									  const LVSavedErrInfo *saved_vacrel);
 
 /*
- *	lazy_vacuum_rel_heap() -- perform VACUUM for one heap relation
+ *	heap_vacuum_rel() -- perform VACUUM for one heap relation
  *
  *		This routine vacuums a single heap, cleans out its indexes, and
  *		updates its relpages and reltuples statistics.
@@ -491,7 +491,7 @@ static void restore_vacuum_error_info(LVRelState *vacrel,
  *		and locked the relation.
  */
 void
-lazy_vacuum_rel_heap(Relation rel, VacuumParams *params,
+heap_vacuum_rel(Relation rel, VacuumParams *params,
 				BufferAccessStrategy bstrategy)
 {
 	LVRelState *vacrel;
@@ -552,6 +552,7 @@ lazy_vacuum_rel_heap(Relation rel, VacuumParams *params,
 	 * relations.  This allows setting relfrozenxid to correct value
 	 * for an appendonly (AO/CO) table.
 	 */
+
 	vacuum_set_xid_limits(rel,
 						  params->freeze_min_age,
 						  params->freeze_table_age,
@@ -1549,10 +1550,6 @@ lazy_scan_heap(LVRelState *vacrel, VacuumParams *params, bool aggressive)
 			RecordPageWithFreeSpace(vacrel->rel, blkno, freespace);
 		}
 
-		/*
-		 * GPDB: Throttle the heap scan if the mirror is falling too far
-		 * behind, to avoid building up a large replication lag.
-		 */
 		if (RelationNeedsWAL(vacrel->rel))
 			wait_to_avoid_large_repl_lag();
 	}

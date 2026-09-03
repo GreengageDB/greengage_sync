@@ -196,6 +196,9 @@ extern void heap_page_prune_execute(Buffer buffer,
 extern void heap_get_root_tuples(Page page, OffsetNumber *root_offsets);
 
 /* in heap/vacuumlazy.c */
+struct VacuumParams;
+extern void heap_vacuum_rel(Relation rel,
+							struct VacuumParams *params, BufferAccessStrategy bstrategy);
 extern void parallel_vacuum_main(dsm_segment *seg, shm_toc *toc);
 
 /* in heap/heapam_visibility.c */
