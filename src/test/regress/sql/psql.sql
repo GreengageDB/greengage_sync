@@ -1267,7 +1267,7 @@ ROLLBACK;
 -- misc SQL commands
 -- (non SELECT output is sent to stderr, thus is not shown in expected results)
 SELECT 'ok' AS "begin" \;
-CREATE TABLE psql_comics(s TEXT) \;
+CREATE TABLE psql_comics(s TEXT) DISTRIBUTED REPLICATED \;
 INSERT INTO psql_comics VALUES ('Calvin'), ('hobbes') \;
 COPY psql_comics FROM STDIN \;
 UPDATE psql_comics SET s = 'Hobbes' WHERE s = 'hobbes' \;
