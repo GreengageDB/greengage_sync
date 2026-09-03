@@ -2091,6 +2091,7 @@ AddRoleMems(const char *rolename, Oid roleid,
 	 */
 	if (roleid == ROLE_DATABASE_OWNER)
 		ereport(ERROR,
+				errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("role \"%s\" cannot have explicit members", rolename));
 
 	/*
@@ -2142,6 +2143,7 @@ AddRoleMems(const char *rolename, Oid roleid,
 		 */
 		if (memberid == ROLE_DATABASE_OWNER)
 			ereport(ERROR,
+					errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					errmsg("role \"%s\" cannot be a member of any role",
 						   get_rolespec_name(memberRole)));
 
