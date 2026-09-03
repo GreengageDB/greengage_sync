@@ -1884,6 +1884,7 @@ apply_handle_truncate(StringInfo s)
 						DROP_RESTRICT,
 						restart_seqs,
 						NULL);
+
 	foreach(lc, remote_rels)
 	{
 		LogicalRepRelMapEntry *rel = lfirst(lc);

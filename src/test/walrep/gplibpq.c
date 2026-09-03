@@ -9,7 +9,6 @@
 #include "miscadmin.h"
 #include "access/xlog_internal.h"
 #include "access/xlogrecord.h"
-#include "access/xlogutils.h"
 #include "replication/walreceiver.h"
 #include "cdb/cdbappendonlyam.h"
 #include "cdb/cdbappendonlyxlog.h"
@@ -436,9 +435,6 @@ check_ao_record_present(unsigned char type, char *buf, Size len,
 	initStringInfo(&incoming_message);
 
 	XLogReaderState *xlogreader;
-	XLogFindNextRecordState *findnext_state;
-	XLogRecord *record;
-	XLogReadRecordResult result;
 	char	   *errormsg;
 
 	if (type != 'w')
@@ -463,12 +459,10 @@ check_ao_record_present(unsigned char type, char *buf, Size len,
 	test_PrintLog("wal end record", walEnd, sendTime);
 
 	xlogreader = XLogReaderAllocate(DEFAULT_XLOG_SEG_SIZE, NULL,
-									wal_segment_close);
-	if (!xlogreader)
-		ereport(ERROR,
-				(errcode(ERRCODE_OUT_OF_MEMORY),
-				 errmsg("out of memory"),
-				 errdetail("Failed while allocating a WAL reading processor.")));
+									XL_ROUTINE(.page_read = read_local_xlog_page,
+											   .segment_open = wal_segment_open,
+											   .segment_close = wal_segment_close),
+									NULL);
 
 	/*
 	 * Find the first valid record at or after the given starting point.
@@ -476,25 +470,8 @@ check_ao_record_present(unsigned char type, char *buf, Size len,
 	 * XLogReadRecord() trips an assertion if it's given an invalid location,
 	 * and in the tests, we might be given a WAL position that points to the
 	 * beginning of a page, rather than a valid record.
-	 *
-	 * The xlogreader has no way to read WAL pages itself anymore; whenever it
-	 * needs more input, feed it pages of the WAL we just wrote locally with
-	 * read_local_xlog_page().
 	 */
-	findnext_state = InitXLogFindNextRecord(xlogreader, dataStart);
-	if (!findnext_state)
-		ereport(ERROR,
-				(errcode(ERRCODE_OUT_OF_MEMORY),
-				 errmsg("out of memory"),
-				 errdetail("Failed while allocating a WAL reading processor.")));
-
-	while (XLogFindNextRecord(findnext_state))
-	{
-		if (!read_local_xlog_page(xlogreader))
-			break;
-	}
-
-	dataStart = findnext_state->currRecPtr;
+	dataStart = XLogFindNextRecord(xlogreader, dataStart);
 	if (dataStart == InvalidXLogRecPtr)
 		return 0;
 
@@ -502,14 +479,7 @@ check_ao_record_present(unsigned char type, char *buf, Size len,
 	/* process the xlog records one at a time and check if it is an AO/AOCO record */
 	do
 	{
-		while ((result = XLogReadRecord(xlogreader, &record, &errormsg)) ==
-			   XLREAD_NEED_DATA)
-		{
-			if (!read_local_xlog_page(xlogreader))
-				break;
-		}
-
-		if (result == XLREAD_SUCCESS)
+		if (XLogReadRecord(xlogreader, &errormsg))
 		{
 			if (XLogRecGetRmid(xlogreader) == RM_APPEND_ONLY_ID)
 			{

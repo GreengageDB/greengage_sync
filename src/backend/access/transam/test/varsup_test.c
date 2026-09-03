@@ -87,8 +87,8 @@ test_GetNewTransactionId_xid_warn_limit(void **state)
 {
 	const int xid = 25;
 	VariableCacheData data;
-	PGPROC proc = {0};
-	PROC_HDR procGlobal = {0};
+	PGPROC proc;
+	PROC_HDR procGlobal;
 	XidCacheStatus subxidStates[1] = {0};
 	TransactionId xids[1] = {0};
 

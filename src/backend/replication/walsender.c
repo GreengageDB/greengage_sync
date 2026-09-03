@@ -603,7 +603,10 @@ StartReplication(StartReplicationCmd *cmd)
 
 	/* create xlogreader for physical replication */
 	xlogreader =
-		XLogReaderAllocate(wal_segment_size, NULL, wal_segment_close);
+		XLogReaderAllocate(wal_segment_size, NULL,
+						   XL_ROUTINE(.segment_open = WalSndSegmentOpen,
+									  .segment_close = wal_segment_close),
+						   NULL);
 
 	if (!xlogreader)
 		ereport(ERROR,
@@ -833,12 +836,10 @@ StartReplication(StartReplicationCmd *cmd)
  * which has to do a plain sleep/busy loop, because the walsender's latch gets
  * set every time WAL is flushed.
  */
-static bool
-logical_read_xlog_page(XLogReaderState *state)
+static int
+logical_read_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr, int reqLen,
+					   XLogRecPtr targetRecPtr, char *cur_page)
 {
-	XLogRecPtr		targetPagePtr = state->readPagePtr;
-	int				reqLen		  = state->reqLen;
-	char		   *cur_page	  = state->readBuf;
 	XLogRecPtr	flushptr;
 	int			count;
 	WALReadError errinfo;
@@ -855,10 +856,7 @@ logical_read_xlog_page(XLogReaderState *state)
 
 	/* fail if not (implies we are going to shut down) */
 	if (flushptr < targetPagePtr + reqLen)
-	{
-		XLogReaderSetInputData(state, -1);
-		return false;
-	}
+		return -1;
 
 	if (targetPagePtr + XLOG_BLCKSZ <= flushptr)
 		count = XLOG_BLCKSZ;	/* more than one block available */
@@ -866,7 +864,7 @@ logical_read_xlog_page(XLogReaderState *state)
 		count = flushptr - targetPagePtr;	/* part of the page available */
 
 	/* now actually read the data, we know it's there */
-	if (!WALRead(state, WalSndSegmentOpen, wal_segment_close,
+	if (!WALRead(state,
 				 cur_page,
 				 targetPagePtr,
 				 XLOG_BLCKSZ,
@@ -892,10 +890,10 @@ logical_read_xlog_page(XLogReaderState *state)
 	XLByteToSeg(targetPagePtr, segno, state->segcxt.ws_segsize);
 	CheckXLogRemoved(segno, state->seg.ws_tli);
 
+	/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 	WalSndCtl->error = WALSNDERROR_NONE;
 
-	XLogReaderSetInputData(state, count);
-	return true;
+	return count;
 }
 
 /*
@@ -1048,8 +1046,9 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 
 		ctx = CreateInitDecodingContext(cmd->plugin, NIL, need_full_snapshot,
 										InvalidXLogRecPtr,
-										logical_read_xlog_page,
-										wal_segment_close,
+										XL_ROUTINE(.page_read = logical_read_xlog_page,
+												   .segment_open = WalSndSegmentOpen,
+												   .segment_close = wal_segment_close),
 										WalSndPrepareWrite, WalSndWriteData,
 										WalSndUpdateProgress);
 
@@ -1207,8 +1206,9 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 	 */
 	logical_decoding_ctx =
 		CreateDecodingContext(cmd->startpoint, cmd->options, false,
-							  logical_read_xlog_page,
-							  wal_segment_close,
+							  XL_ROUTINE(.page_read = logical_read_xlog_page,
+										 .segment_open = WalSndSegmentOpen,
+										 .segment_close = wal_segment_close),
 							  WalSndPrepareWrite, WalSndWriteData,
 							  WalSndUpdateProgress);
 	xlogreader = logical_decoding_ctx->reader;
@@ -2862,7 +2862,7 @@ XLogSendPhysical(void)
 	enlargeStringInfo(&output_message, nbytes);
 
 retry:
-	if (!WALRead(xlogreader, WalSndSegmentOpen, wal_segment_close,
+	if (!WALRead(xlogreader,
 				 &output_message.data[output_message.len],
 				 startptr,
 				 nbytes,
@@ -2989,12 +2989,7 @@ XLogSendLogical(void)
 	 */
 	WalSndCaughtUp = false;
 
-	while (XLogReadRecord(logical_decoding_ctx->reader, &record, &errm) ==
-		   XLREAD_NEED_DATA)
-	{
-		if (!logical_decoding_ctx->page_read(logical_decoding_ctx->reader))
-			break;
-	}
+	record = XLogReadRecord(logical_decoding_ctx->reader, &errm);
 
 	/* xlog record was invalid */
 	if (errm != NULL)
