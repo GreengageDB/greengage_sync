@@ -21926,6 +21926,12 @@ DetachPartitionFinalize(Relation rel, Relation partRel, bool concurrent,
 	 * included in its partition descriptor.
 	 */
 	CacheInvalidateRelcache(rel);
+
+	/* MPP-6929: metadata tracking */
+	MetaTrackUpdObject(RelationRelationId,
+					   RelationGetRelid(partRel),
+					   GetUserId(),
+					   "PARTITION", "DETACH");
 }
 
 /*
@@ -21954,12 +21960,6 @@ ATExecDetachPartitionFinalize(Relation rel, RangeVar *name)
 	WaitForOlderSnapshots(snap->xmin, false);
 
 	DetachPartitionFinalize(rel, partRel, true, InvalidOid);
-
-	/* MPP-6929: metadata tracking */
-	MetaTrackUpdObject(RelationRelationId,
-					   RelationGetRelid(partRel),
-					   GetUserId(),
-					   "PARTITION", "DETACH");
 
 	ObjectAddressSet(address, RelationRelationId, RelationGetRelid(partRel));
 
