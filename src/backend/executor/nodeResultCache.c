@@ -944,6 +944,7 @@ ExecInitResultCache(ResultCache *node, EState *estate, int eflags)
 	rcstate->mem_used = 0;
 
 	/* Limit the total memory consumed by the cache to this */
+	/* GPDB_14_MERGE_FIXME: Do we want use PlanStateOperatorMemKB instead? */
 	rcstate->mem_limit = get_hash_mem() * 1024L;
 
 	/* A memory context dedicated for the cache */
