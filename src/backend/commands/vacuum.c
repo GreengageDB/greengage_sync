@@ -1062,7 +1062,7 @@ expand_vacuum_rel(VacuumRelation *vrel, int options)
 				Oid			parent_relid;
 				int			elevel = ((options & VACOPT_VERBOSE) ? LOG : DEBUG2);
 
-				parent_relid = get_partition_parent(child_relid, false);
+				parent_relid = get_partition_parent(child_relid, true);
 
 				/*
 				 * Only ANALYZE the parent if the stats can be updated by merging
@@ -3178,11 +3178,11 @@ vac_send_relstats_to_qd(Relation relation,
 }
 
 bool
-vacuumStatement_IsTemporary(Relation onerel)
+vacuumStatement_IsTemporary(Relation rel)
 {
 	bool bTemp = false;
 	/* MPP-7576: don't track internal namespace tables */
-	switch (RelationGetNamespace(onerel))
+	switch (RelationGetNamespace(rel))
 	{
 		case PG_CATALOG_NAMESPACE:
 			/* MPP-7773: don't track objects in system namespace
@@ -3205,7 +3205,7 @@ vacuumStatement_IsTemporary(Relation onerel)
 	 * temporary namespace
 	 */
 	if (!bTemp)
-		bTemp = isAnyTempNamespace(RelationGetNamespace(onerel));
+		bTemp = isAnyTempNamespace(RelationGetNamespace(rel));
 	return bTemp;
 }
 

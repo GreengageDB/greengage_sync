@@ -156,7 +156,7 @@ beginCurrentBitmapIndexScan(DynamicBitmapIndexScanState *node, EState *estate,
 	if (!OidIsValid(node->columnLayoutOid))
 	{
 		/* Very first partition */
-		node->columnLayoutOid = get_partition_parent(tableOid, false);
+		node->columnLayoutOid = get_partition_parent(tableOid, true);
 	}
 	BitmapIndexScan_ReMapColumns(dbiScan, node->columnLayoutOid, tableOid);
 	node->columnLayoutOid = tableOid;
