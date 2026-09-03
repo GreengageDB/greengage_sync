@@ -45,6 +45,14 @@ detects_heap_corruption(
 #
 # Check a corrupt table with all-frozen data
 #
+# GPDB: these TAP tests run a single-node instance in utility mode, where
+# VACUUM FREEZE cannot advance the distributed oldest-xmin horizon, so tuples
+# are never frozen and the visibility map all-frozen bit is never set.  Turning
+# on maintenance_mode makes GetOldestXmin() ignore the distributed log (see
+# GetDistOldestXmin()), so FREEZE actually freezes and the "skip := 'all-frozen'"
+# case below is exercised as upstream intends.
+$node->append_conf('postgresql.conf', 'maintenance_mode=on');
+$node->restart;
 fresh_test_table('test');
 $node->safe_psql('postgres', q(VACUUM (FREEZE, DISABLE_PAGE_SKIPPING) test));
 detects_no_corruption(
