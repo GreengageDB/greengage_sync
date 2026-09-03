@@ -1233,11 +1233,6 @@ ExecInitExprRec(Expr *node, ExprState *state,
 								   get_func_name(opexpr->opfuncid));
 				InvokeFunctionExecuteHook(opexpr->opfuncid);
 
-				/* GPDB: Try the hard-coded fast-path versions of these */
-				if (ExecInitScalarArrayOpFastPath(&scratch, opexpr,
-												  state, resv, resnull))
-					break;
-
 				if (OidIsValid(opexpr->hashfuncid))
 				{
 					aclresult = pg_proc_aclcheck(opexpr->hashfuncid,
@@ -1248,6 +1243,11 @@ ExecInitExprRec(Expr *node, ExprState *state,
 									   get_func_name(opexpr->hashfuncid));
 					InvokeFunctionExecuteHook(opexpr->hashfuncid);
 				}
+
+				/* GPDB: Try the hard-coded fast-path versions of these */
+				if (ExecInitScalarArrayOpFastPath(&scratch, opexpr,
+												  state, resv, resnull))
+					break;
 
 				/* Set up the primary fmgr lookup information */
 				finfo = palloc0(sizeof(FmgrInfo));
