@@ -5443,21 +5443,31 @@ adjust_modifytable_subpaths(PlannerInfo *root, CmdType operation,
 {
 	/*
 	 * The input plans must be distributed correctly.
+	 *
+	 * Since 86dc90056df there is one subpath for the whole target tree, so
+	 * every check below has to visit every result relation rather than the
+	 * one the single subpath happens to be paired with: the Motion has to be
+	 * sized for the widest member, the Explicit Redistribute can only be
+	 * elided if every member qualifies, and the split-update trigger
+	 * prohibition applies to every member.
 	 */
-	ListCell   *lcr,
-			   *lcp,
-			   *lci = NULL;
+	ListCell   *lc;
+	GpPolicy  **policies;
+	GpPolicy   *commonPolicy;
+	Index		commonRti;
+	Path	   *subpath;
+	int			relno = 0;
 	bool		all_subplans_entry = true,
 				all_subplans_replicated = true;
 	int			numsegments = -1;
 
-	if (operation == CMD_UPDATE)
-		lci = list_head(is_split_updates);
+	Assert(resultRelations != NIL);
+	Assert(list_length(subpaths) == 1);
 
-	forboth(lcr, resultRelations, lcp, subpaths)
+	policies = palloc(list_length(resultRelations) * sizeof(GpPolicy *));
+	foreach(lc, resultRelations)
 	{
-		int			rti = lfirst_int(lcr);
-		Path	   *subpath = (Path *) lfirst(lcp);
+		int			rti = lfirst_int(lc);
 		RangeTblEntry *rte = rt_fetch(rti, root->parse->rtable);
 		GpPolicy   *targetPolicy;
 		GpPolicyType targetPolicyType;
@@ -5466,6 +5476,7 @@ adjust_modifytable_subpaths(PlannerInfo *root, CmdType operation,
 
 		targetPolicy = GpPolicyFetch(rte->relid);
 		targetPolicyType = targetPolicy->ptype;
+		policies[relno++] = targetPolicy;
 
 		numsegments = Max(targetPolicy->numsegments, numsegments);
 
@@ -5485,30 +5496,27 @@ adjust_modifytable_subpaths(PlannerInfo *root, CmdType operation,
 		}
 		else
 			elog(ERROR, "unrecognized policy type %u", targetPolicyType);
-
-		if (operation == CMD_INSERT)
-		{
-			subpath = create_motion_path_for_insert(root, targetPolicy, subpath);
-		}
-		else if (operation == CMD_DELETE)
-		{
-			subpath = create_motion_path_for_upddel(root, rti, targetPolicy, subpath);
-		}
-		else if (operation == CMD_UPDATE)
-		{
-			bool		is_split_update;
-
-			is_split_update = (bool) lfirst_int(lci);
-
-			if (is_split_update)
-				subpath = create_split_update_path(root, rti, targetPolicy, subpath);
-			else
-				subpath = create_motion_path_for_upddel(root, rti, targetPolicy, subpath);
-
-			lci = lnext(is_split_updates, lci);
-		}
-		lfirst(lcp) = subpath;
 	}
+
+	/*
+	 * The Motion is sized for the widest member of the tree.  Widen a copy,
+	 * so that the per-relation checks still see each member's own
+	 * numsegments.
+	 */
+	commonPolicy = GpPolicyCopy(policies[0]);
+	commonPolicy->numsegments = numsegments;
+	commonRti = linitial_int(resultRelations);
+	subpath = (Path *) linitial(subpaths);
+
+	if (operation == CMD_INSERT)
+		subpath = create_motion_path_for_insert(root, commonPolicy, subpath);
+	else if (operation == CMD_UPDATE && (bool) linitial_int(is_split_updates))
+		subpath = create_split_update_path(root, commonRti, commonPolicy,
+										   subpath, resultRelations);
+	else if (operation == CMD_UPDATE || operation == CMD_DELETE)
+		subpath = create_motion_path_for_upddel(root, commonPolicy, subpath,
+												resultRelations, policies);
+	linitial(subpaths) = subpath;
 
 	/*
 	 * Set the distribution of the ModifyTable node itself. If there is only
