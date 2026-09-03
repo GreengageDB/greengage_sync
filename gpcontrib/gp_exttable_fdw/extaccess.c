@@ -304,6 +304,19 @@ external_beginscan(Relation relation, uint32 scancounter,
 		scan->fs_formatter = (FormatterData *) palloc0(sizeof(FormatterData));
 		initStringInfo(&scan->fs_formatter->fmt_databuf);
 		scan->fs_formatter->fmt_perrow_ctx = scan->fs_pstate->rowcontext;
+
+		/*
+		 * GGDB: decide whether the formatter has to run the input through
+		 * pg_custom_to_server().  This cannot reuse pstate->need_transcoding:
+		 * since f82de5c46bd that flag is false when the file encoding equals
+		 * the database encoding, which is safe for the text/csv pipeline only
+		 * because CopyConvertBuf() still verifies every chunk -- a formatter
+		 * never reaches that pipeline, and pg_custom_to_server() is its only
+		 * validation step.
+		 */
+		scan->fs_needs_transcoding =
+			(scan->fs_pstate->file_encoding != GetDatabaseEncoding() ||
+			 pg_database_encoding_max_length() > 1);
 	}
 
 	/* pgstat_initstats(relation); */
@@ -948,7 +961,7 @@ externalgettup_custom(FileScanDesc scan)
 						scan->typioparams,
 						pstate->reached_eof,
 						pstate->rowcontext,
-						pstate->need_transcoding,
+						scan->fs_needs_transcoding,
 						pstate->enc_conversion_proc,
 						pstate->file_encoding);
 				(void) FunctionCallInvoke(fcinfo);
