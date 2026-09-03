@@ -216,10 +216,20 @@ DECLARE
 	idx_ctids tid[];
 	ss_ctids tid[];
 	count int;
+	is_orca bool;
 	plan_ok bool;
+	is_planner_plan bool;
 	plan_line text;
 BEGIN
-	FOR r IN SELECT colname, oper, typ, value[ordinality], matches[ordinality] FROM brinopers_bloom, unnest(op) WITH ORDINALITY AS oper LOOP
+	-- determine whether we are using ORCA or planner
+	is_orca := false;
+	FOR r IN EXECUTE 'show optimizer' LOOP
+		IF r.optimizer = 'on' THEN
+			is_orca := true;
+		END IF;
+	END LOOP;
+
+	FOR r IN SELECT colname, oper, typ, value[ordinality], matches[ordinality] FROM brinopers_bloom, unnest(op) WITH ORDINALITY AS oper order by colname, typ, oper LOOP
 
 		-- prepare the condition
 		IF r.value IS NULL THEN
@@ -228,18 +238,27 @@ BEGIN
 			cond := format('%I %s %L::%s', r.colname, r.oper, r.value, r.typ);
 		END IF;
 
-		-- run the query using the brin index
+		-- run the query using the brin index (set gucs to force the index for both planner and ORCA)
 		SET enable_seqscan = 0;
 		SET enable_bitmapscan = 1;
+		SET optimizer_enable_tablescan = 0;
+		SET optimizer_enable_bitmapscan = 1;
 
 		plan_ok := false;
+		is_planner_plan := false;
 		FOR plan_line IN EXECUTE format($y$EXPLAIN SELECT array_agg(ctid) FROM brintest_bloom WHERE %s $y$, cond) LOOP
 			IF plan_line LIKE '%Bitmap Heap Scan on brintest_bloom%' THEN
 				plan_ok := true;
 			END IF;
+			IF plan_line LIKE '%Postgres query optimizer%' THEN
+				is_planner_plan := true;
+			END IF;
 		END LOOP;
 		IF NOT plan_ok THEN
 			RAISE WARNING 'did not get bitmap indexscan plan for %', r;
+		END IF;
+		IF is_orca AND is_planner_plan THEN
+			RAISE WARNING 'ORCA did not produce a bitmap indexscan plan for %', r;
 		END IF;
 
 		EXECUTE format($y$SELECT array_agg(ctid) FROM brintest_bloom WHERE %s $y$, cond)
@@ -248,6 +267,8 @@ BEGIN
 		-- run the query using a seqscan
 		SET enable_seqscan = 1;
 		SET enable_bitmapscan = 0;
+		SET optimizer_enable_tablescan = 1;
+		SET optimizer_enable_bitmapscan = 0;
 
 		plan_ok := false;
 		FOR plan_line IN EXECUTE format($y$EXPLAIN SELECT array_agg(ctid) FROM brintest_bloom WHERE %s $y$, cond) LOOP
@@ -272,12 +293,16 @@ BEGIN
 			RAISE WARNING 'something not right in %: count %', r, count;
 			SET enable_seqscan = 1;
 			SET enable_bitmapscan = 0;
+			SET optimizer_enable_tablescan = 1;
+			SET optimizer_enable_bitmapscan = 0;
 			FOR r2 IN EXECUTE 'SELECT ' || r.colname || ' FROM brintest_bloom WHERE ' || cond LOOP
 				RAISE NOTICE 'seqscan: %', r2;
 			END LOOP;
 
 			SET enable_seqscan = 0;
 			SET enable_bitmapscan = 1;
+			SET optimizer_enable_tablescan = 0;
+			SET optimizer_enable_bitmapscan = 1;
 			FOR r2 IN EXECUTE 'SELECT ' || r.colname || ' FROM brintest_bloom WHERE ' || cond LOOP
 				RAISE NOTICE 'bitmapscan: %', r2;
 			END LOOP;
@@ -291,6 +316,8 @@ $x$;
 
 RESET enable_seqscan;
 RESET enable_bitmapscan;
+RESET optimizer_enable_tablescan;
+RESET optimizer_enable_bitmapscan;
 
 INSERT INTO brintest_bloom SELECT
 	repeat(stringu1, 42)::bytea,
@@ -364,8 +391,11 @@ SELECT brin_summarize_range('brin_summarize_bloom_idx', 4294967296);
 
 
 -- test brin cost estimates behave sanely based on correlation of values
+-- GPDB: use more rows, and a larger statistics sample, to get the same plan
+-- as in upstream.
 CREATE TABLE brin_test_bloom (a INT, b INT);
-INSERT INTO brin_test_bloom SELECT x/100,x%100 FROM generate_series(1,10000) x(x);
+alter table brin_test_bloom alter column b set statistics 1000;
+INSERT INTO brin_test_bloom SELECT x/100,x%100 FROM generate_series(1,200000) x(x);
 CREATE INDEX brin_test_bloom_a_idx ON brin_test_bloom USING brin (a) WITH (pages_per_range = 2);
 CREATE INDEX brin_test_bloom_b_idx ON brin_test_bloom USING brin (b) WITH (pages_per_range = 2);
 VACUUM ANALYZE brin_test_bloom;
@@ -373,4 +403,5 @@ VACUUM ANALYZE brin_test_bloom;
 -- Ensure brin index is used when columns are perfectly correlated
 EXPLAIN (COSTS OFF) SELECT * FROM brin_test_bloom WHERE a = 1;
 -- Ensure brin index is not used when values are not correlated
+-- (does not yet work for ORCA)
 EXPLAIN (COSTS OFF) SELECT * FROM brin_test_bloom WHERE b = 1;

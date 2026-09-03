@@ -215,10 +215,20 @@ DECLARE
 	idx_ctids tid[];
 	ss_ctids tid[];
 	count int;
+	is_orca bool;
 	plan_ok bool;
+	is_planner_plan bool;
 	plan_line text;
 BEGIN
-	FOR r IN SELECT colname, oper, typ, value[ordinality], matches[ordinality] FROM brinopers_bloom, unnest(op) WITH ORDINALITY AS oper LOOP
+	-- determine whether we are using ORCA or planner
+	is_orca := false;
+	FOR r IN EXECUTE 'show optimizer' LOOP
+		IF r.optimizer = 'on' THEN
+			is_orca := true;
+		END IF;
+	END LOOP;
+
+	FOR r IN SELECT colname, oper, typ, value[ordinality], matches[ordinality] FROM brinopers_bloom, unnest(op) WITH ORDINALITY AS oper order by colname, typ, oper LOOP
 
 		-- prepare the condition
 		IF r.value IS NULL THEN
@@ -227,18 +237,27 @@ BEGIN
 			cond := format('%I %s %L::%s', r.colname, r.oper, r.value, r.typ);
 		END IF;
 
-		-- run the query using the brin index
+		-- run the query using the brin index (set gucs to force the index for both planner and ORCA)
 		SET enable_seqscan = 0;
 		SET enable_bitmapscan = 1;
+		SET optimizer_enable_tablescan = 0;
+		SET optimizer_enable_bitmapscan = 1;
 
 		plan_ok := false;
+		is_planner_plan := false;
 		FOR plan_line IN EXECUTE format($y$EXPLAIN SELECT array_agg(ctid) FROM brintest_bloom WHERE %s $y$, cond) LOOP
 			IF plan_line LIKE '%Bitmap Heap Scan on brintest_bloom%' THEN
 				plan_ok := true;
 			END IF;
+			IF plan_line LIKE '%Postgres query optimizer%' THEN
+				is_planner_plan := true;
+			END IF;
 		END LOOP;
 		IF NOT plan_ok THEN
 			RAISE WARNING 'did not get bitmap indexscan plan for %', r;
+		END IF;
+		IF is_orca AND is_planner_plan THEN
+			RAISE WARNING 'ORCA did not produce a bitmap indexscan plan for %', r;
 		END IF;
 
 		EXECUTE format($y$SELECT array_agg(ctid) FROM brintest_bloom WHERE %s $y$, cond)
@@ -247,6 +266,8 @@ BEGIN
 		-- run the query using a seqscan
 		SET enable_seqscan = 1;
 		SET enable_bitmapscan = 0;
+		SET optimizer_enable_tablescan = 1;
+		SET optimizer_enable_bitmapscan = 0;
 
 		plan_ok := false;
 		FOR plan_line IN EXECUTE format($y$EXPLAIN SELECT array_agg(ctid) FROM brintest_bloom WHERE %s $y$, cond) LOOP
@@ -271,12 +292,16 @@ BEGIN
 			RAISE WARNING 'something not right in %: count %', r, count;
 			SET enable_seqscan = 1;
 			SET enable_bitmapscan = 0;
+			SET optimizer_enable_tablescan = 1;
+			SET optimizer_enable_bitmapscan = 0;
 			FOR r2 IN EXECUTE 'SELECT ' || r.colname || ' FROM brintest_bloom WHERE ' || cond LOOP
 				RAISE NOTICE 'seqscan: %', r2;
 			END LOOP;
 
 			SET enable_seqscan = 0;
 			SET enable_bitmapscan = 1;
+			SET optimizer_enable_tablescan = 0;
+			SET optimizer_enable_bitmapscan = 1;
 			FOR r2 IN EXECUTE 'SELECT ' || r.colname || ' FROM brintest_bloom WHERE ' || cond LOOP
 				RAISE NOTICE 'bitmapscan: %', r2;
 			END LOOP;
@@ -287,37 +312,12 @@ BEGIN
 	END LOOP;
 END;
 $x$;
-WARNING:  did not get seqscan plan for (oidcol,=,oid,8800,1)
-WARNING:  did not get seqscan plan for (cidrcol,=,inet,10.2.14/24,2)
-WARNING:  did not get seqscan plan for (cidrcol,=,inet,fe80::6e40:8ff:fea9:8c46,1)
-WARNING:  did not get seqscan plan for (cidrcol,=,cidr,10.2.14/24,2)
-WARNING:  did not get seqscan plan for (cidrcol,=,cidr,fe80::6e40:8ff:fea9:8c46,1)
-WARNING:  did not get seqscan plan for (timecol,=,time,02:28:57,1)
-WARNING:  did not get seqscan plan for (timestampcol,=,timestamp,"1964-03-24 19:26:45",1)
-WARNING:  did not get seqscan plan for (numericcol,=,numeric,2268164.347826086956521739130434782609,1)
-WARNING:  did not get seqscan plan for (uuidcol,=,uuid,52225222-5222-5222-5222-522252225222,1)
-WARNING:  did not get seqscan plan for (namecol,=,name,MAAAAA,2)
-WARNING:  did not get seqscan plan for (int4col,=,int4,800,1)
-WARNING:  did not get seqscan plan for (textcol,=,text,BNAAAABNAAAABNAAAABNAAAABNAAAABNAAAABNAAAABNAAAA,1)
-WARNING:  did not get seqscan plan for (macaddrcol,=,macaddr,2c:00:2d:00:16:00,2)
-WARNING:  did not get seqscan plan for (inetcol,=,inet,10.2.14.231/24,1)
-WARNING:  did not get seqscan plan for (inetcol,=,cidr,fe80::6e40:8ff:fea9:8c46,1)
-WARNING:  did not get seqscan plan for (bpcharcol,=,bpchar,W,6)
-WARNING:  did not get seqscan plan for (timestamptzcol,=,timestamptz,"1972-10-19 09:00:00-07",1)
-WARNING:  did not get seqscan plan for (intervalcol,=,interval,"1 mons 13 days 12:24",1)
-WARNING:  did not get seqscan plan for (timetzcol,=,timetz,01:35:50+02,2)
-WARNING:  did not get seqscan plan for (lsncol,=,pg_lsn,44/455222,1)
-WARNING:  did not get bitmap indexscan plan for (lsncol,IS,pg_lsn,,25)
-WARNING:  did not get bitmap indexscan plan for (lsncol,"IS NOT",pg_lsn,,100)
-WARNING:  did not get seqscan plan for (byteacol,=,bytea,BNAAAABNAAAABNAAAABNAAAABNAAAABNAAAABNAAAABNAAAA,1)
-WARNING:  did not get seqscan plan for (charcol,=,"""char""",M,6)
-WARNING:  did not get seqscan plan for (int2col,=,int2,800,1)
-WARNING:  did not get seqscan plan for (int8col,=,int8,1257141600,1)
-WARNING:  did not get seqscan plan for (float4col,=,float4,1,4)
-WARNING:  did not get seqscan plan for (float8col,=,float8,0,1)
-WARNING:  did not get seqscan plan for (datecol,=,date,2009-12-01,1)
+WARNING:  ORCA did not produce a bitmap indexscan plan for (lsncol,IS,pg_lsn,,25)
+WARNING:  ORCA did not produce a bitmap indexscan plan for (lsncol,"IS NOT",pg_lsn,,100)
 RESET enable_seqscan;
 RESET enable_bitmapscan;
+RESET optimizer_enable_tablescan;
+RESET optimizer_enable_bitmapscan;
 INSERT INTO brintest_bloom SELECT
 	repeat(stringu1, 42)::bytea,
 	substr(stringu1, 1, 1)::"char",
@@ -357,10 +357,10 @@ NOTICE:  One or more columns in the following table(s) do not have statistics: b
 HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
 -- Tests for brin_summarize_new_values
 SELECT brin_summarize_new_values('brintest_bloom'); -- error, not an index
-ERROR:  "brintest_bloom" is not an index  (seg0 slice1 172.17.0.2:7002 pid=20515)
+ERROR:  "brintest_bloom" is not an index  (seg0 slice1 172.18.0.3:8002 pid=103115)
 CONTEXT:  SQL function "brin_summarize_new_values" statement 1
 SELECT brin_summarize_new_values('tenk1_unique1'); -- error, not a BRIN index
-ERROR:  "tenk1_unique1" is not a BRIN index  (seg0 slice1 172.17.0.2:7002 pid=20515)
+ERROR:  "tenk1_unique1" is not a BRIN index  (seg0 slice1 172.18.0.3:8002 pid=103115)
 CONTEXT:  SQL function "brin_summarize_new_values" statement 1
 SELECT brin_summarize_new_values('brinidx_bloom'); -- ok, no change expected
  brin_summarize_new_values 
@@ -406,15 +406,15 @@ END;
 $$;
 -- summarize one range
 SELECT brin_summarize_range('brin_summarize_bloom_idx', 0);
-ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.17.0.2:7002 pid=20515)
+ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.18.0.3:8002 pid=103115)
 CONTEXT:  SQL function "brin_summarize_range" statement 1
 -- nothing: already summarized
 SELECT brin_summarize_range('brin_summarize_bloom_idx', 1);
-ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.17.0.2:7002 pid=20515)
+ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.18.0.3:8002 pid=103115)
 CONTEXT:  SQL function "brin_summarize_range" statement 1
 -- summarize one range
 SELECT brin_summarize_range('brin_summarize_bloom_idx', 2);
-ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.17.0.2:7002 pid=20515)
+ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.18.0.3:8002 pid=103115)
 CONTEXT:  SQL function "brin_summarize_range" statement 1
 -- nothing: page doesn't exist in table
 SELECT brin_summarize_range('brin_summarize_bloom_idx', 4294967295);
@@ -425,14 +425,17 @@ SELECT brin_summarize_range('brin_summarize_bloom_idx', 4294967295);
 
 -- invalid block number values
 SELECT brin_summarize_range('brin_summarize_bloom_idx', -1);
-ERROR:  block number out of range: -1  (seg0 slice1 172.17.0.2:7002 pid=20515)
+ERROR:  block number out of range: -1  (seg0 slice1 172.18.0.3:8002 pid=103115)
 CONTEXT:  SQL function "brin_summarize_range" statement 1
 SELECT brin_summarize_range('brin_summarize_bloom_idx', 4294967296);
-ERROR:  block number out of range: 4294967296  (seg0 slice1 172.17.0.2:7002 pid=20515)
+ERROR:  block number out of range: 4294967296  (seg0 slice1 172.18.0.3:8002 pid=103115)
 CONTEXT:  SQL function "brin_summarize_range" statement 1
 -- test brin cost estimates behave sanely based on correlation of values
+-- GPDB: use more rows, and a larger statistics sample, to get the same plan
+-- as in upstream.
 CREATE TABLE brin_test_bloom (a INT, b INT);
-INSERT INTO brin_test_bloom SELECT x/100,x%100 FROM generate_series(1,10000) x(x);
+alter table brin_test_bloom alter column b set statistics 1000;
+INSERT INTO brin_test_bloom SELECT x/100,x%100 FROM generate_series(1,200000) x(x);
 CREATE INDEX brin_test_bloom_a_idx ON brin_test_bloom USING brin (a) WITH (pages_per_range = 2);
 CREATE INDEX brin_test_bloom_b_idx ON brin_test_bloom USING brin (b) WITH (pages_per_range = 2);
 VACUUM ANALYZE brin_test_bloom;
@@ -449,6 +452,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM brin_test_bloom WHERE a = 1;
 (6 rows)
 
 -- Ensure brin index is not used when values are not correlated
+-- (does not yet work for ORCA)
 EXPLAIN (COSTS OFF) SELECT * FROM brin_test_bloom WHERE b = 1;
                        QUERY PLAN                       
 --------------------------------------------------------
