@@ -2686,16 +2686,50 @@ retry1:
 						   (uint32) (recptr >> 32), (uint32) recptr)));
 			break;
 		case CAC_NOTCONSISTENT:
+
+			/*
+			 * GGDB: same treatment as CAC_STARTUP above, which covered this
+			 * pmState before df9384492b8 split PM_RECOVERY out: let FTS and
+			 * fault-injector connections through to a mirror, and attach the
+			 * last replayed LSN so that the FTS probe and gang-creation retry
+			 * logic can both recognize the message and measure recovery
+			 * progress (see checkIfFailedDueToNormalRestart()).
+			 */
+			if ((am_ftshandler || am_faulthandler) && am_mirror)
+				break;
+
+			recptr = last_xlog_replay_location();
+
+			/*
+			 * GGDB: the messages are spelled out as literals, not through the
+			 * POSTMASTER_NOT_(YET_)ACCEPTING_MSG macros, so that xgettext
+			 * still extracts them into the translation catalogs; the macros
+			 * (defined to the same strings) are for the consumers that
+			 * recognize these messages (ftsprobe.c, cdbgang.c), whose _()
+			 * lookup then agrees with the server-side translation.
+			 *
+			 * The hot-standby-disabled branch below is the normal one for a
+			 * GGDB mirror (mirrors run with hot_standby off).  It is a
+			 * transient state here: a steady mirror answers CAC_MIRROR_READY
+			 * above once its walreceiver has started, so this branch only
+			 * covers the recovery window before that (gprecoverseg/pg_rewind
+			 * bring-up, promotion), which is exactly when the consumers
+			 * should keep retrying.
+			 */
 			if (EnableHotStandby)
 				ereport(FATAL,
 						(errcode(ERRCODE_CANNOT_CONNECT_NOW),
-						 errmsg(POSTMASTER_NOT_YET_ACCEPTING_MSG),
-						 errdetail("Consistent recovery state has not been yet reached.")));
+						 errmsg("the database system is not yet accepting connections"),
+						 errdetail("Consistent recovery state has not been yet reached. "
+								   POSTMASTER_IN_RECOVERY_DETAIL_MSG " %X/%X",
+								   (uint32) (recptr >> 32), (uint32) recptr)));
 			else
 				ereport(FATAL,
 						(errcode(ERRCODE_CANNOT_CONNECT_NOW),
-						 errmsg(POSTMASTER_NOT_ACCEPTING_MSG),
-						 errdetail("Hot standby mode is disabled.")));
+						 errmsg("the database system is not accepting connections"),
+						 errdetail("Hot standby mode is disabled. "
+								   POSTMASTER_IN_RECOVERY_DETAIL_MSG " %X/%X",
+								   (uint32) (recptr >> 32), (uint32) recptr)));
 			break;
 		case CAC_SHUTDOWN:
 			ereport(FATAL,
