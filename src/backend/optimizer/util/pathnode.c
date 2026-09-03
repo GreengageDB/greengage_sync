@@ -5548,7 +5548,10 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 
 	Assert(resultRelations != NIL);
 
-	commonPolicy = policies[0];
+	/*
+	 * A copy: the widening below must not reach the policies[] entries
+	 */
+	commonPolicy = GpPolicyCopy(policies[0]);
 	commonRti = linitial_int(resultRelations);
 
 	/*
