@@ -1,7 +1,3 @@
--- start_matchsubs
--- m/WARNING:.*Any temporary tables for this session have been dropped because the gang was disconnected/
--- s/session id \=\s*\d+/session id \= DUMMY/gm
--- end_matchsubs
 -- Setup, cleanup and validation helpers
 
 -- We need to update the restart point on the mirrors so downstream tests do not
