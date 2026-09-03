@@ -5654,11 +5654,6 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
 			break;
-		case AT_DetachPartitionFinalize:
-			ATSimplePermissions(rel, ATT_TABLE);
-			/* No command-specific prep needed */
-			pass = AT_PASS_MISC;
-			break;
 
 		case AT_PartAdd:
 		case AT_PartDrop:
@@ -5668,11 +5663,11 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 		case AT_PartTruncate:
 		case AT_PartExchange:
 		case AT_PartSetTemplate:
+		case AT_DetachPartitionFinalize:
 			ATSimplePermissions(rel, ATT_TABLE);
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
 			break;
-
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -21597,18 +21592,6 @@ ATExecDetachPartition(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	Oid			defaultPartOid;
 
 	/*
-	 * GPDB: the CONCURRENTLY protocol commits the first transaction midway
-	 * through ALTER TABLE, which cannot be coordinated with the QE dispatch
-	 * of the statement (OID assignments from the second transaction are
-	 * never dispatched, leaving the detach half-done).  Refuse it until a
-	 * distributed implementation exists.
-	 */
-	if (concurrent && Gp_role == GP_ROLE_DISPATCH)
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("ALTER TABLE ... DETACH PARTITION CONCURRENTLY is not supported in Greenplum")));
-
-	/*
 	 * We must lock the default partition, because detaching this partition
 	 * will change its partition constraint.
 	 */
@@ -21938,18 +21921,11 @@ DetachPartitionFinalize(Relation rel, Relation partRel, bool concurrent,
 	 */
 	CacheInvalidateRelcache(rel);
 
-	/*
-	 * MPP-6929: metadata tracking.  This is the spot both the plain DETACH
-	 * and DETACH CONCURRENTLY('s FINALIZE) pass through; tracking only in
-	 * ATExecDetachPartitionFinalize would leave plain DETACH unlogged, so
-	 * pg_stat_last_operation would keep reporting the partition's original
-	 * ATTACH.
-	 */
-	if (Gp_role == GP_ROLE_DISPATCH)
-		MetaTrackUpdObject(RelationRelationId,
-						   RelationGetRelid(partRel),
-						   GetUserId(),
-						   "PARTITION", "DETACH");
+	/* MPP-6929: metadata tracking */
+	MetaTrackUpdObject(RelationRelationId,
+					   RelationGetRelid(partRel),
+					   GetUserId(),
+					   "PARTITION", "DETACH");
 }
 
 /*
@@ -21978,12 +21954,6 @@ ATExecDetachPartitionFinalize(Relation rel, RangeVar *name)
 	WaitForOlderSnapshots(snap->xmin, false);
 
 	DetachPartitionFinalize(rel, partRel, true, InvalidOid);
-
-	/* MPP-6929: metadata tracking */
-	MetaTrackUpdObject(RelationRelationId,
-					   RelationGetRelid(partRel),
-					   GetUserId(),
-					   "PARTITION", "DETACH");
 
 	ObjectAddressSet(address, RelationRelationId, RelationGetRelid(partRel));
 
