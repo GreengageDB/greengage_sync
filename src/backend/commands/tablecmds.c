@@ -2377,9 +2377,24 @@ ExecuteTruncateGuts(List *explicit_rels,
 		 */
 		if (rel->rd_rel->relkind == RELKIND_FOREIGN_TABLE)
 		{
-			Oid			serverid = GetForeignServerIdByRelId(RelationGetRelid(rel));
+			Oid			serverid;
 			bool		found;
 			ForeignTruncateInfo *ft_info;
+
+			/*
+			 * GGDB: The QD dispatches the TRUNCATE statement to the QEs,
+			 * which re-enter this function for the same relations.  Unlike
+			 * INSERT, where every segment contributes its own slice of the
+			 * data, TRUNCATE is not partitionable: each segment would
+			 * truncate the very same foreign data over its own connection,
+			 * contending for the same locks in the external data source.  So
+			 * truncate foreign tables on the QD only, whatever the table's
+			 * mpp_execute setting is.
+			 */
+			if (Gp_role == GP_ROLE_EXECUTE)
+				continue;
+
+			serverid = GetForeignServerIdByRelId(RelationGetRelid(rel));
 
 			/* First time through, initialize hashtable for foreign tables */
 			if (!ft_htab)
