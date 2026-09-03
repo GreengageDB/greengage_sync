@@ -52,6 +52,13 @@
 ! last_wal_file=$(psql -At -c "SELECT pg_walfile_name(pg_current_wal_lsn())" postgres) && pg_waldump ${last_wal_file} -p ${COORDINATOR_DATA_DIRECTORY}/pg_wal -r appendonly;
 
 -- *********** Set wal_level=minimal **************
+-- A running standby coordinator cannot replay the XLOG_PARAMETER_CHANGE record
+-- that the coordinator emits for wal_level=minimal ("WAL was generated with
+-- wal_level=minimal, cannot continue recovering"); it would be left permanently
+-- broken and every later gpstop -u / -r would then fail on it.  Remove the
+-- standby coordinator (if the cluster has one) while wal_level=minimal is in
+-- effect; it is recreated from a fresh backup at the end of the test.
+!\retcode psql -At -F' ' -d postgres -c "SELECT hostname, datadir, port FROM gp_segment_configuration WHERE content = -1 AND role = 'm'" > /tmp/prevent_ao_wal_standby.${PGPORT}; if [ -s /tmp/prevent_ao_wal_standby.${PGPORT} ]; then gpinitstandby -a -r; fi;
 !\retcode gpconfig -c wal_level -v minimal --masteronly;
 -- Set max_wal_senders to 0 because a non-zero value requires wal_level >= 'archive'
 !\retcode gpconfig -c max_wal_senders -v 0 --masteronly;
@@ -83,3 +90,7 @@
 !\retcode gpconfig -r max_wal_senders --masteronly;
 -- Restart QD
 !\retcode pg_ctl -l /dev/null -D $COORDINATOR_DATA_DIRECTORY restart -w -t 600 -m fast;
+
+-- Recreate the standby coordinator removed before the wal_level=minimal window,
+-- now that wal_level is back to its default.
+!\retcode rc=0; if [ -s /tmp/prevent_ao_wal_standby.${PGPORT} ]; then set -- $(cat /tmp/prevent_ao_wal_standby.${PGPORT}); gpinitstandby -a -s "$1" -S "$2" -P "$3" || rc=$?; fi; rm -f /tmp/prevent_ao_wal_standby.${PGPORT}; exit $rc;
