@@ -99,7 +99,11 @@ WHERE t1.unique1 < 1000;
   1000 | 9.5000000000000000
 (1 row)
 
--- Reduce work_mem so that we see some cache evictions
+-- Reduce work_mem so that we see some cache evictions.  Result Cache sizes its
+-- cache from get_hash_mem() (work_mem * hash_mem_multiplier), so work_mem is the
+-- knob here, not statement_mem.  GPDB note: the eviction counters are computed
+-- on the segments and not sent to the QD, so we can only check the plan shape
+-- here, not the Hits/Misses/Evictions line.
 SET work_mem TO '64kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 SET enable_mergejoin TO off;
