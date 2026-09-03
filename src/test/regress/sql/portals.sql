@@ -352,13 +352,13 @@ SELECT f1, f2 FROM uctest;
 -- commands should be visible in the cursor.  So here we make the
 -- changes with a command that is independent of the cursor.)
 BEGIN;
-DECLARE c1 INSENSITIVE CURSOR FOR SELECT * FROM uctest;
+DECLARE c1 INSENSITIVE CURSOR FOR SELECT f1, f2 FROM uctest;
 INSERT INTO uctest VALUES (10, 'ten');
 FETCH NEXT FROM c1;
 FETCH NEXT FROM c1;
 FETCH NEXT FROM c1;  -- insert not visible
 COMMIT;
-SELECT * FROM uctest;
+SELECT f1, f2 FROM uctest;
 DELETE FROM uctest WHERE f1 = 10;  -- restore test table state
 
 -- Check inheritance cases
