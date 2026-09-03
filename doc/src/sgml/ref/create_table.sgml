@@ -23,7 +23,6 @@ PostgreSQL documentation
 <synopsis>
 CREATE [ [ GLOBAL | LOCAL ] { TEMPORARY | TEMP } | UNLOGGED ] TABLE [ IF NOT EXISTS ] <replaceable class="parameter">table_name</replaceable> ( [
   { <replaceable class="parameter">column_name</replaceable> <replaceable class="parameter">data_type</replaceable> [ COLLATE <replaceable>collation</replaceable> ] [ COMPRESSION <replaceable>compression_method</replaceable> ] [ <replaceable class="parameter">column_constraint</replaceable> [ ... ] ]
-[ ENCODING ( storage_directive [,...] ) ]
     | <replaceable>table_constraint</replaceable>
     | LIKE <replaceable>source_table</replaceable> [ <replaceable>like_option</replaceable> ... ] }
     | [<replaceable>column_reference_storage_directive</replaceable> [, ... ]

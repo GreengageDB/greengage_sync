@@ -27,7 +27,7 @@ PostgreSQL documentation
  <refsynopsisdiv>
 <synopsis>
 DECLARE <replaceable class="parameter">name</replaceable> [ BINARY ] [ ASENSITIVE | INSENSITIVE ] [ [ NO ] SCROLL ]
-  [ PARALLEL RETRIEVE ] CURSOR [ { WITH | WITHOUT } HOLD ] FOR <replaceable class="parameter">query</replaceable>
+    CURSOR [ { WITH | WITHOUT } HOLD ] FOR <replaceable class="parameter">query</replaceable>
 </synopsis>
  </refsynopsisdiv>
 
