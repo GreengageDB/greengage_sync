@@ -5,7 +5,6 @@
 --
 -- All objects made in this test are in temp_func_test schema
 CREATE USER regress_unpriv_user;
-NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE SCHEMA temp_func_test;
 GRANT ALL ON SCHEMA temp_func_test TO public;
 SET search_path TO temp_func_test, public;
@@ -543,7 +542,7 @@ SELECT * FROM functest_sri1();
 (3 rows)
 
 EXPLAIN (verbose, costs off) SELECT * FROM functest_sri1();
-                  QUERY PLAN                   
+                  QUERY PLAN
 -----------------------------------------------
  Function Scan on temp_func_test.functest_sri1
    Output: functest_sri1
@@ -566,7 +565,7 @@ SELECT * FROM functest_sri2();
 (3 rows)
 
 EXPLAIN (verbose, costs off) SELECT * FROM functest_sri2();
-                  QUERY PLAN                   
+                  QUERY PLAN
 -----------------------------------------------
  Function Scan on temp_func_test.functest_sri2
    Output: functest_sri2
@@ -593,12 +592,11 @@ SELECT voidtest2(11,22);
 
 -- currently, we can inline voidtest2 but not voidtest1
 EXPLAIN (verbose, costs off) SELECT voidtest2(11,22);
-             QUERY PLAN              
--------------------------------------
+       QUERY PLAN        
+-------------------------
  Result
    Output: voidtest1(33)
- Optimizer: Postgres query optimizer
-(3 rows)
+(2 rows)
 
 CREATE TEMP TABLE sometable(f1 int);
 CREATE FUNCTION voidtest3(a int) RETURNS VOID LANGUAGE SQL AS
@@ -620,8 +618,8 @@ SELECT voidtest4(39);
 TABLE sometable;
  f1 
 ----
- 38
  18
+ 38
 (2 rows)
 
 CREATE FUNCTION voidtest5(a int) RETURNS SETOF VOID LANGUAGE SQL AS

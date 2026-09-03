@@ -578,12 +578,16 @@ explain_filter
 -- Test for an old bug in printing Sequence nodes in JSON/XML format
 -- (https://github.com/greenplum-db/gpdb/issues/9410)
 CREATE TABLE jsonexplaintest (i int4) PARTITION BY RANGE (i) (START(1) END(3) EVERY(1));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 select explain_filter_to_json('EXPLAIN (FORMAT JSON, COSTS OFF) SELECT * FROM jsonexplaintest WHERE i = 2;');
 explain_filter_to_json
 [{"Plan": {"Plans": [{"Alias": "jsonexplaintest", "Slice": 0, "Filter": "(i = 0)", "Segments": 0, "Gang Type": "primary reader", "Node Type": "Dynamic Seq Scan", "Async Capable": false, "Relation Name": "jsonexplaintest", "Parallel Aware": false, "Parent Relationship": "Outer", "Number of partitions to scan": 0}], "Slice": 0, "Senders": 0, "Segments": 0, "Gang Type": "primary reader", "Node Type": "Gather Motion", "Receivers": 0, "Async Capable": false, "Parallel Aware": false}, "Optimizer": "Pivotal Optimizer (GPORCA)"}]
 (1 row)
 -- Check Explain Text format output with jit enable
 CREATE TABLE jit_explain_output(c1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO jit_explain_output SELECT generate_series(1,100);
 SET jit = on;
 SET jit_above_cost = 0;

@@ -46,32 +46,19 @@ Indexes:
 -- Scenario: User table without hll flag
 --------------------------------------------------------------------------------
 create table minirepro_foo(a int) partition by range(a);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table minirepro_foo_1 partition of minirepro_foo for values from (1) to (5);
 NOTICE:  table has parent, setting distribution columns to match parent table
 insert into minirepro_foo values(1);
 analyze minirepro_foo;
 -- Generate minirepro
 -- start_ignore
-\! echo "select * from minirepro_foo;" > ./data/minirepro_q.sql
-\! minirepro regression -q data/minirepro_q.sql -f data/minirepro.sql
-Connecting to database: host=gpdb-b16, port=7000, user=gpadmin, db=regression ...
-Extracting metadata from query file data/minirepro_q.sql ...
-psql regression --pset footer --no-psqlrc -v ON_ERROR_STOP=1 -Atq -h gpdb-b16 -p 7000 -U gpadmin -f /tmp/20260820173840/toolkit.sql
-Invoking pg_dump to dump DDL ...
-pg_dump -h gpdb-b16 -p 7000 -U gpadmin -sxO regression --relation-oids 143436,143439 --function-oids 0 -f /tmp/20260820173840/pg_dump_out.sql
-Writing schema DDLs ...
-Writing relation and function DDLs ...
-Writing table statistics ...
-Writing column statistics ...
-Attaching raw query text ...
---- MiniRepro completed! ---
-WARNING: This tool collects statistics about your data, including most common values, which requires some data elements to be included in the output file.
-Please review output file to ensure it is within corporate policy to transport the output file.
 -- end_ignore
 -- Run minirepro
 drop table minirepro_foo; -- this will also delete the pg_statistic tuples for minirepro_foo and minirepro_foo_1
 \! psql -f data/minirepro.sql regression
-You are now connected to database "regression" as user "gpadmin".
+You are now connected to database "regression" as user "pivotal".
 SET
 SET
 SET
@@ -143,32 +130,19 @@ drop table minirepro_foo;
 -- Scenario: User table with hll flag
 --------------------------------------------------------------------------------
 create table minirepro_foo(a int) partition by range(a);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create table minirepro_foo_1 partition of minirepro_foo for values from (1) to (5);
 NOTICE:  table has parent, setting distribution columns to match parent table
 insert into minirepro_foo values(1);
 analyze minirepro_foo;
 -- Generate minirepro
 -- start_ignore
-\! echo "select * from minirepro_foo;" > data/minirepro_q.sql
-\! minirepro regression -q data/minirepro_q.sql -f data/minirepro.sql --hll
-Connecting to database: host=gpdb-b16, port=7000, user=gpadmin, db=regression ...
-Extracting metadata from query file data/minirepro_q.sql ...
-psql regression --pset footer --no-psqlrc -v ON_ERROR_STOP=1 -Atq -h gpdb-b16 -p 7000 -U gpadmin -f /tmp/20260820173841/toolkit.sql
-Invoking pg_dump to dump DDL ...
-pg_dump -h gpdb-b16 -p 7000 -U gpadmin -sxO regression --relation-oids 143448,143451 --function-oids 0 -f /tmp/20260820173841/pg_dump_out.sql
-Writing schema DDLs ...
-Writing relation and function DDLs ...
-Writing table statistics ...
-Writing column statistics ...
-Attaching raw query text ...
---- MiniRepro completed! ---
-WARNING: This tool collects statistics about your data, including most common values, which requires some data elements to be included in the output file.
-Please review output file to ensure it is within corporate policy to transport the output file.
 -- end_ignore
 -- Run minirepro
 drop table minirepro_foo; -- this will also delete the pg_statistic tuples for minirepro_foo and minirepro_foo_1
 \! psql -f data/minirepro.sql regression
-You are now connected to database "regression" as user "gpadmin".
+You are now connected to database "regression" as user "pivotal".
 SET
 SET
 SET
@@ -240,6 +214,8 @@ drop table minirepro_foo;
 -- Scenario: User table with escape-worthy characters in stavaluesN
 --------------------------------------------------------------------------------
 create table minirepro_foo(a text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into minirepro_foo values('1');
 analyze minirepro_foo;
 -- arbitrarily populate stats data values having text (with quotes) in a slot
@@ -248,26 +224,11 @@ set allow_system_table_mods to on;
 update pg_statistic set stavalues3='{"hello", "''world''"}'::text[] where starelid='minirepro_foo'::regclass;
 -- Generate minirepro
 -- start_ignore
-\! echo "select * from minirepro_foo;" > data/minirepro_q.sql
-\! minirepro regression -q data/minirepro_q.sql -f data/minirepro.sql
-Connecting to database: host=gpdb-b16, port=7000, user=gpadmin, db=regression ...
-Extracting metadata from query file data/minirepro_q.sql ...
-psql regression --pset footer --no-psqlrc -v ON_ERROR_STOP=1 -Atq -h gpdb-b16 -p 7000 -U gpadmin -f /tmp/20260820173842/toolkit.sql
-Invoking pg_dump to dump DDL ...
-pg_dump -h gpdb-b16 -p 7000 -U gpadmin -sxO regression --relation-oids 143460 --function-oids 0 -f /tmp/20260820173842/pg_dump_out.sql
-Writing schema DDLs ...
-Writing relation and function DDLs ...
-Writing table statistics ...
-Writing column statistics ...
-Attaching raw query text ...
---- MiniRepro completed! ---
-WARNING: This tool collects statistics about your data, including most common values, which requires some data elements to be included in the output file.
-Please review output file to ensure it is within corporate policy to transport the output file.
 -- end_ignore
 -- Run minirepro
 drop table minirepro_foo; -- this should also delete the pg_statistic tuple for minirepro_foo
 \! psql -f data/minirepro.sql regression
-You are now connected to database "regression" as user "gpadmin".
+You are now connected to database "regression" as user "pivotal".
 SET
 SET
 SET
@@ -304,28 +265,13 @@ drop table minirepro_foo;
 --------------------------------------------------------------------------------
 -- Generate minirepro
 -- start_ignore
-\! echo "select oid from pg_tablespace;" > data/minirepro_q.sql
-\! minirepro regression -q data/minirepro_q.sql -f data/minirepro.sql
-Connecting to database: host=gpdb-b16, port=7000, user=gpadmin, db=regression ...
-Extracting metadata from query file data/minirepro_q.sql ...
-psql regression --pset footer --no-psqlrc -v ON_ERROR_STOP=1 -Atq -h gpdb-b16 -p 7000 -U gpadmin -f /tmp/20260820173843/toolkit.sql
-Invoking pg_dump to dump DDL ...
-pg_dump -h gpdb-b16 -p 7000 -U gpadmin -sxO regression --relation-oids 1213 --function-oids 0 -f /tmp/20260820173843/pg_dump_out.sql
-Writing schema DDLs ...
-Writing relation and function DDLs ...
-Writing table statistics ...
-Writing column statistics ...
-Attaching raw query text ...
---- MiniRepro completed! ---
-WARNING: This tool collects statistics about your data, including most common values, which requires some data elements to be included in the output file.
-Please review output file to ensure it is within corporate policy to transport the output file.
 -- end_ignore
 -- Run minirepro
 -- Caution: The following operation will remove the pg_statistic tuple
 -- corresponding to pg_tablespace before it re-inserts it, which may lead to
 -- corrupted stats for pg_tablespace. But, that shouldn't matter too much?
 \! psql -f data/minirepro.sql regression
-You are now connected to database "regression" as user "gpadmin".
+You are now connected to database "regression" as user "pivotal".
 SET
 SET
 SET
