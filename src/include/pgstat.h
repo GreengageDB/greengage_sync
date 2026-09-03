@@ -77,7 +77,6 @@ typedef enum StatMsgType
 	PGSTAT_MTYPE_BGWRITER,
 	PGSTAT_MTYPE_WAL,
 	PGSTAT_MTYPE_SLRU,
-	PGSTAT_MTYPE_RECOVERYPREFETCH,
 	PGSTAT_MTYPE_FUNCSTAT,
 	PGSTAT_MTYPE_FUNCPURGE,
 	PGSTAT_MTYPE_RECOVERYCONFLICT,
@@ -1078,20 +1077,15 @@ extern void pgstat_report_replslot_drop(const char *slotname);
 
 extern void pgstat_initialize(void);
 
-extern void pgstat_report_sessionid(int new_sessionid);
-
 
 extern PgStat_TableStatus *find_tabstat_entry(Oid rel_id);
 extern PgStat_BackendFunctionEntry *find_funcstat_entry(Oid func_id);
-
-extern void pgstat_report_resgroup(Oid groupid);
 
 extern void pgstat_initstats(Relation rel);
 
 extern void pgstat_init_localportalhash(void);
 extern PgStat_StatPortalEntry *pgstat_getportalentry(uint32 portalid,
 													 Oid queueid);
-
 /* nontransactional event counts are simple enough to inline */
 
 #define pgstat_count_heap_scan(rel)									\

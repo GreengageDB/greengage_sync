@@ -290,7 +290,6 @@ static HTAB *pgStatDBHash = NULL;
 
 static HTAB *pgStatQueueHash = NULL;		/* GPDB */
 static HTAB *localStatPortalHash = NULL;	/* GPDB. per backend portal queue stats.*/
-
 /*
  * Cluster wide statistics, kept in the stats collector.
  * Contains statistics that are not collected per database
@@ -309,6 +308,13 @@ static int	nReplSlotStats;
  * will write both that DB's data and the shared stats.
  */
 static List *pending_write_requests = NIL;
+
+/*
+ * Total time charged to functions so far in the current backend.
+ * We use this to help separate "self" and "other" time charges.
+ * (We assume this initializes to zero.)
+ */
+static instr_time total_func_time;
 
 /*
  * Total time charged to functions so far in the current backend.
@@ -2990,50 +2996,6 @@ pgstat_send(void *msg, int len)
 	if (rc < 0)
 		elog(LOG, "could not send to statistics collector: %m");
 #endif
-}
-
-/*
- * Report the timestamp of transaction start queueing on the resource group.
- */
-void
-pgstat_report_resgroup(Oid groupid)
-{
-	volatile PgBackendStatus *beentry = MyBEEntry;
-
-	if (!beentry)
-		return;
-
-	/*
-	 * Update my status entry, following the protocol of bumping
-	 * st_changecount before and after.  We use a volatile pointer here to
-	 * ensure the compiler doesn't try to get cute.
-	 */
-	beentry->st_changecount++;
-
-	beentry->st_rsgid = groupid;
-	beentry->st_changecount++;
-	Assert((beentry->st_changecount & 1) == 0);
-}
-
-/* ----------
- * pgstat_report_sessionid() -
- *
- * 	Called from cdbgang to report a session is reset.
- *
- * ----------
- */
-void
-pgstat_report_sessionid(int new_sessionid)
-{
-	volatile PgBackendStatus *beentry = MyBEEntry;
-
-	if (!beentry)
-		return;
-
-	beentry->st_changecount++;
-	beentry->st_session_id = new_sessionid;
-	beentry->st_changecount++;
-	Assert((beentry->st_changecount & 1) == 0);
 }
 
 /* ----------
