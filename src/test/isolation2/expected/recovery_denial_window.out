@@ -6,11 +6,15 @@
 -- and FTS/fault-injector connections must be let through to a mirror in
 -- this state.
 --
--- The window is held open deterministically: stall WAL apply on the
--- running mirror with recovery_min_apply_delay, pile up a backlog of
--- commit records, and restart the mirror.  Replay then stalls inside its
--- local pg_wal, before the walreceiver (and with it the CAC_MIRROR_READY
--- fast path) can start.
+-- The window is held open deterministically with recovery_min_apply_delay.
+-- The delay only takes effect after consistency is reached (see
+-- recoveryApplyDelay() in xlog.c), so the mechanism is: on restart the
+-- mirror reaches consistency early, then the delay stalls replay of the
+-- backlog of (post-consistency) commit records.  Because a mirror runs
+-- with hot_standby off it never advances to PM_HOT_STANDBY; it stays in
+-- PM_RECOVERY -> CAC_NOTCONSISTENT, and the stalled replay keeps local WAL
+-- from draining, so the walreceiver (and with it the CAC_MIRROR_READY fast
+-- path) never starts for the duration of the delay.
 --
 -- Like its pg_rewind siblings, this assumes a single-host cluster
 -- (pg_ctl runs against the mirror's datadir from here).  On a cluster
