@@ -177,6 +177,13 @@ plan_tree_walker(Node *node,
 				return true;
 			break;
 
+		case T_ResultCache:
+			if (walk_plan_node_fields((Plan *) node, walker, context))
+				return true;
+			if (walker((Node *) ((ResultCache *) node)->param_exprs, context))
+				return true;
+			break;
+
 		case T_ProjectSet:
 			if (walk_plan_node_fields((Plan *) node, walker, context))
 				return true;

@@ -425,6 +425,7 @@ DirectDispatchUpdateContentIdsFromPlan(PlannerInfo *root, Plan *plan)
 	switch (nodeTag(plan))
 	{
 		case T_Result:
+		case T_ResultCache:
 		case T_Append:
 		case T_MergeAppend:
 		case T_LockRows:

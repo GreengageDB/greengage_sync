@@ -183,7 +183,19 @@ plan_tree_mutator(Node *node,
 				return (Node *) newresult;
 			}
 			break;
+		case T_ResultCache:
+			{
+				ResultCache *result = (ResultCache *) node;
+				ResultCache *newresult;
 
+				FLATCOPY(newresult, result, ResultCache);
+				PLANMUTATE(newresult, result);
+				COPYARRAY(newresult, result, numKeys, hashOperators);
+				COPYARRAY(newresult, result, numKeys , collations);
+				MUTATE(newresult->param_exprs, result->param_exprs, List *);
+
+				return (Node *) newresult;
+			}
 		case T_ProjectSet:
 			{
 				ProjectSet *ps = (ProjectSet *) node;
