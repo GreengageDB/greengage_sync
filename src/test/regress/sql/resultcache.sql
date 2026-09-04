@@ -57,7 +57,11 @@ SELECT COUNT(*),AVG(t2.unique1) FROM tenk1 t1,
 LATERAL (SELECT t2.unique1 FROM tenk1 t2 WHERE t1.twenty = t2.unique1) t2
 WHERE t1.unique1 < 1000;
 
--- Reduce work_mem so that we see some cache evictions
+-- Reduce work_mem so that we see some cache evictions.  Result Cache sizes its
+-- cache from get_hash_mem() (work_mem * hash_mem_multiplier), so work_mem is the
+-- knob here, not statement_mem.  GPDB note: the eviction counters are computed
+-- on the segments and not sent to the QD, so we can only check the plan shape
+-- here, not the Hits/Misses/Evictions line.
 SET work_mem TO '64kB';
 SET enable_mergejoin TO off;
 -- GPDB: also disable sort, otherwise a distributed Merge Join is chosen over the
