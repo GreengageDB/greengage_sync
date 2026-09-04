@@ -20,14 +20,17 @@ INSERT INTO clean_aborted_self (key, data) SELECT g.i, 'just to allocate metapag
 SELECT pg_relation_size('clean_aborted_self_key') AS clean_aborted_self_key_before \gset
 DO $$
 BEGIN
-    -- iterate often enough to see index growth even on larger-than-default page sizes
-    FOR i IN 1..100 LOOP
+    -- iterate often enough to see index growth even on larger-than-default page sizes;
+    -- in MPP the loop and per-cycle width must also be large enough that cumulative
+    -- page splits from a reused stale local snapshot on the segment outpace the
+    -- occasional background-triggered snapshot rebuild
+    FOR i IN 1..400 LOOP
         BEGIN
 	    -- perform index scan over all the inserted keys to get them to be seen as dead
-            IF EXISTS(SELECT * FROM clean_aborted_self WHERE key > 0 AND key < 100) THEN
+            IF EXISTS(SELECT * FROM clean_aborted_self WHERE key > 0 AND key < 401) THEN
 	        RAISE data_corrupted USING MESSAGE = 'these rows should not exist';
             END IF;
-            INSERT INTO clean_aborted_self SELECT g.i, 'rolling back in a sec' FROM generate_series(1, 100) g(i);
+            INSERT INTO clean_aborted_self SELECT g.i, 'rolling back in a sec' FROM generate_series(1, 400) g(i);
 	    -- just some error that's not normally thrown
 	    RAISE reading_sql_data_not_permitted USING MESSAGE = 'round and round again';
 	EXCEPTION WHEN reading_sql_data_not_permitted THEN END;
