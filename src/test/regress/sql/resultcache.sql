@@ -57,9 +57,16 @@ SELECT COUNT(*),AVG(t2.unique1) FROM tenk1 t1,
 LATERAL (SELECT t2.unique1 FROM tenk1 t2 WHERE t1.twenty = t2.unique1) t2
 WHERE t1.unique1 < 1000;
 
--- Reduce work_mem so that we see some cache evictions
+-- Reduce work_mem so that we see some cache evictions.  Result Cache sizes its
+-- cache from get_hash_mem() (work_mem * hash_mem_multiplier), so work_mem is the
+-- knob here, not statement_mem.  GPDB note: the eviction counters are computed
+-- on the segments and not sent to the QD, so we can only check the plan shape
+-- here, not the Hits/Misses/Evictions line.
 SET work_mem TO '64kB';
 SET enable_mergejoin TO off;
+-- GPDB: also disable sort, otherwise a distributed Merge Join is chosen over the
+-- Nested Loop + Result Cache plan this test needs.
+SET enable_sort TO off;
 -- Ensure we get some evictions.  We're unable to validate the hits and misses
 -- here as the number of entries that fit in the cache at once will vary
 -- between different machines.
@@ -67,25 +74,27 @@ SELECT explain_resultcache('
 SELECT COUNT(*),AVG(t1.unique1) FROM tenk1 t1
 INNER JOIN tenk1 t2 ON t1.unique1 = t2.thousand
 WHERE t2.unique1 < 1200;', true);
+RESET enable_sort;
 RESET enable_mergejoin;
 RESET work_mem;
 RESET force_parallel_mode;
-RESET enable_bitmapscan;
-RESET enable_hashjoin;
 
--- Test parallel plans with Result Cache.
+-- Test Result Cache plans.  GPDB has no intra-segment parallel workers, so
+-- upstream's "parallel plan" is just the ordinary distributed plan here.  We
+-- keep enable_hashjoin/enable_bitmapscan off (see above) so the planner sticks
+-- to the Nested Loop + Result Cache shape.
 SET min_parallel_table_scan_size TO 0;
 SET parallel_setup_cost TO 0;
 SET parallel_tuple_cost TO 0;
 SET max_parallel_workers_per_gather TO 2;
 
--- Ensure we get a parallel plan.
+-- Ensure we get a Result Cache plan.
 EXPLAIN (COSTS OFF)
 SELECT COUNT(*),AVG(t2.unique1) FROM tenk1 t1,
 LATERAL (SELECT t2.unique1 FROM tenk1 t2 WHERE t1.twenty = t2.unique1) t2
 WHERE t1.unique1 < 1000;
 
--- And ensure the parallel plan gives us the correct results.
+-- And ensure the plan gives us the correct results.
 SELECT COUNT(*),AVG(t2.unique1) FROM tenk1 t1,
 LATERAL (SELECT t2.unique1 FROM tenk1 t2 WHERE t1.twenty = t2.unique1) t2
 WHERE t1.unique1 < 1000;
@@ -94,3 +103,5 @@ RESET max_parallel_workers_per_gather;
 RESET parallel_tuple_cost;
 RESET parallel_setup_cost;
 RESET min_parallel_table_scan_size;
+RESET enable_bitmapscan;
+RESET enable_hashjoin;
