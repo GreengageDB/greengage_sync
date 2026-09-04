@@ -1993,7 +1993,7 @@ partitioned_table_reloptions(Datum reloptions, bool validate)
 	 * GPDB: we maintain reloptions for partition roots to support reloption
 	 * inheritance and hierarchy wide ALTER TABLE SET().
 	 */
-	return default_reloptions(reloptions, validate, RELOPT_KIND_PARTITIONED);
+	return default_reloptions(reloptions, validate, RELOPT_KIND_HEAP);
 }
 
 /*
