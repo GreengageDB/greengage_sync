@@ -331,7 +331,8 @@ extern ProjectionInfo *ExecBuildUpdateProjection(List *subTargetList,
 												 TupleDesc relDesc,
 												 ExprContext *econtext,
 												 TupleTableSlot *slot,
-												 PlanState *parent);
+												 PlanState *parent,
+												 bool *needsOldTuple);
 extern ExprState *ExecPrepareExpr(Expr *node, EState *estate);
 extern ExprState *ExecPrepareQual(List *qual, EState *estate);
 extern ExprState *ExecPrepareCheck(List *qual, EState *estate);

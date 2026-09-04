@@ -92,18 +92,6 @@ typedef enum UpperRelationKind
 } UpperRelationKind;
 
 /*
- * This enum identifies which type of relation is being planned through the
- * inheritance planner.  INHKIND_NONE indicates the inheritance planner
- * was not used.
- */
-typedef enum InheritanceKind
-{
-	INHKIND_NONE,
-	INHKIND_INHERITED,
-	INHKIND_PARTITIONED
-} InheritanceKind;
-
-/*
  * ApplyShareInputContext is used in different stages of ShareInputScan
  * processing. This is mostly used as working area during the stages, but
  * some information is also carried through multiple stages.
@@ -484,8 +472,16 @@ struct PlannerInfo
 	bool		partColsUpdated;
 
 	int			upd_del_replicated_table;
-	bool		is_split_update;	/* true if UPDATE that modifies
-									 * distribution key columns */
+
+	/*
+	 * For an UPDATE, the target-table columns the SET clause actually changes,
+	 * as attribute numbers of the nominal result relation.  Set by
+	 * preprocess_targetlist() before the targetlist is expanded to the full
+	 * row; used by create_modifytable_path() to work out which target
+	 * relations need a Split Update.
+	 */
+	Bitmapset  *updateChangedCols;
+
 	bool		is_correlated_subplan; /* true for correlated subqueries nested within subplans */
 };
 
@@ -2267,7 +2263,10 @@ typedef struct SplitUpdatePath
 {
 	Path		path;
 	Path	   *subpath;
-	Index		resultRelation;
+	Index		resultRelation;		/* nominal target relation */
+	List	   *resultRelations;	/* integer list of RT indexes of all
+									 * target relations, whose placement
+									 * policies may differ */
 } SplitUpdatePath;
 
 /*
@@ -2287,9 +2286,7 @@ typedef struct ModifyTablePath
 	Index		rootRelation;	/* Root RT index, if target is partitioned */
 	bool		partColsUpdated;	/* some part key in hierarchy updated? */
 	List	   *resultRelations;	/* integer list of RT indexes */
-	List	   *is_split_updates;
-	List	   *subpaths;		/* Path(s) producing source data */
-	List	   *subroots;		/* per-target-table PlannerInfos */
+	bool		isSplitUpdate;	/* GGDB: UPDATE runs as delete+insert? */
 	List	   *updateColnosLists;	/* per-target-table update_colnos lists */
 	List	   *withCheckOptionLists;	/* per-target-table WCO lists */
 	List	   *returningLists; /* per-target-table RETURNING tlists */

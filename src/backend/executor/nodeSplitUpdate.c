@@ -37,13 +37,12 @@ static void SplitTupleTableSlot(TupleTableSlot *slot,
  * Evaluate the hash keys, and compute the target segment ID for the new row.
  */
 static uint32
-evalHashKey(SplitUpdateState *node, Datum *values, bool *isnulls)
+evalHashKey(SplitUpdateState *node, Datum *values, bool *isnulls,
+			CdbHash *h, int numHashAttrs, AttrNumber *hashAttnos)
 {
-	SplitUpdate *plannode = (SplitUpdate *) node->ps.plan;
 	ExprContext *econtext = node->ps.ps_ExprContext;
 	MemoryContext oldContext;
 	unsigned int target_seg;
-	CdbHash	   *h = node->cdbhash;
 
 	ResetExprContext(econtext);
 
@@ -51,9 +50,9 @@ evalHashKey(SplitUpdateState *node, Datum *values, bool *isnulls)
 
 	cdbhashinit(h);
 
-	for (int i = 0; i < plannode->numHashAttrs; i++)
+	for (int i = 0; i < numHashAttrs; i++)
 	{
-		AttrNumber	keyattno = plannode->hashAttnos[i];
+		AttrNumber	keyattno = hashAttnos[i];
 
 		/*
 		 * Compute the hash function
@@ -65,6 +64,48 @@ evalHashKey(SplitUpdateState *node, Datum *values, bool *isnulls)
 	MemoryContextSwitchTo(oldContext);
 
 	return target_seg;
+}
+
+/*
+ * Find the per-relation placement policy for a row, by the OID in its
+ * "tableoid" junk column.  Returns -1 if the plan carries no per-relation
+ * policies, in which case the caller places the row by the nominal relation's.
+ *
+ * Rows arrive grouped by relation in practice (the subplan is an Append over
+ * the members), so remembering the previous answer avoids the search almost
+ * always.
+ */
+static int
+lookupPolicyIdx(SplitUpdateState *node, Datum *values, bool *isnulls)
+{
+	Oid			relid;
+	int			idx;
+
+	if (node->numPolicies == 0)
+		return -1;
+
+	if (isnulls[node->input_tableoid_attno - 1])
+		elog(ERROR, "tableoid is NULL");
+	relid = DatumGetObjectId(values[node->input_tableoid_attno - 1]);
+
+	idx = node->lastPolicyIdx;
+	if (idx >= 0 && node->policyRelids[idx] == relid)
+		return idx;
+
+	for (idx = 0; idx < node->numPolicies; idx++)
+	{
+		if (node->policyRelids[idx] == relid)
+		{
+			node->lastPolicyIdx = idx;
+			return idx;
+		}
+	}
+
+	/*
+	 * This should be unreachable, since tableoid must match at least one
+	 * policy recorded in policyRelids
+	 */
+	elog(ERROR, "no split-update placement policy for relation %u", relid);
 }
 
 /* Split TupleTableSlot into a DELETE and INSERT TupleTableSlot */
@@ -153,11 +194,49 @@ SplitTupleTableSlot(TupleTableSlot *slot,
 	/* Compute segment ID for the new row */
 	if (node->output_segid_attno > 0)
 	{
-		int32		target_seg;
+		int			numHashAttrs = plannode->numHashAttrs;
+		AttrNumber *hashAttnos = plannode->hashAttnos;
+		CdbHash    *h = node->cdbhash;
+		int			idx;
 
-		target_seg = evalHashKey(node, insert_values, insert_nulls);
+		/*
+		 * If the target is an inheritance tree whose members are distributed
+		 * differently, place the row according to its own relation's policy
+		 * rather than the nominal relation's.
+		 */
+		idx = lookupPolicyIdx(node, values, nulls);
+		if (idx >= 0)
+		{
+			numHashAttrs = node->policyNumHashAttrs[idx];
+			hashAttnos = node->policyAttnos[idx];
 
-		insert_values[node->output_segid_attno - 1] = Int32GetDatum(target_seg);
+			if (node->policyHashes[idx] == NULL && numHashAttrs > 0)
+				node->policyHashes[idx] = makeCdbHash(node->policyNumSegments[idx],
+													  numHashAttrs,
+													  node->policyFuncs[idx]);
+			h = node->policyHashes[idx];
+		}
+
+		if (numHashAttrs > 0)
+		{
+			int32		target_seg;
+
+			Assert(h != NULL);
+			target_seg = evalHashKey(node, insert_values, insert_nulls,
+									 h, numHashAttrs, hashAttnos);
+
+			insert_values[node->output_segid_attno - 1] = Int32GetDatum(target_seg);
+		}
+		else
+		{
+			/*
+			 * Nothing to hash on: the row cannot have moved, so re-insert it
+			 * on the segment it came from.
+			 */
+			Assert(!nulls[node->input_segid_attno - 1]);
+			insert_values[node->output_segid_attno - 1] =
+				values[node->input_segid_attno - 1];
+		}
 		insert_nulls[node->output_segid_attno - 1] = false;
 	}
 }
@@ -253,6 +332,78 @@ ExecInitSplitUpdate(SplitUpdate *node, EState *estate, int eflags)
 		ExecFindJunkAttributeInTlist(outerPlan->targetlist, "gp_segment_id");
 	splitupdatestate->output_segid_attno =
 		ExecFindJunkAttributeInTlist(node->plan.targetlist, "gp_segment_id");
+
+	/*
+	 * For an inheritance tree, each row says which relation it came from, so
+	 * that we can place it by that relation's own distribution policy.
+	 */
+	splitupdatestate->input_tableoid_attno =
+		ExecFindJunkAttributeInTlist(outerPlan->targetlist, "tableoid");
+	splitupdatestate->lastPolicyIdx = -1;
+	splitupdatestate->numPolicies = list_length(node->policyRelids);
+	if (splitupdatestate->numPolicies > 0)
+	{
+		int			npol = splitupdatestate->numPolicies;
+		ListCell   *lcrelid;
+		ListCell   *lcattnos;
+		ListCell   *lcfuncs;
+		ListCell   *lcnsegs;
+		int			i = 0;
+
+		Assert(list_length(node->policyAttnos) == npol);
+		Assert(list_length(node->policyFuncs) == npol);
+		Assert(list_length(node->policyNumSegments) == npol);
+
+		if (splitupdatestate->input_tableoid_attno <= 0)
+			elog(ERROR, "SplitUpdate has per-relation placement policies but no tableoid column");
+
+		splitupdatestate->policyRelids = (Oid *) palloc(npol * sizeof(Oid));
+		splitupdatestate->policyNumHashAttrs = (int *) palloc(npol * sizeof(int));
+		splitupdatestate->policyAttnos = (AttrNumber **) palloc(npol * sizeof(AttrNumber *));
+		splitupdatestate->policyFuncs = (Oid **) palloc(npol * sizeof(Oid *));
+		splitupdatestate->policyNumSegments = (int *) palloc(npol * sizeof(int));
+		splitupdatestate->policyHashes = (CdbHash **) palloc0(npol * sizeof(CdbHash *));
+
+		forfour(lcrelid, node->policyRelids,
+				lcattnos, node->policyAttnos,
+				lcfuncs, node->policyFuncs,
+				lcnsegs, node->policyNumSegments)
+		{
+			List	   *attnos = (List *) lfirst(lcattnos);
+			List	   *funcs = (List *) lfirst(lcfuncs);
+			int			nattrs = list_length(attnos);
+			ListCell   *lc;
+			int			k;
+
+			Assert(list_length(funcs) == nattrs);
+
+			splitupdatestate->policyRelids[i] = lfirst_oid(lcrelid);
+			splitupdatestate->policyNumHashAttrs[i] = nattrs;
+			splitupdatestate->policyNumSegments[i] = lfirst_int(lcnsegs);
+
+			if (nattrs > 0)
+			{
+				splitupdatestate->policyAttnos[i] =
+					(AttrNumber *) palloc(nattrs * sizeof(AttrNumber));
+				splitupdatestate->policyFuncs[i] =
+					(Oid *) palloc(nattrs * sizeof(Oid));
+
+				k = 0;
+				foreach(lc, attnos)
+					splitupdatestate->policyAttnos[i][k++] = (AttrNumber) lfirst_int(lc);
+				k = 0;
+				foreach(lc, funcs)
+					splitupdatestate->policyFuncs[i][k++] = lfirst_oid(lc);
+			}
+			else
+			{
+				splitupdatestate->policyAttnos[i] = NULL;
+				splitupdatestate->policyFuncs[i] = NULL;
+			}
+
+			i++;
+		}
+	}
 
 	/*
 	 * DML nodes do not project.
