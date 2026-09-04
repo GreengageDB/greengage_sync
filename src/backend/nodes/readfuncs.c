@@ -341,6 +341,7 @@ _readQuery(void)
 	READ_BOOL_FIELD(hasForUpdate);
 	READ_BOOL_FIELD(hasRowSecurity);
 	READ_BOOL_FIELD(canOptSelectLockingClause);
+	READ_BOOL_FIELD(isReturn);
 	READ_NODE_FIELD(cteList);
 	READ_NODE_FIELD(rtable);
 	READ_NODE_FIELD(jointree);
@@ -1619,6 +1620,7 @@ _readScalarArrayOpExpr(void)
 
 	READ_OID_FIELD(opno);
 	READ_OID_FIELD(opfuncid);
+	READ_OID_FIELD(hashfuncid);
 	READ_BOOL_FIELD(useOr);
 	READ_OID_FIELD(inputcollid);
 	READ_NODE_FIELD(args);
@@ -2148,6 +2150,7 @@ _readJoinExpr(void)
 	READ_NODE_FIELD(larg);
 	READ_NODE_FIELD(rarg);
 	READ_NODE_FIELD(usingClause);
+	READ_NODE_FIELD(join_using_alias);
 	READ_NODE_FIELD(quals);
 	READ_NODE_FIELD(alias);
 	READ_INT_FIELD(rtindex);
@@ -2227,6 +2230,7 @@ _readColumnDef(void)
 
 	READ_STRING_FIELD(colname);
 	READ_NODE_FIELD(typeName);
+	READ_STRING_FIELD(compression);
 	READ_INT_FIELD(inhcount);
 	READ_BOOL_FIELD(is_local);
 	READ_BOOL_FIELD(is_not_null);
@@ -2351,6 +2355,7 @@ _readRangeTblEntry(void)
 			READ_NODE_FIELD(joinaliasvars);
 			READ_NODE_FIELD(joinleftcols);
 			READ_NODE_FIELD(joinrightcols);
+			READ_NODE_FIELD(join_using_alias);
 			break;
 		case RTE_FUNCTION:
 			READ_NODE_FIELD(functions);
@@ -2515,7 +2520,6 @@ _readPlannedStmt(void)
 	READ_BITMAPSET_FIELD(rewindPlanIDs);
 	READ_NODE_FIELD(rowMarks);
 	READ_NODE_FIELD(relationOids);
-	READ_NODE_FIELD(partitionOids);
 	/* invalItems not serialized in binary mode */
 #ifndef COMPILING_BINARY_FUNCS
 	READ_NODE_FIELD(invalItems);
@@ -2572,6 +2576,7 @@ ReadCommonPlan(Plan *local_node)
 	READ_INT_FIELD(plan_width);
 	READ_BOOL_FIELD(parallel_aware);
 	READ_BOOL_FIELD(parallel_safe);
+	READ_BOOL_FIELD(async_capable);
 	READ_INT_FIELD(plan_node_id);
 	READ_NODE_FIELD(targetlist);
 	READ_NODE_FIELD(qual);
@@ -2650,7 +2655,7 @@ _readModifyTable(void)
 	READ_UINT_FIELD(rootRelation);
 	READ_BOOL_FIELD(partColsUpdated);
 	READ_NODE_FIELD(resultRelations);
-	READ_NODE_FIELD(plans);
+	READ_NODE_FIELD(updateColnosLists);
 	READ_NODE_FIELD(withCheckOptionLists);
 	READ_NODE_FIELD(returningLists);
 	READ_NODE_FIELD(fdwPrivLists);
@@ -2681,6 +2686,7 @@ _readAppend(void)
 
 	READ_BITMAPSET_FIELD(apprelids);
 	READ_NODE_FIELD(appendplans);
+	READ_INT_FIELD(nasyncplans);
 	READ_INT_FIELD(first_partial_plan);
 	READ_NODE_FIELD(part_prune_info);
 	READ_NODE_FIELD(join_prune_paramids);
@@ -3272,6 +3278,26 @@ _readMaterial(void)
 
 	READ_BOOL_FIELD(cdb_strict);
 	READ_BOOL_FIELD(cdb_shield_child_from_rescans);
+
+	READ_DONE();
+}
+
+/*
+ * _readResultCache
+ */
+static ResultCache *
+_readResultCache(void)
+{
+	READ_LOCALS(ResultCache);
+
+	ReadCommonPlan(&local_node->plan);
+
+	READ_INT_FIELD(numKeys);
+	READ_OID_ARRAY(hashOperators, local_node->numKeys);
+	READ_OID_ARRAY(collations, local_node->numKeys);
+	READ_NODE_FIELD(param_exprs);
+	READ_BOOL_FIELD(singlerow);
+	READ_UINT_FIELD(est_entries);
 
 	READ_DONE();
 }
@@ -3934,6 +3960,7 @@ _readCreateFunctionStmt(void)
 	READ_NODE_FIELD(parameters);
 	READ_NODE_FIELD(returnType);
 	READ_NODE_FIELD(options);
+	READ_NODE_FIELD(sql_body);
 
 	READ_DONE();
 }
@@ -3974,6 +4001,22 @@ _readDefineStmt(void)
 	READ_BOOL_FIELD(if_not_exists);
 	READ_BOOL_FIELD(replace);
 	READ_BOOL_FIELD(trusted);   /* CDB */
+
+	READ_DONE();
+}
+
+static CreateStatsStmt *
+_readCreateStatsStmt(void)
+{
+	READ_LOCALS(CreateStatsStmt);
+
+	READ_NODE_FIELD(defnames);
+	READ_NODE_FIELD(stat_types);
+	READ_NODE_FIELD(exprs);
+	READ_NODE_FIELD(relations);
+	READ_STRING_FIELD(stxcomment);
+	READ_BOOL_FIELD(if_not_exists);
+	READ_BOOL_FIELD(transformed);
 
 	READ_DONE();
 }
@@ -4777,6 +4820,8 @@ parseNodeString(void)
 		return_value = _readHashJoin();
 	else if (MATCH("MATERIAL", 8))
 		return_value = _readMaterial();
+	else if (MATCH("RESULTCACHE", 11))
+		return_value = _readResultCache();
 	else if (MATCH("SORT", 4))
 		return_value = _readSort();
 	else if (MATCH("INCREMENTALSORT", 15))
@@ -4937,6 +4982,8 @@ parseNodeString(void)
 		return_value = _readCreateSchemaStmt();
 	else if (MATCHX("CREATESEQSTMT"))
 		return_value = _readCreateSeqStmt();
+	else if (MATCHX("CREATESTATSSTMT"))
+		return_value = _readCreateStatsStmt();
 	else if (MATCHX("CREATETRANSFORMSTMT"))
 		return_value = _readCreateTransformStmt();
 	else if (MATCHX("CURSORPOSINFO"))

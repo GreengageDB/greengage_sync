@@ -761,15 +761,8 @@ adjustJoinTreeList(Query *parsetree, bool removert, int rt_index)
  *
  * We must do items 1,2,3 before firing rewrite rules, else rewritten
  * references to NEW.foo will produce wrong or incomplete results.  Item 4
- * is not needed for rewriting, but will be needed by the planner, and we
+ * is not needed for rewriting, but it is helpful for the planner, and we
  * can do it essentially for free while handling the other items.
- *
- * Note that for an inheritable UPDATE, this processing is only done once,
- * using the parent relation as reference.  It must not do anything that
- * will not be correct when transposed to the child relation(s).  (Step 4
- * is incorrect by this light, since child relations might have different
- * column ordering, but the planner will fix things by re-sorting the tlist
- * for each child.)
  *
  * If values_rte is non-NULL (i.e., we are doing a multi-row INSERT using
  * values from a VALUES RTE), we populate *unused_values_attrnos with the
@@ -1291,25 +1284,28 @@ build_column_default(Relation rel, int attrno)
 	}
 
 	/*
-	 * Scan to see if relation has a default for this column.
+	 * If relation has a default for this column, fetch that expression.
 	 */
-	if (att_tup->atthasdef && rd_att->constr &&
-		rd_att->constr->num_defval > 0)
+	if (att_tup->atthasdef)
 	{
-		AttrDefault *defval = rd_att->constr->defval;
-		int			ndef = rd_att->constr->num_defval;
-
-		while (--ndef >= 0)
+		if (rd_att->constr && rd_att->constr->num_defval > 0)
 		{
-			if (attrno == defval[ndef].adnum)
+			AttrDefault *defval = rd_att->constr->defval;
+			int			ndef = rd_att->constr->num_defval;
+
+			while (--ndef >= 0)
 			{
-				/*
-				 * Found it, convert string representation to node tree.
-				 */
-				expr = stringToNode(defval[ndef].adbin);
-				break;
+				if (attrno == defval[ndef].adnum)
+				{
+					/* Found it, convert string representation to node tree. */
+					expr = stringToNode(defval[ndef].adbin);
+					break;
+				}
 			}
 		}
+		if (expr == NULL)
+			elog(ERROR, "default expression not found for attribute %d of relation \"%s\"",
+				 attrno, RelationGetRelationName(rel));
 	}
 
 	/*
@@ -1664,6 +1660,7 @@ rewriteValuesRTE(Query *parsetree, RangeTblEntry *rte, int rti,
 
 
 /*
+<<<<<<< HEAD
  * rewriteTargetListUD - rewrite UPDATE/DELETE targetlist as needed
  *
  * This function adds a "junk" TLE that is needed to allow the executor to
@@ -1800,6 +1797,8 @@ rewriteTargetListUD(Query *parsetree, RangeTblEntry *target_rte,
 }
 
 /*
+=======
+>>>>>>> 8ff1c94649f
  * Record in target_rte->extraUpdatedCols the indexes of any generated columns
  * that depend on any columns mentioned in target_rte->updatedCols.
  */

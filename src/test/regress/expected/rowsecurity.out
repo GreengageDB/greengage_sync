@@ -1714,19 +1714,21 @@ EXPLAIN (COSTS OFF) EXECUTE p2(2);
 --
 SET SESSION AUTHORIZATION regress_rls_bob;
 EXPLAIN (COSTS OFF) UPDATE t1 SET b = b || b WHERE f_leak(b);
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Update on t1
-   Update on t1
-   Update on t2 t1_1
-   Update on t3 t1_2
-   ->  Seq Scan on t1
-         Filter: (((a % 2) = 0) AND f_leak(b))
-   ->  Seq Scan on t2 t1_1
-         Filter: (((a % 2) = 0) AND f_leak(b))
-   ->  Seq Scan on t3 t1_2
-         Filter: (((a % 2) = 0) AND f_leak(b))
-(10 rows)
+   Update on t1 t1_1
+   Update on t2 t1_2
+   Update on t3 t1_3
+   ->  Result
+         ->  Append
+               ->  Seq Scan on t1 t1_1
+                     Filter: (((a % 2) = 0) AND f_leak(b))
+               ->  Seq Scan on t2 t1_2
+                     Filter: (((a % 2) = 0) AND f_leak(b))
+               ->  Seq Scan on t3 t1_3
+                     Filter: (((a % 2) = 0) AND f_leak(b))
+(12 rows)
 
 UPDATE t1 SET b = b || b WHERE f_leak(b);
 NOTICE:  f_leak => bbb
@@ -1807,13 +1809,19 @@ NOTICE:  f_leak => cde
 NOTICE:  f_leak => yyyyyy
 EXPLAIN (COSTS OFF) UPDATE t1 SET b=t1.b FROM t2
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
+<<<<<<< HEAD
                                  QUERY PLAN                                  
 -----------------------------------------------------------------------------
+=======
+                              QUERY PLAN                               
+-----------------------------------------------------------------------
+>>>>>>> 8ff1c94649f
  Update on t1
-   Update on t1
-   Update on t2 t1_1
-   Update on t3 t1_2
+   Update on t1 t1_1
+   Update on t2 t1_2
+   Update on t3 t1_3
    ->  Nested Loop
+<<<<<<< HEAD
          ->  Seq Scan on t1
                Filter: ((a = 3) AND ((a % 2) = 0) AND f_leak(b))
          ->  Materialize
@@ -1836,6 +1844,18 @@ WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
                            Filter: ((a = 3) AND ((a % 2) = 1) AND f_leak(b))
  Optimizer: Postgres query optimizer
 (26 rows)
+=======
+         ->  Seq Scan on t2
+               Filter: ((a = 3) AND ((a % 2) = 1) AND f_leak(b))
+         ->  Append
+               ->  Seq Scan on t1 t1_1
+                     Filter: ((a = 3) AND ((a % 2) = 0) AND f_leak(b))
+               ->  Seq Scan on t2 t1_2
+                     Filter: ((a = 3) AND ((a % 2) = 0) AND f_leak(b))
+               ->  Seq Scan on t3 t1_3
+                     Filter: ((a = 3) AND ((a % 2) = 0) AND f_leak(b))
+(14 rows)
+>>>>>>> 8ff1c94649f
 
 UPDATE t1 SET b=t1.b FROM t2
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
@@ -1896,6 +1916,7 @@ NOTICE:  f_leak => cde
 EXPLAIN (COSTS OFF) UPDATE t1 t1_1 SET b = t1_2.b FROM t1 t1_2
 WHERE t1_1.a = 4 AND t1_2.a = t1_1.a AND t1_2.b = t1_1.b
 AND f_leak(t1_1.b) AND f_leak(t1_2.b) RETURNING *, t1_1, t1_2;
+<<<<<<< HEAD
                                        QUERY PLAN                                        
 -----------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
@@ -1947,6 +1968,32 @@ AND f_leak(t1_1.b) AND f_leak(t1_2.b) RETURNING *, t1_1, t1_2;
                                        Filter: ((a = 4) AND ((a % 2) = 0) AND f_leak(b))
  Optimizer: Postgres query optimizer
 (48 rows)
+=======
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Update on t1 t1_1
+   Update on t1 t1_1_1
+   Update on t2 t1_1_2
+   Update on t3 t1_1_3
+   ->  Nested Loop
+         Join Filter: (t1_1.b = t1_2.b)
+         ->  Append
+               ->  Seq Scan on t1 t1_1_1
+                     Filter: ((a = 4) AND ((a % 2) = 0) AND f_leak(b))
+               ->  Seq Scan on t2 t1_1_2
+                     Filter: ((a = 4) AND ((a % 2) = 0) AND f_leak(b))
+               ->  Seq Scan on t3 t1_1_3
+                     Filter: ((a = 4) AND ((a % 2) = 0) AND f_leak(b))
+         ->  Materialize
+               ->  Append
+                     ->  Seq Scan on t1 t1_2_1
+                           Filter: ((a = 4) AND ((a % 2) = 0) AND f_leak(b))
+                     ->  Seq Scan on t2 t1_2_2
+                           Filter: ((a = 4) AND ((a % 2) = 0) AND f_leak(b))
+                     ->  Seq Scan on t3 t1_2_3
+                           Filter: ((a = 4) AND ((a % 2) = 0) AND f_leak(b))
+(21 rows)
+>>>>>>> 8ff1c94649f
 
 UPDATE t1 t1_1 SET b = t1_2.b FROM t1 t1_2
 WHERE t1_1.a = 4 AND t1_2.a = t1_1.a AND t1_2.b = t1_1.b
@@ -1954,8 +2001,6 @@ AND f_leak(t1_1.b) AND f_leak(t1_2.b) RETURNING *, t1_1, t1_2;
 NOTICE:  f_leak => daddad_updt
 NOTICE:  f_leak => daddad_updt
 NOTICE:  f_leak => defdef
-NOTICE:  f_leak => defdef
-NOTICE:  f_leak => daddad_updt
 NOTICE:  f_leak => defdef
  id  | a |      b      | id  | a |      b      |        t1_1         |        t1_2         
 -----+---+-------------+-----+---+-------------+---------------------+---------------------
@@ -1993,19 +2038,20 @@ EXPLAIN (COSTS OFF) DELETE FROM only t1 WHERE f_leak(b);
 (4 rows)
 
 EXPLAIN (COSTS OFF) DELETE FROM t1 WHERE f_leak(b);
-                  QUERY PLAN                   
------------------------------------------------
+                     QUERY PLAN                      
+-----------------------------------------------------
  Delete on t1
-   Delete on t1
-   Delete on t2 t1_1
-   Delete on t3 t1_2
-   ->  Seq Scan on t1
-         Filter: (((a % 2) = 0) AND f_leak(b))
-   ->  Seq Scan on t2 t1_1
-         Filter: (((a % 2) = 0) AND f_leak(b))
-   ->  Seq Scan on t3 t1_2
-         Filter: (((a % 2) = 0) AND f_leak(b))
-(10 rows)
+   Delete on t1 t1_1
+   Delete on t2 t1_2
+   Delete on t3 t1_3
+   ->  Append
+         ->  Seq Scan on t1 t1_1
+               Filter: (((a % 2) = 0) AND f_leak(b))
+         ->  Seq Scan on t2 t1_2
+               Filter: (((a % 2) = 0) AND f_leak(b))
+         ->  Seq Scan on t3 t1_3
+               Filter: (((a % 2) = 0) AND f_leak(b))
+(11 rows)
 
 DELETE FROM only t1 WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
 NOTICE:  f_leak => bbbbbb_updt

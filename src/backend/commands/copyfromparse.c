@@ -3,6 +3,50 @@
  * copyfromparse.c
  *		Parse CSV/text/binary format for COPY FROM.
  *
+ * This file contains routines to parse the text, CSV and binary input
+ * formats.  The main entry point is NextCopyFrom(), which parses the
+ * next input line and returns it as Datums.
+ *
+ * In text/CSV mode, the parsing happens in multiple stages:
+ *
+ * [data source] --> raw_buf --> input_buf --> line_buf --> attribute_buf
+ *                1.          2.            3.           4.
+ *
+ * 1. CopyLoadRawBuf() reads raw data from the input file or client, and
+ *    places it into 'raw_buf'.
+ *
+ * 2. CopyConvertBuf() calls the encoding conversion function to convert
+ *    the data in 'raw_buf' from client to server encoding, placing the
+ *    converted result in 'input_buf'.
+ *
+ * 3. CopyReadLine() parses the data in 'input_buf', one line at a time.
+ *    It is responsible for finding the next newline marker, taking quote and
+ *    escape characters into account according to the COPY options.  The line
+ *    is copied into 'line_buf', with quotes and escape characters still
+ *    intact.
+ *
+ * 4. CopyReadAttributesText/CSV() function takes the input line from
+ *    'line_buf', and splits it into fields, unescaping the data as required.
+ *    The fields are stored in 'attribute_buf', and 'raw_fields' array holds
+ *    pointers to each field.
+ *
+ * If encoding conversion is not required, a shortcut is taken in step 2 to
+ * avoid copying the data unnecessarily.  The 'input_buf' pointer is set to
+ * point directly to 'raw_buf', so that CopyLoadRawBuf() loads the raw data
+ * directly into 'input_buf'.  CopyConvertBuf() then merely validates that
+ * the data is valid in the current encoding.
+ *
+ * In binary mode, the pipeline is much simpler.  Input is loaded into
+ * into 'raw_buf', and encoding conversion is done in the datatype-specific
+ * receive functions, if required.  'input_buf' and 'line_buf' are not used,
+ * but 'attribute_buf' is used as a temporary buffer to hold one attribute's
+ * data when it's passed the receive function.
+ *
+ * 'raw_buf' is always 64 kB in size (RAW_BUF_SIZE).  'input_buf' is also
+ * 64 kB (INPUT_BUF_SIZE), if encoding conversion is required.  'line_buf'
+ * and 'attribute_buf' are expanded on demand, to hold the longest line
+ * encountered so far.
+ *
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
@@ -38,7 +82,7 @@
 #define OCTVALUE(c) ((c) - '0')
 
 /*
- * These macros centralize code used to process line_buf and raw_buf buffers.
+ * These macros centralize code used to process line_buf and input_buf buffers.
  * They are macros because they often do continue/break control and to avoid
  * function call overhead in tight COPY loops.
  *
@@ -56,9 +100,9 @@
 #define IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(extralen) \
 if (1) \
 { \
-	if (raw_buf_ptr + (extralen) >= copy_buf_len && !hit_eof) \
+	if (input_buf_ptr + (extralen) >= copy_buf_len && !hit_eof) \
 	{ \
-		raw_buf_ptr = prev_raw_ptr; /* undo fetch */ \
+		input_buf_ptr = prev_raw_ptr; /* undo fetch */ \
 		need_data = true; \
 		continue; \
 	} \
@@ -68,10 +112,10 @@ if (1) \
 #define IF_NEED_REFILL_AND_EOF_BREAK(extralen) \
 if (1) \
 { \
-	if (raw_buf_ptr + (extralen) >= copy_buf_len && hit_eof) \
+	if (input_buf_ptr + (extralen) >= copy_buf_len && hit_eof) \
 	{ \
 		if (extralen) \
-			raw_buf_ptr = copy_buf_len; /* consume the partial character */ \
+			input_buf_ptr = copy_buf_len; /* consume the partial character */ \
 		/* backslash just before EOF, treat as data char */ \
 		result = true; \
 		break; \
@@ -80,17 +124,17 @@ if (1) \
 
 /*
  * Transfer any approved data to line_buf; must do this to be sure
- * there is some room in raw_buf.
+ * there is some room in input_buf.
  */
 #define REFILL_LINEBUF \
 if (1) \
 { \
-	if (raw_buf_ptr > cstate->raw_buf_index) \
+	if (input_buf_ptr > cstate->input_buf_index) \
 	{ \
 		appendBinaryStringInfo(&cstate->line_buf, \
-							 cstate->raw_buf + cstate->raw_buf_index, \
-							   raw_buf_ptr - cstate->raw_buf_index); \
-		cstate->raw_buf_index = raw_buf_ptr; \
+							 cstate->input_buf + cstate->input_buf_index, \
+							   input_buf_ptr - cstate->input_buf_index); \
+		cstate->input_buf_index = input_buf_ptr; \
 	} \
 } else ((void) 0)
 
@@ -98,7 +142,7 @@ if (1) \
 #define NO_END_OF_COPY_GOTO \
 if (1) \
 { \
-	raw_buf_ptr = prev_raw_ptr + 1; \
+	input_buf_ptr = prev_raw_ptr + 1; \
 	goto not_end_of_copy; \
 } else ((void) 0)
 
@@ -122,7 +166,7 @@ static Datum CopyReadBinaryAttribute(CopyFromState cstate, FmgrInfo *flinfo,
 /* Low-level communications functions */
 static inline bool CopyGetInt32(CopyFromState cstate, int32 *val);
 static inline bool CopyGetInt16(CopyFromState cstate, int16 *val);
-static bool CopyLoadRawBuf(CopyFromState cstate);
+static void CopyLoadInputBuf(CopyFromState cstate);
 static int	CopyReadBinaryData(CopyFromState cstate, char *dest, int nbytes);
 
 void
@@ -209,8 +253,19 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 	{
 		case COPY_FILE:
 			bytesread = fread(databuf, 1, datasize, cstate->copy_file);
-			if (feof(cstate->copy_file))
-				cstate->reached_eof = true;
+
+			/*
+			 * GGDB: set raw_reached_eof only once a read comes back empty,
+			 * exactly like upstream.  Setting it eagerly on feof() -- while
+			 * this very read still returned data -- breaks the invariant
+			 * CopyReadBinaryData() relies on: after CopyLoadRawBuf() it
+			 * treats raw_reached_eof as "the load produced nothing" and
+			 * discards a freshly-filled buffer, so any COPY BINARY smaller
+			 * than RAW_BUF_SIZE failed with "COPY file signature not
+			 * recognized".
+			 */
+			if (bytesread == 0)
+				cstate->raw_reached_eof = true;
 			if (ferror(cstate->copy_file))
 			{
 				if (cstate->is_program)
@@ -238,7 +293,7 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 			}
 			break;
 		case COPY_FRONTEND:
-			while (datasize > 0 && !cstate->reached_eof)
+			while (datasize > 0 && !cstate->raw_reached_eof)
 			{
 				int			avail;
 
@@ -266,7 +321,7 @@ CopyGetData(CopyFromState cstate, void *databuf, int datasize)
 							break;
 						case 'c':	/* CopyDone */
 							/* COPY IN correctly terminated by frontend */
-							cstate->reached_eof = true;
+							cstate->raw_reached_eof = true;
 							return bytesread;
 						case 'f':	/* CopyFail */
 							ereport(ERROR,
@@ -354,34 +409,303 @@ CopyGetInt16(CopyFromState cstate, int16 *val)
 
 
 /*
- * CopyLoadRawBuf loads some more data into raw_buf
+ * Perform encoding conversion on data in 'raw_buf', writing the converted
+ * data into 'input_buf'.
  *
- * Returns true if able to obtain at least one more byte, else false.
- *
- * If RAW_BUF_BYTES(cstate) > 0, the unprocessed bytes are moved to the start
- * of the buffer and then we load more data after that.  This case occurs only
- * when a multibyte character crosses a bufferload boundary.
+ * On entry, there must be some data to convert in 'raw_buf'.
  */
-static bool
+static void
+CopyConvertBuf(CopyFromState cstate)
+{
+	/*
+	 * If the file and server encoding are the same, no encoding conversion is
+	 * required.  However, we still need to verify that the input is valid for
+	 * the encoding.
+	 */
+	if (!cstate->need_transcoding)
+	{
+		/*
+		 * When conversion is not required, input_buf and raw_buf are the
+		 * same.  raw_buf_len is the total number of bytes in the buffer, and
+		 * input_buf_len tracks how many of those bytes have already been
+		 * verified.
+		 */
+		int			preverifiedlen = cstate->input_buf_len;
+		int			unverifiedlen = cstate->raw_buf_len - cstate->input_buf_len;
+		int			nverified;
+
+		if (unverifiedlen == 0)
+		{
+			/*
+			 * If no more raw data is coming, report the EOF to the caller.
+			 */
+			if (cstate->raw_reached_eof)
+				cstate->input_reached_eof = true;
+			return;
+		}
+
+		/*
+		 * Verify the new data, including any residual unverified bytes from
+		 * previous round.
+		 */
+		nverified = pg_encoding_verifymbstr(cstate->file_encoding,
+											cstate->raw_buf + preverifiedlen,
+											unverifiedlen);
+		if (nverified == 0)
+		{
+			/*
+			 * Could not verify anything.
+			 *
+			 * If there is no more raw input data coming, it means that there
+			 * was an incomplete multi-byte sequence at the end.  Also, if
+			 * there's "enough" input left, we should be able to verify at
+			 * least one character, and a failure to do so means that we've
+			 * hit an invalid byte sequence.
+			 */
+			if (cstate->raw_reached_eof || unverifiedlen >= pg_database_encoding_max_length())
+				cstate->input_reached_error = true;
+			return;
+		}
+		cstate->input_buf_len += nverified;
+	}
+	else
+	{
+		/*
+		 * Encoding conversion is needed.
+		 */
+		int			nbytes;
+		unsigned char *src;
+		int			srclen;
+		unsigned char *dst;
+		int			dstlen;
+		int			convertedlen;
+
+		if (RAW_BUF_BYTES(cstate) == 0)
+		{
+			/*
+			 * If no more raw data is coming, report the EOF to the caller.
+			 */
+			if (cstate->raw_reached_eof)
+				cstate->input_reached_eof = true;
+			return;
+		}
+
+		/*
+		 * First, copy down any unprocessed data.
+		 */
+		nbytes = INPUT_BUF_BYTES(cstate);
+		if (nbytes > 0 && cstate->input_buf_index > 0)
+			memmove(cstate->input_buf, cstate->input_buf + cstate->input_buf_index,
+					nbytes);
+		cstate->input_buf_index = 0;
+		cstate->input_buf_len = nbytes;
+		cstate->input_buf[nbytes] = '\0';
+
+		src = (unsigned char *) cstate->raw_buf + cstate->raw_buf_index;
+		srclen = cstate->raw_buf_len - cstate->raw_buf_index;
+		dst = (unsigned char *) cstate->input_buf + cstate->input_buf_len;
+		dstlen = INPUT_BUF_SIZE - cstate->input_buf_len + 1;
+
+		/*
+		 * Do the conversion.  This might stop short, if there is an invalid
+		 * byte sequence in the input.  We'll convert as much as we can in
+		 * that case.
+		 *
+		 * Note: Even if we hit an invalid byte sequence, we don't report the
+		 * error until all the valid bytes have been consumed.  The input
+		 * might contain an end-of-input marker (\.), and we don't want to
+		 * report an error if the invalid byte sequence is after the
+		 * end-of-input marker.  We might unnecessarily convert some data
+		 * after the end-of-input marker as long as it's valid for the
+		 * encoding, but that's harmless.
+		 */
+		convertedlen = pg_do_encoding_conversion_buf(cstate->conversion_proc,
+													 cstate->file_encoding,
+													 GetDatabaseEncoding(),
+													 src, srclen,
+													 dst, dstlen,
+													 true);
+		if (convertedlen == 0)
+		{
+			/*
+			 * Could not convert anything.  If there is no more raw input data
+			 * coming, it means that there was an incomplete multi-byte
+			 * sequence at the end.  Also, if there is plenty of input left,
+			 * we should be able to convert at least one character, so a
+			 * failure to do so must mean that we've hit a byte sequence
+			 * that's invalid.
+			 */
+			if (cstate->raw_reached_eof || srclen >= MAX_CONVERSION_INPUT_LENGTH)
+				cstate->input_reached_error = true;
+			return;
+		}
+		cstate->raw_buf_index += convertedlen;
+		cstate->input_buf_len += strlen((char *) dst);
+	}
+}
+
+/*
+ * Report an encoding or conversion error.
+ */
+static void
+CopyConversionError(CopyFromState cstate)
+{
+	Assert(cstate->raw_buf_len > 0);
+	Assert(cstate->input_reached_error);
+
+	if (!cstate->need_transcoding)
+	{
+		/*
+		 * Everything up to input_buf_len was successfully verified, and
+		 * input_buf_len points to the invalid or incomplete character.
+		 */
+		report_invalid_encoding(cstate->file_encoding,
+								cstate->raw_buf + cstate->input_buf_len,
+								cstate->raw_buf_len - cstate->input_buf_len);
+	}
+	else
+	{
+		/*
+		 * raw_buf_index points to the invalid or untranslatable character. We
+		 * let the conversion routine report the error, because it can provide
+		 * a more specific error message than we could here.  An earlier call
+		 * to the conversion routine in CopyConvertBuf() detected that there
+		 * is an error, now we call the conversion routine again with
+		 * noError=false, to have it throw the error.
+		 */
+		unsigned char *src;
+		int			srclen;
+		unsigned char *dst;
+		int			dstlen;
+
+		src = (unsigned char *) cstate->raw_buf + cstate->raw_buf_index;
+		srclen = cstate->raw_buf_len - cstate->raw_buf_index;
+		dst = (unsigned char *) cstate->input_buf + cstate->input_buf_len;
+		dstlen = INPUT_BUF_SIZE - cstate->input_buf_len + 1;
+
+		(void) pg_do_encoding_conversion_buf(cstate->conversion_proc,
+											 cstate->file_encoding,
+											 GetDatabaseEncoding(),
+											 src, srclen,
+											 dst, dstlen,
+											 false);
+
+		/*
+		 * The conversion routine should have reported an error, so this
+		 * should not be reached.
+		 */
+		elog(ERROR, "encoding conversion failed without error");
+	}
+}
+
+/*
+ * Load more data from data source to raw_buf.
+ *
+ * If RAW_BUF_BYTES(cstate) > 0, the unprocessed bytes are moved to the
+ * beginning of the buffer, and we load new data after that.
+ */
+static void
 CopyLoadRawBuf(CopyFromState cstate)
 {
-	int			nbytes = RAW_BUF_BYTES(cstate);
+	int			nbytes;
 	int			inbytes;
 
-	/* Copy down the unprocessed data if any. */
-	if (nbytes > 0)
+	/*
+	 * In text mode, if encoding conversion is not required, raw_buf and
+	 * input_buf point to the same buffer.  Their len/index better agree, too.
+	 */
+	if (cstate->raw_buf == cstate->input_buf)
+	{
+		Assert(!cstate->need_transcoding);
+		Assert(cstate->raw_buf_index == cstate->input_buf_index);
+		Assert(cstate->input_buf_len <= cstate->raw_buf_len);
+	}
+
+	/*
+	 * Copy down the unprocessed data if any.
+	 */
+	nbytes = RAW_BUF_BYTES(cstate);
+	if (nbytes > 0 && cstate->raw_buf_index > 0)
 		memmove(cstate->raw_buf, cstate->raw_buf + cstate->raw_buf_index,
 				nbytes);
+	cstate->raw_buf_len -= cstate->raw_buf_index;
+	cstate->raw_buf_index = 0;
 
-	inbytes = CopyGetData(cstate, cstate->raw_buf + nbytes,
-						  RAW_BUF_SIZE - nbytes);
+	/*
+	 * If raw_buf and input_buf are in fact the same buffer, adjust the
+	 * input_buf variables, too.
+	 */
+	if (cstate->raw_buf == cstate->input_buf)
+	{
+		cstate->input_buf_len -= cstate->input_buf_index;
+		cstate->input_buf_index = 0;
+	}
+
+	/* Load more data */
+	inbytes = CopyGetData(cstate, cstate->raw_buf + cstate->raw_buf_len,
+						  RAW_BUF_SIZE - cstate->raw_buf_len);
 	nbytes += inbytes;
 	cstate->raw_buf[nbytes] = '\0';
-	cstate->raw_buf_index = 0;
 	cstate->raw_buf_len = nbytes;
+
 	cstate->bytes_processed += inbytes;
 	pgstat_progress_update_param(PROGRESS_COPY_BYTES_PROCESSED, cstate->bytes_processed);
-	return (inbytes > 0);
+
+	if (inbytes == 0)
+		cstate->raw_reached_eof = true;
+}
+
+/*
+ * CopyLoadInputBuf loads some more data into input_buf
+ *
+ * On return, at least one more input character is loaded into
+ * input_buf, or input_reached_eof is set.
+ *
+ * If INPUT_BUF_BYTES(cstate) > 0, the unprocessed bytes are moved to the start
+ * of the buffer and then we load more data after that.
+ */
+static void
+CopyLoadInputBuf(CopyFromState cstate)
+{
+	int			nbytes = INPUT_BUF_BYTES(cstate);
+
+	/*
+	 * The caller has updated input_buf_index to indicate how much of the
+	 * input has been consumed and isn't needed anymore.  If input_buf is the
+	 * same physical area as raw_buf, update raw_buf_index accordingly.
+	 */
+	if (cstate->raw_buf == cstate->input_buf)
+	{
+		Assert(!cstate->need_transcoding);
+		Assert(cstate->input_buf_index >= cstate->raw_buf_index);
+		cstate->raw_buf_index = cstate->input_buf_index;
+	}
+
+	for (;;)
+	{
+		/* If we now have some unconverted data, try to convert it */
+		CopyConvertBuf(cstate);
+
+		/* If we now have some more input bytes ready, return them */
+		if (INPUT_BUF_BYTES(cstate) > nbytes)
+			return;
+
+		/*
+		 * If we reached an invalid byte sequence, or we're at an incomplete
+		 * multi-byte character but there is no more raw input data, report
+		 * conversion error.
+		 */
+		if (cstate->input_reached_error)
+			CopyConversionError(cstate);
+
+		/* no more input, and everything has been converted */
+		if (cstate->input_reached_eof)
+			break;
+
+		/* Try to load more raw data */
+		Assert(!cstate->raw_reached_eof);
+		CopyLoadRawBuf(cstate);
+	}
 }
 
 /*
@@ -416,7 +740,8 @@ CopyReadBinaryData(CopyFromState cstate, char *dest, int nbytes)
 			/* Load more data if buffer is empty. */
 			if (RAW_BUF_BYTES(cstate) == 0)
 			{
-				if (!CopyLoadRawBuf(cstate))
+				CopyLoadRawBuf(cstate);
+				if (cstate->raw_reached_eof)
 					break;		/* EOF */
 			}
 
@@ -578,7 +903,8 @@ HandleCopyError(CopyFromState cstate)
 		cdbsreh->rawdata->data = cstate->line_buf.data;
 		cdbsreh->rawdata->len = cstate->line_buf.len;
 
-		cdbsreh->is_server_enc = cstate->line_buf_converted;
+		/* line_buf is always in the database encoding, see CopyReadLine() */
+		cdbsreh->is_server_enc = true;
 		cdbsreh->linenumber = cstate->cur_lineno;
 		if (cstate->cur_attname)
 		{
@@ -933,11 +1259,11 @@ NextCopyFromExecute(CopyFromState cstate, ExprContext *econtext, Datum *values, 
 	/*
 	 * The code below reads the 'copy_from_dispatch_row' struct, and only
 	 * then checks if it was actually a 'copy_from_dispatch_error' struct.
-	 * That only works when 'copy_from_dispatch_error' is larger than
-	 *'copy_from_dispatch_row'.
+	 * That only works when 'copy_from_dispatch_error' is at least as large as
+	 * 'copy_from_dispatch_row'.
 	 */
 	StaticAssertStmt(SizeOfCopyFromDispatchError >= SizeOfCopyFromDispatchRow,
-					 "copy_from_dispatch_error must be larger than copy_from_dispatch_row");
+					 "copy_from_dispatch_error must not be smaller than copy_from_dispatch_row");
 
 	/*
 	 * If we encounter an error while parsing the row (or we receive a row from
@@ -987,7 +1313,6 @@ retry:
 	cstate->line_buf.len = frame.line_len;
 	cstate->line_buf.cursor = frame.residual_off;
 	cstate->line_buf_valid = true;
-	cstate->line_buf_converted = true;
 	cstate->cur_lineno = frame.lineno;
 	cstate->stopped_processing_at_delim = frame.delim_seen_at_end;
 
@@ -1187,7 +1512,8 @@ HandleQDErrorFrame(CopyFromState cstate, char *p, int len)
 	cdbsreh->rawdata->data = line;
 	cdbsreh->rawdata->len = strlen(line);
 	cdbsreh->errmsg = errormsg;
-	cdbsreh->is_server_enc = errframe.line_buf_converted;
+	/* the QD converted the line to the database encoding before sending it */
+	cdbsreh->is_server_enc = true;
 
 	HandleSingleRowError(cdbsreh);
 
@@ -1196,8 +1522,7 @@ HandleQDErrorFrame(CopyFromState cstate, char *p, int len)
 }
 
 /*
- * Read the next input line and stash it in line_buf, with conversion to
- * server encoding.
+ * Read the next input line and stash it in line_buf.
  *
  * Result is true if read was terminated by EOF, false if terminated
  * by newline.  The terminating newline or EOF marker is not included
@@ -1209,10 +1534,7 @@ CopyReadLine(CopyFromState cstate)
 	bool		result;
 
 	resetStringInfo(&cstate->line_buf);
-	cstate->line_buf_valid = true;
-
-	/* Mark that encoding conversion hasn't occurred yet */
-	cstate->line_buf_converted = false;
+	cstate->line_buf_valid = false;
 
 	/* Parse data and transfer into line_buf */
 	result = CopyReadLineText(cstate);
@@ -1226,10 +1548,17 @@ CopyReadLine(CopyFromState cstate)
 		 */
 		if (cstate->copy_src == COPY_FRONTEND)
 		{
+			int			inbytes;
+
 			do
 			{
-				cstate->raw_buf_index = cstate->raw_buf_len;
-			} while (CopyLoadRawBuf(cstate));
+				inbytes = CopyGetData(cstate, cstate->input_buf,
+									  INPUT_BUF_SIZE);
+			} while (inbytes > 0);
+			cstate->input_buf_index = 0;
+			cstate->input_buf_len = 0;
+			cstate->raw_buf_index = 0;
+			cstate->raw_buf_len = 0;
 		}
 	}
 	else
@@ -1266,25 +1595,8 @@ CopyReadLine(CopyFromState cstate)
 		}
 	}
 
-	/* Done reading the line.  Convert it to server encoding. */
-	if (cstate->need_transcoding)
-	{
-		char	   *cvt;
-
-		cvt = pg_any_to_server(cstate->line_buf.data,
-							   cstate->line_buf.len,
-							   cstate->file_encoding);
-		if (cvt != cstate->line_buf.data)
-		{
-			/* transfer converted data back to line_buf */
-			resetStringInfo(&cstate->line_buf);
-			appendBinaryStringInfo(&cstate->line_buf, cvt, strlen(cvt));
-			pfree(cvt);
-		}
-	}
-
 	/* Now it's safe to use the buffer in error messages */
-	cstate->line_buf_converted = true;
+	cstate->line_buf_valid = true;
 
 	return result;
 }
@@ -1295,13 +1607,12 @@ CopyReadLine(CopyFromState cstate)
 static bool
 CopyReadLineText(CopyFromState cstate)
 {
-	char	   *copy_raw_buf;
-	int			raw_buf_ptr;
+	char	   *copy_input_buf;
+	int			input_buf_ptr;
 	int			copy_buf_len;
 	bool		need_data = false;
 	bool		hit_eof = false;
 	bool		result = false;
-	char		mblen_str[2];
 
 	/* CSV variables */
 	bool		first_char_in_line = true;
@@ -1319,8 +1630,6 @@ CopyReadLineText(CopyFromState cstate)
 			escapec = '\0';
 	}
 
-	mblen_str[1] = '\0';
-
 	/*
 	 * The objective of this loop is to transfer the entire next input line
 	 * into line_buf.  Hence, we only care for detecting newlines (\r and/or
@@ -1333,18 +1642,25 @@ CopyReadLineText(CopyFromState cstate)
 	 * These four characters, and the CSV escape and quote characters, are
 	 * assumed the same in frontend and backend encodings.
 	 *
-	 * For speed, we try to move data from raw_buf to line_buf in chunks
-	 * rather than one character at a time.  raw_buf_ptr points to the next
-	 * character to examine; any characters from raw_buf_index to raw_buf_ptr
-	 * have been determined to be part of the line, but not yet transferred to
-	 * line_buf.
+	 * The input has already been converted to the database encoding.  All
+	 * supported server encodings have the property that all bytes in a
+	 * multi-byte sequence have the high bit set, so a multibyte character
+	 * cannot contain any newline or escape characters embedded in the
+	 * multibyte sequence.  Therefore, we can process the input byte-by-byte,
+	 * regardless of the encoding.
 	 *
-	 * For a little extra speed within the loop, we copy raw_buf and
-	 * raw_buf_len into local variables.
+	 * For speed, we try to move data from input_buf to line_buf in chunks
+	 * rather than one character at a time.  input_buf_ptr points to the next
+	 * character to examine; any characters from input_buf_index to
+	 * input_buf_ptr have been determined to be part of the line, but not yet
+	 * transferred to line_buf.
+	 *
+	 * For a little extra speed within the loop, we copy input_buf and
+	 * input_buf_len into local variables.
 	 */
-	copy_raw_buf = cstate->raw_buf;
-	raw_buf_ptr = cstate->raw_buf_index;
-	copy_buf_len = cstate->raw_buf_len;
+	copy_input_buf = cstate->input_buf;
+	input_buf_ptr = cstate->input_buf_index;
+	copy_buf_len = cstate->input_buf_len;
 
 	for (;;)
 	{
@@ -1357,24 +1673,21 @@ CopyReadLineText(CopyFromState cstate)
 		 * IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(), but it hardly seems worth
 		 * it, considering the size of the buffer.
 		 */
-		if (raw_buf_ptr >= copy_buf_len || need_data)
+		if (input_buf_ptr >= copy_buf_len || need_data)
 		{
 			REFILL_LINEBUF;
 
-			/*
-			 * Try to read some more data.  This will certainly reset
-			 * raw_buf_index to zero, and raw_buf_ptr must go with it.
-			 */
-			if (!CopyLoadRawBuf(cstate))
-				hit_eof = true;
-			raw_buf_ptr = 0;
-			copy_buf_len = cstate->raw_buf_len;
+			CopyLoadInputBuf(cstate);
+			/* update our local variables */
+			hit_eof = cstate->input_reached_eof;
+			input_buf_ptr = cstate->input_buf_index;
+			copy_buf_len = cstate->input_buf_len;
 
 			/*
 			 * If we are completely out of data, break out of the loop,
 			 * reporting EOF.
 			 */
-			if (copy_buf_len <= 0)
+			if (INPUT_BUF_BYTES(cstate) <= 0)
 			{
 				result = true;
 				break;
@@ -1383,8 +1696,8 @@ CopyReadLineText(CopyFromState cstate)
 		}
 
 		/* OK to fetch a character */
-		prev_raw_ptr = raw_buf_ptr;
-		c = copy_raw_buf[raw_buf_ptr++];
+		prev_raw_ptr = input_buf_ptr;
+		c = copy_input_buf[input_buf_ptr++];
 
 		if (cstate->opts.csv_mode)
 		{
@@ -1438,16 +1751,16 @@ CopyReadLineText(CopyFromState cstate)
 				 * If need more data, go back to loop top to load it.
 				 *
 				 * Note that if we are at EOF, c will wind up as '\0' because
-				 * of the guaranteed pad of raw_buf.
+				 * of the guaranteed pad of input_buf.
 				 */
 				IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(0);
 
 				/* get next char */
-				c = copy_raw_buf[raw_buf_ptr];
+				c = copy_input_buf[input_buf_ptr];
 
 				if (c == '\n')
 				{
-					raw_buf_ptr++;	/* eat newline */
+					input_buf_ptr++;	/* eat newline */
 					cstate->eol_type = EOL_CRNL;	/* in case not set yet */
 
 					/*
@@ -1551,10 +1864,10 @@ CopyReadLineText(CopyFromState cstate)
 			/* -----
 			 * get next character
 			 * Note: we do not change c so if it isn't \., we can fall
-			 * through and continue processing for file encoding.
+			 * through and continue processing.
 			 * -----
 			 */
-			c2 = copy_raw_buf[raw_buf_ptr];
+			c2 = copy_input_buf[input_buf_ptr];
 
 			/*
 			 * We need to recognize the EOL.
@@ -1573,7 +1886,7 @@ CopyReadLineText(CopyFromState cstate)
 				else if(cstate->eol_type == EOL_NL)
 				{
 					// found a new line with '\n'
-					raw_buf_ptr++;
+					input_buf_ptr++;
 					break;
 				}
 			}
@@ -1586,7 +1899,7 @@ CopyReadLineText(CopyFromState cstate)
 				else if(cstate->eol_type == EOL_CR)
 				{
 					// found a new line wirh '\r'
-					raw_buf_ptr++;
+					input_buf_ptr++;
 					break;
 				}
 				else if(cstate->eol_type == EOL_CRNL)
@@ -1596,14 +1909,14 @@ CopyReadLineText(CopyFromState cstate)
 					 * which comes after c2 if exists.
 					 */
 					char c3;
-					raw_buf_ptr++;
+					input_buf_ptr++;
 					IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(0);
 					IF_NEED_REFILL_AND_EOF_BREAK(0);
-					c3 = copy_raw_buf[raw_buf_ptr];
+					c3 = copy_input_buf[input_buf_ptr];
 					if(c3 == '\n')
 					{
 						// found a new line with '\r\n'
-						raw_buf_ptr++;
+						input_buf_ptr++;
 						break;
 					} else {
 						NO_END_OF_COPY_GOTO;
@@ -1612,7 +1925,7 @@ CopyReadLineText(CopyFromState cstate)
 			}
 			if (c2 == '.')
 			{
-				raw_buf_ptr++;	/* consume the '.' */
+				input_buf_ptr++;	/* consume the '.' */
 
 				/*
 				 * Note: if we loop back for more data here, it does not
@@ -1624,13 +1937,13 @@ CopyReadLineText(CopyFromState cstate)
 					/* Get the next character */
 					IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(0);
 					/* if hit_eof, c2 will become '\0' */
-					c2 = copy_raw_buf[raw_buf_ptr++];
+					c2 = copy_input_buf[input_buf_ptr++];
 
 					if (c2 == '\n')
 					{
 						if (!cstate->opts.csv_mode)
 						{
-							cstate->raw_buf_index = raw_buf_ptr;
+							cstate->input_buf_index = input_buf_ptr;
 							ereport(ERROR,
 									(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 									 errmsg("end-of-copy marker does not match previous newline style")));
@@ -1642,7 +1955,7 @@ CopyReadLineText(CopyFromState cstate)
 					{
 						if (!cstate->opts.csv_mode)
 						{
-							cstate->raw_buf_index = raw_buf_ptr;
+							cstate->input_buf_index = input_buf_ptr;
 							ereport(ERROR,
 									(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 									 errmsg("end-of-copy marker corrupt")));
@@ -1655,13 +1968,13 @@ CopyReadLineText(CopyFromState cstate)
 				/* Get the next character */
 				IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(0);
 				/* if hit_eof, c2 will become '\0' */
-				c2 = copy_raw_buf[raw_buf_ptr++];
+				c2 = copy_input_buf[input_buf_ptr++];
 
 				if (c2 != '\r' && c2 != '\n')
 				{
 					if (!cstate->opts.csv_mode)
 					{
-						cstate->raw_buf_index = raw_buf_ptr;
+						cstate->input_buf_index = input_buf_ptr;
 						ereport(ERROR,
 								(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 								 errmsg("end-of-copy marker corrupt")));
@@ -1674,7 +1987,7 @@ CopyReadLineText(CopyFromState cstate)
 					(cstate->eol_type == EOL_CRNL && c2 != '\n') ||
 					(cstate->eol_type == EOL_CR && c2 != '\r'))
 				{
-					cstate->raw_buf_index = raw_buf_ptr;
+					cstate->input_buf_index = input_buf_ptr;
 					ereport(ERROR,
 							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 							 errmsg("end-of-copy marker does not match previous newline style")));
@@ -1684,11 +1997,11 @@ CopyReadLineText(CopyFromState cstate)
 				 * Transfer only the data before the \. into line_buf, then
 				 * discard the data and the \. sequence.
 				 */
-				if (prev_raw_ptr > cstate->raw_buf_index)
+				if (prev_raw_ptr > cstate->input_buf_index)
 					appendBinaryStringInfo(&cstate->line_buf,
-										   cstate->raw_buf + cstate->raw_buf_index,
-										   prev_raw_ptr - cstate->raw_buf_index);
-				cstate->raw_buf_index = raw_buf_ptr;
+										   cstate->input_buf + cstate->input_buf_index,
+										   prev_raw_ptr - cstate->input_buf_index);
+				cstate->input_buf_index = input_buf_ptr;
 				result = true;	/* report EOF */
 				break;
 			}
@@ -1704,15 +2017,8 @@ CopyReadLineText(CopyFromState cstate)
 				 * backslashes are not special, so we want to process the
 				 * character after the backslash just like a normal character,
 				 * so we don't increment in those cases.
-				 *
-				 * Set 'c' to skip whole character correctly in multi-byte
-				 * encodings.  If we don't have the whole character in the
-				 * buffer yet, we might loop back to process it, after all,
-				 * but that's OK because multi-byte characters cannot have any
-				 * special meaning.
 				 */
-				raw_buf_ptr++;
-				c = c2;
+				input_buf_ptr++;
 			}
 		}
 
@@ -1723,30 +2029,6 @@ CopyReadLineText(CopyFromState cstate)
 		 * value, while in non-CSV mode, \. cannot be a data value.
 		 */
 not_end_of_copy:
-
-		/*
-		 * Process all bytes of a multi-byte character as a group.
-		 *
-		 * We only support multi-byte sequences where the first byte has the
-		 * high-bit set, so as an optimization we can avoid this block
-		 * entirely if it is not set.
-		 */
-		if (cstate->encoding_embeds_ascii && IS_HIGHBIT_SET(c))
-		{
-			int			mblen;
-
-			/*
-			 * It is enough to look at the first byte in all our encodings, to
-			 * get the length.  (GB18030 is a bit special, but still works for
-			 * our purposes; see comment in pg_gb18030_mblen())
-			 */
-			mblen_str[0] = c;
-			mblen = pg_encoding_mblen(cstate->file_encoding, mblen_str);
-
-			IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(mblen - 1);
-			IF_NEED_REFILL_AND_EOF_BREAK(mblen - 1);
-			raw_buf_ptr += mblen - 1;
-		}
 		first_char_in_line = false;
 	}							/* end of outer loop */
 

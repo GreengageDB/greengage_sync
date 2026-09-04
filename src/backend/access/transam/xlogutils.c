@@ -450,6 +450,9 @@ XLogReadBufferExtended(RelFileNode rnode, ForkNumber forknum,
 	/*
 	 * Open the relation at smgr level.  Relations using shared buffers need
 	 * the default SMGR implementation.
+	 *
+	 * TODO_REVERT_C2DC19342E0: the SMGR_MD argument is GGDB-specific, keep
+	 * ours when the revert lands.
 	 */
 	smgr = smgropen(rnode, InvalidBackendId, SMGR_MD);
 
@@ -935,6 +938,11 @@ read_local_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr,
 		}
 	}
 
+	/*
+	 * TODO_REVERT_C2DC19342E0: the shape of the three branches below (and the
+	 * dropped comment above the final "return count") is GGDB-specific, keep
+	 * ours when the revert lands.
+	 */
 	/* more than one block available */
 	if (targetPagePtr + XLOG_BLCKSZ <= read_upto)
 		count = XLOG_BLCKSZ;

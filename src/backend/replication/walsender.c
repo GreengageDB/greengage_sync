@@ -890,6 +890,7 @@ logical_read_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr, int req
 	XLByteToSeg(targetPagePtr, segno, state->segcxt.ws_segsize);
 	CheckXLogRemoved(segno, state->seg.ws_tli);
 
+	/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 	WalSndCtl->error = WALSNDERROR_NONE;
 
 	return count;
@@ -3679,7 +3680,7 @@ pg_stat_get_wal_senders(PG_FUNCTION_ARGS)
 		memset(nulls, 0, sizeof(nulls));
 		values[0] = Int32GetDatum(pid);
 
-		if (!is_member_of_role(GetUserId(), DEFAULT_ROLE_READ_ALL_STATS))
+		if (!is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_STATS))
 		{
 			/*
 			 * Only superusers and members of pg_read_all_stats can see

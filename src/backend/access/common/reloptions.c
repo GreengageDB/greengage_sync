@@ -115,7 +115,7 @@ static relopt_bool boolRelOpts[] =
 		{
 			"autovacuum_enabled",
 			"Enables autovacuum in this relation",
-			RELOPT_KIND_HEAP | RELOPT_KIND_TOAST,
+			RELOPT_KIND_HEAP | RELOPT_KIND_TOAST | RELOPT_KIND_PARTITIONED,
 			ShareUpdateExclusiveLock
 		},
 		true
@@ -172,15 +172,6 @@ static relopt_bool boolRelOpts[] =
 			RELOPT_KIND_BTREE,
 			ShareUpdateExclusiveLock	/* since it applies only to later
 										 * inserts */
-		},
-		true
-	},
-	{
-		{
-			"parallel_insert_enabled",
-			"Enables \"parallel insert\" feature for this table",
-			RELOPT_KIND_HEAP | RELOPT_KIND_PARTITIONED,
-			ShareUpdateExclusiveLock
 		},
 		true
 	},
@@ -262,7 +253,7 @@ static relopt_int intRelOpts[] =
 		{
 			"autovacuum_analyze_threshold",
 			"Minimum number of tuple inserts, updates or deletes prior to analyze",
-			RELOPT_KIND_HEAP,
+			RELOPT_KIND_HEAP | RELOPT_KIND_PARTITIONED,
 			ShareUpdateExclusiveLock
 		},
 		-1, 0, INT_MAX
@@ -436,7 +427,7 @@ static relopt_real realRelOpts[] =
 		{
 			"autovacuum_analyze_scale_factor",
 			"Number of tuple inserts, updates or deletes prior to analyze as a fraction of reltuples",
-			RELOPT_KIND_HEAP,
+			RELOPT_KIND_HEAP | RELOPT_KIND_PARTITIONED,
 			ShareUpdateExclusiveLock
 		},
 		-1, 0.0, 100.0
@@ -1886,10 +1877,7 @@ default_reloptions(Datum reloptions, bool validate, relopt_kind kind)
 		{"vacuum_truncate", RELOPT_TYPE_BOOL,
 		offsetof(StdRdOptions, vacuum_truncate)},
 		{SOPT_ANALYZEHLL, RELOPT_TYPE_BOOL,
-		offsetof(StdRdOptions, analyze_hll_non_part_table)},
-
-		{"parallel_insert_enabled", RELOPT_TYPE_BOOL,
-		offsetof(StdRdOptions, parallel_insert_enabled)}
+		offsetof(StdRdOptions, analyze_hll_non_part_table)}
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate, kind,
@@ -1999,6 +1987,9 @@ bytea *
 partitioned_table_reloptions(Datum reloptions, bool validate)
 {
 	/*
+	 * autovacuum_enabled, autovacuum_analyze_threshold and
+	 * autovacuum_analyze_scale_factor are supported for partitioned tables.
+	 *
 	 * GPDB: we maintain reloptions for partition roots to support reloption
 	 * inheritance and hierarchy wide ALTER TABLE SET().
 	 */

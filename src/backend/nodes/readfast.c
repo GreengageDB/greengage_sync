@@ -249,6 +249,7 @@ _readQuery(void)
 	READ_BOOL_FIELD(hasForUpdate);
 	READ_BOOL_FIELD(hasRowSecurity);
 	READ_BOOL_FIELD(canOptSelectLockingClause);
+	READ_BOOL_FIELD(isReturn);
 	READ_NODE_FIELD(cteList);
 	READ_NODE_FIELD(rtable);
 	READ_NODE_FIELD(jointree);
@@ -1579,6 +1580,40 @@ _readRowIdExpr(void)
 	READ_DONE();
 }
 
+static StatsElem *
+_readStatsElem(void)
+{
+	READ_LOCALS(StatsElem);
+
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(expr);
+
+	READ_DONE();
+}
+
+static RowIdentityVarInfo *
+_readRowIdentityVarInfo(void)
+{
+	READ_LOCALS(RowIdentityVarInfo);
+
+	READ_NODE_FIELD(rowidvar);
+	READ_INT_FIELD(rowidwidth);
+	READ_STRING_FIELD(rowidname);
+	READ_BITMAPSET_FIELD(rowidrels);
+
+	READ_DONE();
+}
+
+static ReturnStmt *
+_readReturnStmt(void)
+{
+	READ_LOCALS(ReturnStmt);
+
+	READ_NODE_FIELD(returnval);
+
+	READ_DONE();
+}
+
 static Node *
 _readValue(NodeTag nt)
 {
@@ -2289,6 +2324,9 @@ readNodeBinary(void)
 			case T_AlterSeqStmt:
 				return_value = _readAlterSeqStmt();
 				break;
+			case T_CreateStatsStmt:
+				return_value = _readCreateStatsStmt();
+				break;
 			case T_ClusterStmt:
 				return_value = _readClusterStmt();
 				break;
@@ -2605,6 +2643,18 @@ readNodeBinary(void)
 				break;
 			case T_RowIdExpr:
 				return_value = _readRowIdExpr();
+				break;
+			case T_StatsElem:
+				return_value = _readStatsElem();
+				break;
+			case T_RowIdentityVarInfo:
+				return_value = _readRowIdentityVarInfo();
+				break;
+			case T_ResultCache:
+				return_value = _readResultCache();
+				break;
+			case T_ReturnStmt:
+				return_value = _readReturnStmt();
 				break;
 			default:
 				return_value = NULL; /* keep the compiler silent */

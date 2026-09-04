@@ -1054,19 +1054,35 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 								in_outer_xact,
 								false /* isVacuum */);
 		}
+	}
 
-		/*
-		 * Now report ANALYZE to the stats collector.
-		 *
-		 * We deliberately don't report to the stats collector when doing
-		 * inherited stats, because the stats collector only tracks per-table
-		 * stats.
-		 *
-		 * Reset the changes_since_analyze counter only if we analyzed all
-		 * columns; otherwise, there is still work for auto-analyze to do.
-		 */
+	/*
+	 * Now report ANALYZE to the stats collector.  For regular tables, we do
+	 * it only if not doing inherited stats.  For partitioned tables, we only
+	 * do it for inherited stats. (We're never called for not-inherited stats
+	 * on partitioned tables anyway.)
+	 *
+	 * Reset the changes_since_analyze counter only if we analyzed all
+	 * columns; otherwise, there is still work for auto-analyze to do.
+	 */
+	if (!inh || onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
 		pgstat_report_analyze(onerel, totalrows, totaldeadrows,
 							  (va_cols == NIL));
+
+	/*
+	 * If this is a manual analyze of all columns of a permanent leaf
+	 * partition, and not doing inherited stats, also let the collector know
+	 * about the ancestor tables of this partition.  Autovacuum does the
+	 * equivalent of this at the start of its run, so there's no reason to do
+	 * it there.
+	 */
+	if (!inh && !IsAutoVacuumWorkerProcess() &&
+		(va_cols == NIL) &&
+		onerel->rd_rel->relispartition &&
+		onerel->rd_rel->relkind == RELKIND_RELATION &&
+		onerel->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT)
+	{
+		pgstat_report_anl_ancestors(RelationGetRelid(onerel));
 	}
 
 	/*
@@ -3189,7 +3205,8 @@ compute_distinct_stats(VacAttrStatsP stats,
 		}
 		nonnull_cnt++;
 
-		stats->stahll = (bytea *)gp_hyperloglog_add_item((GpHLLCounter) stats->stahll, value, stats->attr->attlen, stats->attr->attbyval, stats->attr->attalign);
+		stats->stahll = (bytea *)gp_hyperloglog_add_item((GpHLLCounter) stats->stahll, value,
+														stats->attrtype->typlen, stats->attrtype->typbyval, stats->attrtype->typalign);
 
 		/*
 		 * If it's a variable-width field, add up widths for average width
@@ -3549,7 +3566,8 @@ compute_scalar_stats(VacAttrStatsP stats,
 		}
 		nonnull_cnt++;
 
-		stats->stahll = (bytea *)gp_hyperloglog_add_item((GpHLLCounter) stats->stahll, value, stats->attr->attlen, stats->attr->attbyval, stats->attr->attalign);
+		stats->stahll = (bytea *)gp_hyperloglog_add_item((GpHLLCounter) stats->stahll, value,
+														stats->attrtype->typlen, stats->attrtype->typbyval, stats->attrtype->typalign);
 
 		/*
 		 * If it's a variable-width field, add up widths for average width

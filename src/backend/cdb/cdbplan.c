@@ -620,6 +620,20 @@ plan_tree_mutator(Node *node,
 			}
 			break;
 
+		case T_ResultCache:
+			{
+				ResultCache *resultcache = (ResultCache *) node;
+				ResultCache *newresultcache;
+
+				FLATCOPY(newresultcache, resultcache, ResultCache);
+				PLANMUTATE(newresultcache, resultcache);
+				COPYARRAY(newresultcache, resultcache, numKeys, hashOperators);
+				COPYARRAY(newresultcache, resultcache, numKeys, collations);
+				MUTATE(newresultcache->param_exprs, resultcache->param_exprs, List *);
+				return (Node *) newresultcache;
+			}
+			break;
+
 		case T_Sort:
 			{
 				Sort	   *sort = (Sort *) node;

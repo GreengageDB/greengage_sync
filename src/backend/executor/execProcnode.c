@@ -105,6 +105,7 @@
 #include "executor/nodeProjectSet.h"
 #include "executor/nodeRecursiveunion.h"
 #include "executor/nodeResult.h"
+#include "executor/nodeResultCache.h"
 #include "executor/nodeSamplescan.h"
 #include "executor/nodeSeqscan.h"
 #include "executor/nodeSetOp.h"
@@ -430,6 +431,11 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 		case T_IncrementalSort:
 			result = (PlanState *) ExecInitIncrementalSort((IncrementalSort *) node,
 														   estate, eflags);
+			break;
+
+		case T_ResultCache:
+			result = (PlanState *) ExecInitResultCache((ResultCache *) node,
+													   estate, eflags);
 			break;
 
 #ifdef NOT_USED /* Group nodes are not used in GPDB */
@@ -970,6 +976,10 @@ ExecEndNode(PlanState *node)
 			ExecEndIncrementalSort((IncrementalSortState *) node);
 			break;
 
+		case T_ResultCacheState:
+			ExecEndResultCache((ResultCacheState *) node);
+			break;
+
 #ifdef NOT_USED /* GroupState nodes are not used in GPDB */
 		case T_GroupState:
 			ExecEndGroup((GroupState *) node);
@@ -1215,15 +1225,6 @@ planstate_walk_kids(PlanState *planstate,
 				MergeAppendState *ms = (MergeAppendState *) planstate;
 
 				v = planstate_walk_array(ms->mergeplans, ms->ms_nplans, walker, context, flags);
-				Assert(!planstate->lefttree && !planstate->righttree);
-				break;
-			}
-
-		case T_ModifyTableState:
-			{
-				ModifyTableState *mts = (ModifyTableState *) planstate;
-
-				v = planstate_walk_array(mts->mt_plans, mts->mt_nplans, walker, context, flags);
 				Assert(!planstate->lefttree && !planstate->righttree);
 				break;
 			}
