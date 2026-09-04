@@ -1085,12 +1085,9 @@ pull_up_simple_subquery(PlannerInfo *root, Node *jtnode, RangeTblEntry *rte,
 	subroot->multiexpr_params = NIL;
 	subroot->eq_classes = NIL;
 	subroot->ec_merging_done = false;
-<<<<<<< HEAD
 	subroot->non_eq_clauses = NIL;
-=======
 	subroot->all_result_relids = NULL;
 	subroot->leaf_result_relids = NULL;
->>>>>>> 8ff1c94649f
 	subroot->append_rel_list = NIL;
 	subroot->row_identity_vars = NIL;
 	subroot->rowMarks = NIL;

@@ -318,7 +318,10 @@ standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			}
 			PG_CATCH();
 			{
-				mppExecutorCleanup(queryDesc);
+				/* GPDB hook for collecting query info */
+				if (query_info_collect_hook)
+					(*query_info_collect_hook)(QueryCancelCleanup ? METRICS_QUERY_CANCELED : METRICS_QUERY_ERROR, queryDesc);
+
 				PG_RE_THROW();
 			}
 			PG_END_TRY();
@@ -2260,12 +2263,14 @@ InitResultRelInfo(ResultRelInfo *resultRelInfo,
 	resultRelInfo->ri_newTupleSlot = NULL;
 	resultRelInfo->ri_oldTupleSlot = NULL;
 	resultRelInfo->ri_projectNewInfoValid = false;
+	resultRelInfo->ri_projectNewNeedsOld = false;
 	resultRelInfo->ri_FdwState = NULL;
 	resultRelInfo->ri_usesFdwDirectModify = false;
 	resultRelInfo->ri_ConstraintExprs = NULL;
 	resultRelInfo->ri_GeneratedExprs = NULL;
 	resultRelInfo->ri_segid_attno = InvalidAttrNumber;
 	resultRelInfo->ri_action_attno = InvalidAttrNumber;
+	resultRelInfo->ri_wholerow_attno = InvalidAttrNumber;
 	resultRelInfo->ri_projectReturning = NULL;
 	resultRelInfo->ri_onConflictArbiterIndexes = NIL;
 	resultRelInfo->ri_onConflict = NULL;

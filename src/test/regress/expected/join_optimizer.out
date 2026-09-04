@@ -3237,7 +3237,7 @@ select * from
       right join int4_tbl as i43 on (i43.f1 > 1)
       where ss1.loc = ss1.lat) as ss2
 where i41.f1 > 0;
-ERROR:  could not devise a query plan for the given query
+ERROR:  could not devise a query plan for the given query (pathnode.c:279)
 select * from
   int4_tbl as i41,
   lateral
@@ -3248,7 +3248,7 @@ select * from
       right join int4_tbl as i43 on (i43.f1 > 1)
       where ss1.loc = ss1.lat) as ss2
 where i41.f1 > 0;
-ERROR:  could not devise a query plan for the given query
+ERROR:  could not devise a query plan for the given query (pathnode.c:279)
 --
 -- test the corner cases FULL JOIN ON TRUE and FULL JOIN ON FALSE
 --
