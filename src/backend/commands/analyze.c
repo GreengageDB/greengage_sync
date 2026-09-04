@@ -3205,7 +3205,8 @@ compute_distinct_stats(VacAttrStatsP stats,
 		}
 		nonnull_cnt++;
 
-		stats->stahll = (bytea *)gp_hyperloglog_add_item((GpHLLCounter) stats->stahll, value, stats->attr->attlen, stats->attr->attbyval, stats->attr->attalign);
+		stats->stahll = (bytea *)gp_hyperloglog_add_item((GpHLLCounter) stats->stahll, value,
+														stats->attrtype->typlen, stats->attrtype->typbyval, stats->attrtype->typalign);
 
 		/*
 		 * If it's a variable-width field, add up widths for average width
@@ -3565,7 +3566,8 @@ compute_scalar_stats(VacAttrStatsP stats,
 		}
 		nonnull_cnt++;
 
-		stats->stahll = (bytea *)gp_hyperloglog_add_item((GpHLLCounter) stats->stahll, value, stats->attr->attlen, stats->attr->attbyval, stats->attr->attalign);
+		stats->stahll = (bytea *)gp_hyperloglog_add_item((GpHLLCounter) stats->stahll, value,
+														stats->attrtype->typlen, stats->attrtype->typbyval, stats->attrtype->typalign);
 
 		/*
 		 * If it's a variable-width field, add up widths for average width

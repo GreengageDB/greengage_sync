@@ -4005,6 +4005,22 @@ _readDefineStmt(void)
 	READ_DONE();
 }
 
+static CreateStatsStmt *
+_readCreateStatsStmt(void)
+{
+	READ_LOCALS(CreateStatsStmt);
+
+	READ_NODE_FIELD(defnames);
+	READ_NODE_FIELD(stat_types);
+	READ_NODE_FIELD(exprs);
+	READ_NODE_FIELD(relations);
+	READ_STRING_FIELD(stxcomment);
+	READ_BOOL_FIELD(if_not_exists);
+	READ_BOOL_FIELD(transformed);
+
+	READ_DONE();
+}
+
 static CompositeTypeStmt *
 _readCompositeTypeStmt(void)
 {
@@ -4966,6 +4982,8 @@ parseNodeString(void)
 		return_value = _readCreateSchemaStmt();
 	else if (MATCHX("CREATESEQSTMT"))
 		return_value = _readCreateSeqStmt();
+	else if (MATCHX("CREATESTATSSTMT"))
+		return_value = _readCreateStatsStmt();
 	else if (MATCHX("CREATETRANSFORMSTMT"))
 		return_value = _readCreateTransformStmt();
 	else if (MATCHX("CURSORPOSINFO"))
