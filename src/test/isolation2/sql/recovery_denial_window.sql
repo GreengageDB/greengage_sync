@@ -16,18 +16,20 @@
 -- (pg_ctl runs against the mirror's datadir from here).  On a cluster
 -- without mirrors every mirror-dependent step degrades to a no-op.
 
--- Heal any leftover state from an interrupted earlier run, then save the
--- mirror's coordinates.  An empty state file means "no mirror: skip".
-!\retcode STATE=./results/recovery_denial_window_mdir.${PGPORT}; rm -f ${STATE}; psql -At -p ${PGPORT} -d postgres -c "select datadir from gp_segment_configuration where content=0 and role='m'" > ${STATE}; if [ -s ${STATE} ]; then MDIR=$(cat ${STATE}); sed -i "/recovery_min_apply_delay/d" ${MDIR}/postgresql.auto.conf; fi;
+-- Heal any leftover state from an interrupted earlier run (strip the
+-- delay and reload the mirror if it is running), then save the
+-- mirror's coordinates.  An empty state file means "no mirror: skip";
+-- a failure of the query itself fails the test rather than skipping.
+!\retcode STATE=./results/recovery_denial_window_mdir.${PGPORT}; rm -f ${STATE}; psql -At -p ${PGPORT} -d postgres -c "select datadir from gp_segment_configuration where content=0 and role='m'" > ${STATE} || exit 1; if [ -s ${STATE} ]; then MDIR=$(cat ${STATE}); sed -i "/recovery_min_apply_delay/d" ${MDIR}/postgresql.auto.conf; pg_ctl -D ${MDIR} reload > /dev/null 2>&1 || true; fi;
 
 create table t_denial_window(a int);
 insert into t_denial_window select generate_series(1,1000);
 
--- Stall apply on the running mirror and confirm the setting landed; the
--- window check below is the behavioral confirmation that it took effect.
--- The delay is kept short enough that even a run interrupted before the
--- cleanup leaves a mirror that catches up by itself.
-!\retcode STATE=./results/recovery_denial_window_mdir.${PGPORT}; if [ -s ${STATE} ]; then MDIR=$(cat ${STATE}); echo "recovery_min_apply_delay = '180s'" >> ${MDIR}/postgresql.auto.conf; grep -q recovery_min_apply_delay ${MDIR}/postgresql.auto.conf && pg_ctl -D ${MDIR} reload; fi;
+-- Stall apply on the running mirror.  The window check below is the
+-- confirmation that the setting took effect.  The delay is kept short
+-- enough that even a run interrupted before the cleanup leaves a mirror
+-- that catches up by itself.
+!\retcode STATE=./results/recovery_denial_window_mdir.${PGPORT}; if [ -s ${STATE} ]; then MDIR=$(cat ${STATE}); echo "recovery_min_apply_delay = '180s'" >> ${MDIR}/postgresql.auto.conf; pg_ctl -D ${MDIR} reload; fi;
 insert into t_denial_window select generate_series(1,20000);
 
 -- Restart the mirror into the held-open window.
