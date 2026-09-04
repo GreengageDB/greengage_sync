@@ -242,7 +242,7 @@ alter external table ext alter column x type integer; -- pass
 -- TRUNCATE/UPDATE/DELETE/INSERT (INTO RET)
 --
 truncate ext;
-ERROR:  "ext" is not a table
+ERROR:  cannot truncate foreign table "ext"
 delete from ext;
 ERROR:  cannot delete from foreign table "ext"
 update ext set x='1' where x='2';
