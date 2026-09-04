@@ -1,0 +1,1981 @@
+--
+-- UPDATE and DELETE over an inheritance tree.
+--
+-- A single plan covers the whole target tree, with a single Motion on top of
+-- it.  The members of an old-style inheritance tree may be distributed on
+-- columns of their own, and may lay their columns out differently from the
+-- table named in the statement, so each row has to be routed and reassembled
+-- according to the relation it actually came from.  The tests below check the
+-- resulting contents and, with misplaced_rows(), that every row sits on the
+-- segment its own relation's distribution policy calls for.
+--
+create schema upddel_inherit_gp;
+set search_path = upddel_inherit_gp;
+--
+-- Counts the rows of a table that are not on the segment its distribution
+-- policy calls for.  Re-inserting the same rows into a table with the same
+-- policy has to place them on the same segments, so whatever the EXCEPT ALL
+-- leaves over is a misplaced row.  Deliberately independent of the number of
+-- segments in the cluster.
+--
+-- The probe has to be filled from gp_dist_random() rather than from a plain
+-- scan, to make sure the rows are actually redistributed to the correct
+-- segments. A plain scan would just leave the misplaced rows on their wrong
+-- segments, and wouldn't be able to report an error.
+--
+create function misplaced_rows(tab regclass) returns bigint as $$
+declare
+    result bigint;
+begin
+    execute format('create temp table misplaced_probe (like %s) %s',
+                   tab, pg_get_table_distributedby(tab));
+    execute format('insert into misplaced_probe select * from gp_dist_random(%L)',
+                   tab);
+    execute format('select count(*) from ('
+                   'select x.gp_segment_id, x.* from only %s x'
+                   ' except all '
+                   'select p.gp_segment_id, p.* from misplaced_probe p) q', tab)
+        into result;
+    drop table misplaced_probe;
+    return result;
+end;
+$$ language plpgsql;
+--
+-- 1. Members distributed on different columns.
+--
+create table pa (a int, b int, x text) distributed by (a);
+create table pa_a (like pa) inherits (pa) distributed by (a);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+NOTICE:  merging column "x" with inherited definition
+create table pa_b (like pa) inherits (pa) distributed by (b);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+NOTICE:  merging column "x" with inherited definition
+create table src (a int, tag text) distributed by (a);
+insert into pa   select g, g * 2, 'p' || g from generate_series(1, 6) g;
+insert into pa_a select g, g * 2, 'a' || g from generate_series(7, 12) g;
+insert into pa_b select g, g * 2, 'b' || g from generate_series(13, 18) g;
+insert into src  select g, 'T' || g from generate_series(1, 18) g;
+-- The join puts a Motion below the ModifyTable, so the Explicit Redistribute
+-- on top has to bring every member's rows back to the segment they came from,
+-- whichever column that member is distributed on.
+explain (costs off)
+update pa set x = 'J' || src.tag from src where pa.a = src.a;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Update on pa
+   Update on pa pa_1
+   Update on pa_a pa_2
+   Update on pa_b pa_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Hash Join
+               Hash Cond: (pa.a = src.a)
+               ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                     Hash Key: pa.a
+                     ->  Append
+                           ->  Seq Scan on pa pa_1
+                           ->  Seq Scan on pa_a pa_2
+                           ->  Seq Scan on pa_b pa_3
+               ->  Hash
+                     ->  Seq Scan on src
+ Optimizer: Postgres query optimizer
+(16 rows)
+
+update pa set x = 'J' || src.tag from src where pa.a = src.a;
+select tableoid::regclass, * from pa order by a;
+ tableoid | a  | b  |  x   
+----------+----+----+------
+ pa       |  1 |  2 | JT1
+ pa       |  2 |  4 | JT2
+ pa       |  3 |  6 | JT3
+ pa       |  4 |  8 | JT4
+ pa       |  5 | 10 | JT5
+ pa       |  6 | 12 | JT6
+ pa_a     |  7 | 14 | JT7
+ pa_a     |  8 | 16 | JT8
+ pa_a     |  9 | 18 | JT9
+ pa_a     | 10 | 20 | JT10
+ pa_a     | 11 | 22 | JT11
+ pa_a     | 12 | 24 | JT12
+ pa_b     | 13 | 26 | JT13
+ pa_b     | 14 | 28 | JT14
+ pa_b     | 15 | 30 | JT15
+ pa_b     | 16 | 32 | JT16
+ pa_b     | 17 | 34 | JT17
+ pa_b     | 18 | 36 | JT18
+(18 rows)
+
+select misplaced_rows('pa'), misplaced_rows('pa_a'), misplaced_rows('pa_b');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+-- The same for a DELETE.
+explain (costs off) delete from pa using src where pa.a = src.a and src.a % 6 = 0;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Delete on pa
+   Delete on pa pa_1
+   Delete on pa_a pa_2
+   Delete on pa_b pa_3
+   ->  Hash Join
+         Hash Cond: (pa.a = src.a)
+         ->  Append
+               ->  Seq Scan on pa pa_1
+               ->  Seq Scan on pa_a pa_2
+               ->  Seq Scan on pa_b pa_3
+         ->  Hash
+               ->  Broadcast Motion 3:3  (slice1; segments: 3)
+                     ->  Seq Scan on src
+                           Filter: ((a % 6) = 0)
+ Optimizer: Postgres query optimizer
+(15 rows)
+
+delete from pa using src where pa.a = src.a and src.a % 6 = 0;
+select tableoid::regclass, * from pa order by a;
+ tableoid | a  | b  |  x   
+----------+----+----+------
+ pa       |  1 |  2 | JT1
+ pa       |  2 |  4 | JT2
+ pa       |  3 |  6 | JT3
+ pa       |  4 |  8 | JT4
+ pa       |  5 | 10 | JT5
+ pa_a     |  7 | 14 | JT7
+ pa_a     |  8 | 16 | JT8
+ pa_a     |  9 | 18 | JT9
+ pa_a     | 10 | 20 | JT10
+ pa_a     | 11 | 22 | JT11
+ pa_b     | 13 | 26 | JT13
+ pa_b     | 14 | 28 | JT14
+ pa_b     | 15 | 30 | JT15
+ pa_b     | 16 | 32 | JT16
+ pa_b     | 17 | 34 | JT17
+(15 rows)
+
+-- No Motion at all: the scan of every member is in the same slice as the
+-- ModifyTable, so the Explicit Redistribute can be elided.
+explain (costs off) update pa set x = 'K' where b = 4;
+               QUERY PLAN                
+-----------------------------------------
+ Update on pa
+   Update on pa pa_1
+   Update on pa_a pa_2
+   Update on pa_b pa_3
+   ->  Result
+         ->  Append
+               ->  Seq Scan on pa pa_1
+                     Filter: (b = 4)
+               ->  Seq Scan on pa_a pa_2
+                     Filter: (b = 4)
+               ->  Seq Scan on pa_b pa_3
+                     Filter: (b = 4)
+ Optimizer: Postgres query optimizer
+(13 rows)
+
+update pa set x = 'K' where b = 4;
+select tableoid::regclass, * from pa order by a;
+ tableoid | a  | b  |  x   
+----------+----+----+------
+ pa       |  1 |  2 | JT1
+ pa       |  2 |  4 | K
+ pa       |  3 |  6 | JT3
+ pa       |  4 |  8 | JT4
+ pa       |  5 | 10 | JT5
+ pa_a     |  7 | 14 | JT7
+ pa_a     |  8 | 16 | JT8
+ pa_a     |  9 | 18 | JT9
+ pa_a     | 10 | 20 | JT10
+ pa_a     | 11 | 22 | JT11
+ pa_b     | 13 | 26 | JT13
+ pa_b     | 14 | 28 | JT14
+ pa_b     | 15 | 30 | JT15
+ pa_b     | 16 | 32 | JT16
+ pa_b     | 17 | 34 | JT17
+(15 rows)
+
+select misplaced_rows('pa'), misplaced_rows('pa_a'), misplaced_rows('pa_b');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+--
+-- 2. Split updates over the same tree.
+--
+-- Changing "a" changes the distribution key of pa and pa_a but not of pa_b.
+-- One SplitUpdate node serves all three; pa_b's rows are placed by "b", so
+-- they stay where they are while the others move.
+explain (costs off) update pa set a = a + 100;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on pa
+   Update on pa pa_1
+   Update on pa_a pa_2
+   Update on pa_b pa_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on pa pa_1
+                           ->  Seq Scan on pa_a pa_2
+                           ->  Seq Scan on pa_b pa_3
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+update pa set a = a + 100;
+select tableoid::regclass, * from pa order by a;
+ tableoid |  a  | b  |  x   
+----------+-----+----+------
+ pa       | 101 |  2 | JT1
+ pa       | 102 |  4 | K
+ pa       | 103 |  6 | JT3
+ pa       | 104 |  8 | JT4
+ pa       | 105 | 10 | JT5
+ pa_a     | 107 | 14 | JT7
+ pa_a     | 108 | 16 | JT8
+ pa_a     | 109 | 18 | JT9
+ pa_a     | 110 | 20 | JT10
+ pa_a     | 111 | 22 | JT11
+ pa_b     | 113 | 26 | JT13
+ pa_b     | 114 | 28 | JT14
+ pa_b     | 115 | 30 | JT15
+ pa_b     | 116 | 32 | JT16
+ pa_b     | 117 | 34 | JT17
+(15 rows)
+
+select misplaced_rows('pa'), misplaced_rows('pa_a'), misplaced_rows('pa_b');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+-- Changing "b" is a distribution key change for pa_b alone, and it still
+-- forces the split for the whole tree.
+explain (costs off) update pa set b = b + 1000;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on pa
+   Update on pa pa_1
+   Update on pa_a pa_2
+   Update on pa_b pa_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on pa pa_1
+                           ->  Seq Scan on pa_a pa_2
+                           ->  Seq Scan on pa_b pa_3
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+update pa set b = b + 1000;
+select tableoid::regclass, * from pa order by a;
+ tableoid |  a  |  b   |  x   
+----------+-----+------+------
+ pa       | 101 | 1002 | JT1
+ pa       | 102 | 1004 | K
+ pa       | 103 | 1006 | JT3
+ pa       | 104 | 1008 | JT4
+ pa       | 105 | 1010 | JT5
+ pa_a     | 107 | 1014 | JT7
+ pa_a     | 108 | 1016 | JT8
+ pa_a     | 109 | 1018 | JT9
+ pa_a     | 110 | 1020 | JT10
+ pa_a     | 111 | 1022 | JT11
+ pa_b     | 113 | 1026 | JT13
+ pa_b     | 114 | 1028 | JT14
+ pa_b     | 115 | 1030 | JT15
+ pa_b     | 116 | 1032 | JT16
+ pa_b     | 117 | 1034 | JT17
+(15 rows)
+
+select misplaced_rows('pa'), misplaced_rows('pa_a'), misplaced_rows('pa_b');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+-- Both keys at once, driven by a join.
+explain (costs off) update pa set a = pa.a + 1, b = pa.b + 1 from src where pa.a - 100 = src.a;
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Update on pa
+   Update on pa pa_1
+   Update on pa_a pa_2
+   Update on pa_b pa_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Hash Join
+                     Hash Cond: (src.a = (pa.a - 100))
+                     ->  Broadcast Motion 3:3  (slice2; segments: 3)
+                           ->  Seq Scan on src
+                     ->  Hash
+                           ->  Append
+                                 ->  Seq Scan on pa pa_1
+                                 ->  Seq Scan on pa_a pa_2
+                                 ->  Seq Scan on pa_b pa_3
+ Optimizer: Postgres query optimizer
+(16 rows)
+
+update pa set a = pa.a + 1, b = pa.b + 1 from src where pa.a - 100 = src.a;
+select tableoid::regclass, * from pa order by a;
+ tableoid |  a  |  b   |  x   
+----------+-----+------+------
+ pa       | 102 | 1003 | JT1
+ pa       | 103 | 1005 | K
+ pa       | 104 | 1007 | JT3
+ pa       | 105 | 1009 | JT4
+ pa       | 106 | 1011 | JT5
+ pa_a     | 108 | 1015 | JT7
+ pa_a     | 109 | 1017 | JT8
+ pa_a     | 110 | 1019 | JT9
+ pa_a     | 111 | 1021 | JT10
+ pa_a     | 112 | 1023 | JT11
+ pa_b     | 114 | 1027 | JT13
+ pa_b     | 115 | 1029 | JT14
+ pa_b     | 116 | 1031 | JT15
+ pa_b     | 117 | 1033 | JT16
+ pa_b     | 118 | 1035 | JT17
+(15 rows)
+
+select misplaced_rows('pa'), misplaced_rows('pa_a'), misplaced_rows('pa_b');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+-- A subplan that provably returns nothing needs no SplitUpdate.
+explain (costs off) update pa set a = 0 where a = 1 and a < 1;
+             QUERY PLAN              
+-------------------------------------
+ Update on pa
+   Update on pa
+   Update on pa_a pa
+   Update on pa_b pa
+   ->  Result
+         One-Time Filter: false
+ Optimizer: Postgres query optimizer
+(7 rows)
+
+-- RETURNING, and the same from a data-modifying CTE.
+explain (costs off)
+with u as (
+    update pa set x = x || '.' returning tableoid::regclass as rel, a, b, x
+)
+select * from u order by a;
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: pa_1.a
+   ->  Sort
+         Sort Key: pa_1.a
+         ->  Update on pa
+               Update on pa pa_1
+               Update on pa_a pa_2
+               Update on pa_b pa_3
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on pa pa_1
+                           ->  Seq Scan on pa_a pa_2
+                           ->  Seq Scan on pa_b pa_3
+ Optimizer: Postgres query optimizer
+(14 rows)
+
+with u as (
+    update pa set x = x || '.' returning tableoid::regclass as rel, a, b, x
+)
+select * from u order by a;
+ rel  |  a  |  b   |   x   
+------+-----+------+-------
+ pa   | 102 | 1003 | JT1.
+ pa   | 103 | 1005 | K.
+ pa   | 104 | 1007 | JT3.
+ pa   | 105 | 1009 | JT4.
+ pa   | 106 | 1011 | JT5.
+ pa_a | 108 | 1015 | JT7.
+ pa_a | 109 | 1017 | JT8.
+ pa_a | 110 | 1019 | JT9.
+ pa_a | 111 | 1021 | JT10.
+ pa_a | 112 | 1023 | JT11.
+ pa_b | 114 | 1027 | JT13.
+ pa_b | 115 | 1029 | JT14.
+ pa_b | 116 | 1031 | JT15.
+ pa_b | 117 | 1033 | JT16.
+ pa_b | 118 | 1035 | JT17.
+(15 rows)
+
+explain (costs off)
+with d as (
+    delete from pa where b % 4 = 0 returning tableoid::regclass as rel, a
+)
+select * from d order by a;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   Merge Key: pa_1.a
+   ->  Sort
+         Sort Key: pa_1.a
+         ->  Delete on pa
+               Delete on pa pa_1
+               Delete on pa_a pa_2
+               Delete on pa_b pa_3
+               ->  Append
+                     ->  Seq Scan on pa pa_1
+                           Filter: ((b % 4) = 0)
+                     ->  Seq Scan on pa_a pa_2
+                           Filter: ((b % 4) = 0)
+                     ->  Seq Scan on pa_b pa_3
+                           Filter: ((b % 4) = 0)
+ Optimizer: Postgres query optimizer
+(16 rows)
+
+with d as (
+    delete from pa where b % 4 = 0 returning tableoid::regclass as rel, a
+)
+select * from d order by a;
+ rel | a 
+-----+---
+(0 rows)
+
+select misplaced_rows('pa'), misplaced_rows('pa_a'), misplaced_rows('pa_b');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+-- ONLY takes the children back out of the statement.
+explain (costs off) update only pa set x = x || '!';
+             QUERY PLAN              
+-------------------------------------
+ Update on pa
+   ->  Seq Scan on pa
+ Optimizer: Postgres query optimizer
+(3 rows)
+
+update only pa set x = x || '!';
+select tableoid::regclass, * from pa order by a;
+ tableoid |  a  |  b   |   x   
+----------+-----+------+-------
+ pa       | 102 | 1003 | JT1.!
+ pa       | 103 | 1005 | K.!
+ pa       | 104 | 1007 | JT3.!
+ pa       | 105 | 1009 | JT4.!
+ pa       | 106 | 1011 | JT5.!
+ pa_a     | 108 | 1015 | JT7.
+ pa_a     | 109 | 1017 | JT8.
+ pa_a     | 110 | 1019 | JT9.
+ pa_a     | 111 | 1021 | JT10.
+ pa_a     | 112 | 1023 | JT11.
+ pa_b     | 114 | 1027 | JT13.
+ pa_b     | 115 | 1029 | JT14.
+ pa_b     | 116 | 1031 | JT15.
+ pa_b     | 117 | 1033 | JT16.
+ pa_b     | 118 | 1035 | JT17.
+(15 rows)
+
+explain (costs off) update only pa set a = a + 1;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on pa
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Seq Scan on pa
+ Optimizer: Postgres query optimizer
+(5 rows)
+
+update only pa set a = a + 1;
+select tableoid::regclass, * from pa order by a;
+ tableoid |  a  |  b   |   x   
+----------+-----+------+-------
+ pa       | 103 | 1003 | JT1.!
+ pa       | 104 | 1005 | K.!
+ pa       | 105 | 1007 | JT3.!
+ pa       | 106 | 1009 | JT4.!
+ pa       | 107 | 1011 | JT5.!
+ pa_a     | 108 | 1015 | JT7.
+ pa_a     | 109 | 1017 | JT8.
+ pa_a     | 110 | 1019 | JT9.
+ pa_a     | 111 | 1021 | JT10.
+ pa_a     | 112 | 1023 | JT11.
+ pa_b     | 114 | 1027 | JT13.
+ pa_b     | 115 | 1029 | JT14.
+ pa_b     | 116 | 1031 | JT15.
+ pa_b     | 117 | 1033 | JT16.
+ pa_b     | 118 | 1035 | JT17.
+(15 rows)
+
+explain (costs off) delete from only pa where b % 3 = 0;
+             QUERY PLAN              
+-------------------------------------
+ Delete on pa
+   ->  Seq Scan on pa
+         Filter: ((b % 3) = 0)
+ Optimizer: Postgres query optimizer
+(4 rows)
+
+delete from only pa where b % 3 = 0;
+select tableoid::regclass, * from pa order by a;
+ tableoid |  a  |  b   |   x   
+----------+-----+------+-------
+ pa       | 103 | 1003 | JT1.!
+ pa       | 105 | 1007 | JT3.!
+ pa       | 106 | 1009 | JT4.!
+ pa_a     | 108 | 1015 | JT7.
+ pa_a     | 109 | 1017 | JT8.
+ pa_a     | 110 | 1019 | JT9.
+ pa_a     | 111 | 1021 | JT10.
+ pa_a     | 112 | 1023 | JT11.
+ pa_b     | 114 | 1027 | JT13.
+ pa_b     | 115 | 1029 | JT14.
+ pa_b     | 116 | 1031 | JT15.
+ pa_b     | 117 | 1033 | JT16.
+ pa_b     | 118 | 1035 | JT17.
+(13 rows)
+
+select misplaced_rows('pa'), misplaced_rows('pa_a'), misplaced_rows('pa_b');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+--
+-- 3. Children with columns the parent does not have.
+--
+-- The subplan's targetlist is in the parent's layout, so the child's extra
+-- columns have to travel beside it as a whole-row junk column, or they would
+-- be lost -- both by a plain update, which writes a whole new tuple, and by a
+-- split update, which deletes the row and inserts it again.  Only the members
+-- that have such columns emit that column, so the rest have to cope with it
+-- being NULL.
+--
+create table ex (a int, b int) distributed by (a);
+create table ex_wide (a int, b int, extra text, more int)
+    inherits (ex) distributed by (a);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+create table ex_wide_b (a int, b int, extra text)
+    inherits (ex) distributed by (b);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+-- extra columns, a column order of its own, and its own distribution key
+create table ex_odd (extra text, b int, more int, a int) distributed by (b);
+alter table ex_odd inherit ex;
+insert into ex        select g, g from generate_series(1, 4) g;
+insert into ex_wide   select g, g, 'w' || g, g * 10 from generate_series(5, 8) g;
+insert into ex_wide_b select g, g, 'v' || g from generate_series(9, 12) g;
+insert into ex_odd    select 'y' || g, g, g * 10, g from generate_series(13, 16) g;
+explain (verbose, costs off) update ex set b = b + 1;
+                                                     QUERY PLAN                                                     
+--------------------------------------------------------------------------------------------------------------------
+ Update on upddel_inherit_gp.ex
+   Update on upddel_inherit_gp.ex ex_1
+   Update on upddel_inherit_gp.ex_wide ex_2
+   Update on upddel_inherit_gp.ex_wide_b ex_3
+   Update on upddel_inherit_gp.ex_odd ex_4
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         Output: ex.a, ((ex.b + 1)), ex.tableoid, ex.ctid, ex.gp_segment_id, (NULL::record), (DMLAction)
+         ->  Split
+               Output: ex.a, ((ex.b + 1)), ex.tableoid, ex.ctid, ex.gp_segment_id, (NULL::record), DMLAction
+               ->  Result
+                     Output: ex.a, (ex.b + 1), ex.tableoid, ex.ctid, ex.gp_segment_id, (NULL::record)
+                     ->  Append
+                           ->  Seq Scan on upddel_inherit_gp.ex ex_1
+                                 Output: ex_1.a, ex_1.b, ex_1.tableoid, ex_1.ctid, ex_1.gp_segment_id, NULL::record
+                           ->  Seq Scan on upddel_inherit_gp.ex_wide ex_2
+                                 Output: ex_2.a, ex_2.b, ex_2.tableoid, ex_2.ctid, ex_2.gp_segment_id, ex_2.*
+                           ->  Seq Scan on upddel_inherit_gp.ex_wide_b ex_3
+                                 Output: ex_3.a, ex_3.b, ex_3.tableoid, ex_3.ctid, ex_3.gp_segment_id, ex_3.*
+                           ->  Seq Scan on upddel_inherit_gp.ex_odd ex_4
+                                 Output: ex_4.a, ex_4.b, ex_4.tableoid, ex_4.ctid, ex_4.gp_segment_id, ex_4.*
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(22 rows)
+
+update ex set b = b + 1;
+select * from only ex order by a;
+ a | b 
+---+---
+ 1 | 2
+ 2 | 3
+ 3 | 4
+ 4 | 5
+(4 rows)
+
+select * from ex_wide order by a;
+ a | b | extra | more 
+---+---+-------+------
+ 5 | 6 | w5    |   50
+ 6 | 7 | w6    |   60
+ 7 | 8 | w7    |   70
+ 8 | 9 | w8    |   80
+(4 rows)
+
+select * from ex_wide_b order by a;
+ a  | b  | extra 
+----+----+-------
+  9 | 10 | v9
+ 10 | 11 | v10
+ 11 | 12 | v11
+ 12 | 13 | v12
+(4 rows)
+
+select * from ex_odd order by a;
+ extra | b  | more | a  
+-------+----+------+----
+ y13   | 14 |  130 | 13
+ y14   | 15 |  140 | 14
+ y15   | 16 |  150 | 15
+ y16   | 17 |  160 | 16
+(4 rows)
+
+explain (costs off) update ex set a = a + 100;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on ex
+   Update on ex ex_1
+   Update on ex_wide ex_2
+   Update on ex_wide_b ex_3
+   Update on ex_odd ex_4
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on ex ex_1
+                           ->  Seq Scan on ex_wide ex_2
+                           ->  Seq Scan on ex_wide_b ex_3
+                           ->  Seq Scan on ex_odd ex_4
+ Optimizer: Postgres query optimizer
+(14 rows)
+
+update ex set a = a + 100;
+select * from only ex order by a;
+  a  | b 
+-----+---
+ 101 | 2
+ 102 | 3
+ 103 | 4
+ 104 | 5
+(4 rows)
+
+select * from ex_wide order by a;
+  a  | b | extra | more 
+-----+---+-------+------
+ 105 | 6 | w5    |   50
+ 106 | 7 | w6    |   60
+ 107 | 8 | w7    |   70
+ 108 | 9 | w8    |   80
+(4 rows)
+
+select * from ex_wide_b order by a;
+  a  | b  | extra 
+-----+----+-------
+ 109 | 10 | v9
+ 110 | 11 | v10
+ 111 | 12 | v11
+ 112 | 13 | v12
+(4 rows)
+
+select * from ex_odd order by a;
+ extra | b  | more |  a  
+-------+----+------+-----
+ y13   | 14 |  130 | 113
+ y14   | 15 |  140 | 114
+ y15   | 16 |  150 | 115
+ y16   | 17 |  160 | 116
+(4 rows)
+
+select misplaced_rows('ex'), misplaced_rows('ex_wide'),
+       misplaced_rows('ex_wide_b'), misplaced_rows('ex_odd');
+ misplaced_rows | misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------+----------------
+              0 |              0 |              0 |              0
+(1 row)
+
+explain (costs off) delete from ex where a % 2 = 0;
+               QUERY PLAN               
+----------------------------------------
+ Delete on ex
+   Delete on ex ex_1
+   Delete on ex_wide ex_2
+   Delete on ex_wide_b ex_3
+   Delete on ex_odd ex_4
+   ->  Append
+         ->  Seq Scan on ex ex_1
+               Filter: ((a % 2) = 0)
+         ->  Seq Scan on ex_wide ex_2
+               Filter: ((a % 2) = 0)
+         ->  Seq Scan on ex_wide_b ex_3
+               Filter: ((a % 2) = 0)
+         ->  Seq Scan on ex_odd ex_4
+               Filter: ((a % 2) = 0)
+ Optimizer: Postgres query optimizer
+(15 rows)
+
+delete from ex where a % 2 = 0;
+select tableoid::regclass, * from ex order by a;
+ tableoid  |  a  | b  
+-----------+-----+----
+ ex        | 101 |  2
+ ex        | 103 |  4
+ ex_wide   | 105 |  6
+ ex_wide   | 107 |  8
+ ex_wide_b | 109 | 10
+ ex_wide_b | 111 | 12
+ ex_odd    | 113 | 14
+ ex_odd    | 115 | 16
+(8 rows)
+
+--
+-- 4. A child distributed on a column the parent does not have.
+--
+create table kp (a int, b int) distributed by (a);
+create table kp_own (a int, b int, k int) inherits (kp) distributed by (k);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+insert into kp     select g, g from generate_series(1, 4) g;
+insert into kp_own select g, g, g * 3 from generate_series(5, 8) g;
+-- "b" is nobody's distribution key, so no split update.
+explain (costs off) update kp set b = b + 1;
+                QUERY PLAN                 
+-------------------------------------------
+ Update on kp
+   Update on kp kp_1
+   Update on kp_own kp_2
+   ->  Result
+         ->  Append
+               ->  Seq Scan on kp kp_1
+               ->  Seq Scan on kp_own kp_2
+ Optimizer: Postgres query optimizer
+(8 rows)
+
+update kp set b = b + 1;
+select * from kp order by a;
+ a | b 
+---+---
+ 1 | 2
+ 2 | 3
+ 3 | 4
+ 4 | 5
+ 5 | 6
+ 6 | 7
+ 7 | 8
+ 8 | 9
+(8 rows)
+
+-- "a" is kp's key, so the statement splits.  kp_own's rows are placed by "k",
+-- which this statement cannot reach, so they must not move.
+explain (costs off) update kp set a = a + 100;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on kp
+   Update on kp kp_1
+   Update on kp_own kp_2
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on kp kp_1
+                           ->  Seq Scan on kp_own kp_2
+ Optimizer: Postgres query optimizer
+(10 rows)
+
+update kp set a = a + 100;
+select * from kp order by a;
+  a  | b 
+-----+---
+ 101 | 2
+ 102 | 3
+ 103 | 4
+ 104 | 5
+ 105 | 6
+ 106 | 7
+ 107 | 8
+ 108 | 9
+(8 rows)
+
+select misplaced_rows('kp'), misplaced_rows('kp_own');
+ misplaced_rows | misplaced_rows 
+----------------+----------------
+              0 |              0
+(1 row)
+
+--
+-- 5. Children whose columns are laid out differently from the parent's.
+--
+create table ord (a int, b int, x text) distributed by (a);
+-- reversed column order
+create table ord_rev (x text, b int, a int) distributed by (b);
+alter table ord_rev inherit ord;
+-- a dropped column in the middle
+create table ord_drop (a int, dead int, b int, x text) distributed by (b);
+alter table ord_drop drop column dead;
+alter table ord_drop inherit ord;
+insert into ord      select g, g * 2, 'o' || g from generate_series(1, 4) g;
+insert into ord_rev  select 'r' || g, g * 2, g from generate_series(5, 8) g;
+insert into ord_drop select g, g * 2, 'd' || g from generate_series(9, 12) g;
+explain (costs off) update ord set x = upper(x);
+                  QUERY PLAN                  
+----------------------------------------------
+ Update on ord
+   Update on ord ord_1
+   Update on ord_rev ord_2
+   Update on ord_drop ord_3
+   ->  Result
+         ->  Append
+               ->  Seq Scan on ord ord_1
+               ->  Seq Scan on ord_rev ord_2
+               ->  Seq Scan on ord_drop ord_3
+ Optimizer: Postgres query optimizer
+(10 rows)
+
+update ord set x = upper(x);
+select tableoid::regclass, * from ord order by a;
+ tableoid | a  | b  |  x  
+----------+----+----+-----
+ ord      |  1 |  2 | O1
+ ord      |  2 |  4 | O2
+ ord      |  3 |  6 | O3
+ ord      |  4 |  8 | O4
+ ord_rev  |  5 | 10 | R5
+ ord_rev  |  6 | 12 | R6
+ ord_rev  |  7 | 14 | R7
+ ord_rev  |  8 | 16 | R8
+ ord_drop |  9 | 18 | D9
+ ord_drop | 10 | 20 | D10
+ ord_drop | 11 | 22 | D11
+ ord_drop | 12 | 24 | D12
+(12 rows)
+
+-- "b" is the key of both children but not of the parent
+explain (costs off) update ord set b = b + 1;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on ord
+   Update on ord ord_1
+   Update on ord_rev ord_2
+   Update on ord_drop ord_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on ord ord_1
+                           ->  Seq Scan on ord_rev ord_2
+                           ->  Seq Scan on ord_drop ord_3
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+update ord set b = b + 1;
+select tableoid::regclass, * from ord order by a;
+ tableoid | a  | b  |  x  
+----------+----+----+-----
+ ord      |  1 |  3 | O1
+ ord      |  2 |  5 | O2
+ ord      |  3 |  7 | O3
+ ord      |  4 |  9 | O4
+ ord_rev  |  5 | 11 | R5
+ ord_rev  |  6 | 13 | R6
+ ord_rev  |  7 | 15 | R7
+ ord_rev  |  8 | 17 | R8
+ ord_drop |  9 | 19 | D9
+ ord_drop | 10 | 21 | D10
+ ord_drop | 11 | 23 | D11
+ ord_drop | 12 | 25 | D12
+(12 rows)
+
+select misplaced_rows('ord'), misplaced_rows('ord_rev'), misplaced_rows('ord_drop');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+-- "a" is the parent's key only
+explain (costs off) update ord set a = a + 100;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on ord
+   Update on ord ord_1
+   Update on ord_rev ord_2
+   Update on ord_drop ord_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on ord ord_1
+                           ->  Seq Scan on ord_rev ord_2
+                           ->  Seq Scan on ord_drop ord_3
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+update ord set a = a + 100;
+select tableoid::regclass, * from ord order by a;
+ tableoid |  a  | b  |  x  
+----------+-----+----+-----
+ ord      | 101 |  3 | O1
+ ord      | 102 |  5 | O2
+ ord      | 103 |  7 | O3
+ ord      | 104 |  9 | O4
+ ord_rev  | 105 | 11 | R5
+ ord_rev  | 106 | 13 | R6
+ ord_rev  | 107 | 15 | R7
+ ord_rev  | 108 | 17 | R8
+ ord_drop | 109 | 19 | D9
+ ord_drop | 110 | 21 | D10
+ ord_drop | 111 | 23 | D11
+ ord_drop | 112 | 25 | D12
+(12 rows)
+
+select misplaced_rows('ord'), misplaced_rows('ord_rev'), misplaced_rows('ord_drop');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+explain (costs off) delete from ord where a % 2 = 0;
+               QUERY PLAN               
+----------------------------------------
+ Delete on ord
+   Delete on ord ord_1
+   Delete on ord_rev ord_2
+   Delete on ord_drop ord_3
+   ->  Append
+         ->  Seq Scan on ord ord_1
+               Filter: ((a % 2) = 0)
+         ->  Seq Scan on ord_rev ord_2
+               Filter: ((a % 2) = 0)
+         ->  Seq Scan on ord_drop ord_3
+               Filter: ((a % 2) = 0)
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+delete from ord where a % 2 = 0;
+select tableoid::regclass, * from ord order by a;
+ tableoid |  a  | b  |  x  
+----------+-----+----+-----
+ ord      | 101 |  3 | O1
+ ord      | 103 |  7 | O3
+ ord_rev  | 105 | 11 | R5
+ ord_rev  | 107 | 15 | R7
+ ord_drop | 109 | 19 | D9
+ ord_drop | 111 | 23 | D11
+(6 rows)
+
+--
+-- 6. A member whose distribution key sits at a different attribute number.
+--
+-- The changed columns are numbered in the nominal relation, so matching them
+-- against a member's distribution key means translating them into that
+-- member's own numbering first.  A dropped column shifts everything after it:
+-- here the parent's "b" is attribute 2 and the child's is attribute 3.
+--
+-- The child has to be the only member keyed on "b".  If any member whose
+-- numbering happens to agree with the parent's were also keyed on it, that one
+-- would force the split on its own and the translation would go untested --
+-- update_needs_split() stops at the first member that needs it.
+--
+create table shift (a int, b int, x text) distributed by (a);
+create table shift_c (a int, dead int, b int, x text) distributed by (b);
+alter table shift_c drop column dead;
+alter table shift_c inherit shift;
+insert into shift   select g, g * 2, 's' || g from generate_series(1, 4) g;
+insert into shift_c select g, g * 2, 'c' || g from generate_series(5, 16) g;
+-- "b" is the parent's attribute 2 and the child's attribute 3; only the child
+-- is keyed on it, so only the translated answer forces the split
+explain (costs off) update shift set b = b + 1;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on shift
+   Update on shift shift_1
+   Update on shift_c shift_2
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on shift shift_1
+                           ->  Seq Scan on shift_c shift_2
+ Optimizer: Postgres query optimizer
+(10 rows)
+
+update shift set b = b + 1;
+select tableoid::regclass, * from shift order by a;
+ tableoid | a  | b  |  x  
+----------+----+----+-----
+ shift    |  1 |  3 | s1
+ shift    |  2 |  5 | s2
+ shift    |  3 |  7 | s3
+ shift    |  4 |  9 | s4
+ shift_c  |  5 | 11 | c5
+ shift_c  |  6 | 13 | c6
+ shift_c  |  7 | 15 | c7
+ shift_c  |  8 | 17 | c8
+ shift_c  |  9 | 19 | c9
+ shift_c  | 10 | 21 | c10
+ shift_c  | 11 | 23 | c11
+ shift_c  | 12 | 25 | c12
+ shift_c  | 13 | 27 | c13
+ shift_c  | 14 | 29 | c14
+ shift_c  | 15 | 31 | c15
+ shift_c  | 16 | 33 | c16
+(16 rows)
+
+select misplaced_rows('shift'), misplaced_rows('shift_c');
+ misplaced_rows | misplaced_rows 
+----------------+----------------
+              0 |              0
+(1 row)
+
+-- "a" is the parent's key, and sits at attribute 1 in both
+explain (costs off) update shift set a = a + 100;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on shift
+   Update on shift shift_1
+   Update on shift_c shift_2
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on shift shift_1
+                           ->  Seq Scan on shift_c shift_2
+ Optimizer: Postgres query optimizer
+(10 rows)
+
+update shift set a = a + 100;
+select tableoid::regclass, * from shift order by a;
+ tableoid |  a  | b  |  x  
+----------+-----+----+-----
+ shift    | 101 |  3 | s1
+ shift    | 102 |  5 | s2
+ shift    | 103 |  7 | s3
+ shift    | 104 |  9 | s4
+ shift_c  | 105 | 11 | c5
+ shift_c  | 106 | 13 | c6
+ shift_c  | 107 | 15 | c7
+ shift_c  | 108 | 17 | c8
+ shift_c  | 109 | 19 | c9
+ shift_c  | 110 | 21 | c10
+ shift_c  | 111 | 23 | c11
+ shift_c  | 112 | 25 | c12
+ shift_c  | 113 | 27 | c13
+ shift_c  | 114 | 29 | c14
+ shift_c  | 115 | 31 | c15
+ shift_c  | 116 | 33 | c16
+(16 rows)
+
+select misplaced_rows('shift'), misplaced_rows('shift_c');
+ misplaced_rows | misplaced_rows 
+----------------+----------------
+              0 |              0
+(1 row)
+
+--
+-- 7. Multi-level inheritance.
+--
+create table ml1 (a int, b int) distributed by (a);
+create table ml2 (a int, b int, mid text) inherits (ml1) distributed by (b);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+create table ml3 (a int, b int, mid text, leaf int) inherits (ml2) distributed by (a);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+NOTICE:  merging column "mid" with inherited definition
+insert into ml1 select g, g from generate_series(1, 3) g;
+insert into ml2 select g, g, 'm' || g from generate_series(4, 6) g;
+insert into ml3 select g, g, 'm' || g, g * 10 from generate_series(7, 9) g;
+explain (costs off) update ml1 set b = b + 10;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on ml1
+   Update on ml1 ml1_1
+   Update on ml2 ml1_2
+   Update on ml3 ml1_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on ml1 ml1_1
+                           ->  Seq Scan on ml2 ml1_2
+                           ->  Seq Scan on ml3 ml1_3
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+update ml1 set b = b + 10;
+select tableoid::regclass, * from ml1 order by a;
+ tableoid | a | b  
+----------+---+----
+ ml1      | 1 | 11
+ ml1      | 2 | 12
+ ml1      | 3 | 13
+ ml2      | 4 | 14
+ ml2      | 5 | 15
+ ml2      | 6 | 16
+ ml3      | 7 | 17
+ ml3      | 8 | 18
+ ml3      | 9 | 19
+(9 rows)
+
+select * from only ml2 order by a;
+ a | b  | mid 
+---+----+-----
+ 4 | 14 | m4
+ 5 | 15 | m5
+ 6 | 16 | m6
+(3 rows)
+
+select * from ml3 order by a;
+ a | b  | mid | leaf 
+---+----+-----+------
+ 7 | 17 | m7  |   70
+ 8 | 18 | m8  |   80
+ 9 | 19 | m9  |   90
+(3 rows)
+
+explain (costs off) update ml1 set a = a + 100;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on ml1
+   Update on ml1 ml1_1
+   Update on ml2 ml1_2
+   Update on ml3 ml1_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on ml1 ml1_1
+                           ->  Seq Scan on ml2 ml1_2
+                           ->  Seq Scan on ml3 ml1_3
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+update ml1 set a = a + 100;
+select tableoid::regclass, * from ml1 order by a;
+ tableoid |  a  | b  
+----------+-----+----
+ ml1      | 101 | 11
+ ml1      | 102 | 12
+ ml1      | 103 | 13
+ ml2      | 104 | 14
+ ml2      | 105 | 15
+ ml2      | 106 | 16
+ ml3      | 107 | 17
+ ml3      | 108 | 18
+ ml3      | 109 | 19
+(9 rows)
+
+select * from only ml2 order by a;
+  a  | b  | mid 
+-----+----+-----
+ 104 | 14 | m4
+ 105 | 15 | m5
+ 106 | 16 | m6
+(3 rows)
+
+select * from ml3 order by a;
+  a  | b  | mid | leaf 
+-----+----+-----+------
+ 107 | 17 | m7  |   70
+ 108 | 18 | m8  |   80
+ 109 | 19 | m9  |   90
+(3 rows)
+
+select misplaced_rows('ml1'), misplaced_rows('ml2'), misplaced_rows('ml3');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+-- the middle of the tree as the target
+explain (costs off) update ml2 set b = b + 1000;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on ml2
+   Update on ml2 ml2_1
+   Update on ml3 ml2_2
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on ml2 ml2_1
+                           ->  Seq Scan on ml3 ml2_2
+ Optimizer: Postgres query optimizer
+(10 rows)
+
+update ml2 set b = b + 1000;
+select tableoid::regclass, * from ml1 order by a;
+ tableoid |  a  |  b   
+----------+-----+------
+ ml1      | 101 |   11
+ ml1      | 102 |   12
+ ml1      | 103 |   13
+ ml2      | 104 | 1014
+ ml2      | 105 | 1015
+ ml2      | 106 | 1016
+ ml3      | 107 | 1017
+ ml3      | 108 | 1018
+ ml3      | 109 | 1019
+(9 rows)
+
+select misplaced_rows('ml1'), misplaced_rows('ml2'), misplaced_rows('ml3');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+explain (costs off) delete from ml1 where b > 1000;
+             QUERY PLAN              
+-------------------------------------
+ Delete on ml1
+   Delete on ml1 ml1_1
+   Delete on ml2 ml1_2
+   Delete on ml3 ml1_3
+   ->  Append
+         ->  Seq Scan on ml1 ml1_1
+               Filter: (b > 1000)
+         ->  Seq Scan on ml2 ml1_2
+               Filter: (b > 1000)
+         ->  Seq Scan on ml3 ml1_3
+               Filter: (b > 1000)
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+delete from ml1 where b > 1000;
+select tableoid::regclass, * from ml1 order by a;
+ tableoid |  a  | b  
+----------+-----+----
+ ml1      | 101 | 11
+ ml1      | 102 | 12
+ ml1      | 103 | 13
+(3 rows)
+
+--
+-- 8. A randomly distributed member.
+--
+-- It has no distribution key to hash, so a split update has to re-insert its
+-- rows on the segment they came from rather than pick one.
+--
+create table rnd (a int, b int) distributed by (a);
+create table rnd_rand (like rnd) inherits (rnd) distributed randomly;
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+insert into rnd      select g, g from generate_series(1, 4) g;
+insert into rnd_rand select g, g from generate_series(5, 8) g;
+create temp table rnd_rand_before as
+    select gp_segment_id as seg, b from rnd_rand distributed randomly;
+explain (costs off) update rnd set a = a + 100;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on rnd
+   Update on rnd rnd_1
+   Update on rnd_rand rnd_2
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on rnd rnd_1
+                           ->  Seq Scan on rnd_rand rnd_2
+ Optimizer: Postgres query optimizer
+(10 rows)
+
+update rnd set a = a + 100;
+select * from rnd order by a;
+  a  | b 
+-----+---
+ 101 | 1
+ 102 | 2
+ 103 | 3
+ 104 | 4
+ 105 | 5
+ 106 | 6
+ 107 | 7
+ 108 | 8
+(8 rows)
+
+select misplaced_rows('rnd');
+ misplaced_rows 
+----------------
+              0
+(1 row)
+
+-- the randomly distributed child's rows must not have moved
+select count(*) from rnd_rand r join rnd_rand_before o using (b)
+    where r.gp_segment_id <> o.seg;
+ count 
+-------
+     0
+(1 row)
+
+--
+-- 9. A replicated target.
+--
+create table rep (a int, b int) distributed replicated;
+insert into rep select g, g from generate_series(1, 4) g;
+explain (costs off) update rep set b = b + 1;
+             QUERY PLAN              
+-------------------------------------
+ Update on rep
+   ->  Seq Scan on rep
+ Optimizer: Postgres query optimizer
+(3 rows)
+
+update rep set b = b + 1;
+explain (costs off) update rep set a = a + 100 where b = 3;
+             QUERY PLAN              
+-------------------------------------
+ Update on rep
+   ->  Seq Scan on rep
+         Filter: (b = 3)
+ Optimizer: Postgres query optimizer
+(4 rows)
+
+update rep set a = a + 100 where b = 3;
+select * from rep order by a;
+  a  | b 
+-----+---
+   1 | 2
+   3 | 4
+   4 | 5
+ 102 | 3
+(4 rows)
+
+explain (costs off) delete from rep where a > 100;
+             QUERY PLAN              
+-------------------------------------
+ Delete on rep
+   ->  Seq Scan on rep
+         Filter: (a > 100)
+ Optimizer: Postgres query optimizer
+(4 rows)
+
+delete from rep where a > 100;
+select * from rep order by a;
+ a | b 
+---+---
+ 1 | 2
+ 3 | 4
+ 4 | 5
+(3 rows)
+
+-- every segment has to hold every row
+select count(*) from (
+    select a, b, count(*) as c from gp_dist_random('rep') group by 1, 2
+) s where s.c <> (select count(*) from gp_segment_configuration
+                   where role = 'p' and content >= 0);
+ count 
+-------
+     0
+(1 row)
+
+--
+-- 10. An update trigger anywhere in the tree blocks a split update.
+--
+-- A split update would delete the row and insert it again behind the
+-- trigger's back, so it is rejected even when the trigger is on a child.
+--
+create function trig_noop() returns trigger as $$
+begin
+    return new;
+end;
+$$ language plpgsql;
+create table trg (a int, b int) distributed by (a);
+create table trg_child (like trg) inherits (trg) distributed by (a);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+create trigger trg_child_upd before update on trg_child
+    for each row execute procedure trig_noop();
+insert into trg       values (1, 1);
+insert into trg_child values (2, 2);
+-- not a distribution key change: allowed
+explain (costs off) update trg set b = b + 1;
+                  QUERY PLAN                   
+-----------------------------------------------
+ Update on trg
+   Update on trg trg_1
+   Update on trg_child trg_2
+   ->  Result
+         ->  Append
+               ->  Seq Scan on trg trg_1
+               ->  Seq Scan on trg_child trg_2
+ Optimizer: Postgres query optimizer
+(8 rows)
+
+update trg set b = b + 1;
+select tableoid::regclass, * from trg order by a;
+ tableoid  | a | b 
+-----------+---+---
+ trg       | 1 | 2
+ trg_child | 2 | 3
+(2 rows)
+
+-- distribution key change: rejected
+explain (costs off) update trg set a = a + 1;
+ERROR:  UPDATE on distributed key column not allowed on relation with update triggers
+update trg set a = a + 1;
+ERROR:  UPDATE on distributed key column not allowed on relation with update triggers
+--
+-- 11. Append-optimized members.
+--
+-- An append-optimized table cannot fetch a tuple by TID, so the plan has to
+-- carry everything ModifyTable needs down to the segments.
+--
+create table ao (a int, b int, x text) distributed by (a);
+create table ao_row (like ao) inherits (ao)
+    with (appendonly = true) distributed by (a);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+NOTICE:  merging column "x" with inherited definition
+create table ao_col (like ao) inherits (ao)
+    with (appendonly = true, orientation = column) distributed by (b);
+NOTICE:  merging column "a" with inherited definition
+NOTICE:  merging column "b" with inherited definition
+NOTICE:  merging column "x" with inherited definition
+insert into ao     select g, g, 'h' || g from generate_series(1, 3) g;
+insert into ao_row select g, g, 'r' || g from generate_series(4, 6) g;
+insert into ao_col select g, g, 'c' || g from generate_series(7, 9) g;
+explain (verbose, costs off) update ao set x = x || '!';
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
+ Update on upddel_inherit_gp.ao
+   Update on upddel_inherit_gp.ao ao_1
+   Update on upddel_inherit_gp.ao_row ao_2
+   Update on upddel_inherit_gp.ao_col ao_3
+   ->  Result
+         Output: ao.a, ao.b, (ao.x || '!'::text), ao.tableoid, ao.ctid, ao.gp_segment_id
+         ->  Append
+               ->  Seq Scan on upddel_inherit_gp.ao ao_1
+                     Output: ao_1.a, ao_1.b, ao_1.x, ao_1.tableoid, ao_1.ctid, ao_1.gp_segment_id
+               ->  Seq Scan on upddel_inherit_gp.ao_row ao_2
+                     Output: ao_2.a, ao_2.b, ao_2.x, ao_2.tableoid, ao_2.ctid, ao_2.gp_segment_id
+               ->  Seq Scan on upddel_inherit_gp.ao_col ao_3
+                     Output: ao_3.a, ao_3.b, ao_3.x, ao_3.tableoid, ao_3.ctid, ao_3.gp_segment_id
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(15 rows)
+
+update ao set x = x || '!';
+select tableoid::regclass, * from ao order by a;
+ tableoid | a | b |  x  
+----------+---+---+-----
+ ao       | 1 | 1 | h1!
+ ao       | 2 | 2 | h2!
+ ao       | 3 | 3 | h3!
+ ao_row   | 4 | 4 | r4!
+ ao_row   | 5 | 5 | r5!
+ ao_row   | 6 | 6 | r6!
+ ao_col   | 7 | 7 | c7!
+ ao_col   | 8 | 8 | c8!
+ ao_col   | 9 | 9 | c9!
+(9 rows)
+
+explain (costs off) update ao set a = a + 100;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on ao
+   Update on ao ao_1
+   Update on ao_row ao_2
+   Update on ao_col ao_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on ao ao_1
+                           ->  Seq Scan on ao_row ao_2
+                           ->  Seq Scan on ao_col ao_3
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+update ao set a = a + 100;
+select tableoid::regclass, * from ao order by a;
+ tableoid |  a  | b |  x  
+----------+-----+---+-----
+ ao       | 101 | 1 | h1!
+ ao       | 102 | 2 | h2!
+ ao       | 103 | 3 | h3!
+ ao_row   | 104 | 4 | r4!
+ ao_row   | 105 | 5 | r5!
+ ao_row   | 106 | 6 | r6!
+ ao_col   | 107 | 7 | c7!
+ ao_col   | 108 | 8 | c8!
+ ao_col   | 109 | 9 | c9!
+(9 rows)
+
+select misplaced_rows('ao'), misplaced_rows('ao_row'), misplaced_rows('ao_col');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+explain (costs off) delete from ao where a % 2 = 1;
+             QUERY PLAN              
+-------------------------------------
+ Delete on ao
+   Delete on ao ao_1
+   Delete on ao_row ao_2
+   Delete on ao_col ao_3
+   ->  Append
+         ->  Seq Scan on ao ao_1
+               Filter: ((a % 2) = 1)
+         ->  Seq Scan on ao_row ao_2
+               Filter: ((a % 2) = 1)
+         ->  Seq Scan on ao_col ao_3
+               Filter: ((a % 2) = 1)
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+delete from ao where a % 2 = 1;
+select tableoid::regclass, * from ao order by a;
+ tableoid |  a  | b |  x  
+----------+-----+---+-----
+ ao       | 102 | 2 | h2!
+ ao_row   | 104 | 4 | r4!
+ ao_row   | 106 | 6 | r6!
+ ao_col   | 108 | 8 | c8!
+(4 rows)
+
+--
+-- 12. Partitioned tables.
+--
+-- Partitions all share their root's distribution policy, but they need not
+-- share its column order, and a split update may have to move a row to
+-- another partition as well as to another segment.
+--
+-- "a" is the partition key and "b" the distribution key, so the two can be
+-- varied independently; "id" names a row without being either.
+create table part (id int, a int, b int, x text)
+    distributed by (b) partition by range (a);
+create table part_1 partition of part for values from (1) to (10);
+NOTICE:  table has parent, setting distribution columns to match parent table
+create table part_2 partition of part for values from (10) to (20);
+NOTICE:  table has parent, setting distribution columns to match parent table
+-- a partition whose columns are stored in a different order
+create table part_3 (x text, b int, a int, id int) distributed by (b);
+alter table part attach partition part_3 for values from (20) to (30);
+-- an append-optimized partition
+create table part_4 partition of part for values from (30) to (40)
+    with (appendonly = true);
+NOTICE:  table has parent, setting distribution columns to match parent table
+-- a partition with a dropped column
+create table part_5 (id int, dead int, a int, b int, x text) distributed by (b);
+alter table part_5 drop column dead;
+alter table part attach partition part_5 for values from (40) to (50);
+insert into part select g, g, g, 'p' || g from generate_series(1, 49) g where g % 7 = 1;
+select tableoid::regclass, * from part order by id;
+ tableoid | id | a  | b  |  x  
+----------+----+----+----+-----
+ part_1   |  1 |  1 |  1 | p1
+ part_1   |  8 |  8 |  8 | p8
+ part_2   | 15 | 15 | 15 | p15
+ part_3   | 22 | 22 | 22 | p22
+ part_3   | 29 | 29 | 29 | p29
+ part_4   | 36 | 36 | 36 | p36
+ part_5   | 43 | 43 | 43 | p43
+(7 rows)
+
+-- same partition, same segment
+explain (costs off) update part set x = x || '!' where id = 1;
+             QUERY PLAN              
+-------------------------------------
+ Update on part
+   Update on part_1
+   Update on part_2
+   Update on part_3
+   Update on part_4
+   Update on part_5
+   ->  Append
+         ->  Seq Scan on part_1
+               Filter: (id = 1)
+         ->  Seq Scan on part_2
+               Filter: (id = 1)
+         ->  Seq Scan on part_3
+               Filter: (id = 1)
+         ->  Seq Scan on part_4
+               Filter: (id = 1)
+         ->  Seq Scan on part_5
+               Filter: (id = 1)
+ Optimizer: Postgres query optimizer
+(18 rows)
+
+update part set x = x || '!' where id = 1;
+-- another segment, same partition
+explain (costs off) update part set b = b + 1 where id = 8;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on part
+   Update on part_1
+   Update on part_2
+   Update on part_3
+   Update on part_4
+   Update on part_5
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Append
+                     ->  Seq Scan on part_1
+                           Filter: (id = 8)
+                     ->  Seq Scan on part_2
+                           Filter: (id = 8)
+                     ->  Seq Scan on part_3
+                           Filter: (id = 8)
+                     ->  Seq Scan on part_4
+                           Filter: (id = 8)
+                     ->  Seq Scan on part_5
+                           Filter: (id = 8)
+ Optimizer: Postgres query optimizer
+(20 rows)
+
+update part set b = b + 1 where id = 8;
+-- another partition, same segment
+explain (costs off) update part set a = 5 where id = 15;
+             QUERY PLAN              
+-------------------------------------
+ Update on part
+   Update on part_1
+   Update on part_2
+   Update on part_3
+   Update on part_4
+   Update on part_5
+   ->  Append
+         ->  Seq Scan on part_1
+               Filter: (id = 15)
+         ->  Seq Scan on part_2
+               Filter: (id = 15)
+         ->  Seq Scan on part_3
+               Filter: (id = 15)
+         ->  Seq Scan on part_4
+               Filter: (id = 15)
+         ->  Seq Scan on part_5
+               Filter: (id = 15)
+ Optimizer: Postgres query optimizer
+(18 rows)
+
+update part set a = 5 where id = 15;
+-- another partition and another segment at once, into the reordered partition
+explain (costs off) update part set a = 25, b = b + 3 where id = 1;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on part
+   Update on part_1
+   Update on part_2
+   Update on part_3
+   Update on part_4
+   Update on part_5
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Append
+                     ->  Seq Scan on part_1
+                           Filter: (id = 1)
+                     ->  Seq Scan on part_2
+                           Filter: (id = 1)
+                     ->  Seq Scan on part_3
+                           Filter: (id = 1)
+                     ->  Seq Scan on part_4
+                           Filter: (id = 1)
+                     ->  Seq Scan on part_5
+                           Filter: (id = 1)
+ Optimizer: Postgres query optimizer
+(20 rows)
+
+update part set a = 25, b = b + 3 where id = 1;
+-- ... into the append-optimized partition
+update part set a = 35, b = b + 5 where id = 22;
+-- ... and into the one with a dropped column
+update part set a = 45, b = b + 7 where id = 36;
+select tableoid::regclass, * from part order by id;
+ tableoid | id | a  | b  |  x  
+----------+----+----+----+-----
+ part_3   |  1 | 25 |  4 | p1!
+ part_1   |  8 |  8 |  9 | p8
+ part_1   | 15 |  5 | 15 | p15
+ part_4   | 22 | 35 | 27 | p22
+ part_3   | 29 | 29 | 29 | p29
+ part_5   | 36 | 45 | 43 | p36
+ part_5   | 43 | 43 | 43 | p43
+(7 rows)
+
+select misplaced_rows('part_1'), misplaced_rows('part_2'), misplaced_rows('part_3'),
+       misplaced_rows('part_4'), misplaced_rows('part_5');
+ misplaced_rows | misplaced_rows | misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------+----------------+----------------
+              0 |              0 |              0 |              0 |              0
+(1 row)
+
+-- no partition takes the new row
+explain (costs off) update part set a = a + 100 where id = 29;
+             QUERY PLAN              
+-------------------------------------
+ Update on part
+   Update on part_1
+   Update on part_2
+   Update on part_3
+   Update on part_4
+   Update on part_5
+   ->  Append
+         ->  Seq Scan on part_1
+               Filter: (id = 29)
+         ->  Seq Scan on part_2
+               Filter: (id = 29)
+         ->  Seq Scan on part_3
+               Filter: (id = 29)
+         ->  Seq Scan on part_4
+               Filter: (id = 29)
+         ->  Seq Scan on part_5
+               Filter: (id = 29)
+ Optimizer: Postgres query optimizer
+(18 rows)
+
+update part set a = a + 100 where id = 29;
+ERROR:  no partition of relation "part" found for row  (seg0 127.0.1.1:7002 pid=276287)
+DETAIL:  Partition key of the failing row contains (a) = (129).
+-- the same, but as a split update
+explain (costs off) update part set a = a + 100, b = b + 1 where id = 29;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on part
+   Update on part_1
+   Update on part_2
+   Update on part_3
+   Update on part_4
+   Update on part_5
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Append
+                     ->  Seq Scan on part_1
+                           Filter: (id = 29)
+                     ->  Seq Scan on part_2
+                           Filter: (id = 29)
+                     ->  Seq Scan on part_3
+                           Filter: (id = 29)
+                     ->  Seq Scan on part_4
+                           Filter: (id = 29)
+                     ->  Seq Scan on part_5
+                           Filter: (id = 29)
+ Optimizer: Postgres query optimizer
+(20 rows)
+
+update part set a = a + 100, b = b + 1 where id = 29;
+ERROR:  no partition of relation "part" found for row  (seg1 127.0.1.1:7003 pid=276288)
+DETAIL:  Partition key of the failing row contains (a) = (129).
+explain (costs off) delete from part where a > 20;
+              QUERY PLAN               
+---------------------------------------
+ Delete on part
+   Delete on part_3 part_1
+   Delete on part_4 part_2
+   Delete on part_5 part_3
+   ->  Append
+         ->  Seq Scan on part_3 part_1
+               Filter: (a > 20)
+         ->  Seq Scan on part_4 part_2
+               Filter: (a > 20)
+         ->  Seq Scan on part_5 part_3
+               Filter: (a > 20)
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+delete from part where a > 20;
+select tableoid::regclass, * from part order by id;
+ tableoid | id | a | b  |  x  
+----------+----+---+----+-----
+ part_1   |  8 | 8 |  9 | p8
+ part_1   | 15 | 5 | 15 | p15
+(2 rows)
+
+--
+-- 13. A partitioned table with a dropped column.
+--
+-- Worth a section of its own because ORCA builds its ModifyTable nodes
+-- directly rather than through createplan.c, and a dropped column is where
+-- the root's column layout and a partition's part company.
+--
+create table orca_p (a int, dead int, b int, x text)
+    distributed by (a) partition by range (a);
+create table orca_p1 partition of orca_p for values from (1) to (10);
+NOTICE:  table has parent, setting distribution columns to match parent table
+create table orca_p2 partition of orca_p for values from (10) to (20);
+NOTICE:  table has parent, setting distribution columns to match parent table
+alter table orca_p drop column dead;
+insert into orca_p select g, g, 'o' || g from generate_series(1, 19) g where g % 4 = 1;
+select tableoid::regclass, * from orca_p order by a;
+ tableoid | a  | b  |  x  
+----------+----+----+-----
+ orca_p1  |  1 |  1 | o1
+ orca_p1  |  5 |  5 | o5
+ orca_p1  |  9 |  9 | o9
+ orca_p2  | 13 | 13 | o13
+ orca_p2  | 17 | 17 | o17
+(5 rows)
+
+explain (costs off) update orca_p set x = x || '#';
+                QUERY PLAN                
+------------------------------------------
+ Update on orca_p
+   Update on orca_p1 orca_p_1
+   Update on orca_p2 orca_p_2
+   ->  Append
+         ->  Seq Scan on orca_p1 orca_p_1
+         ->  Seq Scan on orca_p2 orca_p_2
+ Optimizer: Postgres query optimizer
+(7 rows)
+
+update orca_p set x = x || '#';
+select tableoid::regclass, * from orca_p order by a;
+ tableoid | a  | b  |  x   
+----------+----+----+------
+ orca_p1  |  1 |  1 | o1#
+ orca_p1  |  5 |  5 | o5#
+ orca_p1  |  9 |  9 | o9#
+ orca_p2  | 13 | 13 | o13#
+ orca_p2  | 17 | 17 | o17#
+(5 rows)
+
+explain (costs off) update orca_p set b = b + 1 where a = 5;
+             QUERY PLAN              
+-------------------------------------
+ Update on orca_p
+   Update on orca_p1 orca_p_1
+   ->  Seq Scan on orca_p1 orca_p_1
+         Filter: (a = 5)
+ Optimizer: Postgres query optimizer
+(5 rows)
+
+update orca_p set b = b + 1 where a = 5;
+explain (costs off) update orca_p set a = a + 10 where a < 10;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on orca_p
+   Update on orca_p1 orca_p_1
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Seq Scan on orca_p1 orca_p_1
+                     Filter: (a < 10)
+ Optimizer: Postgres query optimizer
+(7 rows)
+
+update orca_p set a = a + 10 where a < 10;
+select tableoid::regclass, * from orca_p order by a;
+ tableoid | a  | b  |  x   
+----------+----+----+------
+ orca_p2  | 11 |  1 | o1#
+ orca_p2  | 13 | 13 | o13#
+ orca_p2  | 15 |  6 | o5#
+ orca_p2  | 17 | 17 | o17#
+ orca_p2  | 19 |  9 | o9#
+(5 rows)
+
+select misplaced_rows('orca_p1'), misplaced_rows('orca_p2');
+ misplaced_rows | misplaced_rows 
+----------------+----------------
+              0 |              0
+(1 row)
+
+explain (costs off) delete from orca_p where b % 2 = 1;
+                QUERY PLAN                
+------------------------------------------
+ Delete on orca_p
+   Delete on orca_p1 orca_p_1
+   Delete on orca_p2 orca_p_2
+   ->  Append
+         ->  Seq Scan on orca_p1 orca_p_1
+               Filter: ((b % 2) = 1)
+         ->  Seq Scan on orca_p2 orca_p_2
+               Filter: ((b % 2) = 1)
+ Optimizer: Postgres query optimizer
+(9 rows)
+
+delete from orca_p where b % 2 = 1;
+select tableoid::regclass, * from orca_p order by a;
+ tableoid | a  | b |  x  
+----------+----+---+-----
+ orca_p2  | 15 | 6 | o5#
+(1 row)
+
+-- back to the old-style inheritance tree, one more time
+explain (costs off) update pa set x = x || '~';
+               QUERY PLAN                
+-----------------------------------------
+ Update on pa
+   Update on pa pa_1
+   Update on pa_a pa_2
+   Update on pa_b pa_3
+   ->  Result
+         ->  Append
+               ->  Seq Scan on pa pa_1
+               ->  Seq Scan on pa_a pa_2
+               ->  Seq Scan on pa_b pa_3
+ Optimizer: Postgres query optimizer
+(10 rows)
+
+update pa set x = x || '~';
+explain (costs off) update pa set a = a + 1;
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Update on pa
+   Update on pa pa_1
+   Update on pa_a pa_2
+   Update on pa_b pa_3
+   ->  Explicit Redistribute Motion 3:3  (slice1; segments: 3)
+         ->  Split
+               ->  Result
+                     ->  Append
+                           ->  Seq Scan on pa pa_1
+                           ->  Seq Scan on pa_a pa_2
+                           ->  Seq Scan on pa_b pa_3
+ Optimizer: Postgres query optimizer
+(12 rows)
+
+update pa set a = a + 1;
+select tableoid::regclass, * from pa order by a;
+ tableoid |  a  |  b   |   x    
+----------+-----+------+--------
+ pa       | 104 | 1003 | JT1.!~
+ pa       | 106 | 1007 | JT3.!~
+ pa       | 107 | 1009 | JT4.!~
+ pa_a     | 109 | 1015 | JT7.~
+ pa_a     | 110 | 1017 | JT8.~
+ pa_a     | 111 | 1019 | JT9.~
+ pa_a     | 112 | 1021 | JT10.~
+ pa_a     | 113 | 1023 | JT11.~
+ pa_b     | 115 | 1027 | JT13.~
+ pa_b     | 116 | 1029 | JT14.~
+ pa_b     | 117 | 1031 | JT15.~
+ pa_b     | 118 | 1033 | JT16.~
+ pa_b     | 119 | 1035 | JT17.~
+(13 rows)
+
+select misplaced_rows('pa'), misplaced_rows('pa_a'), misplaced_rows('pa_b');
+ misplaced_rows | misplaced_rows | misplaced_rows 
+----------------+----------------+----------------
+              0 |              0 |              0
+(1 row)
+
+drop schema upddel_inherit_gp cascade;
+NOTICE:  drop cascades to 30 other objects
+DETAIL:  drop cascades to function misplaced_rows(regclass)
+drop cascades to table pa
+drop cascades to table pa_a
+drop cascades to table pa_b
+drop cascades to table src
+drop cascades to table ex
+drop cascades to table ex_wide
+drop cascades to table ex_wide_b
+drop cascades to table ex_odd
+drop cascades to table kp
+drop cascades to table kp_own
+drop cascades to table ord
+drop cascades to table ord_rev
+drop cascades to table ord_drop
+drop cascades to table shift
+drop cascades to table shift_c
+drop cascades to table ml1
+drop cascades to table ml2
+drop cascades to table ml3
+drop cascades to table rnd
+drop cascades to table rnd_rand
+drop cascades to table rep
+drop cascades to function trig_noop()
+drop cascades to table trg
+drop cascades to table trg_child
+drop cascades to table ao
+drop cascades to table ao_row
+drop cascades to table ao_col
+drop cascades to table part
+drop cascades to table orca_p
