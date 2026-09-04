@@ -1724,16 +1724,6 @@ void mppExecutorCleanup(QueryDesc *queryDesc)
 
 	/* caller must have switched into per-query memory context already */
 	estate = queryDesc->estate;
-
-	/*
-	 * The executor state may not have been created yet, e.g. when an error is
-	 * thrown during operator-memory assignment in standard_ExecutorStart()
-	 * before queryDesc->estate is set. There is nothing GP-specific to clean
-	 * up in that case.
-	 */
-	if (estate == NULL)
-		return;
-
 	ds = estate->dispatcherState;
 
 	/* GPDB hook for collecting query info */
