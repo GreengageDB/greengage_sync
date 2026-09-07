@@ -1614,6 +1614,17 @@ _readReturnStmt(void)
 	READ_DONE();
 }
 
+static ParamRef *
+_readParamRef(void)
+{
+	READ_LOCALS(ParamRef);
+
+	READ_INT_FIELD(number);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
 static Node *
 _readValue(NodeTag nt)
 {
@@ -2436,6 +2447,9 @@ readNodeBinary(void)
 				break;
 			case T_ColumnRef:
 				return_value = _readColumnRef();
+				break;
+			case T_ParamRef:
+				return_value = _readParamRef();
 				break;
 			case T_A_Const:
 				return_value = _readAConst();
