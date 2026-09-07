@@ -1517,7 +1517,7 @@ external_scan_error_callback(void *arg)
 	else
 	{
 		/* error is relevant to a particular line */
-		if (cstate->line_buf_converted || !cstate->need_transcoding)
+		if (cstate->line_buf_valid && cstate->line_buf_converted)
 		{
 			char	   *line_buf;
 

@@ -206,14 +206,16 @@ CopyFromErrorCallback(void *arg)
 			/*
 			 * Error is relevant to a particular line.
 			 *
-			 * If line_buf still contains the correct line, and it is already
-			 * in the server encoding, print it.  If it is still in a foreign
-			 * encoding the error is quite likely the encoding conversion
-			 * itself; we dare not feed those bytes into the error context, so
-			 * we punt and just report the line number.
+			 * Print line_buf only if it still holds the current line and that
+			 * line is known to be valid in the server encoding
+			 * (line_buf_converted).  Otherwise -- a rejected row that failed
+			 * encoding verification/conversion, or a line whose read was
+			 * aborted -- line_buf may contain bytes that are invalid in the
+			 * server encoding; we dare not feed those into the error context
+			 * (they would break the server->client conversion of the
+			 * message), so we punt and just report the line number.
 			 */
-			if (cstate->line_buf_valid &&
-				(cstate->line_buf_converted || !cstate->need_transcoding))
+			if (cstate->line_buf_valid && cstate->line_buf_converted)
 			{
 				char	   *lineval;
 
