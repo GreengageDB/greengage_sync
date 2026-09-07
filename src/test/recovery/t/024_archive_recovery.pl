@@ -72,7 +72,9 @@ sub test_recovery_wal_level_minimal
 	# that the server ends with an error during recovery.
 	run_log(
 		['pg_ctl','-D', $recovery_node->data_dir, '-l',
-		 $recovery_node->logfile, 'start']);
+		 $recovery_node->logfile, '-o',
+		   ' --gp_contentid=0',
+		 'start']);
 
 	# Wait up to 180s for postgres to terminate
 	foreach my $i (0 .. 1800)
