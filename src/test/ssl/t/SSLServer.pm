@@ -39,47 +39,6 @@ our @EXPORT = qw(
   switch_server_cert
 );
 
-<<<<<<< HEAD
-# Define a couple of helper functions to test connecting to the server.
-
-# The first argument is a base connection string to use for connection.
-# The second argument is a complementary connection string.
-sub test_connect_ok
-{
-	local $Test::Builder::Level = $Test::Builder::Level + 1;
-
-	my ($common_connstr, $connstr, $test_name) = @_;
-
-	local $ENV{PGOPTIONS} = '-c gp_role=utility';
-
-	my $cmd = [
-		'psql', '-X', '-A', '-t', '-c',
-		"SELECT \$\$connected with $connstr\$\$",
-		'-d', "$common_connstr $connstr"
-	];
-
-	command_ok($cmd, $test_name);
-	return;
-}
-
-sub test_connect_fails
-{
-	local $Test::Builder::Level = $Test::Builder::Level + 1;
-
-	my ($common_connstr, $connstr, $expected_stderr, $test_name) = @_;
-
-	my $cmd = [
-		'psql', '-X', '-A', '-t', '-c',
-		"SELECT \$\$connected with $connstr\$\$",
-		'-d', "$common_connstr $connstr"
-	];
-
-	command_fails_like($cmd, $expected_stderr, $test_name);
-	return;
-}
-
-=======
->>>>>>> 8ff1c94649f
 # Copy a set of files, taking into account wildcards
 sub copy_files
 {
