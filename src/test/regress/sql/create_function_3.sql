@@ -356,6 +356,18 @@ CREATE FUNCTION voidtest5(a int) RETURNS SETOF VOID LANGUAGE SQL AS
 $$ SELECT generate_series(1, a) $$ STABLE;
 SELECT * FROM voidtest5(3);
 
+-- GPDB: a positional parameter reference ($1) in a SQL-standard function
+-- body produces a ParamRef node that must survive dispatch of CREATE FUNCTION
+-- to the segments (previously failed with "unrecognized node type" in readfast.c).
+CREATE FUNCTION functest_gp_paramref(int) RETURNS int
+    RETURN $1 + 1;
+SELECT functest_gp_paramref(41);
+CREATE FUNCTION functest_gp_paramref_atomic(int) RETURNS int
+    BEGIN ATOMIC
+        SELECT $1 + 1;
+    END;
+SELECT functest_gp_paramref_atomic(41);
+
 -- Cleanup
 DROP SCHEMA temp_func_test CASCADE;
 DROP USER regress_unpriv_user;
