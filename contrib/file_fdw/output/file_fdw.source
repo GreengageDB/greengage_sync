@@ -277,9 +277,11 @@ SELECT tableoid::regclass, * FROM ONLY agg;
 
 -- updates aren't supported
 UPDATE agg SET a = 1;
-ERROR:  ModifyTable mixes distributed and entry-only tables
+ERROR:  cannot update or delete from an inheritance tree whose members have different kinds of distribution policy
+DETAIL:  Relations "agg" and "agg_csv" are distributed differently.
 DELETE FROM agg WHERE a = 100;
-ERROR:  ModifyTable mixes distributed and entry-only tables
+ERROR:  cannot update or delete from an inheritance tree whose members have different kinds of distribution policy
+DETAIL:  Relations "agg" and "agg_csv" are distributed differently.
 -- but this should be allowed
 SELECT tableoid::regclass, * FROM agg FOR UPDATE;
  tableoid |  a  |    b    
