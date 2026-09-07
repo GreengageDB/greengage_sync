@@ -1779,6 +1779,7 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->input_reached_eof = false;
 
 		initStringInfo(&cstate->line_buf);
+		cstate->line_buf_converted = false;
 	}
 
 	initStringInfo(&cstate->attribute_buf);
@@ -2290,6 +2291,7 @@ SendCopyFromForwardedError(CopyFromState cstate, CdbCopy *cdbCopy, char *errorms
 	errframe->lineno = cstate->cur_lineno;
 	errframe->line_len = cstate->line_buf.len;
 	errframe->errmsg_len = errormsg_len;
+	errframe->line_buf_converted = cstate->line_buf_converted;
 
 	/* send the bad data row to a random QE (via roundrobin) */
 	if (cstate->lastsegid == cdbCopy->total_segs)
