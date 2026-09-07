@@ -1898,6 +1898,16 @@ CopyReadLine(CopyFromState cstate)
 	resetStringInfo(&cstate->line_buf);
 	cstate->line_buf_valid = false;
 
+	/*
+	 * GGDB: mark that this line has not been (fully) converted to the server
+	 * encoding yet.  If CopyReadLineText() bails out mid-line -- e.g. an
+	 * encoding error, or an ERRCODE_BAD_COPY_FILE_FORMAT from the
+	 * end-of-copy-marker checks, both of which SREH catches -- the rejected
+	 * row must not be logged with a stale "converted" flag from the previous
+	 * good line.  Set true again once the line is fully assembled below.
+	 */
+	cstate->line_buf_converted = false;
+
 	/* Parse data and transfer into line_buf */
 	result = CopyReadLineText(cstate);
 
