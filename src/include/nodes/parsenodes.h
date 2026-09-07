@@ -3290,11 +3290,28 @@ typedef struct SecLabelStmt
  * This is used to request the planner to create a plan that's updatable with
  * CURRENT OF. It can be passed to SPI_prepare_cursor.
  */
-#define CURSOR_OPT_UPDATABLE	0x0200	/* updateable with CURRENT OF, if possible */
-#define CURSOR_OPT_PARALLEL_RETRIEVE 0x0400	/* Cursor for parallel retrieving */
+#define CURSOR_OPT_UPDATABLE	0x2000	/* updateable with CURRENT OF, if possible */
+#define CURSOR_OPT_PARALLEL_RETRIEVE 0x4000	/* Cursor for parallel retrieving */
 
 /* GPDB additions */
 #define CURSOR_OPT_SKIP_FOREIGN_PARTITIONS	0x1000	/* don't expand foreign partitions */
+
+/*
+ * The GPDB-specific cursor option flags (CURSOR_OPT_UPDATABLE,
+ * CURSOR_OPT_PARALLEL_RETRIEVE, CURSOR_OPT_SKIP_FOREIGN_PARTITIONS) must not
+ * overlap the upstream ones.  Upstream has renumbered its flags before (commit
+ * a63dd8afe2b8, "Renumber cursor option flags") and is likely to do so again on
+ * future merges; catch a collision at compile time rather than through subtle
+ * planner misbehavior (e.g. CURSOR_OPT_UPDATABLE aliasing CURSOR_OPT_GENERIC_PLAN
+ * forces generic plans for all PL/pgSQL cursors).
+ */
+StaticAssertDecl(((CURSOR_OPT_SKIP_FOREIGN_PARTITIONS | CURSOR_OPT_UPDATABLE |
+				   CURSOR_OPT_PARALLEL_RETRIEVE) &
+				  (CURSOR_OPT_BINARY | CURSOR_OPT_SCROLL | CURSOR_OPT_NO_SCROLL |
+				   CURSOR_OPT_INSENSITIVE | CURSOR_OPT_ASENSITIVE | CURSOR_OPT_HOLD |
+				   CURSOR_OPT_FAST_PLAN | CURSOR_OPT_GENERIC_PLAN |
+				   CURSOR_OPT_CUSTOM_PLAN | CURSOR_OPT_PARALLEL_OK)) == 0,
+				 "GPDB-specific CURSOR_OPT_* flags collide with upstream flags");
 
 typedef struct DeclareCursorStmt
 {
