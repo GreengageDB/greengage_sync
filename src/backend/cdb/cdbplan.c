@@ -201,8 +201,8 @@ plan_tree_mutator(Node *node,
 				ModifyTable *newmt;
 
 				FLATCOPY(newmt, mt, ModifyTable);
+				/* PLANMUTATE covers lefttree, the sole source of tuples */
 				PLANMUTATE(newmt, mt);
-				MUTATE(newmt->plans, mt->plans, List *);
 				MUTATE(newmt->onConflictSet, mt->onConflictSet, List *);
 				MUTATE(newmt->onConflictWhere, mt->onConflictWhere , Node *);
 				MUTATE(newmt->withCheckOptionLists, mt->withCheckOptionLists, List *);

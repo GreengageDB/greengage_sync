@@ -407,7 +407,15 @@ typedef struct ModifyTable
 	Node	   *onConflictWhere;	/* WHERE for ON CONFLICT UPDATE */
 	Index		exclRelRTI;		/* RTI of the EXCLUDED pseudo relation */
 	List	   *exclRelTlist;	/* tlist of the EXCLUDED pseudo relation */
-	List	   *isSplitUpdates;
+
+	/*
+	 * GGDB: true if this UPDATE is executed as a delete+insert pair, because
+	 * it may move a row to a different segment.  The SplitUpdate node below
+	 * emits the two halves and tags them with the "DMLAction" junk column.
+	 * The decision is statement-wide: there is a single subplan, hence a
+	 * single SplitUpdate, for the whole target inheritance tree.
+	 */
+	bool		isSplitUpdate;
 
 	bool		forceTupleRouting; /* dynamic scans require tuple routing */
 } ModifyTable;
@@ -1534,11 +1542,37 @@ typedef struct SplitUpdate
 	 *
 	 * If the targetlist contains a 'gp_segment_id' field, these fields are
 	 * used to compute the target segment id, for INSERT-action rows.
+	 *
+	 * These are derived from the policy of one of the result relations, and
+	 * apply to every row when policyRelids is NIL.  The attribute numbers are
+	 * positions in this node's output tuple, so they are stated in the query's
+	 * nominal result relation's terms whatever relation the policy came from.
 	 */
 	int			numHashAttrs;
 	AttrNumber *hashAttnos;
 	Oid		   *hashFuncs;			/* corresponding hash functions */
 	int			numHashSegments;	/* # of segs to use in hash computation */
+
+	/*
+	 * Per-result-relation placement, for an old-style inheritance tree whose
+	 * members may have distribution policies of their own.  There is one plan
+	 * for the whole tree, so a row's policy has to be chosen at run time; the
+	 * "tableoid" junk column says which relation it came from.
+	 *
+	 * The four lists are parallel and indexed together.  An empty policyAttnos
+	 * sublist means "leave the row on the segment it is already on", which is
+	 * the right answer for a randomly distributed member, and for one whose
+	 * distribution key does not exist in the nominal relation's column layout
+	 * and therefore cannot have been changed by this UPDATE.
+	 *
+	 * All NIL when the target is not an inheritance tree, or when every member
+	 * places rows exactly as the fields above do.
+	 */
+	List	   *policyRelids;		/* OIDs of the result relations */
+	List	   *policyAttnos;		/* per rel: hash key positions in the
+									 * output tuple, as an int list */
+	List	   *policyFuncs;		/* per rel: hash function OIDs */
+	List	   *policyNumSegments;	/* per rel: # of segs to hash over */
 } SplitUpdate;
 
 /*

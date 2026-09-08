@@ -351,7 +351,7 @@ _copyModifyTable(const ModifyTable *from)
 	COPY_NODE_FIELD(onConflictWhere);
 	COPY_SCALAR_FIELD(exclRelRTI);
 	COPY_NODE_FIELD(exclRelTlist);
-	COPY_NODE_FIELD(isSplitUpdates);
+	COPY_SCALAR_FIELD(isSplitUpdate);
 	COPY_SCALAR_FIELD(forceTupleRouting);
 
 	return newnode;
@@ -1712,6 +1712,11 @@ _copySplitUpdate(const SplitUpdate *from)
 	COPY_SCALAR_FIELD(numHashAttrs);
 	COPY_POINTER_FIELD(hashAttnos, from->numHashAttrs * sizeof(AttrNumber));
 	COPY_POINTER_FIELD(hashFuncs, from->numHashAttrs * sizeof(Oid));
+
+	COPY_NODE_FIELD(policyRelids);
+	COPY_NODE_FIELD(policyAttnos);
+	COPY_NODE_FIELD(policyFuncs);
+	COPY_NODE_FIELD(policyNumSegments);
 
 	return newnode;
 }

@@ -1075,6 +1075,11 @@ _readSplitUpdate(void)
 	READ_ATTRNUMBER_ARRAY(hashAttnos, local_node->numHashAttrs);
 	READ_OID_ARRAY(hashFuncs, local_node->numHashAttrs);
 
+	READ_NODE_FIELD(policyRelids);
+	READ_NODE_FIELD(policyAttnos);
+	READ_NODE_FIELD(policyFuncs);
+	READ_NODE_FIELD(policyNumSegments);
+
 	ReadCommonPlan(&local_node->plan);
 
 	READ_DONE();

@@ -1328,7 +1328,7 @@ CTranslatorQueryToDXL::UpdatedColumnMapping()
 		GPOS_ASSERT(0 < resno);
 
 		// resjunk true columns may be now existing in the query tree, for instance
-		// ctid column in case of relations, see rewriteTargetListUD in GPDB.
+		// ctid column in case of relations, see add_row_identity_columns in GPDB.
 		// In ORCA, resjunk true columns (ex ctid) required to identify the tuple
 		// are included later, so, its safe to not include them here in the output query list.
 		// In planner, a MODIFYTABLE node is created on top of the plan instead of DML node,
