@@ -173,6 +173,14 @@ s/ The longest  establish conn time: \d+\.\d+ ms, segindex: \d+/ The longest  es
 m/^\s+QUERY PLAN\s*$/
 s/^\s+QUERY PLAN\s*$/ QUERY PLAN \n/
 
+# Same reasoning for the explain.sql helper functions, whose result column is
+# headed "explain_filter"/"explain_filter_to_json" instead of "QUERY PLAN".
+m/^\s+explain_filter\s*$/
+s/^\s+explain_filter\s*$/ explain_filter \n/
+
+m/^\s+explain_filter_to_json\s*$/
+s/^\s+explain_filter_to_json\s*$/ explain_filter_to_json \n/
+
 m/^------------+\s*$/
 s/^------------+\s*$/------------\n/
 
