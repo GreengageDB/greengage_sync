@@ -2102,13 +2102,11 @@ CopyReadLineText(CopyFromState cstate)
 			 * to ensure that we only take account of an escape inside a
 			 * quoted field and immediately preceding a quote char, and not
 			 * the second in an escape-escape sequence.
+			 *
+			 * GGDB: kept in CopyCSVQuoteStep() so CopyConsumeBadInputLine()
+			 * can replay the exact same state transitions.
 			 */
-			if (in_quote && c == escapec)
-				last_was_esc = !last_was_esc;
-			if (c == quotec && !last_was_esc)
-				in_quote = !in_quote;
-			if (c != escapec)
-				last_was_esc = false;
+			CopyCSVQuoteStep(c, quotec, escapec, &in_quote, &last_was_esc);
 
 			/*
 			 * Updating the line count for embedded CR and/or LF chars is
