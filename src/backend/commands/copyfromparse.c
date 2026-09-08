@@ -753,11 +753,18 @@ CopyConsumeBadInputLine(CopyFromState cstate)
 
 		if (!cstate->opts.csv_mode || !in_quote)
 		{
-			/* Check for the line terminator */
+			/*
+			 * Check for the line terminator.  When the EOL style has not
+			 * been detected yet (a bad first line), lock it in exactly like
+			 * CopyReadLineText() does, so the rest of the file is split the
+			 * same way whether or not the first line was rejected.
+			 */
 			if (c == '\n' &&
 				(cstate->eol_type == EOL_NL ||
 				 cstate->eol_type == EOL_UNKNOWN))
 			{
+				if (cstate->eol_type == EOL_UNKNOWN)
+					cstate->eol_type = EOL_NL;
 				eol_len = 1;
 				break;
 			}
@@ -774,12 +781,14 @@ CopyConsumeBadInputLine(CopyFromState cstate)
 					if (pos + 1 < cstate->raw_buf_len &&
 						cstate->raw_buf[pos + 1] == '\n')
 					{
+						cstate->eol_type = EOL_CRNL;
 						eol_len = 2;
 						break;
 					}
 					if (cstate->eol_type == EOL_UNKNOWN)
 					{
 						/* bare CR ends the line, like CopyReadLineText */
+						cstate->eol_type = EOL_CR;
 						eol_len = 1;
 						break;
 					}

@@ -323,6 +323,20 @@ SET client_encoding TO 'LATIN1';
 SELECT t FROM sreh_enc_ext2 ORDER BY t;
 RESET client_encoding;
 
+-- a bad *first* line is rejected before the EOL style has been detected;
+-- the consume path must lock cstate->eol_type just like CopyReadLineText(),
+-- so the rest of the file is split the same way as without SREH.
+-- bad_data_encoding_crlf.data: "\xffbad\r\n" then "a\n" "b\n" -- once the
+-- CRLF of line 1 fixes EOL_CRNL, the bare \n after it are data, so "a\nb\n"
+-- is one row (2 rows if eol_type were left unset).
+CREATE TABLE sreh_enc_crlf(t text) DISTRIBUTED REPLICATED;
+COPY sreh_enc_crlf FROM '@abs_srcdir@/data/bad_data_encoding_crlf.data'
+  WITH (ENCODING 'UTF8') LOG ERRORS SEGMENT REJECT LIMIT 100 ROWS;
+SELECT '[' || t || ']' AS row FROM sreh_enc_crlf;
+SELECT linenum, encode(rawbytes, 'hex') AS rawbytes_hex
+  FROM gp_read_error_log('sreh_enc_crlf') ORDER BY linenum;
+DROP TABLE sreh_enc_crlf;
+
 DROP EXTERNAL TABLE sreh_enc_ext;
 DROP EXTERNAL TABLE sreh_enc_ext2;
 DROP TABLE sreh_enc;

@@ -610,6 +610,32 @@ SELECT t FROM sreh_enc_ext2 ORDER BY t;
 ERROR:  segment reject limit reached, aborting operation
 CONTEXT:  External table sreh_enc_ext2, line 4 of file gpfdist://@hostname@:8080/bad_data_encoding.data
 RESET client_encoding;
+-- a bad *first* line is rejected before the EOL style has been detected;
+-- the consume path must lock cstate->eol_type just like CopyReadLineText(),
+-- so the rest of the file is split the same way as without SREH.
+-- bad_data_encoding_crlf.data: "\xffbad\r\n" then "a\n" "b\n" -- once the
+-- CRLF of line 1 fixes EOL_CRNL, the bare \n after it are data, so "a\nb\n"
+-- is one row (2 rows if eol_type were left unset).
+CREATE TABLE sreh_enc_crlf(t text) DISTRIBUTED REPLICATED;
+COPY sreh_enc_crlf FROM '@abs_srcdir@/data/bad_data_encoding_crlf.data'
+  WITH (ENCODING 'UTF8') LOG ERRORS SEGMENT REJECT LIMIT 100 ROWS;
+NOTICE:  found 1 data formatting errors (1 or more input rows), rejected related input data
+SELECT '[' || t || ']' AS row FROM sreh_enc_crlf;
+ row 
+-----
+ [a +
+ b  +
+ ]
+(1 row)
+
+SELECT linenum, encode(rawbytes, 'hex') AS rawbytes_hex
+  FROM gp_read_error_log('sreh_enc_crlf') ORDER BY linenum;
+ linenum | rawbytes_hex 
+---------+--------------
+       1 | ff626164
+(1 row)
+
+DROP TABLE sreh_enc_crlf;
 DROP EXTERNAL TABLE sreh_enc_ext;
 DROP EXTERNAL TABLE sreh_enc_ext2;
 DROP TABLE sreh_enc;
