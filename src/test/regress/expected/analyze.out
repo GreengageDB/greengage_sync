@@ -287,7 +287,7 @@ analyze rootpartition p3_sales;
 select relname, reltuples, relpages from pg_class where relname like 'p3_sales%' order by relname;
                              relname                             | reltuples | relpages 
 -----------------------------------------------------------------+-----------+----------
- p3_sales                                                        |        -1 |        0
+ p3_sales                                                        |         2 |       -1
  p3_sales_1_prt_2                                                |        -1 |        0
  p3_sales_1_prt_2_2_prt_2                                        |        -1 |        0
  p3_sales_1_prt_2_2_prt_2_3_prt_other_regions                    |        -1 |        0
@@ -432,7 +432,7 @@ analyze p3_sales;
 select relname, reltuples, relpages from pg_class where relname like 'p3_sales%' order by relname;
                              relname                             | reltuples | relpages 
 -----------------------------------------------------------------+-----------+----------
- p3_sales                                                        |        -1 |        0
+ p3_sales                                                        |         0 |       -1
  p3_sales_1_prt_2                                                |        -1 |        0
  p3_sales_1_prt_2_2_prt_2                                        |        -1 |        0
  p3_sales_1_prt_2_2_prt_2_3_prt_other_regions                    |         0 |        1
@@ -488,7 +488,7 @@ analyze rootpartition p3_sales;
 select relname, reltuples, relpages from pg_class where relname like 'p3_sales%' order by relname;
                              relname                             | reltuples | relpages 
 -----------------------------------------------------------------+-----------+----------
- p3_sales                                                        |        -1 |        0
+ p3_sales                                                        |         2 |       -1
  p3_sales_1_prt_2                                                |        -1 |        0
  p3_sales_1_prt_2_2_prt_2                                        |        -1 |        0
  p3_sales_1_prt_2_2_prt_2_3_prt_other_regions                    |        -1 |        0
@@ -539,31 +539,31 @@ analyze p3_sales;
 select relname, reltuples, relpages from pg_class where relname like 'p3_sales%' order by relname;
                              relname                             | reltuples | relpages 
 -----------------------------------------------------------------+-----------+----------
- p3_sales                                                        |        -1 |        0
- p3_sales_1_prt_2                                                |        -1 |        0
- p3_sales_1_prt_2_2_prt_2                                        |        -1 |        0
+ p3_sales                                                        |         2 |       -1
+ p3_sales_1_prt_2                                                |         2 |       -1
+ p3_sales_1_prt_2_2_prt_2                                        |         2 |       -1
  p3_sales_1_prt_2_2_prt_2_3_prt_other_regions                    |         0 |        1
  p3_sales_1_prt_2_2_prt_2_3_prt_usa                              |         2 |        1
- p3_sales_1_prt_2_2_prt_other_months                             |        -1 |        0
+ p3_sales_1_prt_2_2_prt_other_months                             |         0 |       -1
  p3_sales_1_prt_2_2_prt_other_months_3_prt_other_regions         |         0 |        1
  p3_sales_1_prt_2_2_prt_other_months_3_prt_usa                   |         0 |        1
- p3_sales_1_prt_outlying_years                                   |        -1 |        0
- p3_sales_1_prt_outlying_years_2_prt_2                           |        -1 |        0
+ p3_sales_1_prt_outlying_years                                   |         0 |       -1
+ p3_sales_1_prt_outlying_years_2_prt_2                           |         0 |       -1
  p3_sales_1_prt_outlying_years_2_prt_2_3_prt_other_regions       |         0 |        1
  p3_sales_1_prt_outlying_years_2_prt_2_3_prt_usa                 |         0 |        1
  p3_sales_1_prt_outlying_years_2_prt_other_m_3_prt_other_regions |         0 |        1
- p3_sales_1_prt_outlying_years_2_prt_other_months                |        -1 |        0
+ p3_sales_1_prt_outlying_years_2_prt_other_months                |         0 |       -1
  p3_sales_1_prt_outlying_years_2_prt_other_months_3_prt_usa      |         0 |        1
 (15 rows)
 
 select * from pg_stats where tablename like 'p3_sales%' order by tablename, attname;
  schemaname |             tablename              | attname | inherited | null_frac | avg_width | n_distinct | most_common_vals | most_common_freqs | histogram_bounds | correlation | most_common_elems | most_common_elem_freqs | elem_count_histogram 
 ------------+------------------------------------+---------+-----------+-----------+-----------+------------+------------------+-------------------+------------------+-------------+-------------------+------------------------+----------------------
- public     | p3_sales                           | day     | t         |         0 |         4 |       -0.5 | {20}             | {1}               |                  |             |                   |                        | 
- public     | p3_sales                           | id      | t         |         0 |         4 |       -0.5 | {1}              | {1}               |                  |             |                   |                        | 
- public     | p3_sales                           | month   | t         |         0 |         4 |       -0.5 | {1}              | {1}               |                  |             |                   |                        | 
- public     | p3_sales                           | region  | t         |         0 |         4 |       -0.5 | {usa}            | {1}               |                  |             |                   |                        | 
- public     | p3_sales                           | year    | t         |         0 |         4 |       -0.5 | {2002}           | {1}               |                  |             |                   |                        | 
+ public     | p3_sales                           | day     | t         |         0 |         4 |       -0.5 | {20}             | {1}               |                  |           1 |                   |                        | 
+ public     | p3_sales                           | id      | t         |         0 |         4 |       -0.5 | {1}              | {1}               |                  |           1 |                   |                        | 
+ public     | p3_sales                           | month   | t         |         0 |         4 |       -0.5 | {1}              | {1}               |                  |           1 |                   |                        | 
+ public     | p3_sales                           | region  | t         |         0 |         4 |       -0.5 | {usa}            | {1}               |                  |           1 |                   |                        | 
+ public     | p3_sales                           | year    | t         |         0 |         4 |       -0.5 | {2002}           | {1}               |                  |           1 |                   |                        | 
  public     | p3_sales_1_prt_2                   | day     | t         |         0 |         4 |       -0.5 | {20}             | {1}               |                  |           1 |                   |                        | 
  public     | p3_sales_1_prt_2                   | id      | t         |         0 |         4 |       -0.5 | {1}              | {1}               |                  |           1 |                   |                        | 
  public     | p3_sales_1_prt_2                   | month   | t         |         0 |         4 |       -0.5 | {1}              | {1}               |                  |           1 |                   |                        | 
@@ -605,7 +605,7 @@ analyze rootpartition p3_sales;
 select relname, reltuples, relpages from pg_class where relname like 'p3_sales%' order by relname;
                              relname                             | reltuples | relpages 
 -----------------------------------------------------------------+-----------+----------
- p3_sales                                                        |        -1 |        0
+ p3_sales                                                        |         2 |       -1
  p3_sales_1_prt_2                                                |        -1 |        0
  p3_sales_1_prt_2_2_prt_2                                        |        -1 |        0
  p3_sales_1_prt_2_2_prt_2_3_prt_other_regions                    |        -1 |        0
@@ -656,7 +656,7 @@ analyze rootpartition p3_sales;
 select relname, reltuples, relpages from pg_class where relname like 'p3_sales%' order by relname;
                              relname                             | reltuples | relpages 
 -----------------------------------------------------------------+-----------+----------
- p3_sales                                                        |        -1 |        0
+ p3_sales                                                        |         2 |       -1
  p3_sales_1_prt_2                                                |        -1 |        0
  p3_sales_1_prt_2_2_prt_2                                        |        -1 |        0
  p3_sales_1_prt_2_2_prt_2_3_prt_other_regions                    |        -1 |        0
@@ -708,19 +708,19 @@ select relname, reltuples, relpages from pg_class where relname like 'p3_sales%'
                              relname                             | reltuples | relpages 
 -----------------------------------------------------------------+-----------+----------
  p3_sales                                                        |        -1 |        0
- p3_sales_1_prt_2                                                |        -1 |        0
- p3_sales_1_prt_2_2_prt_2                                        |        -1 |        0
+ p3_sales_1_prt_2                                                |         2 |       -1
+ p3_sales_1_prt_2_2_prt_2                                        |         2 |       -1
  p3_sales_1_prt_2_2_prt_2_3_prt_other_regions                    |         0 |        1
  p3_sales_1_prt_2_2_prt_2_3_prt_usa                              |         2 |        1
- p3_sales_1_prt_2_2_prt_other_months                             |        -1 |        0
+ p3_sales_1_prt_2_2_prt_other_months                             |         0 |       -1
  p3_sales_1_prt_2_2_prt_other_months_3_prt_other_regions         |         0 |        1
  p3_sales_1_prt_2_2_prt_other_months_3_prt_usa                   |         0 |        1
- p3_sales_1_prt_outlying_years                                   |        -1 |        0
- p3_sales_1_prt_outlying_years_2_prt_2                           |        -1 |        0
+ p3_sales_1_prt_outlying_years                                   |         0 |       -1
+ p3_sales_1_prt_outlying_years_2_prt_2                           |         0 |       -1
  p3_sales_1_prt_outlying_years_2_prt_2_3_prt_other_regions       |         0 |        1
  p3_sales_1_prt_outlying_years_2_prt_2_3_prt_usa                 |         0 |        1
  p3_sales_1_prt_outlying_years_2_prt_other_m_3_prt_other_regions |         0 |        1
- p3_sales_1_prt_outlying_years_2_prt_other_months                |        -1 |        0
+ p3_sales_1_prt_outlying_years_2_prt_other_months                |         0 |       -1
  p3_sales_1_prt_outlying_years_2_prt_other_months_3_prt_usa      |         0 |        1
 (15 rows)
 
@@ -768,7 +768,7 @@ analyze rootpartition p3_sales;
 select relname, reltuples, relpages from pg_class where relname like 'p3_sales%' order by relname;
                              relname                             | reltuples | relpages 
 -----------------------------------------------------------------+-----------+----------
- p3_sales                                                        |        -1 |        0
+ p3_sales                                                        |         2 |       -1
  p3_sales_1_prt_2                                                |        -1 |        0
  p3_sales_1_prt_2_2_prt_2                                        |        -1 |        0
  p3_sales_1_prt_2_2_prt_2_3_prt_other_regions                    |        -1 |        0
@@ -999,10 +999,10 @@ SELECT * FROM pg_stats WHERE tablename = 'ana_parent';
 SELECT * FROM pg_stats WHERE tablename = 'ana_c1';
  schemaname | tablename | attname | inherited | null_frac | avg_width | n_distinct  | most_common_vals | most_common_freqs |                 histogram_bounds                  | correlation | most_common_elems | most_common_elem_freqs | elem_count_histogram 
 ------------+-----------+---------+-----------+-----------+-----------+-------------+------------------+-------------------+---------------------------------------------------+-------------+-------------------+------------------------+----------------------
- public     | ana_c1    | aa      | f         |         0 |         4 |          -1 |                  |                   | {1,2,3,4,5,6,7,8,9,10}                            |   0.6727273 |                   |                        | 
- public     | ana_c1    | bb      | f         |         0 |         3 |           1 | {bb}             | {1}               |                                                   |           1 |                   |                        | 
  public     | ana_c1    | aa      | t         |         0 |         4 | -0.95238096 | {10}             | {0.0952381}       | {1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20} |  0.38961038 |                   |                        | 
  public     | ana_c1    | bb      | t         |         0 |         3 |           1 | {bb}             | {1}               |                                                   |           1 |                   |                        | 
+ public     | ana_c1    | aa      | f         |         0 |         4 |          -1 |                  |                   | {1,2,3,4,5,6,7,8,9,10}                            |   0.6727273 |                   |                        | 
+ public     | ana_c1    | bb      | f         |         0 |         3 |           1 | {bb}             | {1}               |                                                   |           1 |                   |                        | 
 (4 rows)
 
 SELECT * FROM pg_stats WHERE tablename = 'ana_c2';
@@ -1021,7 +1021,7 @@ insert into no_eqop select NULL, i % 5 + 1, '<foo>bar</foo>'::xml from generate_
 analyze verbose rootpartition no_eqop(c);
 INFO:  analyzing "public.no_eqop" inheritance tree
 INFO:  partition no_eqop_1_prt_1 is not analyzed, so ANALYZE will collect sample for stats calculation
-INFO:  Executing SQL: select pg_catalog.gp_acquire_sample_rows(75185, 10000, 't');
+INFO:  Executing SQL: select pg_catalog.gp_acquire_sample_rows(24282, 10000, 't');
 select * from pg_stats where tablename = 'no_eqop';
  schemaname | tablename | attname | inherited | null_frac  | avg_width | n_distinct | most_common_vals | most_common_freqs | histogram_bounds | correlation | most_common_elems | most_common_elem_freqs | elem_count_histogram 
 ------------+-----------+---------+-----------+------------+-----------+------------+------------------+-------------------+------------------+-------------+-------------------+------------------------+----------------------
@@ -1032,6 +1032,8 @@ analyze no_eqop(c);
 -- Simply merges leaf stats. gp_acquire_sample_rows() is not executed
 analyze verbose rootpartition no_eqop(c);
 INFO:  analyzing "public.no_eqop" inheritance tree
+INFO:  column c of partition no_eqop is not analyzed, so ANALYZE will collect sample for stats calculation
+INFO:  Executing SQL: select pg_catalog.gp_acquire_sample_rows(24282, 10000, 't');
 select * from pg_stats where tablename = 'no_eqop';
  schemaname | tablename | attname | inherited | null_frac  | avg_width | n_distinct | most_common_vals | most_common_freqs | histogram_bounds | correlation | most_common_elems | most_common_elem_freqs | elem_count_histogram 
 ------------+-----------+---------+-----------+------------+-----------+------------+------------------+-------------------+------------------+-------------+-------------------+------------------------+----------------------
@@ -1045,13 +1047,13 @@ CREATE TABLE test_tb_14644_subclass () INHERITS (test_tb_14644);
 DROP TABLE test_tb_14644_subclass;
 select relhassubclass from pg_class where relname = 'test_tb_14644';
  relhassubclass 
-------------
+----------------
  t
 (1 row)
 
 select relhassubclass from gp_dist_random('pg_class') where relname = 'test_tb_14644';
  relhassubclass 
-------------
+----------------
  t
  t
  t
@@ -1060,13 +1062,13 @@ select relhassubclass from gp_dist_random('pg_class') where relname = 'test_tb_1
 ANALYZE;
 select relhassubclass from pg_class where relname = 'test_tb_14644';
  relhassubclass 
-------------
+----------------
  f
 (1 row)
 
 select relhassubclass from gp_dist_random('pg_class') where relname = 'test_tb_14644';
  relhassubclass 
-------------
+----------------
  f
  f
  f
