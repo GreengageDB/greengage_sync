@@ -624,9 +624,14 @@ CopyConsumeBadRefill(CopyFromState cstate, int *pos, int *segstart)
  *
  * The terminator search mirrors CopyReadLineText's GPDB semantics: the
  * line ends only at the configured/detected EOL (bare \r or \n are data
- * in EOL_CRNL mode, etc.), quoted CSV fields may contain newlines (the
+ * in EOL_CRNL mode, etc.), the EOL style is locked in from this line when
+ * it was not detected yet, quoted CSV fields may contain newlines (the
  * quoting state of the line's already-consumed prefix is replayed), and
- * in text mode a backslash escapes the following byte.
+ * in text mode a backslash escapes the following byte.  The end-of-copy
+ * marker (\.) is deliberately not recognized: this path only runs on an
+ * encoding error and \. is always valid ASCII, so the offending line
+ * always ends at its own newline and a following "\.\n" is handled
+ * normally by the next NextCopyFrom().
  *
  * Note: in the transcoding case, the already-converted prefix of the line
  * (in line_buf/input_buf) is in the server encoding; its raw bytes have
@@ -668,8 +673,21 @@ CopyConsumeBadInputLine(CopyFromState cstate)
 			CopyCSVQuoteStep(cstate->line_buf.data[i], quotec, escapec,
 							 &in_quote, &last_was_esc);
 		for (i = cstate->input_buf_index; i < cstate->input_buf_len; i++)
-			CopyCSVQuoteStep(cstate->input_buf[i], quotec, escapec,
-							 &in_quote, &last_was_esc);
+		{
+			char		c = cstate->input_buf[i];
+
+			CopyCSVQuoteStep(c, quotec, escapec, &in_quote, &last_was_esc);
+
+			/*
+			 * CopyReadLineText() never scanned this verified-but-unconsumed
+			 * tail of input_buf, so its embedded-newline line count did not
+			 * run over it; do it here, like the main scan loop below.  (In
+			 * the paths that reach here INPUT_BUF_BYTES is 0, so this loop
+			 * is normally empty -- this is for symmetry, not a live case.)
+			 */
+			if (in_quote && c == (cstate->eol_type == EOL_NL ? '\n' : '\r'))
+				cstate->cur_lineno++;
+		}
 	}
 
 	/*

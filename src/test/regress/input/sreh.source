@@ -337,6 +337,23 @@ SELECT linenum, encode(rawbytes, 'hex') AS rawbytes_hex
   FROM gp_read_error_log('sreh_enc_crlf') ORDER BY linenum;
 DROP TABLE sreh_enc_crlf;
 
+-- transcoding case (file encoding != database encoding): the offending byte
+-- is found by the conversion routine, and the rejected row is logged as the
+-- already-converted (server-encoding) prefix followed by the raw
+-- file-encoding tail from that byte -- the chunked pipeline has already
+-- dropped the prefix's source bytes.
+-- bad_data_encoding_eucjp.data line 2: EUC_JP kana 8e b1 (-> UTF8 ef bd b1)
+-- then an invalid a1 20, then "tail"; so rawbytes is efbdb1 (server) + the
+-- raw a1207461696c.
+CREATE TABLE sreh_enc_tc(t text) DISTRIBUTED REPLICATED;
+COPY sreh_enc_tc FROM '@abs_srcdir@/data/bad_data_encoding_eucjp.data'
+  WITH (ENCODING 'EUC_JP') LOG ERRORS SEGMENT REJECT LIMIT 100 ROWS;
+SELECT t FROM sreh_enc_tc ORDER BY t;
+SELECT linenum, encode(rawbytes, 'hex') AS rawbytes_hex
+  FROM gp_read_error_log('sreh_enc_tc') ORDER BY linenum;
+SELECT gp_truncate_error_log('sreh_enc_tc');
+DROP TABLE sreh_enc_tc;
+
 DROP EXTERNAL TABLE sreh_enc_ext;
 DROP EXTERNAL TABLE sreh_enc_ext2;
 DROP TABLE sreh_enc;
