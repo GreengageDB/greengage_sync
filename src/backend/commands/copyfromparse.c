@@ -547,9 +547,10 @@ CopyConvertBuf(CopyFromState cstate)
 }
 
 /*
- * GPDB: one step of CopyReadLineText's CSV quote/escape tracking.  Used by
- * CopyConsumeBadInputLine() to replay/continue the quoting state of the
- * current line.  Must match the corresponding logic in CopyReadLineText().
+ * GPDB: one step of the CSV quote/escape state machine, shared by
+ * CopyReadLineText() (its main byte scan) and CopyConsumeBadInputLine()
+ * (which replays the quoting state over a rejected line's already-consumed
+ * prefix before scanning its raw tail).
  */
 static inline void
 CopyCSVQuoteStep(char c, char quotec, char escapec,
