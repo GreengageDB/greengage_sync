@@ -4381,10 +4381,21 @@ CTranslatorDXLToPlStmt::TranslateDXLDml(
 							 nullptr,  // translate context for the base table
 							 child_contexts, output_context);
 
-	// pad child plan's target list with NULLs for dropped columns for all DML operator types
-	List *target_list_with_dropped_cols =
-		CreateTargetListWithNullsForDroppedCols(dml_target_list, md_rel);
-	dml_target_list = target_list_with_dropped_cols;
+	// Pad the child plan's target list with NULLs for dropped columns, so that
+	// it matches the table's physical layout.  INSERT and DELETE need that.
+	//
+	// An UPDATE must not be padded, split or not: ModifyTable builds the new
+	// tuple with ExecBuildUpdateProjection(), which pairs each non-junk column
+	// of the subplan with an entry of updateColnosLists and rejects an
+	// assignment to a dropped column, nulling those itself.
+	BOOL pad_dropped_cols = (CMD_UPDATE != m_cmd_type);
+	List *target_list_with_dropped_cols = dml_target_list;
+	if (pad_dropped_cols)
+	{
+		target_list_with_dropped_cols =
+			CreateTargetListWithNullsForDroppedCols(dml_target_list, md_rel);
+		dml_target_list = target_list_with_dropped_cols;
+	}
 
 	// Add junk columns to the target list for the 'action', 'ctid',
 	// 'gp_segment_id'. The ModifyTable node will find these based
@@ -4428,14 +4439,38 @@ CTranslatorDXLToPlStmt::TranslateDXLDml(
 	dml->nominalRelation = index;
 	dml->resultRelations = ListMake1Int(index);
 	dml->rootRelation = md_rel->IsPartitioned() ? index : 0;
-	dml->plans = ListMake1(child_plan);
+	dml->plan.lefttree = child_plan;
 
 	dml->fdwPrivLists = ListMake1(NIL);
 
-	// ORCA plans all updates as split updates
 	if (m_cmd_type == CMD_UPDATE)
 	{
-		dml->isSplitUpdates = ListMake1Int((int) isSplit);
+		dml->isSplitUpdate = isSplit;
+
+		// ModifyTable maps each non-junk column the subplan produces to its
+		// target-table attribute number through updateColnosLists.  The
+		// Postgres planner emits only the SET columns; ORCA emits the whole
+		// new row in physical column order, so the mapping is just each live
+		// column's attribute number.  One list per result relation, and ORCA
+		// only ever has one.
+		List *update_colnos = NIL;
+		const ULONG num_of_rel_cols = md_rel->ColumnCount();
+
+		for (ULONG ul = 0; ul < num_of_rel_cols; ul++)
+		{
+			const IMDColumn *md_col = md_rel->GetMdCol(ul);
+
+			if (md_col->IsSystemColumn())
+			{
+				continue;
+			}
+			if (md_col->IsDropped())
+			{
+				continue;
+			}
+			update_colnos = gpdb::LAppendInt(update_colnos, md_col->AttrNum());
+		}
+		dml->updateColnosLists = ListMake1(update_colnos);
 	}
 
 	plan->targetlist = NIL;

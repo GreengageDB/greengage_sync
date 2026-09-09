@@ -587,7 +587,7 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	WRITE_NODE_FIELD(onConflictWhere);
 	WRITE_UINT_FIELD(exclRelRTI);
 	WRITE_NODE_FIELD(exclRelTlist);
-	WRITE_NODE_FIELD(isSplitUpdates);
+	WRITE_BOOL_FIELD(isSplitUpdate);
 	WRITE_BOOL_FIELD(forceTupleRouting);
 }
 
@@ -1395,6 +1395,11 @@ _outSplitUpdate(StringInfo str, const SplitUpdate *node)
 	WRITE_INT_FIELD(numHashAttrs);
 	WRITE_ATTRNUMBER_ARRAY(hashAttnos, node->numHashAttrs);
 	WRITE_OID_ARRAY(hashFuncs, node->numHashAttrs);
+
+	WRITE_NODE_FIELD(policyRelids);
+	WRITE_NODE_FIELD(policyAttnos);
+	WRITE_NODE_FIELD(policyFuncs);
+	WRITE_NODE_FIELD(policyNumSegments);
 
 	_outPlanInfo(str, (Plan *) node);
 }

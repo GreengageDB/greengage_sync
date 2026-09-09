@@ -206,9 +206,16 @@ CopyFromErrorCallback(void *arg)
 			/*
 			 * Error is relevant to a particular line.
 			 *
-			 * If line_buf still contains the correct line, print it.
+			 * Print line_buf only if it still holds the current line and that
+			 * line is known to be valid in the server encoding
+			 * (line_buf_converted).  Otherwise -- a rejected row that failed
+			 * encoding verification/conversion, or a line whose read was
+			 * aborted -- line_buf may contain bytes that are invalid in the
+			 * server encoding; we dare not feed those into the error context
+			 * (they would break the server->client conversion of the
+			 * message), so we punt and just report the line number.
 			 */
-			if (cstate->line_buf_valid)
+			if (cstate->line_buf_valid && cstate->line_buf_converted)
 			{
 				char	   *lineval;
 
@@ -1779,6 +1786,7 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->input_reached_eof = false;
 
 		initStringInfo(&cstate->line_buf);
+		cstate->line_buf_converted = false;
 	}
 
 	initStringInfo(&cstate->attribute_buf);
@@ -2290,6 +2298,7 @@ SendCopyFromForwardedError(CopyFromState cstate, CdbCopy *cdbCopy, char *errorms
 	errframe->lineno = cstate->cur_lineno;
 	errframe->line_len = cstate->line_buf.len;
 	errframe->errmsg_len = errormsg_len;
+	errframe->line_buf_converted = cstate->line_buf_converted;
 
 	/* send the bad data row to a random QE (via roundrobin) */
 	if (cstate->lastsegid == cdbCopy->total_segs)
