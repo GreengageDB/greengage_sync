@@ -837,8 +837,7 @@ else \
 	pstate->cdbsreh->rawdata->cursor = 0; \
 	pstate->cdbsreh->rawdata->data = pstate->line_buf.data; \
 	pstate->cdbsreh->rawdata->len = pstate->line_buf.len; \
-	/* line_buf is always in the database encoding, see CopyReadLine() */ \
-	pstate->cdbsreh->is_server_enc = true; \
+	pstate->cdbsreh->is_server_enc = pstate->line_buf_converted; \
 	pstate->cdbsreh->linenumber = pstate->cur_lineno; \
 	pstate->cdbsreh->processed++; \
 \
@@ -1518,7 +1517,7 @@ external_scan_error_callback(void *arg)
 	else
 	{
 		/* error is relevant to a particular line */
-		if (cstate->line_buf_valid)
+		if (cstate->line_buf_valid && cstate->line_buf_converted)
 		{
 			char	   *line_buf;
 

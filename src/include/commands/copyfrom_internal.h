@@ -123,6 +123,13 @@ typedef struct CopyFromStateData
 	 */
 	StringInfoData line_buf;
 	bool		line_buf_valid; /* contains the row being processed? */
+	bool		line_buf_converted; /* GGDB: line_buf in server encoding?
+									 * With the chunked encoding conversion
+									 * (input_buf) pipeline this is true for
+									 * every fully read line; it is kept for
+									 * the single-row error handler
+									 * (is_server_enc) and the QD->QE error
+									 * frames. */
 
 	/*
 	 * input_buf holds input data, already converted to database encoding.
@@ -281,13 +288,14 @@ typedef struct
 	int64		lineno;
 	uint32		errmsg_len;
 	uint32		line_len;
+	bool		line_buf_converted;
 
 	/* 'errmsg' follows */
 	/* 'line' follows */
 } copy_from_dispatch_error;
 
 /* Size of the struct, without padding at the end. */
-#define SizeOfCopyFromDispatchError (offsetof(copy_from_dispatch_error, line_len) + sizeof(uint32))
+#define SizeOfCopyFromDispatchError (offsetof(copy_from_dispatch_error, line_buf_converted) + sizeof(bool))
 
 extern void ReceiveCopyBegin(CopyFromState cstate);
 extern void ReceiveCopyBinaryHeader(CopyFromState cstate);
