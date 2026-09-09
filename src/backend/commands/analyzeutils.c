@@ -1213,7 +1213,6 @@ leaf_parts_analyzed(Oid attrelid, Oid relid_exclude, List *va_cols, int elevel)
 			continue;
 
 		float4		relTuples = get_rel_reltuples(partRelid);
-		int32		relpages = get_rel_relpages(partRelid);
 
 		/* Partition is not analyzed */
 		if (relTuples < 0.0)
@@ -1235,6 +1234,10 @@ leaf_parts_analyzed(Oid attrelid, Oid relid_exclude, List *va_cols, int elevel)
 		Oid			partRelid = lfirst_oid(lc);
 
 		if (partRelid == relid_exclude)
+			continue;
+
+		/* Ignore all but leaf partition */
+		if (get_rel_relkind(partRelid) == RELKIND_PARTITIONED_TABLE)
 			continue;
 
 		float4		relTuples = get_rel_reltuples(partRelid);
