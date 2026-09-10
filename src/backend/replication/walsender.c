@@ -890,12 +890,8 @@ logical_read_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr, int req
 	XLByteToSeg(targetPagePtr, segno, state->segcxt.ws_segsize);
 	CheckXLogRemoved(segno, state->seg.ws_tli);
 
-<<<<<<< HEAD
-	/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 	WalSndCtl->error = WALSNDERROR_NONE;
 
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	return count;
 }
 
