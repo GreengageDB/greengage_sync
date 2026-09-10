@@ -968,9 +968,13 @@ btvacuumcleanup(IndexVacuumInfo *info, IndexBulkDeleteResult *stats)
 	 * Maintain num_delpages value in metapage for _bt_vacuum_needs_cleanup().
 	 *
 	 * num_delpages is the number of deleted pages now in the index that were
-	 * not safe to place in the FSM to be recycled just yet.  We expect that
-	 * it will almost certainly be possible to place all of these pages in the
-	 * FSM during the next VACUUM operation.
+	 * not safe to place in the FSM to be recycled just yet.  num_delpages is
+	 * greater than 0 only when _bt_pagedel() actually deleted pages during
+	 * our call to btvacuumscan().  Even then, _bt_pendingfsm_finalize() must
+	 * have failed to place any newly deleted pages in the FSM just moments
+	 * ago.  (Actually, there are edge cases where recycling of the current
+	 * VACUUM's newly deleted pages does not even become safe by the time the
+	 * next VACUUM comes around.  See nbtree/README.)
 	 */
 	Assert(stats->pages_deleted >= stats->pages_free);
 	num_delpages = stats->pages_deleted - stats->pages_free;
@@ -1046,6 +1050,14 @@ btvacuumscan(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
 												  "_bt_pagedel",
 												  ALLOCSET_DEFAULT_SIZES);
 
+	/* Initialize vstate fields used by _bt_pendingfsm_finalize */
+	vstate.bufsize = 0;
+	vstate.maxbufsize = 0;
+	vstate.pendingpages = NULL;
+	vstate.npendingpages = 0;
+	/* Consider applying _bt_pendingfsm_finalize optimization */
+	_bt_pendingfsm_init(rel, &vstate, (callback == NULL));
+
 	/*
 	 * The outer loop iterates over all index pages except the metapage, in
 	 * physical order (we hope the kernel will cooperate in providing
@@ -1104,17 +1116,15 @@ btvacuumscan(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
 	MemoryContextDelete(vstate.pagedelcontext);
 
 	/*
-	 * If we found any recyclable pages (and recorded them in the FSM), then
-	 * forcibly update the upper-level FSM pages to ensure that searchers can
-	 * find them.  It's possible that the pages were also found during
-	 * previous scans and so this is a waste of time, but it's cheap enough
-	 * relative to scanning the index that it shouldn't matter much, and
-	 * making sure that free pages are available sooner not later seems
-	 * worthwhile.
+	 * If there were any calls to _bt_pagedel() during scan of the index then
+	 * see if any of the resulting pages can be placed in the FSM now.  When
+	 * it's not safe we'll have to leave it up to a future VACUUM operation.
 	 *
-	 * Note that if no recyclable pages exist, we don't bother vacuuming the
-	 * FSM at all.
+	 * Finally, if we placed any pages in the FSM (either just now or during
+	 * the scan), forcibly update the upper-level FSM pages to ensure that
+	 * searchers can find them.
 	 */
+	_bt_pendingfsm_finalize(rel, &vstate);
 	if (stats->pages_free > 0)
 		IndexFreeSpaceMapVacuum(rel);
 }
@@ -1312,10 +1322,10 @@ backtrack:
 				 * as long as the callback function only considers whether the
 				 * index tuple refers to pre-cutoff heap tuples that were
 				 * certainly already pruned away during VACUUM's initial heap
-				 * scan by the time we get here. (heapam's XLOG_HEAP2_CLEAN
-				 * and XLOG_HEAP2_CLEANUP_INFO records produce conflicts using
-				 * a latestRemovedXid value for the pointed-to heap tuples, so
-				 * there is no need to produce our own conflict now.)
+				 * scan by the time we get here. (heapam's XLOG_HEAP2_PRUNE
+				 * records produce conflicts using a latestRemovedXid value
+				 * for the pointed-to heap tuples, so there is no need to
+				 * produce our own conflict now.)
 				 *
 				 * Backends with snapshots acquired after a VACUUM starts but
 				 * before it finishes could have visibility cutoff with a

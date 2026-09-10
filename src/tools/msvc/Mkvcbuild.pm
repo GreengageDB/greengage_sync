@@ -106,7 +106,7 @@ sub mkvcbuild
 	  dirent.c dlopen.c getopt.c getopt_long.c link.c
 	  pread.c preadv.c pwrite.c pwritev.c pg_bitutils.c
 	  pg_strong_random.c pgcheckdir.c pgmkdirp.c pgsleep.c pgstrcasecmp.c
-	  pqsignal.c mkdtemp.c qsort.c qsort_arg.c quotes.c system.c
+	  pqsignal.c mkdtemp.c qsort.c qsort_arg.c bsearch_arg.c quotes.c system.c
 	  strerror.c tar.c thread.c
 	  win32env.c win32error.c win32security.c win32setlocale.c win32stat.c);
 
@@ -135,11 +135,13 @@ sub mkvcbuild
 	if ($solution->{options}->{openssl})
 	{
 		push(@pgcommonallfiles, 'cryptohash_openssl.c');
+		push(@pgcommonallfiles, 'hmac_openssl.c');
 		push(@pgcommonallfiles, 'protocol_openssl.c');
 	}
 	else
 	{
 		push(@pgcommonallfiles, 'cryptohash.c');
+		push(@pgcommonallfiles, 'hmac.c');
 		push(@pgcommonallfiles, 'md5.c');
 		push(@pgcommonallfiles, 'sha1.c');
 		push(@pgcommonallfiles, 'sha2.c');

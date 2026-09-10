@@ -256,6 +256,9 @@ struct XLogReaderState
 	 * Set at the end of recovery: the start point of a partial record at the
 	 * end of WAL (InvalidXLogRecPtr if there wasn't one), and the start
 	 * location of its first contrecord that went missing.
+	 *
+	 * TODO_REVERT_C2DC19342E0: these three fields are GGDB-specific, keep
+	 * ours when the revert lands.
 	 */
 	XLogRecPtr	abortedRecPtr;
 	XLogRecPtr	missingContrecPtr;
@@ -288,6 +291,12 @@ extern bool XLogReaderValidatePageHeader(XLogReaderState *state,
 										 XLogRecPtr recptr, char *phdr);
 
 /* In GPDB, this is needed in the backend, too, for WAL replication tests. */
+/*
+ * TODO_REVERT_C2DC19342E0: keep this GGDB block when the revert lands, and
+ * drop the plain "#ifdef FRONTEND" copy of this declaration that the revert
+ * re-introduces above.  Git does not report that as a conflict -- it merges
+ * both copies in silently.
+ */
 /* #ifdef FRONTEND */
 #if 1
 extern XLogRecPtr XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr);

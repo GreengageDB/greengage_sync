@@ -325,6 +325,8 @@ extern int	vacuum_freeze_min_age;
 extern int	vacuum_freeze_table_age;
 extern int	vacuum_multixact_freeze_min_age;
 extern int	vacuum_multixact_freeze_table_age;
+extern int	vacuum_failsafe_age;
+extern int	vacuum_multixact_failsafe_age;
 
 /* Variables for cost-based parallel vacuum */
 extern pg_atomic_uint32 *VacuumSharedCostBalance;
@@ -365,6 +367,8 @@ extern void vacuum_set_xid_limits(Relation rel,
 								  TransactionId *xidFullScanLimit,
 								  MultiXactId *multiXactCutoff,
 								  MultiXactId *mxactFullScanLimit);
+extern bool vacuum_xid_failsafe_check(TransactionId relfrozenxid,
+									  MultiXactId relminmxid);
 extern void vac_update_datfrozenxid(void);
 extern void vacuum_delay_point(void);
 extern bool vacuum_is_relation_owner(Oid relid, Form_pg_class reltuple,
@@ -381,8 +385,6 @@ extern void analyze_rel(Oid relid, RangeVar *relation,
 						BufferAccessStrategy bstrategy, gp_acquire_sample_rows_context *ctx);
 
 /* in commands/vacuumlazy.c */
-extern void lazy_vacuum_rel_heap(Relation onerel,
-							VacuumParams *params, BufferAccessStrategy bstrategy);
 extern void scan_index(Relation indrel, Relation aorel, int elevel, BufferAccessStrategy bstrategy);
 
 /* in commands/vacuum_ao.c */

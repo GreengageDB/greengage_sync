@@ -6,7 +6,15 @@ use TestLib;
 use Test::More;
 use Config;
 
-plan tests => 9;
+if ($Config{osname} eq 'MSWin32')
+{
+	plan skip_all => 'tests hang on Windows';
+	exit;
+}
+else
+{
+	plan tests => 9;
+}
 
 
 # To avoid hanging while expecting some specific input from a psql

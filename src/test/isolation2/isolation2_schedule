@@ -10,6 +10,7 @@ test: vacuum_skip_locked_onseg
 test: lockmodes
 test: pg_rewind_fail_missing_xlog
 test: prepared_xact_deadlock_pg_rewind
+test: recovery_denial_window
 test: ao_partition_lock
 
 test: select_dropped_table

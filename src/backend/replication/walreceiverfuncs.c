@@ -250,7 +250,7 @@ ShutdownWalRcv(void)
 		HandleStartupProcInterrupts();
 
 		ConditionVariableTimedSleep(&walrcv->walRcvStoppedCV, 100 /* ms */,
-									WAIT_EVENT_WALRCV_EXIT);
+									WAIT_EVENT_WAL_RECEIVER_EXIT);
 	}
 	ConditionVariableCancelSleep();
 

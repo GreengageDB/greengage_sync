@@ -210,7 +210,9 @@ static void
 checkIfFailedDueToNormalRestart(fts_segment_info *ftsInfo)
 {
 	if (strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_IN_RECOVERY_MSG)) ||
-		strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_IN_STARTUP_MSG)))
+		strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_IN_STARTUP_MSG)) ||
+		strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_NOT_YET_ACCEPTING_MSG)) ||
+		strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_NOT_ACCEPTING_MSG)))
 	{
 		XLogRecPtr tmpptr;
 		char *ptr = strstr(PQerrorMessage(ftsInfo->conn),
@@ -1092,7 +1094,9 @@ processResponse(fts_context *context)
 				else if (ftsInfo->restart_state == PM_IN_RECOVERY_MAKING_PROGRESS)
 				{
 					Assert(strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_IN_RECOVERY_MSG)) ||
-						   strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_IN_STARTUP_MSG)));
+						   strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_IN_STARTUP_MSG)) ||
+						   strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_NOT_YET_ACCEPTING_MSG)) ||
+						   strstr(PQerrorMessage(ftsInfo->conn), _(POSTMASTER_NOT_ACCEPTING_MSG)));
 					elogif(gp_log_fts >= GPVARS_VERBOSITY_VERBOSE, LOG,
 						 "FTS: detected segment is in recovery mode and making "
 						 "progress (content=%d) primary dbid=%d, mirror dbid=%d",

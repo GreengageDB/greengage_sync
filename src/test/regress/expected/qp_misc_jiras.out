@@ -2967,7 +2967,7 @@ select relname, reltuples, relpages from pg_class where relname like 'tbl6833_an
 ------------------------+-----------+----------
  tbl6833_anl_1_prt_bb_1 |         0 |        1
  tbl6833_anl_1_prt_bb_2 |         0 |        1
- tbl6833_anl            |        -1 |        0
+ tbl6833_anl            |         0 |       -1
 (3 rows)
 
 create table qp_misc_jiras.tbl6833_vac(a int, b int, c int) distributed by (a) partition by range (b) (partition bb start (0) end (2) every (1));
@@ -3424,6 +3424,10 @@ select count(distinct d) from qp_misc_jiras.tbl7286_test;
  100000
 (1 row)
 
+reset statement_mem;
+reset gp_enable_agg_distinct;
+reset gp_enable_agg_distinct_pruning;
+reset optimizer_force_three_stage_scalar_dqa;
 drop table qp_misc_jiras.tbl7286_test;
 create table qp_misc_jiras.tbl7381_test (i int, t text, d date, ti time with time zone);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.

@@ -545,33 +545,31 @@ create table some_tab_child () inherits (some_tab);
 insert into some_tab_child values(1,2);
 explain (verbose, costs off)
 update some_tab set a = a + 1 where false;
-                   QUERY PLAN                    
--------------------------------------------------
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
  Update on public.some_tab
-   Update on public.some_tab
    ->  Result
-         Output: (a + 1), b, ctid, gp_segment_id
+         Output: (some_tab.a + 1), some_tab.b, NULL::oid, NULL::tid, NULL::integer
          One-Time Filter: false
  Optimizer: Postgres query optimizer
- Settings: optimizer=off
-(7 rows)
+ Settings: optimizer = 'off'
+(6 rows)
 
 update some_tab set a = a + 1 where false;
 explain (verbose, costs off)
 update some_tab set a = a + 1 where false returning b, a;
-                      QUERY PLAN                       
--------------------------------------------------------
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   Output: b, a
+   Output: some_tab.b, some_tab.a
    ->  Update on public.some_tab
-         Output: b, a
-         Update on public.some_tab
+         Output: some_tab.b, some_tab.a
          ->  Result
-               Output: (a + 1), b, ctid, gp_segment_id
+               Output: (some_tab.a + 1), some_tab.b, NULL::oid, NULL::tid, NULL::integer
                One-Time Filter: false
  Optimizer: Postgres query optimizer
- Settings: optimizer=off
-(10 rows)
+ Settings: optimizer = 'off'
+(9 rows)
 
 update some_tab set a = a + 1 where false returning b, a;
  b | a 
@@ -676,7 +674,7 @@ explain update parted_tab set a = 2 where false;
                        QUERY PLAN                       
 --------------------------------------------------------
  Update on parted_tab  (cost=0.00..0.00 rows=0 width=0)
-   ->  Result  (cost=0.00..0.00 rows=0 width=0)
+   ->  Result  (cost=0.00..0.00 rows=0 width=10)
          One-Time Filter: false
 (3 rows)
 
@@ -2742,7 +2740,7 @@ ERROR:  new row for relation "errtst_child_plaindef" violates check constraint "
 DETAIL:  Failing row contains (10, 1, 15).
 UPDATE errtst_parent SET data = data + 10 WHERE partid = 20;
 ERROR:  new row for relation "errtst_child_reorder" violates check constraint "errtst_child_reorder_data_check"
-DETAIL:  Failing row contains (15, 1, 20).
+DETAIL:  Failing row contains (20, 1, 15).
 -- direct leaf partition update, without partition id violation
 BEGIN;
 UPDATE errtst_child_fastdef SET partid = 1 WHERE partid = 0;

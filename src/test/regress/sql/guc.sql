@@ -147,6 +147,16 @@ SELECT '2006-08-13 12:34:56'::timestamptz;
 -- Test some simple error cases
 SET seq_page_cost TO 'NaN';
 SET vacuum_cost_delay TO '10s';
+SET no_such_variable TO 42;
+
+-- Test "custom" GUCs created on the fly (which aren't really an
+-- intended feature, but many people use them).
+SET custom.my_guc = 42;
+SHOW custom.my_guc;
+SET custom."bad-guc" = 42;  -- disallowed because -c cannot set this name
+SHOW custom."bad-guc";
+SET special."weird name" = 'foo';  -- could be allowed, but we choose not to
+SHOW special."weird name";
 
 --
 -- Test DISCARD TEMP
@@ -297,8 +307,10 @@ set default_with_oids to f;
 -- Should not allow to set it to true.
 set default_with_oids to t;
 
-SET "request.header.user-agent" = 'curl/7.29.0';
-SHOW "request.header.user-agent";
+-- GUC name needs quoting when dispatched to segments (see DispatchSetPGVariable);
+-- "table" is a reserved word, so an unquoted dispatch would be a syntax error there.
+SET "table.foo" = 'curl/7.29.0';
+SHOW "table.foo";
 
 -- Test function with SET search_path
 create schema n1;

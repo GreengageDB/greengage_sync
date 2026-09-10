@@ -624,6 +624,7 @@ AggregateCreate(const char *aggName,
 							 InvalidOid,		/* no describe function */
 							 "aggregate_dummy", /* placeholder (no such proc) */
 							 NULL,	/* probin */
+							 NULL,	/* prosqlbody */
 							 PROKIND_AGGREGATE,
 							 false, /* security invoker (currently not
 									 * definable for agg) */

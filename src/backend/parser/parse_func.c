@@ -425,9 +425,11 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 									func_signature_string(funcname, nargs,
 														  argnames,
 														  actual_arg_types)),
-							 errhint("There is an ordered-set aggregate %s, but it requires %d direct arguments, not %d.",
-									 NameListToString(funcname),
-									 catDirectArgs, numDirectArgs),
+							 errhint_plural("There is an ordered-set aggregate %s, but it requires %d direct argument, not %d.",
+											"There is an ordered-set aggregate %s, but it requires %d direct arguments, not %d.",
+											catDirectArgs,
+											NameListToString(funcname),
+											catDirectArgs, numDirectArgs),
 							 parser_errposition(pstate, location)));
 			}
 			else
@@ -454,9 +456,11 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 										func_signature_string(funcname, nargs,
 															  argnames,
 															  actual_arg_types)),
-								 errhint("There is an ordered-set aggregate %s, but it requires %d direct arguments, not %d.",
-										 NameListToString(funcname),
-										 catDirectArgs, numDirectArgs),
+								 errhint_plural("There is an ordered-set aggregate %s, but it requires %d direct argument, not %d.",
+												"There is an ordered-set aggregate %s, but it requires %d direct arguments, not %d.",
+												catDirectArgs,
+												NameListToString(funcname),
+												catDirectArgs, numDirectArgs),
 								 parser_errposition(pstate, location)));
 				}
 				else
@@ -493,9 +497,11 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 											func_signature_string(funcname, nargs,
 																  argnames,
 																  actual_arg_types)),
-									 errhint("There is an ordered-set aggregate %s, but it requires at least %d direct arguments.",
-											 NameListToString(funcname),
-											 catDirectArgs),
+									 errhint_plural("There is an ordered-set aggregate %s, but it requires at least %d direct argument.",
+													"There is an ordered-set aggregate %s, but it requires at least %d direct arguments.",
+													catDirectArgs,
+													NameListToString(funcname),
+													catDirectArgs),
 									 parser_errposition(pstate, location)));
 					}
 				}
@@ -2556,6 +2562,9 @@ check_srf_call_placement(ParseState *pstate, Node *last_srf, int location)
 			break;
 		case EXPR_KIND_INDEX_PREDICATE:
 			err = _("set-returning functions are not allowed in index predicates");
+			break;
+		case EXPR_KIND_STATS_EXPRESSION:
+			err = _("set-returning functions are not allowed in statistics expressions");
 			break;
 		case EXPR_KIND_ALTER_COL_TRANSFORM:
 			err = _("set-returning functions are not allowed in transform expressions");

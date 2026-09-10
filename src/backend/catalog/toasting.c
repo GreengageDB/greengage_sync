@@ -15,6 +15,7 @@
 #include "postgres.h"
 
 #include "access/heapam.h"
+#include "access/toast_compression.h"
 #include "access/xact.h"
 #include "catalog/binary_upgrade.h"
 #include "catalog/catalog.h"
@@ -237,6 +238,17 @@ create_toast_table(Relation rel, Oid toastOid, Oid toastIndexOid,
 	TupleDescAttr(tupdesc, 0)->attstorage = TYPSTORAGE_PLAIN;
 	TupleDescAttr(tupdesc, 1)->attstorage = TYPSTORAGE_PLAIN;
 	TupleDescAttr(tupdesc, 2)->attstorage = TYPSTORAGE_PLAIN;
+
+	/* Toast field should not be compressed */
+	TupleDescAttr(tupdesc, 0)->attcompression = InvalidCompressionMethod;
+	TupleDescAttr(tupdesc, 1)->attcompression = InvalidCompressionMethod;
+	TupleDescAttr(tupdesc, 2)->attcompression = InvalidCompressionMethod;
+
+	/*
+	 * GGDB: upstream computes namespaceid here, but commit 20a95219123
+	 * moved that to the top of this function, where the binary-upgrade
+	 * path needs it for GetPreassignedOidForRelation().
+	 */
 
 	/* Toast table is shared if and only if its parent is. */
 	shared_relation = rel->rd_rel->relisshared;

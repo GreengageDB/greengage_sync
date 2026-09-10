@@ -14,8 +14,28 @@ top_builddir = ../../..
 include $(top_builddir)/src/Makefile.global
 
 OBJS        = fmgrtab.o session_state.o
-SUBDIRS     = adt cache datumstream error fmgr gdd hash init mb misc mmgr resowner \
-			   resgroup resscheduler sort time gp workfile_manager resource_manager hyperloglog
+SUBDIRS     = \
+	activity \
+	adt \
+	cache \
+	datumstream \
+	error \
+	fmgr \
+	gdd \
+	gp \
+	hash \
+	hyperloglog\
+	init \
+	mb \
+	misc \
+	mmgr \
+	resgroup \
+	resource_manager\
+	resowner \
+	resscheduler \
+	sort \
+	time \
+	workfile_manager
 
 # location of Catalog.pm
 catalogdir  = $(top_srcdir)/src/backend/catalog

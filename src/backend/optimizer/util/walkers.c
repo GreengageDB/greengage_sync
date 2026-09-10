@@ -367,6 +367,13 @@ plan_tree_walker(Node *node,
 				return true;
 			break;
 
+		case T_ResultCache:
+			if (walk_plan_node_fields((Plan *) node, walker, context))
+				return true;
+			if (walker((Node *) ((ResultCache *) node)->param_exprs, context))
+				return true;
+			break;
+
 		case T_Sort:
 		case T_IncrementalSort:
 			if (walk_plan_node_fields((Plan *) node, walker, context))
@@ -509,8 +516,6 @@ plan_tree_walker(Node *node,
 
 		case T_ModifyTable:
 			if (walk_plan_node_fields((Plan *) node, walker, context))
-				return true;
-			if (walker((Node *) ((ModifyTable *) node)->plans, context))
 				return true;
 			if (walker((Node *) ((ModifyTable *) node)->withCheckOptionLists, context))
 				return true;
