@@ -447,19 +447,11 @@ XLogReadBufferExtended(RelFileNode rnode, ForkNumber forknum,
 
 	Assert(blkno != P_NEW);
 
-<<<<<<< HEAD
 	/*
 	 * Open the relation at smgr level.  Relations using shared buffers need
 	 * the default SMGR implementation.
-	 *
-	 * TODO_REVERT_C2DC19342E0: the SMGR_MD argument is GGDB-specific, keep
-	 * ours when the revert lands.
 	 */
 	smgr = smgropen(rnode, InvalidBackendId, SMGR_MD);
-=======
-	/* Open the relation at smgr level */
-	smgr = smgropen(rnode, InvalidBackendId);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	/*
 	 * Create the target file if it doesn't already exist.  This lets us cope
@@ -943,25 +935,13 @@ read_local_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr,
 		}
 	}
 
-	/*
-	 * TODO_REVERT_C2DC19342E0: the shape of the three branches below (and the
-	 * dropped comment above the final "return count") is GGDB-specific, keep
-	 * ours when the revert lands.
-	 */
 	/* more than one block available */
 	if (targetPagePtr + XLOG_BLCKSZ <= read_upto)
 		count = XLOG_BLCKSZ;
 	/* not enough data there */
 	else if (targetPagePtr + reqLen > read_upto)
-<<<<<<< HEAD
 		return -1;
 	/* part of the page available */
-=======
-	{
-		/* not enough data there */
-		return -1;
-	}
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	else
 		count = read_upto - targetPagePtr;
 
@@ -974,10 +954,6 @@ read_local_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr,
 				 &errinfo))
 		WALReadRaiseError(&errinfo);
 
-<<<<<<< HEAD
-=======
-	/* number of valid bytes in the buffer */
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	return count;
 }
 
