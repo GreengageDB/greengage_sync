@@ -93,6 +93,7 @@ tlist_member(Expr *node, List *targetlist)
 }
 
 /*
+<<<<<<< HEAD
  * tlist_members
  *	  Finds all members of the given tlist whose expression is
  *	  equal() to the given expression.	Result is NIL if no such member.
@@ -150,6 +151,8 @@ tlist_member_ignore_relabel(Expr *node, List *targetlist)
 }
 
 /*
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
  * tlist_member_match_var
  *	  Same as above, except that we match the provided Var on the basis
  *	  of varno/varattno/varlevelsup/vartype only, rather than full equal().

@@ -88,14 +88,8 @@ PerformCursorOpen(ParseState *pstate, DeclareCursorStmt *cstmt, ParamListInfo pa
 	 * rewriter.  We do not do AcquireRewriteLocks: we assume the query either
 	 * came straight from the parser, or suitable locks were acquired by
 	 * plancache.c.
-	 *
-	 * Because the rewriter and planner tend to scribble on the input, we make
-	 * a preliminary copy of the source querytree.  This prevents problems in
-	 * the case that the DECLARE CURSOR is in a portal or plpgsql function and
-	 * is executed repeatedly.  (See also the same hack in EXPLAIN and
-	 * PREPARE.)  XXX FIXME someday.
 	 */
-	rewritten = QueryRewrite((Query *) copyObject(query));
+	rewritten = QueryRewrite(query);
 
 	/* SELECT should never rewrite to more or less than one query */
 	if (list_length(rewritten) != 1)
@@ -480,15 +474,32 @@ PersistHoldablePortal(Portal portal)
 		PushActiveSnapshot(queryDesc->snapshot);
 
 		/*
-		 * Rewind the executor: we need to store the entire result set in the
-		 * tuplestore, so that subsequent backward FETCHs can be processed.
+		 * If the portal is marked scrollable, we need to store the entire
+		 * result set in the tuplestore, so that subsequent backward FETCHs
+		 * can be processed.  Otherwise, store only the not-yet-fetched rows.
+		 * (The latter is not only more efficient, but avoids semantic
+		 * problems if the query's output isn't stable.)
 		 */
+<<<<<<< HEAD
 		/*
 		 * We don't allow scanning backwards in MPP! skip this call and 
 		 * skip the reset position call few lines down.
 		 */
 		if (Gp_role == GP_ROLE_UTILITY)
 			ExecutorRewind(queryDesc);
+=======
+		if (portal->cursorOptions & CURSOR_OPT_SCROLL)
+		{
+			ExecutorRewind(queryDesc);
+		}
+		else
+		{
+			/* We must reset the cursor state as though at start of query */
+			portal->atStart = true;
+			portal->atEnd = false;
+			portal->portalPos = 0;
+		}
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 		/*
 		 * Change the destination to output to the tuplestore.  Note we tell

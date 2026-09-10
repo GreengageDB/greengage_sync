@@ -48,6 +48,7 @@
 
 #include "libpq-fe.h"
 
+<<<<<<< HEAD
 #include "access/external.h"
 #include "access/url.h"
 #include "catalog/catalog.h"
@@ -67,6 +68,62 @@
 #include "utils/metrics_utils.h"
 #include "utils/resscheduler.h"
 #include "utils/string_utils.h"
+=======
+/*
+ * This struct contains all the state variables used throughout a COPY TO
+ * operation.
+ *
+ * Multi-byte encodings: all supported client-side encodings encode multi-byte
+ * characters by having the first byte's high bit set. Subsequent bytes of the
+ * character can have the high bit not set. When scanning data in such an
+ * encoding to look for a match to a single-byte (ie ASCII) character, we must
+ * use the full pg_encoding_mblen() machinery to skip over multibyte
+ * characters, else we might find a false match to a trailing byte. In
+ * supported server encodings, there is no possibility of a false match, and
+ * it's faster to make useless comparisons to trailing bytes than it is to
+ * invoke pg_encoding_mblen() to skip over them. encoding_embeds_ascii is true
+ * when we have to do it the hard way.
+ */
+typedef struct CopyToStateData
+{
+	/* low-level state data */
+	CopyDest	copy_dest;		/* type of copy source/destination */
+	FILE	   *copy_file;		/* used if copy_dest == COPY_FILE */
+	StringInfo	fe_msgbuf;		/* used for all dests during COPY TO */
+
+	int			file_encoding;	/* file or remote side's character encoding */
+	bool		need_transcoding;	/* file encoding diff from server? */
+	bool		encoding_embeds_ascii;	/* ASCII can be non-first byte? */
+
+	/* parameters from the COPY command */
+	Relation	rel;			/* relation to copy to */
+	QueryDesc  *queryDesc;		/* executable query to copy from */
+	List	   *attnumlist;		/* integer list of attnums to copy */
+	char	   *filename;		/* filename, or NULL for STDOUT */
+	bool		is_program;		/* is 'filename' a program to popen? */
+
+	CopyFormatOptions opts;
+	Node	   *whereClause;	/* WHERE condition (or NULL) */
+
+	/*
+	 * Working state
+	 */
+	MemoryContext copycontext;	/* per-copy execution context */
+
+	FmgrInfo   *out_functions;	/* lookup info for output functions */
+	MemoryContext rowcontext;	/* per-row evaluation context */
+	uint64		bytes_processed;	/* number of bytes processed so far */
+
+} CopyToStateData;
+
+/* DestReceiver for COPY (query) TO */
+typedef struct
+{
+	DestReceiver pub;			/* publicly-known function pointers */
+	CopyToState cstate;			/* CopyToStateData for the command */
+	uint64		processed;		/* # of tuples processed */
+} DR_copy;
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 /* NOTE: there's a copy of this in copyfromparse.c */
 static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
@@ -390,7 +447,13 @@ BeginCopyToCommon(ParseState *pstate,
 				  List *options,
 				  TupleDesc tupDesc)
 {
+<<<<<<< HEAD
 	CopyToState	cstate;
+=======
+	CopyToState cstate;
+	bool		pipe = (filename == NULL);
+	TupleDesc	tupDesc;
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	int			num_phys_attrs;
 	MemoryContext oldcontext;
 	bool		is_external_table;
@@ -418,6 +481,7 @@ BeginCopyToCommon(ParseState *pstate,
 	is_external_table = rel != NULL && rel_is_external_table(rel->rd_id);
 
 	/* Extract options from the statement node tree */
+<<<<<<< HEAD
 	ProcessCopyOptions(pstate, &cstate->opts, false, options, is_external_table);
 
 	if (cstate->opts.delim_off && !is_external_table)
@@ -433,6 +497,9 @@ BeginCopyToCommon(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("using no delimiter is only supported for external tables")));
 	}
+=======
+	ProcessCopyOptions(pstate, &cstate->opts, false /* is_from */ , options);
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	/* Process the source/target relation or query */
 	if (rel)
@@ -453,14 +520,8 @@ BeginCopyToCommon(ParseState *pstate,
 		/*
 		 * Run parse analysis and rewrite.  Note this also acquires sufficient
 		 * locks on the source table(s).
-		 *
-		 * Because the parser and planner tend to scribble on their input, we
-		 * make a preliminary copy of the source querytree.  This prevents
-		 * problems in the case that the COPY is in a portal or plpgsql
-		 * function and is executed repeatedly.  (See also the same hack in
-		 * DECLARE CURSOR and PREPARE.)  XXX FIXME someday.
 		 */
-		rewritten = pg_analyze_and_rewrite(copyObject(raw_query),
+		rewritten = pg_analyze_and_rewrite(raw_query,
 										   pstate->p_sourcetext, NULL, 0,
 										   NULL);
 
@@ -537,7 +598,7 @@ BeginCopyToCommon(ParseState *pstate,
 		plan = pg_plan_query(query, pstate->p_sourcetext, cursorOptions, NULL);
 
 		/*
-		 * With row level security and a user using "COPY relation TO", we
+		 * With row-level security and a user using "COPY relation TO", we
 		 * have to convert the "COPY relation TO" to a query-based COPY (eg:
 		 * "COPY (SELECT * FROM relation) TO"), to allow the rewriter to add
 		 * in any RLS clauses.
@@ -1409,7 +1470,7 @@ CopyTo(CopyToState cstate)
 	else
 		tupDesc = cstate->queryDesc->tupDesc;
 	num_phys_attrs = tupDesc->natts;
-	cstate->opts.null_print_client = cstate->opts.null_print; /* default */
+	cstate->opts.null_print_client = cstate->opts.null_print;	/* default */
 
 	/* We use fe_msgbuf as a per-row buffer regardless of copy_dest */
 	cstate->fe_msgbuf = makeStringInfo();
@@ -1477,6 +1538,18 @@ CopyTo(CopyToState cstate)
 	}
 	else
 	{
+<<<<<<< HEAD
+=======
+		/*
+		 * For non-binary copy, we need to convert null_print to file
+		 * encoding, because it will be sent directly with CopySendString.
+		 */
+		if (cstate->need_transcoding)
+			cstate->opts.null_print_client = pg_server_to_any(cstate->opts.null_print,
+															  cstate->opts.null_print_len,
+															  cstate->file_encoding);
+
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		/* if a header has been requested send the line */
 		if (cstate->opts.header_line)
 		{
@@ -1989,7 +2062,7 @@ static bool
 copy_dest_receive(TupleTableSlot *slot, DestReceiver *self)
 {
 	DR_copy    *myState = (DR_copy *) self;
-	CopyToState	cstate = myState->cstate;
+	CopyToState cstate = myState->cstate;
 
 	/* Send the data */
 	CopyOneRowTo(cstate, slot);

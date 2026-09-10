@@ -171,7 +171,7 @@ CREATE VIEW pg_indexes AS
          LEFT JOIN pg_tablespace T ON (T.oid = I.reltablespace)
     WHERE C.relkind IN ('r', 'm', 'p') AND I.relkind IN ('i', 'I');
 
-CREATE OR REPLACE VIEW pg_sequences AS
+CREATE VIEW pg_sequences AS
     SELECT
         N.nspname AS schemaname,
         C.relname AS sequencename,
@@ -947,7 +947,7 @@ CREATE VIEW pg_stat_activity AS
             S.state,
             S.backend_xid,
             s.backend_xmin,
-            S.queryid,
+            S.query_id,
             S.query,
             S.backend_type,
 
@@ -983,6 +983,7 @@ CREATE VIEW pg_stat_replication AS
         JOIN pg_stat_get_wal_senders() AS W ON (S.pid = W.pid)
         LEFT JOIN pg_authid AS U ON (S.usesysid = U.oid);
 
+<<<<<<< HEAD
 CREATE FUNCTION gp_stat_get_master_replication() RETURNS SETOF RECORD AS
 $$
     SELECT pg_catalog.gp_execution_segment() AS gp_segment_id, *
@@ -1052,6 +1053,8 @@ CREATE VIEW pg_stat_replication_slots AS
             s.stats_reset
     FROM pg_stat_get_replication_slots() AS s;
 
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 CREATE VIEW pg_stat_slru AS
     SELECT
             s.name,
@@ -1141,6 +1144,22 @@ CREATE VIEW pg_replication_slots AS
             L.two_phase
     FROM pg_get_replication_slots() AS L
             LEFT JOIN pg_database D ON (L.datoid = D.oid);
+
+CREATE VIEW pg_stat_replication_slots AS
+    SELECT
+            s.slot_name,
+            s.spill_txns,
+            s.spill_count,
+            s.spill_bytes,
+            s.stream_txns,
+            s.stream_count,
+            s.stream_bytes,
+            s.total_txns,
+            s.total_bytes,
+            s.stats_reset
+    FROM pg_replication_slots as r,
+        LATERAL pg_stat_get_replication_slot(slot_name) as s
+    WHERE r.datoid IS NOT NULL; -- excluding physical slots
 
 CREATE VIEW pg_stat_database AS
     SELECT
@@ -1635,10 +1654,12 @@ CREATE VIEW pg_replication_origin_status AS
 
 REVOKE ALL ON pg_replication_origin_status FROM public;
 
--- All columns of pg_subscription except subconninfo are readable.
+-- All columns of pg_subscription except subconninfo are publicly readable.
 REVOKE ALL ON pg_subscription FROM public;
-GRANT SELECT (subdbid, subname, subowner, subenabled, subbinary, substream, subslotname, subpublications)
+GRANT SELECT (oid, subdbid, subname, subowner, subenabled, subbinary,
+              substream, subslotname, subsynccommit, subpublications)
     ON pg_subscription TO public;
+<<<<<<< HEAD
 
 
 --
@@ -2073,3 +2094,5 @@ CREATE VIEW gp_suboverflowed_backend(segid, pids) AS
   SELECT -1, gp_get_suboverflowed_backends()
 UNION ALL
   SELECT gp_segment_id, gp_get_suboverflowed_backends() FROM gp_dist_random('gp_id') order by 1;
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f

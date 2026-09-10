@@ -23,18 +23,18 @@ teardown
 	DROP TABLE IF EXISTS parted_ao;
 }
 
-session "s1"
-step "lock_share"
+session s1
+step lock_share
 {
 	BEGIN;
 	LOCK part1 IN SHARE MODE;
 }
-step "lock_access_exclusive"
+step lock_access_exclusive
 {
 	BEGIN;
 	LOCK part1 IN ACCESS EXCLUSIVE MODE;
 }
-step "commit"
+step commit
 {
 	COMMIT;
 }
@@ -49,6 +49,7 @@ step "lock_access_exclusive_ao"
 	LOCK part1_ao IN ACCESS EXCLUSIVE MODE;
 }
 
+<<<<<<< HEAD
 session "s2"
 step "vac_specified"		{ VACUUM (SKIP_LOCKED) part1, part2; }
 step "vac_all_parts"		{ VACUUM (SKIP_LOCKED) parted; }
@@ -103,3 +104,31 @@ permutation "lock_access_exclusive_ao" "analyze_specified_ao" "commit"
 permutation "lock_access_exclusive_ao" "vac_analyze_specified_ao" "commit"
 permutation "lock_access_exclusive_ao" "vac_full_specified_ao" "commit"
 permutation "lock_access_exclusive_ao" "vac_full_all_parts_ao" "commit"
+=======
+session s2
+step vac_specified			{ VACUUM (SKIP_LOCKED) part1, part2; }
+step vac_all_parts			{ VACUUM (SKIP_LOCKED) parted; }
+step analyze_specified		{ ANALYZE (SKIP_LOCKED) part1, part2; }
+step analyze_all_parts		{ ANALYZE (SKIP_LOCKED) parted; }
+step vac_analyze_specified	{ VACUUM (ANALYZE, SKIP_LOCKED) part1, part2; }
+step vac_analyze_all_parts	{ VACUUM (ANALYZE, SKIP_LOCKED) parted; }
+step vac_full_specified		{ VACUUM (SKIP_LOCKED, FULL) part1, part2; }
+step vac_full_all_parts		{ VACUUM (SKIP_LOCKED, FULL) parted; }
+
+permutation lock_share vac_specified commit
+permutation lock_share vac_all_parts commit
+permutation lock_share analyze_specified commit
+permutation lock_share analyze_all_parts commit
+permutation lock_share vac_analyze_specified commit
+permutation lock_share vac_analyze_all_parts commit
+permutation lock_share vac_full_specified commit
+permutation lock_share vac_full_all_parts commit
+permutation lock_access_exclusive vac_specified commit
+permutation lock_access_exclusive vac_all_parts commit
+permutation lock_access_exclusive analyze_specified commit
+permutation lock_access_exclusive analyze_all_parts commit
+permutation lock_access_exclusive vac_analyze_specified commit
+permutation lock_access_exclusive vac_analyze_all_parts commit
+permutation lock_access_exclusive vac_full_specified commit
+permutation lock_access_exclusive vac_full_all_parts commit
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f

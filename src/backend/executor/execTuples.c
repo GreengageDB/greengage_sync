@@ -124,9 +124,8 @@ tts_virtual_clear(TupleTableSlot *slot)
 }
 
 /*
- * Attribute values are readily available in tts_values and tts_isnull array
- * in a VirtualTupleTableSlot. So there should be no need to call either of the
- * following two functions.
+ * VirtualTupleTableSlots always have fully populated tts_values and
+ * tts_isnull arrays.  So this function should never be called.
  */
 static void
 tts_virtual_getsomeattrs(TupleTableSlot *slot, int natts)
@@ -134,9 +133,15 @@ tts_virtual_getsomeattrs(TupleTableSlot *slot, int natts)
 	elog(ERROR, "getsomeattrs is not required to be called on a virtual tuple table slot");
 }
 
+/*
+ * VirtualTupleTableSlots never provide system attributes (except those
+ * handled generically, such as tableoid).  We generally shouldn't get
+ * here, but provide a user-friendly message if we do.
+ */
 static Datum
 tts_virtual_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)
 {
+<<<<<<< HEAD
 	/*
 	 * GPDB: AppendOptimized relations do need to get sysattrs AND use virtual
 	 * tuples to pass around data. It is assumed that the caller knows what is
@@ -150,6 +155,13 @@ tts_virtual_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)
 	}
 
 	elog(ERROR, "virtual tuple table slot does not have system attributes");
+=======
+	Assert(!TTS_EMPTY(slot));
+
+	ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("cannot retrieve a system column in this context")));
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	return 0;					/* silence compiler warnings */
 }
@@ -349,6 +361,15 @@ tts_heap_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)
 
 	Assert(!TTS_EMPTY(slot));
 
+	/*
+	 * In some code paths it's possible to get here with a non-materialized
+	 * slot, in which case we can't retrieve system columns.
+	 */
+	if (!hslot->tuple)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot retrieve a system column in this context")));
+
 	return heap_getsysattr(hslot->tuple, attnum,
 						   slot->tts_tupleDescriptor, isnull);
 }
@@ -511,7 +532,11 @@ tts_minimal_getsomeattrs(TupleTableSlot *slot, int natts)
 static Datum
 tts_minimal_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)
 {
-	elog(ERROR, "minimal tuple table slot does not have system attributes");
+	Assert(!TTS_EMPTY(slot));
+
+	ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("cannot retrieve a system column in this context")));
 
 	return 0;					/* silence compiler warnings */
 }
@@ -694,6 +719,15 @@ tts_buffer_heap_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)
 	BufferHeapTupleTableSlot *bslot = (BufferHeapTupleTableSlot *) slot;
 
 	Assert(!TTS_EMPTY(slot));
+
+	/*
+	 * In some code paths it's possible to get here with a non-materialized
+	 * slot, in which case we can't retrieve system columns.
+	 */
+	if (!bslot->base.tuple)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot retrieve a system column in this context")));
 
 	return heap_getsysattr(bslot->base.tuple, attnum,
 						   slot->tts_tupleDescriptor, isnull);

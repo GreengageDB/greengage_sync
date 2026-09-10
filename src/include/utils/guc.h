@@ -100,13 +100,12 @@ typedef enum
  * dividing line between "interactive" and "non-interactive" sources for
  * error reporting purposes.
  *
- * PGC_S_TEST is used when testing values to be used later ("doit" will always
- * be false, so this never gets stored as the actual source of any value).
- * For example, ALTER DATABASE/ROLE tests proposed per-database or per-user
- * defaults this way, and CREATE FUNCTION tests proposed function SET clauses
- * this way.  This is an interactive case, but it needs its own source value
- * because some assign hooks need to make different validity checks in this
- * case.  In particular, references to nonexistent database objects generally
+ * PGC_S_TEST is used when testing values to be used later.  For example,
+ * ALTER DATABASE/ROLE tests proposed per-database or per-user defaults this
+ * way, and CREATE FUNCTION tests proposed function SET clauses this way.
+ * This is an interactive case, but it needs its own source value because
+ * some assign hooks need to make different validity checks in this case.
+ * In particular, references to nonexistent database objects generally
  * shouldn't throw hard errors in this case, at most NOTICEs, since the
  * objects might exist by the time the setting is used for real.
  *
@@ -341,7 +340,6 @@ extern bool log_btree_build_stats;
 extern PGDLLIMPORT bool check_function_bodies;
 extern bool session_auth_is_superuser;
 
-extern bool compute_query_id;
 extern bool log_duration;
 extern int	log_parameter_max_length;
 extern int	log_parameter_max_length_on_error;
@@ -800,6 +798,7 @@ extern void assign_search_path(const char *newval, void *extra);
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
 
+<<<<<<< HEAD
 /* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 /* in cdb/cdbvars.c */
 extern bool check_gp_role(char **newval, void **extra, GucSource source);
@@ -815,4 +814,6 @@ extern bool gpvars_check_statement_mem(int *newval, void **extra, GucSource sour
 extern int guc_name_compare(const char *namea, const char *nameb);
 extern void DispatchSyncPGVariable(struct config_generic * gconfig);
 
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 #endif							/* GUC_H */

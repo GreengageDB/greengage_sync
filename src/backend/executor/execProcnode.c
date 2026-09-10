@@ -546,8 +546,14 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 		result->initPlan = subps;
 
 	/* Set up instrumentation for this node if requested */
+<<<<<<< HEAD
 	if (estate->es_instrument && result != NULL)
 		result->instrument = GpInstrAlloc(node, estate->es_instrument);
+=======
+	if (estate->es_instrument)
+		result->instrument = InstrAlloc(1, estate->es_instrument,
+										result->async_capable);
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	return result;
 }

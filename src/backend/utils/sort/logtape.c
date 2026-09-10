@@ -1290,11 +1290,17 @@ LogicalTapeSetBlocks(LogicalTapeSet *lts)
 	 */
 	if (!QueryFinishPending)
 	{
+<<<<<<< HEAD
 		for (int i = 0; i < lts->nTapes; i++)
 		{
 			LogicalTape *lt = &lts->tapes[i];
 			Assert(!lt->writing || lt->buffer == NULL);
 		}
+=======
+		LogicalTape *lt = &lts->tapes[i];
+
+		Assert(!lt->writing || lt->buffer == NULL);
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	}
 #endif
 	return lts->nBlocksWritten - lts->nHoleBlocks;
