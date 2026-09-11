@@ -737,7 +737,6 @@ const char *const config_group_names[] =
 	gettext_noop("File Locations"),
 	/* CONN_AUTH_SETTINGS */
 	gettext_noop("Connections and Authentication / Connection Settings"),
-<<<<<<< HEAD
     /* CONN_AUTH_AUTH */
     gettext_noop("Connections and Authentication / Authentication"),
     /* CONN_AUTH_SSL */
@@ -746,14 +745,6 @@ const char *const config_group_names[] =
 	gettext_noop("External Tables"),
 	/* APPENDONLY_TABLES */
 	gettext_noop("Append-Only Tables"),
-	/* RESOURCES */
-	gettext_noop("Resource Usage"),
-=======
-	/* CONN_AUTH_AUTH */
-	gettext_noop("Connections and Authentication / Authentication"),
-	/* CONN_AUTH_SSL */
-	gettext_noop("Connections and Authentication / SSL"),
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	/* RESOURCES_MEM */
 	gettext_noop("Resource Usage / Memory"),
 	/* RESOURCES_DISK */
@@ -766,13 +757,8 @@ const char *const config_group_names[] =
 	gettext_noop("Resource Usage / Background Writer"),
 	/* RESOURCES_ASYNCHRONOUS */
 	gettext_noop("Resource Usage / Asynchronous Behavior"),
-<<<<<<< HEAD
 	/* RESOURCES_MGM */
 	gettext_noop("Resource Usage / Resources Management"),
-	/* WAL */
-	gettext_noop("Write-Ahead Log"),
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	/* WAL_SETTINGS */
 	gettext_noop("Write-Ahead Log / Settings"),
 	/* WAL_CHECKPOINTS */
@@ -804,15 +790,9 @@ const char *const config_group_names[] =
 	/* LOGGING_WHAT */
 	gettext_noop("Reporting and Logging / What to Log"),
 	/* PROCESS_TITLE */
-<<<<<<< HEAD
-	gettext_noop("Process Title"),
-	/* STATS */
-	gettext_noop("Statistics"),
+	gettext_noop("Reporting and Logging / Process Title"),
 	/* STATS_ANALYZE */
 	gettext_noop("Statistics / ANALYZE Database Contents"),
-=======
-	gettext_noop("Reporting and Logging / Process Title"),
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	/* STATS_MONITORING */
 	gettext_noop("Statistics / Monitoring"),
 	/* STATS_COLLECTOR */
@@ -3577,7 +3557,7 @@ static struct config_int ConfigureNamesInt[] =
 	},
 
 	{
-		{"client_connection_check_interval", PGC_USERSET, CLIENT_CONN_OTHER,
+		{"client_connection_check_interval", PGC_USERSET, CONN_AUTH_SETTINGS,
 			gettext_noop("Sets the time interval between checks for disconnection while running queries."),
 			NULL,
 			GUC_UNIT_MS
@@ -3621,20 +3601,6 @@ static struct config_int ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 
-<<<<<<< HEAD
-=======
-	{
-		{"client_connection_check_interval", PGC_USERSET, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the time interval between checks for disconnection while running queries."),
-			NULL,
-			GUC_UNIT_MS
-		},
-		&client_connection_check_interval,
-		0, 0, INT_MAX,
-		check_client_connection_check_interval, NULL, NULL
-	},
-
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL
