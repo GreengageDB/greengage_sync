@@ -1245,12 +1245,7 @@ extern void pgstat_twophase_postabort(TransactionId xid, uint16 info,
 
 extern void pgstat_send_archiver(const char *xlog, bool failed);
 extern void pgstat_send_bgwriter(void);
-<<<<<<< HEAD
-extern void pgstat_report_wal(void);
-extern bool pgstat_send_wal(bool force);
-=======
 extern void pgstat_send_wal(bool force);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 struct CdbDispatchResults;
 struct pg_result;
@@ -1275,11 +1270,7 @@ extern PgStat_ArchiverStats *pgstat_fetch_stat_archiver(void);
 extern PgStat_GlobalStats *pgstat_fetch_global(void);
 extern PgStat_WalStats *pgstat_fetch_stat_wal(void);
 extern PgStat_SLRUStats *pgstat_fetch_slru(void);
-<<<<<<< HEAD
-extern PgStat_ReplSlotStats *pgstat_fetch_replslot(int *nslots_p);
-=======
 extern PgStat_StatReplSlotEntry *pgstat_fetch_replslot(NameData slotname);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 extern void pgstat_count_slru_page_zeroed(int slru_idx);
 extern void pgstat_count_slru_page_hit(int slru_idx);
