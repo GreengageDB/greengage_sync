@@ -214,13 +214,9 @@ static bool check_autovacuum_max_workers(int *newval, void **extra, GucSource so
 static bool check_max_wal_senders(int *newval, void **extra, GucSource source);
 static bool check_autovacuum_work_mem(int *newval, void **extra, GucSource source);
 static bool check_effective_io_concurrency(int *newval, void **extra, GucSource source);
-static bool check_client_connection_check_interval(int *newval, void **extra, GucSource source);
 static bool check_maintenance_io_concurrency(int *newval, void **extra, GucSource source);
 static bool check_huge_page_size(int *newval, void **extra, GucSource source);
-<<<<<<< HEAD
-=======
 static bool check_client_connection_check_interval(int *newval, void **extra, GucSource source);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 static void assign_pgstat_temp_directory(const char *newval, void *extra);
 static bool check_application_name(char **newval, void **extra, GucSource source);
 static void assign_application_name(const char *newval, void *extra);
@@ -2800,11 +2796,7 @@ static struct config_int ConfigureNamesInt[] =
 			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL | GUC_UNIT_S
 		},
 		&PreAuthDelay,
-<<<<<<< HEAD
 		0, 0, MAX_PRE_AUTH_DELAY,
-=======
-		0, 0, 60,
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		NULL, NULL, NULL
 	},
 
@@ -12513,20 +12505,6 @@ check_maintenance_io_concurrency(int *newval, void **extra, GucSource source)
 }
 
 static bool
-check_client_connection_check_interval(int *newval, void **extra, GucSource source)
-{
-#if !(defined(POLLRDHUP) || defined(__darwin__))
-	/* Linux and OSX only, for now.  See pq_check_connection(). */
-	if (*newval != 0)
-	{
-		GUC_check_errdetail("client_connection_check_interval must be set to 0 on platforms that lack POLLRDHUP and not OSX.");
-		return false;
-	}
-#endif
-	return true;
-}
-
-static bool
 check_huge_page_size(int *newval, void **extra, GucSource source)
 {
 #if !(defined(MAP_HUGE_MASK) && defined(MAP_HUGE_SHIFT))
@@ -12540,8 +12518,6 @@ check_huge_page_size(int *newval, void **extra, GucSource source)
 	return true;
 }
 
-<<<<<<< HEAD
-=======
 static bool
 check_client_connection_check_interval(int *newval, void **extra, GucSource source)
 {
@@ -12556,7 +12532,6 @@ check_client_connection_check_interval(int *newval, void **extra, GucSource sour
 	return true;
 }
 
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 static void
 assign_pgstat_temp_directory(const char *newval, void *extra)
 {
