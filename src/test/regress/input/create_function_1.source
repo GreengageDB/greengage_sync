@@ -2,6 +2,8 @@
 -- CREATE_FUNCTION_1
 --
 
+-- Create C functions needed by create_type.sql
+
 CREATE FUNCTION widget_in(cstring)
    RETURNS widget
    AS '@libdir@/regress@DLSUFFIX@'
@@ -20,6 +22,7 @@ CREATE FUNCTION int44in(cstring)
 CREATE FUNCTION int44out(city_budget)
    RETURNS cstring
    AS '@libdir@/regress@DLSUFFIX@'
+<<<<<<< HEAD
    LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE FUNCTION check_primary_key ()
@@ -107,3 +110,6 @@ CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C NO SQL
 
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE internal NO SQL
     AS 'nosuch';
+=======
+   LANGUAGE C STRICT IMMUTABLE;
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f

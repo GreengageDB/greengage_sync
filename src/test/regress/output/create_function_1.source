@@ -1,6 +1,7 @@
 --
 -- CREATE_FUNCTION_1
 --
+-- Create C functions needed by create_type.sql
 CREATE FUNCTION widget_in(cstring)
    RETURNS widget
    AS '@libdir@/regress@DLSUFFIX@'
@@ -23,6 +24,7 @@ CREATE FUNCTION int44out(city_budget)
    AS '@libdir@/regress@DLSUFFIX@'
    LANGUAGE C IMMUTABLE STRICT NO SQL;
 NOTICE:  argument type city_budget is only a shell
+<<<<<<< HEAD
 CREATE FUNCTION check_primary_key ()
 	RETURNS trigger
 	AS '@libdir@/regress@DLSUFFIX@'
@@ -104,3 +106,5 @@ ERROR:  could not find function "nosuchsymbol" in file "@libdir@/regress@DLSUFFI
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE internal NO SQL
     AS 'nosuch';
 ERROR:  there is no built-in function named "nosuch"
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f

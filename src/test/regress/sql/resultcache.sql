@@ -33,9 +33,7 @@ $$;
 -- Ensure we get a result cache on the inner side of the nested loop
 SET enable_hashjoin TO off;
 SET enable_bitmapscan TO off;
--- force_parallel_mode = regress can cause some instability in EXPLAIN ANALYZE
--- output, so let's ensure that we turn it off.
-SET force_parallel_mode TO off;
+
 SELECT explain_resultcache('
 SELECT COUNT(*),AVG(t1.unique1) FROM tenk1 t1
 INNER JOIN tenk1 t2 ON t1.unique1 = t2.twenty
@@ -77,7 +75,12 @@ WHERE t2.unique1 < 1200;', true);
 RESET enable_sort;
 RESET enable_mergejoin;
 RESET work_mem;
+<<<<<<< HEAD
 RESET force_parallel_mode;
+=======
+RESET enable_bitmapscan;
+RESET enable_hashjoin;
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 -- Test Result Cache plans.  GPDB has no intra-segment parallel workers, so
 -- upstream's "parallel plan" is just the ordinary distributed plan here.  We

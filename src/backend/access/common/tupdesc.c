@@ -424,7 +424,8 @@ equalTupleDescs(TupleDesc tupdesc1, TupleDesc tupdesc2, bool strict)
 		 * general it seems safer to check them always.
 		 *
 		 * attcacheoff must NOT be checked since it's possibly not set in both
-		 * copies.
+		 * copies.  We also intentionally ignore atthasmissing, since that's
+		 * not very relevant in tupdescs, which lack the attmissingval field.
 		 */
 		if (strcmp(NameStr(attr1->attname), NameStr(attr2->attname)) != 0)
 			return false;
@@ -440,10 +441,13 @@ equalTupleDescs(TupleDesc tupdesc1, TupleDesc tupdesc2, bool strict)
 			return false;
 		if (attr1->attbyval != attr2->attbyval)
 			return false;
-		if (attr1->attstorage != attr2->attstorage)
-			return false;
 		if (attr1->attalign != attr2->attalign)
 			return false;
+		if (attr1->attstorage != attr2->attstorage)
+			return false;
+		if (attr1->attcompression != attr2->attcompression)
+			return false;
+<<<<<<< HEAD
 
 		if (strict)
 		{
@@ -465,6 +469,25 @@ equalTupleDescs(TupleDesc tupdesc1, TupleDesc tupdesc2, bool strict)
 				return false;
 			/* attacl and attoptions are not even present... */
 		}
+=======
+		if (attr1->attnotnull != attr2->attnotnull)
+			return false;
+		if (attr1->atthasdef != attr2->atthasdef)
+			return false;
+		if (attr1->attidentity != attr2->attidentity)
+			return false;
+		if (attr1->attgenerated != attr2->attgenerated)
+			return false;
+		if (attr1->attisdropped != attr2->attisdropped)
+			return false;
+		if (attr1->attislocal != attr2->attislocal)
+			return false;
+		if (attr1->attinhcount != attr2->attinhcount)
+			return false;
+		if (attr1->attcollation != attr2->attcollation)
+			return false;
+		/* variable-length fields are not even present... */
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	}
 
 	if (!strict)
@@ -646,12 +669,8 @@ TupleDescInitEntry(TupleDesc desc,
 	att->attbyval = typeForm->typbyval;
 	att->attalign = typeForm->typalign;
 	att->attstorage = typeForm->typstorage;
+	att->attcompression = InvalidCompressionMethod;
 	att->attcollation = typeForm->typcollation;
-
-	if (IsStorageCompressible(typeForm->typstorage))
-		att->attcompression = GetDefaultToastCompression();
-	else
-		att->attcompression = InvalidCompressionMethod;
 
 	ReleaseSysCache(tuple);
 }
@@ -716,6 +735,7 @@ TupleDescInitBuiltinEntry(TupleDesc desc,
 			att->attbyval = false;
 			att->attalign = TYPALIGN_INT;
 			att->attstorage = TYPSTORAGE_EXTENDED;
+			att->attcompression = InvalidCompressionMethod;
 			att->attcollation = DEFAULT_COLLATION_OID;
 			break;
 
@@ -724,6 +744,7 @@ TupleDescInitBuiltinEntry(TupleDesc desc,
 			att->attbyval = true;
 			att->attalign = TYPALIGN_CHAR;
 			att->attstorage = TYPSTORAGE_PLAIN;
+			att->attcompression = InvalidCompressionMethod;
 			att->attcollation = InvalidOid;
 			break;
 
@@ -732,6 +753,7 @@ TupleDescInitBuiltinEntry(TupleDesc desc,
 			att->attbyval = true;
 			att->attalign = TYPALIGN_INT;
 			att->attstorage = TYPSTORAGE_PLAIN;
+			att->attcompression = InvalidCompressionMethod;
 			att->attcollation = InvalidOid;
 			break;
 
@@ -740,6 +762,7 @@ TupleDescInitBuiltinEntry(TupleDesc desc,
 			att->attbyval = FLOAT8PASSBYVAL;
 			att->attalign = TYPALIGN_DOUBLE;
 			att->attstorage = TYPSTORAGE_PLAIN;
+			att->attcompression = InvalidCompressionMethod;
 			att->attcollation = InvalidOid;
 			break;
 

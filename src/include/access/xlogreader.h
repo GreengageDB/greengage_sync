@@ -251,6 +251,7 @@ struct XLogReaderState
 
 	/* Buffer to hold error message */
 	char	   *errormsg_buf;
+<<<<<<< HEAD
 
 	/*
 	 * Set at the end of recovery: the start point of a partial record at the
@@ -266,6 +267,10 @@ struct XLogReaderState
 	XLogRecPtr	overwrittenRecPtr;
 };
 
+=======
+};
+
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 /* Get a new XLogReader */
 extern XLogReaderState *XLogReaderAllocate(int wal_segment_size,
 										   const char *waldir,

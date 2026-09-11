@@ -24,10 +24,13 @@
 #include "access/subtrans.h"
 #include "access/syncscan.h"
 #include "access/twophase.h"
+<<<<<<< HEAD
 /* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 #include "access/distributedlog.h"
 #include "cdb/cdblocaldistribxact.h"
 #include "cdb/cdbvars.h"
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 #include "commands/async.h"
 #include "executor/nodeShareInputScan.h"
 #include "miscadmin.h"
@@ -165,8 +168,11 @@ CreateSharedMemoryAndSemaphores(void)
 
 		size = add_size(size, ProcGlobalShmemSize());
 		size = add_size(size, XLOGShmemSize());
+<<<<<<< HEAD
 		/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 		size = add_size(size, DistributedLog_ShmemSize());
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		size = add_size(size, CLOGShmemSize());
 		size = add_size(size, CommitTsShmemSize());
 		size = add_size(size, SUBTRANSShmemSize());

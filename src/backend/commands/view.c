@@ -445,6 +445,7 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	/*
 	 * Run parse analysis to convert the raw parse tree to a Query.  Note this
 	 * also acquires sufficient locks on the source table(s).
+<<<<<<< HEAD
 	 *
 	 * Since parse analysis scribbles on its input, copy the raw parse tree;
 	 * this ensures we don't corrupt a prepared statement, for example.
@@ -458,6 +459,13 @@ DefineView(ViewStmt *stmt, const char *queryString,
 		rawstmt->stmt = (Node *) copyObject(stmt->query);
 		rawstmt->stmt_location = stmt_location;
 		rawstmt->stmt_len = stmt_len;
+=======
+	 */
+	rawstmt = makeNode(RawStmt);
+	rawstmt->stmt = stmt->query;
+	rawstmt->stmt_location = stmt_location;
+	rawstmt->stmt_len = stmt_len;
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 		viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
 	}
