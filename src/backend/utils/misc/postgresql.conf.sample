@@ -239,11 +239,8 @@ max_prepared_transactions = 250		# can be 0 or more
 #checkpoint_completion_target = 0.9	# checkpoint target duration, 0.0 - 1.0
 #checkpoint_flush_after = 0		# measured in pages, 0 disables
 #checkpoint_warning = 30s		# 0 disables
-<<<<<<< HEAD
-=======
 #max_wal_size = 1GB
-#min_wal_size = 80MB
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+#min_wal_size = 320MB
 
 # - Archiving -
 
@@ -365,13 +362,10 @@ max_prepared_transactions = 250		# can be 0 or more
 
 #enable_async_append = on
 #enable_bitmapscan = on
-<<<<<<< HEAD
-=======
 #enable_gathermerge = on
 #enable_hashagg = on
 #enable_hashjoin = on
 #enable_incremental_sort = on
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 #enable_indexscan = on
 #enable_indexonlyscan = on
 #enable_material = on
@@ -406,16 +400,12 @@ max_prepared_transactions = 250		# can be 0 or more
 #cpu_tuple_cost = 0.01			# same scale as above
 #cpu_index_tuple_cost = 0.005		# same scale as above
 #cpu_operator_cost = 0.0025		# same scale as above
-<<<<<<< HEAD
 # GPDB_96_MERGE_FIXME: figure out the appropriate values for the parallel gucs
-#parallel_tuple_cost = 0.1		# same scale as above
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 #parallel_setup_cost = 1000.0	# same scale as above
 #parallel_tuple_cost = 0.1		# same scale as above
 #min_parallel_table_scan_size = 8MB
 #min_parallel_index_scan_size = 512kB
-#effective_cache_size = 4GB
+#effective_cache_size = 16GB
 
 #jit_above_cost = 100000		# perform JIT compilation if available
 					# and query more expensive than this;
@@ -426,13 +416,8 @@ max_prepared_transactions = 250		# can be 0 or more
 					# query is more expensive than this;
 					# -1 disables
 
-<<<<<<< HEAD
-#min_parallel_table_scan_size = 8MB
-#min_parallel_index_scan_size = 512kB
-#effective_cache_size = 16GB
-
 #gp_motion_cost_per_row = 0.0  # (same) (if 0, 2*cpu_tuple_cost is used)
-=======
+
 # - Genetic Query Optimizer -
 
 #geqo = on
@@ -442,19 +427,13 @@ max_prepared_transactions = 250		# can be 0 or more
 #geqo_generations = 0			# selects default based on effort
 #geqo_selection_bias = 2.0		# range 1.5-2.0
 #geqo_seed = 0.0			# range 0.0-1.0
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 # - Other Planner Options -
 
 #cursor_tuple_fraction = 0.1		# range 0.0-1.0
-<<<<<<< HEAD
 #from_collapse_limit = 20
-#join_collapse_limit = 20		# 1 disables collapsing of explicit
-=======
-#from_collapse_limit = 8
 #jit = on				# allow JIT compilation
-#join_collapse_limit = 8		# 1 disables collapsing of explicit
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+#join_collapse_limit = 20		# 1 disables collapsing of explicit
 					# JOIN clauses
 #plan_cache_mode = auto			# auto, force_generic_plan or
 					# force_custom_plan
@@ -491,19 +470,6 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 					# off, meaning append to existing files
 					# in all cases.
 
-<<<<<<< HEAD
-=======
-# These are relevant when logging to syslog:
-#syslog_facility = 'LOCAL0'
-#syslog_ident = 'postgres'
-#syslog_sequence_numbers = on
-#syslog_split_messages = on
-
-# This is only relevant when logging to eventlog (Windows):
-# (change requires restart)
-#event_source = 'PostgreSQL'
-
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 # - When to Log -
 
 #log_min_messages = warning		# values in order of decreasing detail:
@@ -644,12 +610,8 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 # - Query and Index Statistics Collector -
 
 #track_activities = on
-<<<<<<< HEAD
-#track_counts = off
-=======
 #track_activity_query_size = 1024	# (change requires restart)
 #track_counts = on
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 #track_io_timing = off
 #track_wal_io_timing = off
 #track_functions = none			# none, pl, all

@@ -50,15 +50,10 @@ typedef struct config_var_value
 } config_var_value;
 
 /*
-<<<<<<< HEAD
  * Groupings to help organize all the run-time options for display
  *
  * Note: When you modify this, you need to modify config_group_names[]
  *       as well, which is located in guc.c.
-=======
- * Groupings to help organize all the run-time options for display.
- * Be sure this agrees with the way the options are categorized in config.sgml!
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
  */
 enum config_group
 {
@@ -67,24 +62,16 @@ enum config_group
 	CONN_AUTH_SETTINGS,
 	CONN_AUTH_AUTH,
 	CONN_AUTH_SSL,
-<<<<<<< HEAD
 
 	EXTERNAL_TABLES,                    /*CDB*/
 	APPENDONLY_TABLES,                  /*CDB*/
-	RESOURCES,
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	RESOURCES_MEM,
 	RESOURCES_DISK,
 	RESOURCES_KERNEL,
 	RESOURCES_VACUUM_DELAY,
 	RESOURCES_BGWRITER,
 	RESOURCES_ASYNCHRONOUS,
-<<<<<<< HEAD
 	RESOURCES_MGM,
-	WAL,
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	WAL_SETTINGS,
 	WAL_CHECKPOINTS,
 	WAL_ARCHIVING,
@@ -97,38 +84,19 @@ enum config_group
 	QUERY_TUNING_METHOD,
 	QUERY_TUNING_COST,
 	QUERY_TUNING_OTHER,
-<<<<<<< HEAD
-
-	LOGGING,
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	LOGGING_WHERE,
 	LOGGING_WHEN,
 	LOGGING_WHAT,
 	PROCESS_TITLE,
-<<<<<<< HEAD
-	STATS,
 	STATS_ANALYZE,                      /*CDB*/
 	STATS_MONITORING,
 	STATS_COLLECTOR,
 	AUTOVACUUM,
-	CLIENT_CONN,
-
-=======
-	STATS_MONITORING,
-	STATS_COLLECTOR,
-	AUTOVACUUM,
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	CLIENT_CONN_STATEMENT,
 	CLIENT_CONN_LOCALE,
 	CLIENT_CONN_PRELOAD,
 	CLIENT_CONN_OTHER,
 	LOCK_MANAGEMENT,
-<<<<<<< HEAD
-	COMPAT_OPTIONS,
-
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	COMPAT_OPTIONS_PREVIOUS,
 	COMPAT_OPTIONS_CLIENT,
     COMPAT_OPTIONS_IGNORED,             /*CDB*/
