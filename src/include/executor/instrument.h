@@ -123,12 +123,8 @@ extern Instrumentation *InstrAlloc(int n, int instrument_options,
 								   bool async_mode);
 extern void InstrInit(Instrumentation *instr, int instrument_options);
 extern void InstrStartNode(Instrumentation *instr);
-<<<<<<< HEAD
 extern void InstrStopNode(Instrumentation *instr, uint64 nTuples);
-=======
-extern void InstrStopNode(Instrumentation *instr, double nTuples);
 extern void InstrUpdateTupleCount(Instrumentation *instr, double nTuples);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 extern void InstrEndLoop(Instrumentation *instr);
 extern void InstrAggNode(Instrumentation *dst, Instrumentation *add);
 extern void InstrStartParallelQuery(void);
