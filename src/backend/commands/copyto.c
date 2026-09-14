@@ -68,14 +68,6 @@
 #include "utils/resscheduler.h"
 #include "utils/string_utils.h"
 
-/* DestReceiver for COPY (query) TO */
-typedef struct
-{
-	DestReceiver pub;			/* publicly-known function pointers */
-	CopyToState cstate;			/* CopyToStateData for the command */
-	uint64		processed;		/* # of tuples processed */
-} DR_copy;
-
 /* NOTE: there's a copy of this in copyfromparse.c */
 static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 
