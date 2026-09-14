@@ -2121,16 +2121,13 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 	Buffer		buffer;
 	Buffer		vmbuffer = InvalidBuffer;
 	bool		all_visible_cleared = false;
-<<<<<<< HEAD
 	bool		needwal;
 	bool		all_frozen_set = false;
 	uint8		vmstatus = 0;
-=======
 
 	/* Cheap, simplistic check that the tuple matches the rel's rowtype. */
 	Assert(HeapTupleHeaderGetNatts(tup->t_data) <=
 		   RelationGetNumberOfAttributes(relation));
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	needwal = RelationNeedsWAL(relation);
 	gp_expand_protect_catalog_changes(relation);
@@ -3298,13 +3295,11 @@ heap_update_internal(Relation relation, ItemPointer otid, HeapTuple newtup,
 
 	Assert(ItemPointerIsValid(otid));
 
-<<<<<<< HEAD
 	gp_expand_protect_catalog_changes(relation);
-=======
+
 	/* Cheap, simplistic check that the tuple matches the rel's rowtype. */
 	Assert(HeapTupleHeaderGetNatts(newtup->t_data) <=
 		   RelationGetNumberOfAttributes(relation));
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	/*
 	 * Forbid this during a parallel operation, lest it allocate a combo CID.
