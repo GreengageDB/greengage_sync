@@ -2154,13 +2154,8 @@ ExecuteTruncate(TruncateStmt *stmt)
 					 errhint("Do not specify the ONLY keyword, or use TRUNCATE ONLY on the partitions directly.")));
 	}
 
-<<<<<<< HEAD
-	ExecuteTruncateGuts(rels, relids, relids_extra, relids_logged,
-						stmt->behavior, stmt->restart_seqs, stmt);
-=======
 	ExecuteTruncateGuts(rels, relids, relids_logged,
-						stmt->behavior, stmt->restart_seqs);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+						stmt->behavior, stmt->restart_seqs, stmt);
 
 	/* And close the rels */
 	foreach(cell, rels)
@@ -5029,11 +5024,6 @@ AlterTableGetLockLevel(List *cmds)
 				cmd_lockmode = AccessShareLock;
 				break;
 
-<<<<<<< HEAD
-			case AT_AlterCollationRefreshVersion:
-				cmd_lockmode = AccessExclusiveLock;
-				break;
-
 				/* GPDB additions */
 			case AT_ExpandTable:
 			case AT_ExpandPartitionTablePrepare:
@@ -5060,8 +5050,6 @@ AlterTableGetLockLevel(List *cmds)
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 			default:			/* oops */
 				elog(ERROR, "unrecognized alter table type: %d",
 					 (int) cmd->subtype);
@@ -17979,6 +17967,7 @@ prebuild_temp_table(Relation rel, RangeVar *tmpname, DistributedBy *distro,
 
 		ProcessUtility(pstmt,
 					   synthetic_sql,
+					   false,
 					   PROCESS_UTILITY_SUBCOMMAND,
 					   NULL,
 					   NULL,
