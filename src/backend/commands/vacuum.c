@@ -200,16 +200,12 @@ ExecVacuum(ParseState *pstate, VacuumStmt *vacstmt, bool isTopLevel, bool auto_s
 		else if (strcmp(opt->defname, "process_toast") == 0)
 			process_toast = defGetBoolean(opt);
 		else if (strcmp(opt->defname, "truncate") == 0)
-<<<<<<< HEAD
-			params.truncate = get_vacopt_ternary_value(opt);
+			params.truncate = get_vacoptval_from_boolean(opt);
 		else if (Gp_role == GP_ROLE_EXECUTE && strcmp(opt->defname, "ao_phase") == 0)
 		{
 			ao_phase = defGetInt32(opt);
 			Assert((ao_phase & VACUUM_AO_PHASE_MASK) == ao_phase);
 		}
-=======
-			params.truncate = get_vacoptval_from_boolean(opt);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		else if (strcmp(opt->defname, "parallel") == 0)
 		{
 			ereport(ERROR,
