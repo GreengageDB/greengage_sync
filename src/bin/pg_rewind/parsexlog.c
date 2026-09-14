@@ -452,11 +452,7 @@ extractPageInfo(XLogReaderState *record)
 			 */
 		}
 
-<<<<<<< HEAD
 		/*
-		 * TODO_REVERT_C2DC19342E0: this block and the one below are
-		 * GGDB-specific, keep ours when the revert lands.
-		 *
 		 * GPDB_95_MERGE_FIXME: should we just return here? there seems be no buffer
 		 * registered when xlog is inserted.
 		 */
@@ -469,8 +465,6 @@ extractPageInfo(XLogReaderState *record)
 	 * revisit here to make sure RM_BITMAP_ID works.
 	 */
 
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	for (block_id = 0; block_id <= record->max_block_id; block_id++)
 	{
 		RelFileNode rnode;

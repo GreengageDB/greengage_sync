@@ -251,15 +251,11 @@ struct XLogReaderState
 
 	/* Buffer to hold error message */
 	char	   *errormsg_buf;
-<<<<<<< HEAD
 
 	/*
 	 * Set at the end of recovery: the start point of a partial record at the
 	 * end of WAL (InvalidXLogRecPtr if there wasn't one), and the start
 	 * location of its first contrecord that went missing.
-	 *
-	 * TODO_REVERT_C2DC19342E0: these three fields are GGDB-specific, keep
-	 * ours when the revert lands.
 	 */
 	XLogRecPtr	abortedRecPtr;
 	XLogRecPtr	missingContrecPtr;
@@ -267,10 +263,6 @@ struct XLogReaderState
 	XLogRecPtr	overwrittenRecPtr;
 };
 
-=======
-};
-
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 /* Get a new XLogReader */
 extern XLogReaderState *XLogReaderAllocate(int wal_segment_size,
 										   const char *waldir,
@@ -283,9 +275,6 @@ extern void XLogReaderFree(XLogReaderState *state);
 
 /* Position the XLogReader to given record */
 extern void XLogBeginRead(XLogReaderState *state, XLogRecPtr RecPtr);
-#ifdef FRONTEND
-extern XLogRecPtr XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr);
-#endif							/* FRONTEND */
 
 /* Read the next XLog record. Returns NULL on end-of-WAL or failure */
 extern struct XLogRecord *XLogReadRecord(XLogReaderState *state,
@@ -296,12 +285,6 @@ extern bool XLogReaderValidatePageHeader(XLogReaderState *state,
 										 XLogRecPtr recptr, char *phdr);
 
 /* In GPDB, this is needed in the backend, too, for WAL replication tests. */
-/*
- * TODO_REVERT_C2DC19342E0: keep this GGDB block when the revert lands, and
- * drop the plain "#ifdef FRONTEND" copy of this declaration that the revert
- * re-introduces above.  Git does not report that as a conflict -- it merges
- * both copies in silently.
- */
 /* #ifdef FRONTEND */
 #if 1
 extern XLogRecPtr XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr);

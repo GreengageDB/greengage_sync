@@ -798,8 +798,6 @@ extern void assign_search_path(const char *newval, void *extra);
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
 
-<<<<<<< HEAD
-/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 /* in cdb/cdbvars.c */
 extern bool check_gp_role(char **newval, void **extra, GucSource source);
 extern void assign_gp_role(const char *newval, void *extra);
@@ -814,6 +812,4 @@ extern bool gpvars_check_statement_mem(int *newval, void **extra, GucSource sour
 extern int guc_name_compare(const char *namea, const char *nameb);
 extern void DispatchSyncPGVariable(struct config_generic * gconfig);
 
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 #endif							/* GUC_H */

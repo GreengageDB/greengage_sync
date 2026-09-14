@@ -843,17 +843,9 @@ static XLogSegNo openLogSegNo = 0;
 
 /*
  * These variables are used similarly to the ones above, but for reading
-<<<<<<< HEAD
- * the XLOG.  Note, however, that readOff generally represents the offset
- * of the page just read, not the seek position of the FD itself, which
- * will be just past that page. readLen indicates how much of the current
- * page has been read into readBuf, and readSource indicates where we got
- * the currently open file from.
-=======
  * the XLOG.  readOff is the offset of the page just read, readLen
  * indicates how much of it has been read into readBuf, and readSource
  * indicates where we got the currently open file from.
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
  * Note: we could use Reserve/ReleaseExternalFD to track consumption of
  * this FD too; but it doesn't currently seem worthwhile, since the XLOG is
  * not read by general-purpose sessions.
@@ -12880,16 +12872,12 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 	}
 
 	XLByteToSeg(targetPagePtr, readSegNo, wal_segment_size);
-<<<<<<< HEAD
 
-	/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 	elogif(debug_xlog_record_read, LOG,
 		   "xlog page read -- Requested record %X/%X has "
 		   "targetsegno " UINT64_FORMAT ", targetpageoff %u",
 		   (uint32) (targetRecPtr >> 32), (uint32) targetRecPtr,
 		   readSegNo, targetPageOff);
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 retry:
 	/* See if we need to retrieve more data */

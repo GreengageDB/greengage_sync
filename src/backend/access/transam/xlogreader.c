@@ -283,11 +283,7 @@ XLogReadRecord(XLogReaderState *state, char **errormsg)
 				total_len;
 	uint32		targetRecOff;
 	uint32		pageHeaderSize;
-<<<<<<< HEAD
-	/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 	bool		assembled;
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	bool		gotheader;
 	int			readOff;
 
@@ -303,12 +299,8 @@ XLogReadRecord(XLogReaderState *state, char **errormsg)
 	state->errormsg_buf[0] = '\0';
 
 	ResetDecoder(state);
-<<<<<<< HEAD
-	/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 	state->abortedRecPtr = InvalidXLogRecPtr;
 	state->missingContrecPtr = InvalidXLogRecPtr;
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	RecPtr = state->EndRecPtr;
 
@@ -335,14 +327,9 @@ XLogReadRecord(XLogReaderState *state, char **errormsg)
 		randAccess = true;
 	}
 
-<<<<<<< HEAD
-	/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 restart:
 	state->currRecPtr = RecPtr;
 	assembled = false;
-=======
-	state->currRecPtr = RecPtr;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	targetPagePtr = RecPtr - (RecPtr % XLOG_BLCKSZ);
 	targetRecOff = RecPtr % XLOG_BLCKSZ;
@@ -438,12 +425,8 @@ restart:
 		char	   *buffer;
 		uint32		gotlen;
 
-<<<<<<< HEAD
-		/* TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert lands */
 		assembled = true;
 
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		/*
 		 * Enlarge readRecordBuf as needed.
 		 */
@@ -477,13 +460,9 @@ restart:
 
 			Assert(SizeOfXLogShortPHD <= readOff);
 
-<<<<<<< HEAD
 			pageHeader = (XLogPageHeader) state->readBuf;
 
 			/*
-			 * TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the
-			 * revert lands.
-			 *
 			 * If we were expecting a continuation record and got an
 			 * "overwrite contrecord" flag, that means the continuation record
 			 * was overwritten with a different record.  Restart the read by
@@ -504,13 +483,6 @@ restart:
 			{
 				report_invalid_record(state,
 									  "there is no contrecord flag at %X/%X",
-=======
-			/* Check that the continuation on next page looks valid */
-			pageHeader = (XLogPageHeader) state->readBuf;
-			if (!(pageHeader->xlp_info & XLP_FIRST_IS_CONTRECORD))
-			{
-				report_invalid_record(state,
-									  "there is no contrecord flag at %X/%X",
 									  LSN_FORMAT_ARGS(RecPtr));
 				goto err;
 			}
@@ -518,26 +490,6 @@ restart:
 			/*
 			 * Cross-check that xlp_rem_len agrees with how much of the record
 			 * we expect there to be left.
-			 */
-			if (pageHeader->xlp_rem_len == 0 ||
-				total_len != (pageHeader->xlp_rem_len + gotlen))
-			{
-				report_invalid_record(state,
-									  "invalid contrecord length %u (expected %lld) at %X/%X",
-									  pageHeader->xlp_rem_len,
-									  ((long long) total_len) - gotlen,
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
-									  LSN_FORMAT_ARGS(RecPtr));
-				goto err;
-			}
-
-<<<<<<< HEAD
-			/*
-			 * Cross-check that xlp_rem_len agrees with how much of the record
-			 * we expect there to be left.
-			 *
-			 * TODO_REVERT_C2DC19342E0: the "(expected %lld)" detail below is
-			 * GGDB-specific, keep ours when the revert lands.
 			 */
 			if (pageHeader->xlp_rem_len == 0 ||
 				total_len != (pageHeader->xlp_rem_len + gotlen))
@@ -583,41 +535,6 @@ restart:
 			}
 		} while (gotlen < total_len);
 
-=======
-			/* Append the continuation from this page to the buffer */
-			pageHeaderSize = XLogPageHeaderSize(pageHeader);
-
-			if (readOff < pageHeaderSize)
-				readOff = ReadPageInternal(state, targetPagePtr,
-										   pageHeaderSize);
-
-			Assert(pageHeaderSize <= readOff);
-
-			contdata = (char *) state->readBuf + pageHeaderSize;
-			len = XLOG_BLCKSZ - pageHeaderSize;
-			if (pageHeader->xlp_rem_len < len)
-				len = pageHeader->xlp_rem_len;
-
-			if (readOff < pageHeaderSize + len)
-				readOff = ReadPageInternal(state, targetPagePtr,
-										   pageHeaderSize + len);
-
-			memcpy(buffer, (char *) contdata, len);
-			buffer += len;
-			gotlen += len;
-
-			/* If we just reassembled the record header, validate it. */
-			if (!gotheader)
-			{
-				record = (XLogRecord *) state->readRecordBuf;
-				if (!ValidXLogRecordHeader(state, RecPtr, state->ReadRecPtr,
-										   record, randAccess))
-					goto err;
-				gotheader = true;
-			}
-		} while (gotlen < total_len);
-
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		Assert(gotheader);
 
 		record = (XLogRecord *) state->readRecordBuf;
@@ -663,13 +580,9 @@ restart:
 		return NULL;
 
 err:
-<<<<<<< HEAD
 	if (assembled)
 	{
 		/*
-		 * TODO_REVERT_C2DC19342E0: GGDB-specific, keep ours when the revert
-		 * lands.
-		 *
 		 * We get here when a record that spans multiple pages needs to be
 		 * assembled, but something went wrong -- perhaps a contrecord piece
 		 * was lost.  If caller is WAL replay, it will know where the aborted
@@ -681,8 +594,6 @@ err:
 		state->abortedRecPtr = RecPtr;
 		state->missingContrecPtr = targetPagePtr;
 	}
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	/*
 	 * Invalidate the read state. We might read from a different source after
