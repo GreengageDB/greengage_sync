@@ -981,24 +981,16 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 	 *
 	 * We assume that VACUUM hasn't set pg_class.reltuples already, even
 	 * during a VACUUM ANALYZE.  Although VACUUM often updates pg_class,
-<<<<<<< HEAD
-	 * exceptions exists.  A "VACUUM (ANALYZE, INDEX_CLEANUP OFF)" command
-	 * will never update pg_class entries for index relations.  It's also
-	 * possible that an individual index's pg_class entry won't be updated
-	 * during VACUUM if the index AM returns NULL from its amvacuumcleanup()
-	 * routine.
+	 * exceptions exist.  A "VACUUM (ANALYZE, INDEX_CLEANUP OFF)" command will
+	 * never update pg_class entries for index relations.  It's also possible
+	 * that an individual index's pg_class entry won't be updated during
+	 * VACUUM if the index AM returns NULL from its amvacuumcleanup() routine.
 	 *
 	 * GPDB_92_MERGE_FIXME: In postgres it is sufficient to check the number of
 	 * pages that are visible with visibilitymap_count(), but in GPDB this
 	 * needs to be the count of all pages marked all visible across the all the
 	 * QEs. We need to gather this information from the segments and then update
 	 * it here.
-=======
-	 * exceptions exist.  A "VACUUM (ANALYZE, INDEX_CLEANUP OFF)" command will
-	 * never update pg_class entries for index relations.  It's also possible
-	 * that an individual index's pg_class entry won't be updated during
-	 * VACUUM if the index AM returns NULL from its amvacuumcleanup() routine.
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	 */
 	if (!inh)
 	{
