@@ -447,7 +447,6 @@ equalTupleDescs(TupleDesc tupdesc1, TupleDesc tupdesc2, bool strict)
 			return false;
 		if (attr1->attcompression != attr2->attcompression)
 			return false;
-<<<<<<< HEAD
 
 		if (strict)
 		{
@@ -467,27 +466,8 @@ equalTupleDescs(TupleDesc tupdesc1, TupleDesc tupdesc2, bool strict)
 				return false;
 			if (attr1->attcollation != attr2->attcollation)
 				return false;
-			/* attacl and attoptions are not even present... */
+			/* variable-length fields are not even present... */
 		}
-=======
-		if (attr1->attnotnull != attr2->attnotnull)
-			return false;
-		if (attr1->atthasdef != attr2->atthasdef)
-			return false;
-		if (attr1->attidentity != attr2->attidentity)
-			return false;
-		if (attr1->attgenerated != attr2->attgenerated)
-			return false;
-		if (attr1->attisdropped != attr2->attisdropped)
-			return false;
-		if (attr1->attislocal != attr2->attislocal)
-			return false;
-		if (attr1->attinhcount != attr2->attinhcount)
-			return false;
-		if (attr1->attcollation != attr2->attcollation)
-			return false;
-		/* variable-length fields are not even present... */
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	}
 
 	if (!strict)
