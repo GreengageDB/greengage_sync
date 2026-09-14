@@ -27,11 +27,8 @@
 #include "postgres.h"
 
 #include "access/sysattr.h"
-<<<<<<< HEAD
 #include "catalog/pg_am.h"
-=======
 #include "catalog/pg_proc.h"
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 #include "catalog/pg_type.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -1005,7 +1002,6 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 		qry->onConflict = transformOnConflictClause(pstate,
 													stmt->onConflictClause);
 
-<<<<<<< HEAD
 	/*
 	 * Greenplum specific behavior.
 	 * OnConflictUpdate may modify the distkey of the table,
@@ -1018,15 +1014,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 													qry->onConflict->onConflictSet,
 													qry->onConflict->onConflictWhere);
 
-	/*
-	 * If we have a RETURNING clause, we need to add the target relation to
-	 * the query namespace before processing it, so that Var references in
-	 * RETURNING will work.  Also, remove any namespace entries added in a
-	 * sub-SELECT or VALUES list.
-	 */
-=======
 	/* Process RETURNING, if any. */
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	if (stmt->returningList)
 		qry->returningList = transformReturningList(pstate,
 													stmt->returningList);
@@ -1176,32 +1164,14 @@ transformOnConflictClause(ParseState *pstate,
 	if (onConflictClause->action == ONCONFLICT_UPDATE)
 	{
 		Relation	targetrel = pstate->p_target_relation;
-<<<<<<< HEAD
 		RangeTblEntry    *rte = pstate->p_target_nsitem->p_rte; /* GPDB */
-		ParseNamespaceItem *exclNSItem;
 		RangeTblEntry *exclRte;
 
-		/*
-		 * All INSERT expressions have been parsed, get ready for potentially
-		 * existing SET statements that need to be processed like an UPDATE.
-		 */
-		pstate->p_is_insert = false;
-
-		/*
-		 * Add range table entry for the EXCLUDED pseudo relation.  relkind is
-		 * set to composite to signal that we're not dealing with an actual
-		 * relation, and no permission checks are required on it.  (We'll
-		 * check the actual target relation, instead.)
-		 */
 		/*
 		 * GPDB spec. The lockmode of actual target relation might be upgraded.
 		 * The pseudo one should follow it to avoid involving another lockmode
 		 * which is not the appropriate.
 		 */
-=======
-		RangeTblEntry *exclRte;
-
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		exclNSItem = addRangeTableEntryForRelation(pstate,
 												   targetrel,
 												   rte->rellockmode, /* GPDB */
