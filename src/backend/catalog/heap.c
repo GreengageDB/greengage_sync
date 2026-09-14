@@ -2803,6 +2803,7 @@ StoreAttrDefault(Relation rel, AttrNumber attnum,
 		MemSet(replacesAtt, false, sizeof(replacesAtt));
 		valuesAtt[Anum_pg_attribute_atthasdef - 1] = true;
 		replacesAtt[Anum_pg_attribute_atthasdef - 1] = true;
+
 		if (rel->rd_rel->relkind != RELKIND_RELATION)
 		{
 			/* Do nothing for non-plain table (see 0a4efdc) */
