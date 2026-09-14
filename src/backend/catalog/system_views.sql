@@ -983,7 +983,6 @@ CREATE VIEW pg_stat_replication AS
         JOIN pg_stat_get_wal_senders() AS W ON (S.pid = W.pid)
         LEFT JOIN pg_authid AS U ON (S.usesysid = U.oid);
 
-<<<<<<< HEAD
 CREATE FUNCTION gp_stat_get_master_replication() RETURNS SETOF RECORD AS
 $$
     SELECT pg_catalog.gp_execution_segment() AS gp_segment_id, *
@@ -1041,20 +1040,6 @@ CREATE VIEW gp_stat_replication AS
          ON G.gp_segment_id = R.gp_segment_id
     );
 
-CREATE VIEW pg_stat_replication_slots AS
-    SELECT
-            s.slot_name,
-            s.spill_txns,
-            s.spill_count,
-            s.spill_bytes,
-            s.stream_txns,
-            s.stream_count,
-            s.stream_bytes,
-            s.stats_reset
-    FROM pg_stat_get_replication_slots() AS s;
-
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 CREATE VIEW pg_stat_slru AS
     SELECT
             s.name,
@@ -1659,7 +1644,6 @@ REVOKE ALL ON pg_subscription FROM public;
 GRANT SELECT (oid, subdbid, subname, subowner, subenabled, subbinary,
               substream, subslotname, subsynccommit, subpublications)
     ON pg_subscription TO public;
-<<<<<<< HEAD
 
 
 --
@@ -2094,5 +2078,3 @@ CREATE VIEW gp_suboverflowed_backend(segid, pids) AS
   SELECT -1, gp_get_suboverflowed_backends()
 UNION ALL
   SELECT gp_segment_id, gp_get_suboverflowed_backends() FROM gp_dist_random('gp_id') order by 1;
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
