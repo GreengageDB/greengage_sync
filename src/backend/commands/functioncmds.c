@@ -329,28 +329,12 @@ interpret_function_parameter_list(ParseState *pstate,
 			isinput = true;
 			if (parameterTypes_list)
 				*parameterTypes_list = lappend_oid(*parameterTypes_list, toid);
-		}
-
-<<<<<<< HEAD
-		/* handle signature parameters */
-		if (fp->mode == FUNC_PARAM_IN || fp->mode == FUNC_PARAM_INOUT ||
-			(objtype == OBJECT_PROCEDURE && fp->mode == FUNC_PARAM_OUT) ||
-			fp->mode == FUNC_PARAM_VARIADIC)
-		{
-			/* other signature parameters can't follow a VARIADIC parameter */
-			if (varCount > 0)
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
-						 errmsg("VARIADIC parameter must be the last signature parameter")));
-			sigArgTypes[sigArgCount++] = toid;
 
 			/* Keep track of the number of anytable arguments */
 			if (toid == ANYTABLEOID)
 				multisetCount++;
 		}
 
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		/* handle output parameters */
 		if (fpmode != FUNC_PARAM_IN && fpmode != FUNC_PARAM_VARIADIC)
 		{
