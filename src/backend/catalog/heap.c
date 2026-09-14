@@ -2804,17 +2804,16 @@ StoreAttrDefault(Relation rel, AttrNumber attnum,
 		valuesAtt[Anum_pg_attribute_atthasdef - 1] = true;
 		replacesAtt[Anum_pg_attribute_atthasdef - 1] = true;
 
-<<<<<<< HEAD
-		if (add_column_mode && !attgenerated && cookedMissingVal && *cookedMissingVal)
+		if (rel->rd_rel->relkind != RELKIND_RELATION)
+		{
+			/* Do nothing for non-plain table (see 0a4efdc) */
+		}
+		else if (add_column_mode && !attgenerated && cookedMissingVal && *cookedMissingVal)
 		{
 			missingval = *missingval_p;
 			missingIsNull = *missingIsNull_p;
 		}
 		else if (add_column_mode && !attgenerated)
-=======
-		if (rel->rd_rel->relkind == RELKIND_RELATION && add_column_mode &&
-			!attgenerated)
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		{
 			expr2 = expression_planner(expr2);
 			estate = CreateExecutorState();
