@@ -139,28 +139,19 @@ find_inheritance_children_extended(Oid parentrelId, bool omit_detached,
 		 */
 		if (((Form_pg_inherits) GETSTRUCT(inheritsTuple))->inhdetachpending)
 		{
-<<<<<<< HEAD
-			TransactionId xmin;
-			Snapshot snap;
 			bool		setDistributedSnapshotIgnore;
-=======
 			if (detached_exist)
 				*detached_exist = true;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 			if (omit_detached && ActiveSnapshotSet())
 			{
 				TransactionId xmin;
 				Snapshot	snap;
 
-<<<<<<< HEAD
-			if (XidInMVCCSnapshot(xmin, snap, true, &setDistributedSnapshotIgnore) != XID_IN_SNAPSHOT)
-				continue;
-=======
 				xmin = HeapTupleHeaderGetXmin(inheritsTuple->t_data);
 				snap = GetActiveSnapshot();
 
-				if (!XidInMVCCSnapshot(xmin, snap))
+				if (XidInMVCCSnapshot(xmin, snap, true, &setDistributedSnapshotIgnore) != XID_IN_SNAPSHOT)
 				{
 					if (detached_xmin)
 					{
@@ -188,7 +179,6 @@ find_inheritance_children_extended(Oid parentrelId, bool omit_detached,
 					continue;
 				}
 			}
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		}
 
 		inhrelid = ((Form_pg_inherits) GETSTRUCT(inheritsTuple))->inhrelid;
