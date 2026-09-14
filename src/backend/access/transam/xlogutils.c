@@ -954,6 +954,7 @@ read_local_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr,
 				 &errinfo))
 		WALReadRaiseError(&errinfo);
 
+	/* number of valid bytes in the buffer */
 	return count;
 }
 
