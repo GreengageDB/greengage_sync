@@ -140,6 +140,7 @@ find_inheritance_children_extended(Oid parentrelId, bool omit_detached,
 		if (((Form_pg_inherits) GETSTRUCT(inheritsTuple))->inhdetachpending)
 		{
 			bool		setDistributedSnapshotIgnore;
+
 			if (detached_exist)
 				*detached_exist = true;
 
