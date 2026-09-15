@@ -68,11 +68,8 @@ InstrAlloc(int n, int instrument_options, bool async_mode)
 			instr[i].need_bufusage = need_buffers;
 			instr[i].need_walusage = need_wal;
 			instr[i].need_timer = need_timer;
-<<<<<<< HEAD
 			instr[i].need_cdb = need_cdb;
-=======
 			instr[i].async_mode = async_mode;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		}
 	}
 
@@ -389,7 +386,7 @@ InstrShmemInit(void)
  * Otherwise use local memory.
  */
 Instrumentation *
-GpInstrAlloc(const Plan *node, int instrument_options)
+GpInstrAlloc(const Plan *node, int instrument_options, bool async_capable)
 {
 	Instrumentation *instr = NULL;
 
@@ -397,7 +394,7 @@ GpInstrAlloc(const Plan *node, int instrument_options)
 		instr = pickInstrFromShmem(node, instrument_options);
 
 	if (instr == NULL)
-		instr = InstrAlloc(1, instrument_options);
+		instr = InstrAlloc(1, instrument_options, async_capable);
 
 	return instr;
 }

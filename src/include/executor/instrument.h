@@ -171,7 +171,8 @@ extern InstrumentationHeader *InstrumentGlobal;
 extern Size InstrShmemNumSlots(void);
 extern Size InstrShmemSize(void);
 extern void InstrShmemInit(void);
-extern Instrumentation *GpInstrAlloc(const Plan *node, int instrument_options);
+extern Instrumentation *GpInstrAlloc(const Plan *node, int instrument_options,
+									 bool async_capable);
 
 /* needed by metrics_collector*/
 extern void gp_gettmid(int32*);
