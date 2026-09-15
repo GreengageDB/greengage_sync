@@ -903,17 +903,13 @@ ExecAppendAsyncBegin(AppendState *node)
 	/* If we've yet to determine the valid subplans then do so now. */
 	if (node->as_valid_subplans == NULL)
 	{
-<<<<<<< HEAD
 		Append	   *plan = (Append *) node->ps.plan;
 
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		node->as_valid_subplans =
 			ExecFindMatchingSubPlans(node->as_prune_state,
 									 node->ps.state,
 									 list_length(plan->appendplans),
 									 plan->join_prune_paramids);
-	}
 
 		classify_matching_subplans(node);
 	}
