@@ -1004,7 +1004,7 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 	appendStringInfo(&querybuf,
 					 "DELETE FROM %s _$mv WHERE ctid OPERATOR(pg_catalog.=) ANY "
 					 "(SELECT _$diff.tid FROM %s _$diff "
-					 "WHERE _$diff.tid = mv.ctid and _$diff.sid = mv.gp_segment_id and"
+					 "WHERE _$diff.tid = _$mv.ctid and _$diff.sid = _$mv.gp_segment_id and"
 	 				 " _$diff.tid IS NOT NULL)",
 					 matviewname, diffname);
 	if (SPI_exec(querybuf.data, 0) != SPI_OK_DELETE)
