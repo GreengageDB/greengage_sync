@@ -620,11 +620,8 @@ typedef struct
 	pg_time_t	first_syslogger_file_time;
 	bool		redirection_done;
 	bool		IsBinaryUpgrade;
-<<<<<<< HEAD
 	bool		ConvertMasterDataDirToSegment;
-=======
 	bool		query_id_enabled;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	int			max_safe_fds;
 	int			MaxBackends;
 #ifdef WIN32
@@ -6829,11 +6826,8 @@ save_backend_variables(BackendParameters *param, Port *port,
 
 	param->redirection_done = redirection_done;
 	param->IsBinaryUpgrade = IsBinaryUpgrade;
-<<<<<<< HEAD
 	param->ConvertMasterDataDirToSegment = ConvertMasterDataDirToSegment;
-=======
 	param->query_id_enabled = query_id_enabled;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	param->max_safe_fds = max_safe_fds;
 
 	param->MaxBackends = MaxBackends;
@@ -7067,11 +7061,8 @@ restore_backend_variables(BackendParameters *param, Port *port)
 
 	redirection_done = param->redirection_done;
 	IsBinaryUpgrade = param->IsBinaryUpgrade;
-<<<<<<< HEAD
 	ConvertMasterDataDirToSegment = param->ConvertMasterDataDirToSegment;
-=======
 	query_id_enabled = param->query_id_enabled;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	max_safe_fds = param->max_safe_fds;
 
 	MaxBackends = param->MaxBackends;
