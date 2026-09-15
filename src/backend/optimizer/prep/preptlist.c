@@ -483,65 +483,48 @@ expand_targetlist(List *tlist, int command_type,
 			Oid			attcollation = att_tup->attcollation;
 			Node	   *new_expr;
 
-			switch (command_type)
+			if (att_tup->attisdropped)
 			{
-				case CMD_INSERT:
-					if (!att_tup->attisdropped)
-					{
-						new_expr = (Node *) makeConst(atttype,
-													  -1,
-													  attcollation,
-													  att_tup->attlen,
-													  (Datum) 0,
-													  true, /* isnull */
-													  att_tup->attbyval);
-						new_expr = coerce_to_domain(new_expr,
-													InvalidOid, -1,
-													atttype,
-													COERCION_IMPLICIT,
-													COERCE_IMPLICIT_CAST,
-													-1,
-													false);
-					}
-					else
-					{
-						/* Insert NULL for dropped column */
-						new_expr = (Node *) makeConst(INT4OID,
-													  -1,
-													  InvalidOid,
-													  sizeof(int32),
-													  (Datum) 0,
-													  true, /* isnull */
-													  true /* byval */ );
-					}
-					break;
-				case CMD_UPDATE:
-					if (!att_tup->attisdropped)
-					{
-						new_expr = (Node *) makeVar(result_relation,
-													attrno,
-													atttype,
-													atttypmod,
-													attcollation,
-													0);
-					}
-					else
-					{
-						/* Insert NULL for dropped column */
-						new_expr = (Node *) makeConst(INT4OID,
-													  -1,
-													  InvalidOid,
-													  sizeof(int32),
-													  (Datum) 0,
-													  true, /* isnull */
-													  true /* byval */ );
-					}
-					break;
-				default:
-					elog(ERROR, "unrecognized command_type: %d",
-						 (int) command_type);
-					new_expr = NULL;	/* keep compiler quiet */
-					break;
+				/* Insert NULL for dropped column, regardless of command */
+				new_expr = (Node *) makeConst(INT4OID,
+											  -1,
+											  InvalidOid,
+											  sizeof(int32),
+											  (Datum) 0,
+											  true, /* isnull */
+											  true /* byval */ );
+			}
+			else if (command_type == CMD_INSERT)
+			{
+				new_expr = (Node *) makeConst(atttype,
+											  -1,
+											  attcollation,
+											  att_tup->attlen,
+											  (Datum) 0,
+											  true, /* isnull */
+											  att_tup->attbyval);
+				new_expr = coerce_to_domain(new_expr,
+											InvalidOid, -1,
+											atttype,
+											COERCION_IMPLICIT,
+											COERCE_IMPLICIT_CAST,
+											-1,
+											false);
+			}
+			else if (command_type == CMD_UPDATE)
+			{
+				new_expr = (Node *) makeVar(result_relation,
+											attrno,
+											atttype,
+											atttypmod,
+											attcollation,
+											0);
+			}
+			else
+			{
+				elog(ERROR, "unrecognized command_type: %d",
+					 (int) command_type);
+				new_expr = NULL;	/* keep compiler quiet */
 			}
 
 			new_tle = makeTargetEntry((Expr *) new_expr,
