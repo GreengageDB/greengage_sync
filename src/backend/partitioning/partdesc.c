@@ -368,15 +368,6 @@ RelationBuildPartitionDesc(Relation rel, bool omit_detached)
 	 * the regular partdesc in rd_pdcxt, and the partdesc-excluding-
 	 * detached-partitions in rd_pddcxt.)
 	 */
-<<<<<<< HEAD
-	if (rel->rd_pdcxt != NULL)
-		MemoryContextSetParent(rel->rd_pdcxt, new_pdcxt);
-	rel->rd_pdcxt = new_pdcxt;
-	rel->rd_partdesc = partdesc;
-	/* Return to caller's context, and blow away the temporary context. */
-	MemoryContextSwitchTo(oldcxt);
-	MemoryContextDelete(rbcontext);
-=======
 	if (is_omit)
 	{
 		if (rel->rd_pddcxt != NULL)
@@ -403,8 +394,11 @@ RelationBuildPartitionDesc(Relation rel, bool omit_detached)
 		rel->rd_partdesc = partdesc;
 	}
 
+	/* Return to caller's context, and blow away the temporary context. */
+	MemoryContextSwitchTo(oldcxt);
+	MemoryContextDelete(rbcontext);
+
 	return partdesc;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 }
 
 /*
