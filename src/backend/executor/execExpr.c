@@ -613,11 +613,6 @@ ExecBuildUpdateProjection(List *targetList,
 		break;
 	}
 
-<<<<<<< HEAD
-	/* GGDB: a zero here means no column comes from the old tuple. */
-	if (needsOldTuple)
-		*needsOldTuple = (deform.last_scan != 0);
-=======
 	/*
 	 * If we're actually evaluating the tlist, incorporate its input
 	 * requirements too; otherwise, we'll just need to fetch the appropriate
@@ -627,7 +622,10 @@ ExecBuildUpdateProjection(List *targetList,
 		get_last_attnums_walker((Node *) targetList, &deform);
 	else
 		deform.last_outer = nAssignableCols;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+
+	/* GGDB: a zero here means no column comes from the old tuple. */
+	if (needsOldTuple)
+		*needsOldTuple = (deform.last_scan != 0);
 
 	ExecPushExprSlots(state, &deform);
 
