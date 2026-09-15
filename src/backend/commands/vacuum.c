@@ -3009,7 +3009,7 @@ vacuum_params_to_options_list(VacuumParams *params)
 	else if (params->index_cleanup == VACOPTVALUE_ENABLED)
 		options = lappend(options, makeDefElem("index_cleanup", (Node *) makeInteger(1), -1));
 	else if (params->index_cleanup == VACOPTVALUE_AUTO)
-    	options = lappend(options, makeDefElem("index_cleanup", (Node *) makeString("auto"), -1));
+		options = lappend(options, makeDefElem("index_cleanup", (Node *) makeString("auto"), -1));
 	else
 		elog(ERROR, "unexpected VACUUM 'index_cleanup' option '%d'", (int) params->index_cleanup);
 
