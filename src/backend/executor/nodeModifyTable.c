@@ -3775,10 +3775,8 @@ ExecEndModifyTable(ModifyTableState *node)
 			resultRelInfo->ri_FdwRoutine->EndForeignModify != NULL)
 			resultRelInfo->ri_FdwRoutine->EndForeignModify(node->ps.state,
 														   resultRelInfo);
-<<<<<<< HEAD
 		if (resultRelInfo->ri_RelationDesc->rd_tableam)
 			table_dml_finish(resultRelInfo->ri_RelationDesc);
-=======
 
 		/*
 		 * Cleanup the initialized batch slots. This only matters for FDWs
@@ -3790,7 +3788,6 @@ ExecEndModifyTable(ModifyTableState *node)
 			ExecDropSingleTupleTableSlot(resultRelInfo->ri_Slots[j]);
 			ExecDropSingleTupleTableSlot(resultRelInfo->ri_PlanSlots[j]);
 		}
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	}
 
 	/*
