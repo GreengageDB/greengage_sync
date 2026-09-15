@@ -2354,7 +2354,6 @@ ProcessUtilityForAlterTable(Node *stmt, AlterTableUtilityContext *context)
 	wrapper->stmt_location = context->pstmt->stmt_location;
 	wrapper->stmt_len = context->pstmt->stmt_len;
 
-<<<<<<< HEAD
 	/* Do not dispatch utility statement under alter table */
 	if (Gp_role == GP_ROLE_DISPATCH)
 		gp_dispatch_utility_statement = false;
@@ -2363,6 +2362,7 @@ ProcessUtilityForAlterTable(Node *stmt, AlterTableUtilityContext *context)
 	{
 		ProcessUtility(wrapper,
 					   context->queryString,
+					   false,
 					   PROCESS_UTILITY_SUBCOMMAND,
 					   context->params,
 					   context->queryEnv,
@@ -2374,16 +2374,6 @@ ProcessUtilityForAlterTable(Node *stmt, AlterTableUtilityContext *context)
 		gp_dispatch_utility_statement = true;
 	}
 	PG_END_TRY();
-=======
-	ProcessUtility(wrapper,
-				   context->queryString,
-				   false,
-				   PROCESS_UTILITY_SUBCOMMAND,
-				   context->params,
-				   context->queryEnv,
-				   None_Receiver,
-				   NULL);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	EventTriggerAlterTableStart(context->pstmt->utilityStmt);
 	EventTriggerAlterTableRelid(context->relid);
