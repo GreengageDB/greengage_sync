@@ -200,16 +200,12 @@ ExecVacuum(ParseState *pstate, VacuumStmt *vacstmt, bool isTopLevel, bool auto_s
 		else if (strcmp(opt->defname, "process_toast") == 0)
 			process_toast = defGetBoolean(opt);
 		else if (strcmp(opt->defname, "truncate") == 0)
-<<<<<<< HEAD
-			params.truncate = get_vacopt_ternary_value(opt);
+			params.truncate = get_vacoptval_from_boolean(opt);
 		else if (Gp_role == GP_ROLE_EXECUTE && strcmp(opt->defname, "ao_phase") == 0)
 		{
 			ao_phase = defGetInt32(opt);
 			Assert((ao_phase & VACUUM_AO_PHASE_MASK) == ao_phase);
 		}
-=======
-			params.truncate = get_vacoptval_from_boolean(opt);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		else if (strcmp(opt->defname, "parallel") == 0)
 		{
 			ereport(ERROR,
@@ -3001,17 +2997,19 @@ vacuum_params_to_options_list(VacuumParams *params)
 	 * vacuum request to QEs as distributed transaction) for GPDB7.
 	 * See more details in the head comments of autovacuum.c.
 	*/
-	if (params->truncate == VACOPT_TERNARY_DISABLED)
+	if (params->truncate == VACOPTVALUE_DISABLED)
 		options = lappend(options, makeDefElem("truncate", (Node *) makeInteger(0), -1));
-	else if (params->truncate == VACOPT_TERNARY_ENABLED)
+	else if (params->truncate == VACOPTVALUE_ENABLED)
 		options = lappend(options, makeDefElem("truncate", (Node *) makeInteger(1), -1));
 	else
 		elog(ERROR, "unexpected VACUUM 'truncate' option '%d'", (int) params->truncate);
 
-	if (params->index_cleanup == VACOPT_TERNARY_DISABLED)
+	if (params->index_cleanup == VACOPTVALUE_DISABLED)
 		options = lappend(options, makeDefElem("index_cleanup", (Node *) makeInteger(0), -1));
-	else if (params->index_cleanup == VACOPT_TERNARY_ENABLED)
+	else if (params->index_cleanup == VACOPTVALUE_ENABLED)
 		options = lappend(options, makeDefElem("index_cleanup", (Node *) makeInteger(1), -1));
+	else if (params->index_cleanup == VACOPTVALUE_AUTO)
+		options = lappend(options, makeDefElem("index_cleanup", (Node *) makeString("auto"), -1));
 	else
 		elog(ERROR, "unexpected VACUUM 'index_cleanup' option '%d'", (int) params->index_cleanup);
 
