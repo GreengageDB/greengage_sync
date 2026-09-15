@@ -474,32 +474,31 @@ PersistHoldablePortal(Portal portal)
 		PushActiveSnapshot(queryDesc->snapshot);
 
 		/*
-		 * If the portal is marked scrollable, we need to store the entire
-		 * result set in the tuplestore, so that subsequent backward FETCHs
-		 * can be processed.  Otherwise, store only the not-yet-fetched rows.
-		 * (The latter is not only more efficient, but avoids semantic
-		 * problems if the query's output isn't stable.)
-		 */
-<<<<<<< HEAD
-		/*
-		 * We don't allow scanning backwards in MPP! skip this call and 
-		 * skip the reset position call few lines down.
+		 * We don't allow scanning backwards in MPP! Skip this call (and
+		 * the reset position call a few lines down) except in utility
+		 * mode, where we behave like a plain PostgreSQL backend.
 		 */
 		if (Gp_role == GP_ROLE_UTILITY)
-			ExecutorRewind(queryDesc);
-=======
-		if (portal->cursorOptions & CURSOR_OPT_SCROLL)
 		{
-			ExecutorRewind(queryDesc);
+			/*
+			 * If the portal is marked scrollable, we need to store the entire
+			 * result set in the tuplestore, so that subsequent backward FETCHs
+			 * can be processed.  Otherwise, store only the not-yet-fetched rows.
+			 * (The latter is not only more efficient, but avoids semantic
+			 * problems if the query's output isn't stable.)
+			 */
+			if (portal->cursorOptions & CURSOR_OPT_SCROLL)
+			{
+				ExecutorRewind(queryDesc);
+			}
+			else
+			{
+				/* We must reset the cursor state as though at start of query */
+				portal->atStart = true;
+				portal->atEnd = false;
+				portal->portalPos = 0;
+			}
 		}
-		else
-		{
-			/* We must reset the cursor state as though at start of query */
-			portal->atStart = true;
-			portal->atEnd = false;
-			portal->portalPos = 0;
-		}
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 		/*
 		 * Change the destination to output to the tuplestore.  Note we tell
