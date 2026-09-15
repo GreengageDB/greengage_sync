@@ -132,16 +132,11 @@ static Expr *simplify_function(Oid funcid,
 							   Oid result_collid, Oid input_collid, List **args_p,
 							   bool funcvariadic, bool process_args, bool allow_non_const,
 							   eval_const_expressions_context *context);
-<<<<<<< HEAD
 static bool large_const(Expr *expr, Size max_size);
-static List *reorder_function_arguments(List *args, HeapTuple func_tuple);
-static List *add_function_defaults(List *args, HeapTuple func_tuple);
-=======
 static List *reorder_function_arguments(List *args, int pronargs,
 										HeapTuple func_tuple);
 static List *add_function_defaults(List *args, int pronargs,
 								   HeapTuple func_tuple);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 static List *fetch_function_defaults(HeapTuple func_tuple);
 static void recheck_cast_function_args(List *args, Oid result_type,
 									   Oid *proargtypes, int pronargs,
