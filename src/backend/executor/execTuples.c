@@ -141,7 +141,8 @@ tts_virtual_getsomeattrs(TupleTableSlot *slot, int natts)
 static Datum
 tts_virtual_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)
 {
-<<<<<<< HEAD
+	Assert(!TTS_EMPTY(slot));
+
 	/*
 	 * GPDB: AppendOptimized relations do need to get sysattrs AND use virtual
 	 * tuples to pass around data. It is assumed that the caller knows what is
@@ -154,14 +155,9 @@ tts_virtual_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)
 		return Int32GetDatum(GpIdentity.segindex);
 	}
 
-	elog(ERROR, "virtual tuple table slot does not have system attributes");
-=======
-	Assert(!TTS_EMPTY(slot));
-
 	ereport(ERROR,
 			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 			 errmsg("cannot retrieve a system column in this context")));
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	return 0;					/* silence compiler warnings */
 }
