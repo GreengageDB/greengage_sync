@@ -113,7 +113,7 @@ regress_data_files = \
 	$(wildcard $(srcdir)/output/uao_ddl/*.source) \
 	$(filter-out $(addprefix $(srcdir)/,$(input_files)),$(wildcard $(srcdir)/sql/*.sql)) \
 	$(wildcard $(srcdir)/data/*.data) \
-	$(srcdir)/parallel_schedule $(srcdir)/serial_schedule $(srcdir)/resultmap
+	$(srcdir)/parallel_schedule $(srcdir)/resultmap
 
 install-tests: all install install-lib installdirs-tests
 	$(MAKE) -C $(top_builddir)/contrib/spi install
@@ -181,7 +181,12 @@ query_info_hook_test:
 ## Run tests
 ##
 
+<<<<<<< HEAD
 REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --init-file=$(srcdir)/init_file $(EXTRA_REGRESS_OPTS)
+=======
+REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir \
+	$(EXTRA_REGRESS_OPTS)
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 check: all
 	$(pg_regress_check) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
@@ -189,6 +194,7 @@ check: all
 check-tests: all | temp-install
 	$(pg_regress_check) $(REGRESS_OPTS) $(MAXCONNOPT) $(TESTS) $(EXTRA_TESTS)
 
+<<<<<<< HEAD
 #installcheck: all tablespace-setup
 #	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/serial_schedule $(EXTRA_TESTS)
 installcheck: installcheck-good
@@ -198,6 +204,10 @@ installcheck-small: all tablespace-setup
 
 installcheck-good: all tablespace-setup twophase_pqexecparams hooktest query_info_hook_test
 	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule --schedule=$(srcdir)/greenplum_schedule $(EXTRA_TESTS)
+=======
+installcheck: all
+	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule --max-connections=1 $(EXTRA_TESTS)
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 installcheck-parallel: all
 	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
@@ -227,7 +237,7 @@ runtest: installcheck
 runtest-parallel: installcheck-parallel
 
 bigtest: all
-	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/serial_schedule numeric_big
+	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule --max-connections=1 numeric_big
 
 bigcheck: all | temp-install
 	$(pg_regress_check) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) numeric_big

@@ -981,11 +981,10 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 	 *
 	 * We assume that VACUUM hasn't set pg_class.reltuples already, even
 	 * during a VACUUM ANALYZE.  Although VACUUM often updates pg_class,
-	 * exceptions exists.  A "VACUUM (ANALYZE, INDEX_CLEANUP OFF)" command
-	 * will never update pg_class entries for index relations.  It's also
-	 * possible that an individual index's pg_class entry won't be updated
-	 * during VACUUM if the index AM returns NULL from its amvacuumcleanup()
-	 * routine.
+	 * exceptions exist.  A "VACUUM (ANALYZE, INDEX_CLEANUP OFF)" command will
+	 * never update pg_class entries for index relations.  It's also possible
+	 * that an individual index's pg_class entry won't be updated during
+	 * VACUUM if the index AM returns NULL from its amvacuumcleanup() routine.
 	 *
 	 * GPDB_92_MERGE_FIXME: In postgres it is sufficient to check the number of
 	 * pages that are visible with visibilitymap_count(), but in GPDB this
@@ -1054,6 +1053,18 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 								in_outer_xact,
 								false /* isVacuum */);
 		}
+	}
+	else if (onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+	{
+		/*
+		 * Partitioned tables don't have storage, so we don't set any fields
+		 * in their pg_class entries except for reltuples, which is necessary
+		 * for auto-analyze to work properly.
+		 */
+		vac_update_relstats(onerel, -1, totalrows,
+							0, false, InvalidTransactionId,
+							InvalidMultiXactId,
+							in_outer_xact, false);
 	}
 
 	/*

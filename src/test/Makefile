@@ -12,10 +12,14 @@ subdir = src/test
 top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 
+<<<<<<< HEAD
 # GPDB_12_MERGE_FEATURE_NOT_SUPPORTED Since logical replication doesn't work for GPDB,
 # removed "subscription" test from below list.
 SUBDIRS = perl regress isolation modules authentication recovery \
 	  locale
+=======
+SUBDIRS = perl regress isolation modules authentication recovery subscription
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 SUBDIRS += fsync walrep heap_checksum isolation2 fdw
 

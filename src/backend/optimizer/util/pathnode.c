@@ -4202,7 +4202,23 @@ create_projection_path_with_quals(PlannerInfo *root,
 								  bool need_param)
 {
 	ProjectionPath *pathnode = makeNode(ProjectionPath);
-	PathTarget *oldtarget = subpath->pathtarget;
+	PathTarget *oldtarget;
+
+	/*
+	 * We mustn't put a ProjectionPath directly above another; it's useless
+	 * and will confuse create_projection_plan.  Rather than making sure all
+	 * callers handle that, let's implement it here, by stripping off any
+	 * ProjectionPath in what we're given.  Given this rule, there won't be
+	 * more than one.
+	 */
+	if (IsA(subpath, ProjectionPath))
+	{
+		ProjectionPath *subpp = (ProjectionPath *) subpath;
+
+		Assert(subpp->path.parent == rel);
+		subpath = subpp->subpath;
+		Assert(!IsA(subpath, ProjectionPath));
+	}
 
 	pathnode->path.pathtype = T_Result;
 	pathnode->path.parent = rel;
@@ -4233,9 +4249,15 @@ create_projection_path_with_quals(PlannerInfo *root,
 	 * Filters, we could push them down too. But currently this is only used on
 	 * top of Material paths, which don't support it, so it doesn't matter.
 	 */
+<<<<<<< HEAD
 	if (!restrict_clauses &&
 		(is_projection_capable_path(subpath) ||
 		 equal(oldtarget->exprs, target->exprs)))
+=======
+	oldtarget = subpath->pathtarget;
+	if (is_projection_capable_path(subpath) ||
+		equal(oldtarget->exprs, target->exprs))
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	{
 		/* No separate Result node needed */
 		pathnode->dummypp = true;

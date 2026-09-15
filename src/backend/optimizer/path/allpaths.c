@@ -2384,8 +2384,42 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 
 	forceDistRand = rte->forceDistRandom;
 
+<<<<<<< HEAD
 	/* CDB: Could be a preplanned subquery from window_planner. */
 	if (rte->subquery_root == NULL)
+=======
+	/*
+	 * If the subquery has the "security_barrier" flag, it means the subquery
+	 * originated from a view that must enforce row-level security.  Then we
+	 * must not push down quals that contain leaky functions.  (Ideally this
+	 * would be checked inside subquery_is_pushdown_safe, but since we don't
+	 * currently pass the RTE to that function, we must do it here.)
+	 */
+	safetyInfo.unsafeLeaky = rte->security_barrier;
+
+	/*
+	 * If there are any restriction clauses that have been attached to the
+	 * subquery relation, consider pushing them down to become WHERE or HAVING
+	 * quals of the subquery itself.  This transformation is useful because it
+	 * may allow us to generate a better plan for the subquery than evaluating
+	 * all the subquery output rows and then filtering them.
+	 *
+	 * There are several cases where we cannot push down clauses. Restrictions
+	 * involving the subquery are checked by subquery_is_pushdown_safe().
+	 * Restrictions on individual clauses are checked by
+	 * qual_is_pushdown_safe().  Also, we don't want to push down
+	 * pseudoconstant clauses; better to have the gating node above the
+	 * subquery.
+	 *
+	 * Non-pushed-down clauses will get evaluated as qpquals of the
+	 * SubqueryScan node.
+	 *
+	 * XXX Are there any cases where we want to make a policy decision not to
+	 * push down a pushable qual, because it'd result in a worse plan?
+	 */
+	if (rel->baserestrictinfo != NIL &&
+		subquery_is_pushdown_safe(subquery, subquery, &safetyInfo))
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	{
 		/*
 		 * push down quals if possible. Note subquery might be
@@ -3245,20 +3279,19 @@ get_useful_pathkeys_for_relation(PlannerInfo *root, RelOptInfo *rel,
 			EquivalenceClass *pathkey_ec = pathkey->pk_eclass;
 
 			/*
-			 * We can only build a sort for pathkeys which contain an EC
-			 * member in the current relation's target, so ignore any suffix
-			 * of the list as soon as we find a pathkey without an EC member
-			 * in the relation.
+			 * We can only build a sort for pathkeys that contain a
+			 * safe-to-compute-early EC member computable from the current
+			 * relation's reltarget, so ignore the remainder of the list as
+			 * soon as we find a pathkey without such a member.
 			 *
-			 * By still returning the prefix of the pathkeys list that does
-			 * meet criteria of EC membership in the current relation, we
-			 * enable not just an incremental sort on the entirety of
-			 * query_pathkeys but also incremental sort below a JOIN.
+			 * It's still worthwhile to return any prefix of the pathkeys list
+			 * that meets this requirement, as we may be able to do an
+			 * incremental sort.
 			 *
-			 * If requested, ensure the expression is parallel safe too.
+			 * If requested, ensure the sort expression is parallel-safe too.
 			 */
-			if (!find_em_expr_usable_for_sorting_rel(root, pathkey_ec, rel,
-													 require_parallel_safe))
+			if (!relation_can_be_sorted_early(root, rel, pathkey_ec,
+											  require_parallel_safe))
 				break;
 
 			npathkeys++;

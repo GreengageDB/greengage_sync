@@ -502,6 +502,7 @@ CheckRestrictedOperation(const char *cmdname)
  *
  *	pstmt: PlannedStmt wrapper for the utility statement
  *	queryString: original source text of command
+ *	readOnlyTree: if true, pstmt's node tree must not be modified
  *	context: identifies source of statement (toplevel client command,
  *		non-toplevel client command, subcommand of a larger utility command)
  *	params: parameters to use during execution
@@ -527,6 +528,7 @@ CheckRestrictedOperation(const char *cmdname)
 void
 ProcessUtility(PlannedStmt *pstmt,
 			   const char *queryString,
+			   bool readOnlyTree,
 			   ProcessUtilityContext context,
 			   ParamListInfo params,
 			   QueryEnvironment *queryEnv,
@@ -544,11 +546,11 @@ ProcessUtility(PlannedStmt *pstmt,
 	 * call standard_ProcessUtility().
 	 */
 	if (ProcessUtility_hook)
-		(*ProcessUtility_hook) (pstmt, queryString,
+		(*ProcessUtility_hook) (pstmt, queryString, readOnlyTree,
 								context, params, queryEnv,
 								dest, qc);
 	else
-		standard_ProcessUtility(pstmt, queryString,
+		standard_ProcessUtility(pstmt, queryString, readOnlyTree,
 								context, params, queryEnv,
 								dest, qc);
 }
@@ -567,13 +569,14 @@ ProcessUtility(PlannedStmt *pstmt,
 void
 standard_ProcessUtility(PlannedStmt *pstmt,
 						const char *queryString,
+						bool readOnlyTree,
 						ProcessUtilityContext context,
 						ParamListInfo params,
 						QueryEnvironment *queryEnv,
 						DestReceiver *dest,
 						QueryCompletion *qc)
 {
-	Node	   *parsetree = pstmt->utilityStmt;
+	Node	   *parsetree;
 	bool		isTopLevel = (context == PROCESS_UTILITY_TOPLEVEL);
 	bool		isAtomicContext = (!(context == PROCESS_UTILITY_TOPLEVEL || context == PROCESS_UTILITY_QUERY_NONATOMIC) || IsTransactionBlock());
 	ParseState *pstate;
@@ -581,6 +584,18 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 
 	/* This can recurse, so check for excessive recursion */
 	check_stack_depth();
+
+	/*
+	 * If the given node tree is read-only, make a copy to ensure that parse
+	 * transformations don't damage the original tree.  This could be
+	 * refactored to avoid making unnecessary copies in more cases, but it's
+	 * not clear that it's worth a great deal of trouble over.  Statements
+	 * that are complex enough to be expensive to copy are exactly the ones
+	 * we'd need to copy, so that only marginal savings seem possible.
+	 */
+	if (readOnlyTree)
+		pstmt = copyObject(pstmt);
+	parsetree = pstmt->utilityStmt;
 
 	/* Prohibit read/write commands in read-only states. */
 	readonly_flags = ClassifyUtilityCommandAsReadOnly(parsetree);
@@ -1477,6 +1492,7 @@ ProcessUtilitySlow(ParseState *pstate,
 
 							ProcessUtility(wrapper,
 										   queryString,
+										   false,
 										   PROCESS_UTILITY_SUBCOMMAND,
 										   params,
 										   NULL,
@@ -2272,6 +2288,10 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = AlterStatistics((AlterStatsStmt *) parsetree);
 				break;
 
+			case T_AlterCollationStmt:
+				address = AlterCollation((AlterCollationStmt *) parsetree);
+				break;
+
 			default:
 				elog(ERROR, "unrecognized node type: %d",
 					 (int) nodeTag(parsetree));
@@ -2334,6 +2354,7 @@ ProcessUtilityForAlterTable(Node *stmt, AlterTableUtilityContext *context)
 	wrapper->stmt_location = context->pstmt->stmt_location;
 	wrapper->stmt_len = context->pstmt->stmt_len;
 
+<<<<<<< HEAD
 	/* Do not dispatch utility statement under alter table */
 	if (Gp_role == GP_ROLE_DISPATCH)
 		gp_dispatch_utility_statement = false;
@@ -2353,6 +2374,16 @@ ProcessUtilityForAlterTable(Node *stmt, AlterTableUtilityContext *context)
 		gp_dispatch_utility_statement = true;
 	}
 	PG_END_TRY();
+=======
+	ProcessUtility(wrapper,
+				   context->queryString,
+				   false,
+				   PROCESS_UTILITY_SUBCOMMAND,
+				   context->params,
+				   context->queryEnv,
+				   None_Receiver,
+				   NULL);
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	EventTriggerAlterTableStart(context->pstmt->utilityStmt);
 	EventTriggerAlterTableRelid(context->relid);
@@ -3534,6 +3565,10 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_DROP_SUBSCRIPTION;
 			break;
 
+		case T_AlterCollationStmt:
+			tag = CMDTAG_ALTER_COLLATION;
+			break;
+
 		case T_PrepareStmt:
 			tag = CMDTAG_PREPARE;
 			break;
@@ -4160,6 +4195,10 @@ GetCommandLogLevel(Node *parsetree)
 			break;
 
 		case T_AlterStatsStmt:
+			lev = LOGSTMT_DDL;
+			break;
+
+		case T_AlterCollationStmt:
 			lev = LOGSTMT_DDL;
 			break;
 

@@ -2866,6 +2866,7 @@ Access method: heap
 
 -- AM is displayed for tables, indexes and materialized views.
 \d+
+<<<<<<< HEAD
                                                                  List of relations
      Schema      |        Name        |       Type        |        Owner         |  Storage  | Persistence | Access Method |  Size   | Description 
 -----------------+--------------------+-------------------+----------------------+-----------+-------------+---------------+---------+-------------
@@ -2881,11 +2882,28 @@ Access method: heap
 -----------------+---------------+-------+----------------------+-----------+-------------+---------------+---------+-------------
  tableam_display | tbl_heap      | table | regress_display_role | heap      | permanent   | heap          | 0 bytes | 
  tableam_display | tbl_heap_psql | table | regress_display_role | heap_psql | permanent   | heap_psql     | 0 bytes | 
+=======
+                                                           List of relations
+     Schema      |        Name        |       Type        |        Owner         | Persistence | Access method |  Size   | Description 
+-----------------+--------------------+-------------------+----------------------+-------------+---------------+---------+-------------
+ tableam_display | mat_view_heap_psql | materialized view | regress_display_role | permanent   | heap_psql     | 0 bytes | 
+ tableam_display | tbl_heap           | table             | regress_display_role | permanent   | heap          | 0 bytes | 
+ tableam_display | tbl_heap_psql      | table             | regress_display_role | permanent   | heap_psql     | 0 bytes | 
+ tableam_display | view_heap_psql     | view              | regress_display_role | permanent   |               | 0 bytes | 
+(4 rows)
+
+\dt+
+                                                  List of relations
+     Schema      |     Name      | Type  |        Owner         | Persistence | Access method |  Size   | Description 
+-----------------+---------------+-------+----------------------+-------------+---------------+---------+-------------
+ tableam_display | tbl_heap      | table | regress_display_role | permanent   | heap          | 0 bytes | 
+ tableam_display | tbl_heap_psql | table | regress_display_role | permanent   | heap_psql     | 0 bytes | 
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 (2 rows)
 
 \dm+
                                                            List of relations
-     Schema      |        Name        |       Type        |        Owner         | Persistence | Access Method |  Size   | Description 
+     Schema      |        Name        |       Type        |        Owner         | Persistence | Access method |  Size   | Description 
 -----------------+--------------------+-------------------+----------------------+-------------+---------------+---------+-------------
  tableam_display | mat_view_heap_psql | materialized view | regress_display_role | permanent   | heap_psql     | 0 bytes | 
 (1 row)
@@ -5291,6 +5309,7 @@ List of access methods
  pg_catalog | &&   | anyarray      | anyarray       | boolean     | overlaps
 (1 row)
 
+<<<<<<< HEAD
 --
 -- combined queries
 --
@@ -5384,3 +5403,5 @@ CONTEXT:  PL/pgSQL function warn(text) line 2 at RAISE
 
 \set SHOW_ALL_RESULTS on
 DROP FUNCTION warn(TEXT);
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
