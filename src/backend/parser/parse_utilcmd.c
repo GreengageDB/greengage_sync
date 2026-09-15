@@ -194,8 +194,6 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	Oid			namespaceid;
 	Oid			existing_relid;
 	ParseCallbackState pcbstate;
-<<<<<<< HEAD
-	bool		is_foreign_table = IsA(stmt, CreateForeignTableStmt);
 
 	DistributedBy *likeDistributedBy = NULL;
 	bool		bQuiet = false;		/* shut up transformDistributedBy messages */
@@ -222,8 +220,6 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	 * overkill, but easy.)
 	 */
 	stmt = copyObject(stmt);
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	/* Set up pstate */
 	pstate = make_parsestate(NULL);
