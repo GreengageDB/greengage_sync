@@ -313,14 +313,8 @@ static Plan *prepare_sort_from_pathkeys(Plan *lefttree, List *pathkeys,
 										Oid **p_sortOperators,
 										Oid **p_collations,
 										bool **p_nullsFirst);
-<<<<<<< HEAD
-static EquivalenceMember *find_ec_member_for_tle(EquivalenceClass *ec,
-												 TargetEntry *tle,
-												 Relids relids);
-=======
 static Sort *make_sort_from_pathkeys(Plan *lefttree, List *pathkeys,
 									 Relids relids);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 static IncrementalSort *make_incrementalsort_from_pathkeys(Plan *lefttree,
 														   List *pathkeys, Relids relids, int nPresortedCols);
 static Sort *make_sort_from_groupcols(List *groupcls,
