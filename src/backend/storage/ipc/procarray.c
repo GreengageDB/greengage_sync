@@ -595,7 +595,6 @@ ProcArrayRemove(PGPROC *proc, TransactionId latestXid)
 		Assert(!TransactionIdIsValid(ProcGlobal->xids[myoff]));
 	}
 
-<<<<<<< HEAD
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
 		/*
@@ -609,15 +608,9 @@ ProcArrayRemove(PGPROC *proc, TransactionId latestXid)
 			ShmemVariableCache->latestCompletedGxid = gxid;
 	}
 
-	Assert(TransactionIdIsValid(ProcGlobal->xids[proc->pgxactoff] == 0));
-	Assert(TransactionIdIsValid(ProcGlobal->subxidStates[proc->pgxactoff].count == 0));
-	Assert(TransactionIdIsValid(ProcGlobal->subxidStates[proc->pgxactoff].overflowed == false));
-	ProcGlobal->statusFlags[proc->pgxactoff] = 0;
-=======
 	Assert(!TransactionIdIsValid(ProcGlobal->xids[myoff]));
 	Assert(ProcGlobal->subxidStates[myoff].count == 0);
 	Assert(ProcGlobal->subxidStates[myoff].overflowed == false);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	ProcGlobal->statusFlags[myoff] = 0;
 
