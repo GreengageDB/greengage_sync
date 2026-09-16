@@ -555,11 +555,8 @@ SocketBackend(StringInfo inBuf)
 
 		case 'c':				/* copy done */
 		case 'f':				/* copy fail */
-<<<<<<< HEAD
 		case '?':				/* Greenplum sequence response */
-=======
 			maxmsglen = PQ_SMALL_MESSAGE_LIMIT;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 			doing_extended_query_message = false;
 			break;
 
@@ -3955,16 +3952,14 @@ RecoveryConflictInterrupt(ProcSignalReason reason)
  * then clear the flag and accept the interrupt.  Called only when
  * InterruptPending is true.
  *
-<<<<<<< HEAD
  * Parameters filename and lineno contain the file name and the line number where
  * ProcessInterrupts was invoked, respectively.
-=======
+ *
  * Note: if INTERRUPTS_CAN_BE_PROCESSED() is true, then ProcessInterrupts
  * is guaranteed to clear the InterruptPending flag before returning.
  * (This is not the same as guaranteeing that it's still clear when we
  * return; another interrupt could have arrived.  But we promise that
  * any pre-existing one will have been serviced.)
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
  */
 void
 ProcessInterrupts(const char* filename, int lineno)
