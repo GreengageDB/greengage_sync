@@ -448,6 +448,8 @@ typedef struct _indxInfo
 	char	   *indreloptions;	/* options specified by WITH (...) */
 	char	   *indstatcols;	/* column numbers with statistics */
 	char	   *indstatvals;	/* statistic values for columns */
+	char	   *inddependcollnames;	/* names of collations index depends on */
+	char	   *inddependcollversions;	/* versions of collations index depends on */
 	int			indnkeyattrs;	/* number of index key attributes */
 	int			indnattrs;		/* total number of index attributes */
 	Oid		   *indkeys;		/* In spite of the name 'indkeys' this field
