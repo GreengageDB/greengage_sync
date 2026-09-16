@@ -4916,7 +4916,6 @@ TypedTableElement:
 			| TableConstraint					{ $$ = $1; }
 		;
 
-<<<<<<< HEAD
 column_reference_storage_directive:
 			COLUMN ColId ENCODING definition
 				{
@@ -4939,10 +4938,7 @@ column_reference_storage_directive:
 				}
 		;
 
-columnDef:	ColId Typename optColumnCompression create_generic_options ColQualList opt_storage_encoding
-=======
-columnDef:	ColId Typename opt_column_compression create_generic_options ColQualList
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+columnDef:	ColId Typename opt_column_compression create_generic_options ColQualList opt_storage_encoding
 				{
 					ColumnDef *n = makeNode(ColumnDef);
 					n->colname = $1;
@@ -20340,37 +20336,12 @@ mergeTableFuncParameters(List *func_args, List *columns)
 	{
 		FunctionParameter *p = (FunctionParameter *) lfirst(lc);
 
-<<<<<<< HEAD
-		switch (p->mode)
-		{
-			/* Input modes */
-			case FUNC_PARAM_IN:
-			case FUNC_PARAM_VARIADIC:
-				break;  
-
-			/* Output modes */
-			case FUNC_PARAM_TABLE:
-				elog(ERROR, "TABLE arguments aren't allowed in TABLE functions"); /* not feasible */
-				break;
-			case FUNC_PARAM_OUT:
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("OUT arguments aren't allowed in TABLE functions")));
-				break;
-			case FUNC_PARAM_INOUT:
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("INOUT arguments aren't allowed in TABLE functions")));
-				break;
-		}
-=======
 		if (p->mode != FUNC_PARAM_DEFAULT &&
 			p->mode != FUNC_PARAM_IN &&
 			p->mode != FUNC_PARAM_VARIADIC)
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					 errmsg("OUT and INOUT arguments aren't allowed in TABLE functions")));
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	}
 
 	return list_concat(func_args, columns);
