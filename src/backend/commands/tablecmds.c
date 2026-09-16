@@ -17979,6 +17979,7 @@ prebuild_temp_table(Relation rel, RangeVar *tmpname, DistributedBy *distro,
 
 		ProcessUtility(pstmt,
 					   synthetic_sql,
+					   false,
 					   PROCESS_UTILITY_SUBCOMMAND,
 					   NULL,
 					   NULL,
