@@ -38,10 +38,7 @@
 #include "access/transam.h"
 #include "access/twophase_rmgr.h"
 #include "access/xact.h"
-<<<<<<< HEAD
 #include "access/xlog.h"
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 #include "catalog/partition.h"
 #include "catalog/pg_database.h"
 #include "catalog/pg_proc.h"
@@ -304,12 +301,7 @@ static PgStat_ArchiverStats archiverStats;
 static PgStat_GlobalStats globalStats;
 static PgStat_WalStats walStats;
 static PgStat_SLRUStats slruStats[SLRU_NUM_ELEMENTS];
-<<<<<<< HEAD
-static PgStat_ReplSlotStats *replSlotStats;
-static int	nReplSlotStats;
-=======
 static HTAB *replSlotStatHash = NULL;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 /*
  * List of OIDs of databases we need to write out.  If an entry is InvalidOid,
@@ -1499,11 +1491,7 @@ pgstat_reset_shared_counters(const char *target)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("unrecognized reset target: \"%s\"", target),
-<<<<<<< HEAD
-				 errhint("Target must be \"archiver\", \"bgwriter\" or \"wal\".")));
-=======
 				 errhint("Target must be \"archiver\", \"bgwriter\", or \"wal\".")));
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	pgstat_setheader(&msg.m_hdr, PGSTAT_MTYPE_RESETSHAREDCOUNTER);
 	pgstat_send(&msg, sizeof(msg));
@@ -4262,7 +4250,6 @@ pgstat_read_statsfiles(Oid onlydb, bool permanent, bool deep)
 	dbhash = hash_create("Databases hash", PGSTAT_DB_HASH_SIZE, &hash_ctl,
 						 HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
 
-<<<<<<< HEAD
 	/**
 	 ** Create the Queue hashtable
 	 **/
@@ -4275,14 +4262,6 @@ pgstat_read_statsfiles(Oid onlydb, bool permanent, bool deep)
 						  HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
 	pgStatQueueHash = queuehash;
 
-	/* Allocate the space for replication slot statistics */
-	replSlotStats = MemoryContextAllocZero(pgStatLocalContext,
-										   max_replication_slots
-										   * sizeof(PgStat_ReplSlotStats));
-	nReplSlotStats = 0;
-
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	/*
 	 * Clear out global, archiver, WAL and SLRU statistics so they start from
 	 * zero in case we can't load an existing statsfile.
@@ -4481,7 +4460,6 @@ pgstat_read_statsfiles(Oid onlydb, bool permanent, bool deep)
 				break;
 
 				/*
-<<<<<<< HEAD
 				 * 'Q'	A PgStat_StatQueueEntry follows.  (GPDB)
 				 */
 			case 'Q':
@@ -4516,12 +4494,8 @@ pgstat_read_statsfiles(Oid onlydb, bool permanent, bool deep)
 				break;
 
 				/*
-				 * 'R'	A PgStat_ReplSlotStats struct describing a replication
-				 * slot follows.
-=======
 				 * 'R'	A PgStat_StatReplSlotEntry struct describing a
 				 * replication slot follows.
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 				 */
 			case 'R':
 				{
@@ -4770,11 +4744,7 @@ pgstat_read_db_statsfile_timestamp(Oid databaseid, bool permanent,
 	PgStat_ArchiverStats myArchiverStats;
 	PgStat_WalStats myWalStats;
 	PgStat_SLRUStats mySLRUStats[SLRU_NUM_ELEMENTS];
-<<<<<<< HEAD
-	PgStat_ReplSlotStats myReplSlotStats;
-=======
 	PgStat_StatReplSlotEntry myReplSlotStats;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	FILE	   *fpin;
 	int32		format_id;
 	const char *statfile = permanent ? PGSTAT_STAT_PERMANENT_FILENAME : pgstat_stat_filename;
@@ -4890,7 +4860,6 @@ pgstat_read_db_statsfile_timestamp(Oid databaseid, bool permanent,
 				break;
 
 				/*
-<<<<<<< HEAD
 				 * 'Q'	A PgStat_StatQueueEntry follows.  (GPDB)
 				 */
 			case 'Q':
@@ -4905,12 +4874,8 @@ pgstat_read_db_statsfile_timestamp(Oid databaseid, bool permanent,
 				break;
 
 				/*
-				 * 'R'	A PgStat_ReplSlotStats struct describing a replication
-				 * slot follows.
-=======
 				 * 'R'	A PgStat_StatReplSlotEntry struct describing a
 				 * replication slot follows.
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 				 */
 			case 'R':
 				if (fread(&myReplSlotStats, 1, sizeof(PgStat_StatReplSlotEntry), fpin)
