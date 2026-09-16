@@ -793,6 +793,7 @@ convert_sourcefiles_in(const char *source_subdir, const char *dest_dir, const ch
 	if (!directory_exists(outdir_sub))
 		make_directory(outdir_sub);
 
+	/* We might need to replace @testtablespace@ */
 	snprintf(testtablespace, MAXPGPATH, "%s/testtablespace", tablespacedir);
 
 	/*
