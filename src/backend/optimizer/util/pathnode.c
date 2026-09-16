@@ -4249,15 +4249,10 @@ create_projection_path_with_quals(PlannerInfo *root,
 	 * Filters, we could push them down too. But currently this is only used on
 	 * top of Material paths, which don't support it, so it doesn't matter.
 	 */
-<<<<<<< HEAD
+	oldtarget = subpath->pathtarget;
 	if (!restrict_clauses &&
 		(is_projection_capable_path(subpath) ||
 		 equal(oldtarget->exprs, target->exprs)))
-=======
-	oldtarget = subpath->pathtarget;
-	if (is_projection_capable_path(subpath) ||
-		equal(oldtarget->exprs, target->exprs))
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	{
 		/* No separate Result node needed */
 		pathnode->dummypp = true;
