@@ -626,17 +626,12 @@ sub backup
 
 	print "# Taking pg_basebackup $backup_name from node \"$name\"\n";
 	TestLib::system_or_bail(
-<<<<<<< HEAD
-		'pg_basebackup', '-D', $backup_path, '-h',
-		$self->host,     '-p', $self->port,  '--checkpoint',
-		'fast',          '--no-sync', '--target-gp-dbid', 99,
-=======
-		'pg_basebackup', '-D',
-		$backup_path,    '-h',
-		$self->host,     '-p',
-		$self->port,     '--checkpoint',
-		'fast',          '--no-sync',
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+		'pg_basebackup',    '-D',
+		$backup_path,       '-h',
+		$self->host,        '-p',
+		$self->port,        '--checkpoint',
+		'fast',             '--no-sync',
+		'--target-gp-dbid', 99,
 		@{ $params{backup_options} });
 	print "# Backup finished\n";
 	return;
