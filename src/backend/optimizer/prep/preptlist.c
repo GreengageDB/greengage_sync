@@ -414,9 +414,14 @@ drop_dropped_col_entries(List *tlist, Relation rel)
  *	  add targetlist entries for any missing attributes, and ensure the
  *	  non-junk attributes appear in proper field order.
  *
- * command_type is a bit of an archaism now: it's CMD_INSERT when we're
- * processing an INSERT, all right, but the only other use of this function
- * is for ON CONFLICT UPDATE tlists, for which command_type is CMD_UPDATE.
+ * command_type is CMD_INSERT for a plain INSERT's targetlist, and
+ * CMD_UPDATE for a plain UPDATE's.  (Unlike upstream, ON CONFLICT UPDATE's
+ * tlist is not expanded here; createplan.c extracts its column numbers
+ * directly from the un-expanded tlist instead.)  GPDB still needs the full
+ * row built for UPDATE, unlike upstream, because append-optimized tables
+ * cannot be re-fetched by TID and a distribution-key change is executed as
+ * a delete+insert (SplitUpdate) that needs the complete row to hash a
+ * target segment; see preprocess_targetlist().
  */
 static List *
 expand_targetlist(List *tlist, int command_type,
@@ -426,6 +431,8 @@ expand_targetlist(List *tlist, int command_type,
 	ListCell   *tlist_item;
 	int			attrno,
 				numattrs;
+
+	Assert(command_type == CMD_INSERT || command_type == CMD_UPDATE);
 
 	tlist_item = list_head(tlist);
 
@@ -479,13 +486,47 @@ expand_targetlist(List *tlist, int command_type,
 			 * relation, however.
 			 */
 			Oid			atttype = att_tup->atttypid;
-			int32		atttypmod = att_tup->atttypmod;
 			Oid			attcollation = att_tup->attcollation;
 			Node	   *new_expr;
 
-			if (att_tup->attisdropped)
+			if (!att_tup->attisdropped)
 			{
-				/* Insert NULL for dropped column, regardless of command */
+				switch (command_type)
+				{
+					case CMD_INSERT:
+						new_expr = (Node *) makeConst(atttype,
+													  -1,
+													  attcollation,
+													  att_tup->attlen,
+													  (Datum) 0,
+													  true, /* isnull */
+													  att_tup->attbyval);
+						new_expr = coerce_to_domain(new_expr,
+													InvalidOid, -1,
+													atttype,
+													COERCION_IMPLICIT,
+													COERCE_IMPLICIT_CAST,
+													-1,
+													false);
+						break;
+					case CMD_UPDATE:
+						new_expr = (Node *) makeVar(result_relation,
+													attrno,
+													atttype,
+													att_tup->atttypmod,
+													attcollation,
+													0);
+						break;
+					default:
+						elog(ERROR, "unrecognized command_type: %d",
+							 (int) command_type);
+						new_expr = NULL;	/* keep compiler quiet */
+						break;
+				}
+			}
+			else
+			{
+				/* Insert NULL for dropped column */
 				new_expr = (Node *) makeConst(INT4OID,
 											  -1,
 											  InvalidOid,
@@ -493,38 +534,6 @@ expand_targetlist(List *tlist, int command_type,
 											  (Datum) 0,
 											  true, /* isnull */
 											  true /* byval */ );
-			}
-			else if (command_type == CMD_INSERT)
-			{
-				new_expr = (Node *) makeConst(atttype,
-											  -1,
-											  attcollation,
-											  att_tup->attlen,
-											  (Datum) 0,
-											  true, /* isnull */
-											  att_tup->attbyval);
-				new_expr = coerce_to_domain(new_expr,
-											InvalidOid, -1,
-											atttype,
-											COERCION_IMPLICIT,
-											COERCE_IMPLICIT_CAST,
-											-1,
-											false);
-			}
-			else if (command_type == CMD_UPDATE)
-			{
-				new_expr = (Node *) makeVar(result_relation,
-											attrno,
-											atttype,
-											atttypmod,
-											attcollation,
-											0);
-			}
-			else
-			{
-				elog(ERROR, "unrecognized command_type: %d",
-					 (int) command_type);
-				new_expr = NULL;	/* keep compiler quiet */
 			}
 
 			new_tle = makeTargetEntry((Expr *) new_expr,
