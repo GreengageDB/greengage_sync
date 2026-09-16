@@ -402,11 +402,8 @@ pgstat_bestart(void)
 	lbeentry.st_state = STATE_UNDEFINED;
 	lbeentry.st_progress_command = PROGRESS_COMMAND_INVALID;
 	lbeentry.st_progress_command_target = InvalidOid;
-<<<<<<< HEAD
 	lbeentry.st_rsgid = InvalidOid;
-=======
 	lbeentry.st_query_id = UINT64CONST(0);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	/*
 	 * we don't zero st_progress_param here to save cycles; nobody should
