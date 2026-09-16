@@ -793,7 +793,6 @@ convert_sourcefiles_in(const char *source_subdir, const char *dest_dir, const ch
 	if (!directory_exists(outdir_sub))
 		make_directory(outdir_sub);
 
-<<<<<<< HEAD
 	snprintf(testtablespace, MAXPGPATH, "%s/testtablespace", tablespacedir);
 
 	/*
@@ -835,11 +834,6 @@ convert_sourcefiles_in(const char *source_subdir, const char *dest_dir, const ch
 		exit(2);
 	}
 
-=======
-	/* We might need to replace @testtablespace@ */
-	snprintf(testtablespace, MAXPGPATH, "%s/testtablespace", outputdir);
-
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	/* finally loop on each file and do the replacement */
 	for (name = names; *name; name++)
 	{
@@ -2850,7 +2844,7 @@ regression_main(int argc, char *argv[],
 		{"load-extension", required_argument, NULL, 22},
 		{"config-auth", required_argument, NULL, 24},
 		{"max-concurrent-tests", required_argument, NULL, 25},
-<<<<<<< HEAD
+		{"make-testtablespace-dir", no_argument, NULL, 26},
 		{"init-file", required_argument, NULL, 80},
 		{"exclude-tests", required_argument, NULL, 81},
 		{"ignore-plans", no_argument, NULL, 82},
@@ -2859,9 +2853,6 @@ regression_main(int argc, char *argv[],
 		{"tablespace-dir", required_argument, NULL, 85},
 		{"exclude-file", required_argument, NULL, 87}, /* 86 conflicts with 'V' */
 		{"sslmode", required_argument, NULL, 88},
-=======
-		{"make-testtablespace-dir", no_argument, NULL, 26},
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		{NULL, 0, NULL, 0}
 	};
 
@@ -2992,7 +2983,9 @@ regression_main(int argc, char *argv[],
 			case 25:
 				max_concurrent_tests = atoi(optarg);
 				break;
-<<<<<<< HEAD
+			case 26:
+				make_testtablespace_dir = true;
+				break;
 
 			/* GPDB-added options */
             case 80:
@@ -3021,11 +3014,6 @@ regression_main(int argc, char *argv[],
 				sslmode = strdup(optarg);
 				break;
 
-=======
-			case 26:
-				make_testtablespace_dir = true;
-				break;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 			default:
 				/* getopt_long already emitted a complaint */
 				fprintf(stderr, _("\nTry \"%s -h\" for more information.\n"),
