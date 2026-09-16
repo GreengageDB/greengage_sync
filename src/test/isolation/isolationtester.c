@@ -52,13 +52,8 @@ static int64 max_step_wait = 300 * USECS_PER_SEC;
 static void check_testspec(TestSpec *testspec);
 static void run_testspec(TestSpec *testspec);
 static void run_all_permutations(TestSpec *testspec);
-<<<<<<< HEAD
-static void run_all_permutations_recurse(TestSpec *testspec, int nsteps,
-										 PermutationStep **steps);
-=======
 static void run_all_permutations_recurse(TestSpec *testspec, int *piles,
 										 int nsteps, PermutationStep **steps);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 static void run_named_permutations(TestSpec *testspec);
 static void run_permutation(TestSpec *testspec, int nsteps,
 							PermutationStep **steps);
@@ -365,15 +360,9 @@ check_testspec(TestSpec *testspec)
 				fprintf(stderr, "unused step name: %s\n", allsteps[i]->name);
 		}
 	}
-<<<<<<< HEAD
-}
-
-static int *piles;
-=======
 
 	free(allsteps);
 }
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 /*
  * Run the permutations specified in the spec, or all if none were
@@ -398,10 +387,7 @@ run_all_permutations(TestSpec *testspec)
 	int			i;
 	PermutationStep *steps;
 	PermutationStep **stepptrs;
-<<<<<<< HEAD
-=======
 	int		   *piles;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	/* Count the total number of steps in all sessions */
 	nsteps = 0;
@@ -427,13 +413,6 @@ run_all_permutations(TestSpec *testspec)
 	for (i = 0; i < testspec->nsessions; i++)
 		piles[i] = 0;
 
-<<<<<<< HEAD
-	run_all_permutations_recurse(testspec, 0, stepptrs);
-}
-
-static void
-run_all_permutations_recurse(TestSpec *testspec, int nsteps, PermutationStep **steps)
-=======
 	run_all_permutations_recurse(testspec, piles, 0, stepptrs);
 
 	free(steps);
@@ -444,7 +423,6 @@ run_all_permutations_recurse(TestSpec *testspec, int nsteps, PermutationStep **s
 static void
 run_all_permutations_recurse(TestSpec *testspec, int *piles,
 							 int nsteps, PermutationStep **steps)
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 {
 	int			i;
 	bool		found = false;
