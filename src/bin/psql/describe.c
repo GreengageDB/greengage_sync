@@ -1858,13 +1858,8 @@ describeOneTableDetails(const char *schemaname,
 				attstorage_col = -1,
 				attcompression_col = -1,
 				attstattarget_col = -1,
-<<<<<<< HEAD
-				attdescr_col = -1,
-				attcompression_col = -1;
-	int			attoptions_col = -1;
-=======
 				attdescr_col = -1;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+	int			attoptions_col = -1;
 	int			numrows;
 	struct
 	{
