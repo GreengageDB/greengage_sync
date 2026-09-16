@@ -952,8 +952,7 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 			if (beentry->st_query_id == 0)
 				nulls[29] = true;
 			else
-<<<<<<< HEAD
-				values[29] = DatumGetUInt64(beentry->st_queryid);
+				values[29] = UInt64GetDatum(beentry->st_query_id);
 
 			values[30] = Int32GetDatum(beentry->st_session_id);  /* GPDB */
 
@@ -967,9 +966,6 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 				else
 					nulls[32] = true;
 			}
-=======
-				values[29] = UInt64GetDatum(beentry->st_query_id);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 		}
 		else
 		{
