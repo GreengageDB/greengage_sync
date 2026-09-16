@@ -1326,15 +1326,11 @@ PortalRunUtility(Portal portal, PlannedStmt *pstmt,
 
 	/* check if this utility statement need to be involved into resource queue
 	 * mgmt */
-	ResHandleUtilityStmt(portal, utilityStmt);
+	ResHandleUtilityStmt(portal, pstmt->utilityStmt);
 
 	ProcessUtility(pstmt,
-<<<<<<< HEAD
 				   portal->sourceText ? portal->sourceText : "(Source text for portal is not available)",
-=======
-				   portal->sourceText,
 				   (portal->cplan != NULL), /* protect tree if in plancache */
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 				   isTopLevel ? PROCESS_UTILITY_TOPLEVEL : PROCESS_UTILITY_QUERY,
 				   portal->portalParams,
 				   portal->queryEnv,
@@ -1925,7 +1921,6 @@ DoPortalRewind(Portal portal)
 }
 
 /*
-<<<<<<< HEAD
  * Initializes the corresponding BackoffBackendEntry for this backend
  */
 static void
@@ -1938,7 +1933,9 @@ PortalBackoffEntryInit(Portal portal)
 		/* Initialize the SHM backend entry */
 		BackoffBackendEntryInit(gp_session_id, gp_command_count, portal->queueId);
 	}
-=======
+}
+
+/*
  * PlannedStmtRequiresSnapshot - what it says on the tin
  */
 bool
@@ -2011,5 +2008,4 @@ EnsurePortalSnapshotExists(void)
 	PushActiveSnapshot(GetTransactionSnapshot());
 	/* PushActiveSnapshot might have copied the snapshot */
 	portal->portalSnapshot = GetActiveSnapshot();
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 }
