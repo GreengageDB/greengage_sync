@@ -99,11 +99,13 @@ RelationGetPartitionDesc(Relation rel, bool omit_detached)
 		ActiveSnapshotSet())
 	{
 		Snapshot	activesnap;
+		bool		setDistributedSnapshotIgnore;
 
 		Assert(TransactionIdIsValid(rel->rd_partdesc_nodetached_xmin));
 		activesnap = GetActiveSnapshot();
 
-		if (!XidInMVCCSnapshot(rel->rd_partdesc_nodetached_xmin, activesnap))
+		if (XidInMVCCSnapshot(rel->rd_partdesc_nodetached_xmin, activesnap,
+							  true, &setDistributedSnapshotIgnore) != XID_IN_SNAPSHOT)
 			return rel->rd_partdesc_nodetached;
 	}
 
