@@ -1319,6 +1319,7 @@ validate_describe_callback(List *describeQualName,
 							   inputTypeOids,
 							   false,	/* expand_variadic */
 							   false,	/* expand_defaults */
+							   false,	/* include_out_arguments */
 							   &describeFuncOid,
 							   &describeReturnTypeOid, 
 							   &describeReturnsSet,
