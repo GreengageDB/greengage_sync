@@ -814,7 +814,7 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 											  econtext,
 											  onconfl->oc_ProjSlot,
 											  &mtstate->ps,
-											  &leaf_part_rri->ri_projectNewNeedsOld);
+											  NULL);
 
 				/*
 				 * If there is a WHERE clause, initialize state where it will

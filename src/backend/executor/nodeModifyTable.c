@@ -3597,7 +3597,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 									  econtext,
 									  onconfl->oc_ProjSlot,
 									  &mtstate->ps,
-									  &resultRelInfo->ri_projectNewNeedsOld);
+									  NULL);
 
 		/* initialize state to evaluate the WHERE clause, if any */
 		if (node->onConflictWhere)
