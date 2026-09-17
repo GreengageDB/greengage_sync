@@ -2384,42 +2384,8 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 
 	forceDistRand = rte->forceDistRandom;
 
-<<<<<<< HEAD
 	/* CDB: Could be a preplanned subquery from window_planner. */
 	if (rte->subquery_root == NULL)
-=======
-	/*
-	 * If the subquery has the "security_barrier" flag, it means the subquery
-	 * originated from a view that must enforce row-level security.  Then we
-	 * must not push down quals that contain leaky functions.  (Ideally this
-	 * would be checked inside subquery_is_pushdown_safe, but since we don't
-	 * currently pass the RTE to that function, we must do it here.)
-	 */
-	safetyInfo.unsafeLeaky = rte->security_barrier;
-
-	/*
-	 * If there are any restriction clauses that have been attached to the
-	 * subquery relation, consider pushing them down to become WHERE or HAVING
-	 * quals of the subquery itself.  This transformation is useful because it
-	 * may allow us to generate a better plan for the subquery than evaluating
-	 * all the subquery output rows and then filtering them.
-	 *
-	 * There are several cases where we cannot push down clauses. Restrictions
-	 * involving the subquery are checked by subquery_is_pushdown_safe().
-	 * Restrictions on individual clauses are checked by
-	 * qual_is_pushdown_safe().  Also, we don't want to push down
-	 * pseudoconstant clauses; better to have the gating node above the
-	 * subquery.
-	 *
-	 * Non-pushed-down clauses will get evaluated as qpquals of the
-	 * SubqueryScan node.
-	 *
-	 * XXX Are there any cases where we want to make a policy decision not to
-	 * push down a pushable qual, because it'd result in a worse plan?
-	 */
-	if (rel->baserestrictinfo != NIL &&
-		subquery_is_pushdown_safe(subquery, subquery, &safetyInfo))
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	{
 		/*
 		 * push down quals if possible. Note subquery might be
