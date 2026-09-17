@@ -7403,9 +7403,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 				i_tablespace,
 				i_indreloptions,
 				i_indstatcols,
-				i_indstatvals,
-				i_inddependcollnames,
-				i_inddependcollversions;
+				i_indstatvals;
 
 	/*
 	 * We want to perform just one query against pg_index.  However, we
@@ -7471,37 +7469,14 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 						  "(SELECT pg_catalog.array_agg(attstattarget ORDER BY attnum) "
 						  "  FROM pg_catalog.pg_attribute "
 						  "  WHERE attrelid = i.indexrelid AND "
-						  "    attstattarget >= 0) AS indstatvals, ");
+						  "    attstattarget >= 0) AS indstatvals ");
 	else
 		appendPQExpBuffer(query,
 						  "0 AS parentidx, "
 						  "i.indnatts AS indnkeyatts, "
 						  "i.indnatts AS indnatts, "
 						  "'' AS indstatcols, "
-						  "'' AS indstatvals, ");
-
-	if (fout->remoteVersion >= 140000)
-		appendPQExpBuffer(query,
-						  "(SELECT pg_catalog.array_agg(quote_ident(ns.nspname) || '.' || quote_ident(c.collname) ORDER BY refobjid) "
-						  "  FROM pg_catalog.pg_depend d "
-						  "  JOIN pg_catalog.pg_collation c ON (c.oid = d.refobjid) "
-						  "  JOIN pg_catalog.pg_namespace ns ON (c.collnamespace = ns.oid) "
-						  "  WHERE d.classid = 'pg_catalog.pg_class'::regclass AND "
-						  "    d.objid = i.indexrelid AND "
-						  "    d.objsubid = 0 AND "
-						  "    d.refclassid = 'pg_catalog.pg_collation'::regclass AND "
-						  "    d.refobjversion IS NOT NULL) AS inddependcollnames, "
-						  "(SELECT pg_catalog.array_agg(quote_literal(refobjversion) ORDER BY refobjid) "
-						  "  FROM pg_catalog.pg_depend "
-						  "  WHERE classid = 'pg_catalog.pg_class'::regclass AND "
-						  "    objid = i.indexrelid AND "
-						  "    objsubid = 0 AND "
-						  "    refclassid = 'pg_catalog.pg_collation'::regclass AND "
-						  "    refobjversion IS NOT NULL) AS inddependcollversions ");
-	else
-		appendPQExpBuffer(query,
-						  "'{}' AS inddependcollnames, "
-						  "'{}' AS inddependcollversions ");
+						  "'' AS indstatvals ");
 
 	appendPQExpBuffer(query,
 							"FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
@@ -7586,8 +7561,6 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 	i_indreloptions = PQfnumber(res, "indreloptions");
 	i_indstatcols = PQfnumber(res, "indstatcols");
 	i_indstatvals = PQfnumber(res, "indstatvals");
-	i_inddependcollnames = PQfnumber(res, "inddependcollnames");
-	i_inddependcollversions = PQfnumber(res, "inddependcollversions");
 
 	indxinfo = (IndxInfo *) pg_malloc(ntups * sizeof(IndxInfo));
 
@@ -20235,88 +20208,6 @@ nonemptyReloptions(const char *reloptions)
 {
 	/* Don't want to print it if it's just "{}" */
 	return (reloptions != NULL && strlen(reloptions) > 2);
-}
-
-/*
- * Generate UPDATE statements to import the collation versions into the new
- * cluster, during a binary upgrade.
- */
-static void
-appendIndexCollationVersion(PQExpBuffer buffer, const IndxInfo *indxinfo, int enc,
-							bool coll_unknown, Archive *fout)
-{
-	char	   *inddependcollnames = indxinfo->inddependcollnames;
-	char	   *inddependcollversions = indxinfo->inddependcollversions;
-	char	  **inddependcollnamesarray;
-	char	  **inddependcollversionsarray;
-	int			ninddependcollnames;
-	int			ninddependcollversions;
-
-	/*
-	 * By default, the new cluster's index will have pg_depends rows with
-	 * current collation versions, meaning that we assume the index isn't
-	 * corrupted if importing from a release that didn't record versions.
-	 * However, if --index-collation-versions-unknown was passed in, then we
-	 * assume such indexes might be corrupted, and clobber versions with
-	 * 'unknown' to trigger version warnings.
-	 */
-	if (coll_unknown)
-	{
-		appendPQExpBuffer(buffer,
-						  "\n-- For binary upgrade, clobber new index's collation versions\n"
-						  "SET allow_system_table_mods = true;\n");
-		appendPQExpBuffer(buffer,
-						  "UPDATE pg_catalog.pg_depend SET refobjversion = 'unknown' WHERE objid = '%u'::pg_catalog.oid AND refclassid = 'pg_catalog.pg_collation'::regclass AND refobjversion IS NOT NULL;\n",
-						  indxinfo->dobj.catId.oid);
-		appendPQExpBuffer(buffer, "RESET allow_system_table_mods;\n");
-	}
-
-	/* Restore the versions that were recorded by the old cluster (if any). */
-	if (strlen(inddependcollnames) == 0 && strlen(inddependcollversions) == 0)
-	{
-		ninddependcollnames = ninddependcollversions = 0;
-		inddependcollnamesarray = inddependcollversionsarray = NULL;
-	}
-	else
-	{
-		if (!parsePGArray(inddependcollnames,
-						  &inddependcollnamesarray,
-						  &ninddependcollnames))
-			fatal("could not parse index collation name array");
-		if (!parsePGArray(inddependcollversions,
-						  &inddependcollversionsarray,
-						  &ninddependcollversions))
-			fatal("could not parse index collation version array");
-	}
-
-	if (ninddependcollnames != ninddependcollversions)
-		fatal("mismatched number of collation names and versions for index");
-
-	if (ninddependcollnames > 0)
-		appendPQExpBufferStr(buffer,
-							 "\n-- For binary upgrade, restore old index's collation versions\n"
-							 "SET allow_system_table_mods = true;\n");
-	for (int i = 0; i < ninddependcollnames; i++)
-	{
-		/*
-		 * Import refobjversion from the old cluster, being careful to resolve
-		 * the collation OID by name in the new cluster.
-		 */
-		appendPQExpBuffer(buffer,
-						  "UPDATE pg_catalog.pg_depend SET refobjversion = %s WHERE objid = '%u'::pg_catalog.oid AND refclassid = 'pg_catalog.pg_collation'::regclass AND refobjversion IS NOT NULL AND refobjid = ",
-						  inddependcollversionsarray[i],
-						  indxinfo->dobj.catId.oid);
-		appendStringLiteralAH(buffer, inddependcollnamesarray[i], fout);
-		appendPQExpBuffer(buffer, "::regcollation;\n");
-	}
-
-	if (ninddependcollnames > 0)
-		appendPQExpBufferStr(buffer, "RESET allow_system_table_mods;\n");
-
-	if (inddependcollnamesarray)
-		free(inddependcollnamesarray);
-	if (inddependcollversionsarray)
-		free(inddependcollversionsarray);
 }
 
 /*
