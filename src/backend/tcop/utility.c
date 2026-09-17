@@ -1797,6 +1797,7 @@ ProcessUtilitySlow(ParseState *pstate,
 							/* Recurse for anything else */
 							ProcessUtility(wrapper,
 										   queryString,
+										   false,
 										   PROCESS_UTILITY_SUBCOMMAND,
 										   params,
 										   NULL,
