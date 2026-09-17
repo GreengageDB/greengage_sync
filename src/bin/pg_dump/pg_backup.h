@@ -202,14 +202,10 @@ typedef struct _dumpOptions
 
 	int			sequence_data;	/* dump sequence data even in schema-only mode */
 	int			do_nothing;
-<<<<<<< HEAD
-	int			coll_unknown;
 
 	/* GPDB */
 	bool		dumpGpPolicy;
 	bool		isGPbackend;
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 } DumpOptions;
 
 /*
