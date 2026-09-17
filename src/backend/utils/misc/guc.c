@@ -5345,7 +5345,6 @@ gp_guc_list_init(void)
 
         switch (gconf->group)
         {
-            case QUERY_TUNING:
             case QUERY_TUNING_COST:
             case QUERY_TUNING_OTHER:
                 explain = true;
