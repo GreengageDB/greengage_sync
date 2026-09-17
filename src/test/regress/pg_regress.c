@@ -974,7 +974,7 @@ prepare_testtablespace_dir(void)
 {
 	char		testtablespace[MAXPGPATH];
 
-	snprintf(testtablespace, MAXPGPATH, "%s/testtablespace", outputdir);
+	snprintf(testtablespace, MAXPGPATH, "%s/testtablespace", tablespacedir);
 
 	if (directory_exists(testtablespace))
 	{
