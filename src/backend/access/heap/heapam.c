@@ -2122,8 +2122,6 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 	Buffer		vmbuffer = InvalidBuffer;
 	bool		all_visible_cleared = false;
 	bool		needwal;
-	bool		all_frozen_set = false;
-	uint8		vmstatus = 0;
 
 	/* Cheap, simplistic check that the tuple matches the rel's rowtype. */
 	Assert(HeapTupleHeaderGetNatts(tup->t_data) <=
