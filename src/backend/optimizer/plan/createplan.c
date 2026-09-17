@@ -7558,7 +7558,7 @@ prepare_sort_from_pathkeys(Plan *lefttree, List *pathkeys,
  *				evaluate sort key exprs that are not already present in the
  *				subplan's tlist.
  */
-Sort *
+static Sort *
 make_sort_from_pathkeys(Plan *lefttree, List *pathkeys, Relids relids)
 {
 	int			numsortkeys;
