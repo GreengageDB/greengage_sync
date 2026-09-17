@@ -1215,9 +1215,7 @@ check_for_reg_data_type_usage(ClusterInfo *cluster)
 									   "           'regoper', "
 									   "           'regoperator', "
 									   "           'regproc', "
-									   "           'regprocedure', "
-									   "           'pg_catalog.regconfig'::pg_catalog.regtype::pg_catalog.text, "
-									   "           'pg_catalog.regdictionary'::pg_catalog.regtype::pg_catalog.text "
+									   "           'regprocedure' "
 	/* pg_authid.oid is preserved, so 'regrole' is OK */
 	/* pg_type.oid is (mostly) preserved, so 'regtype' is OK */
 									   "         )",
@@ -1230,8 +1228,8 @@ check_for_reg_data_type_usage(ClusterInfo *cluster)
 				"| Your installation contains one of the reg* data types in user tables.\n"
 				"| These data types reference system OIDs that are not preserved by\n"
 				"| pg_upgrade, so this cluster cannot currently be upgraded.  You can\n"
-				"| remove the problem tables and restart the upgrade.  A list of the problem\n"
-				"| columns is in the file:\n"
+				"| drop the problem columns and restart the upgrade.\n"
+				"| A list of the problem columns is in the file:\n"
 				"|     %s\n\n", output_path);
 	}
 	else
@@ -1258,9 +1256,10 @@ check_for_jsonb_9_4_usage(ClusterInfo *cluster)
 		pg_log(PG_REPORT, "fatal\n");
 		gp_fatal_log(
 				"| Your installation contains the \"jsonb\" data type in user tables.\n"
-				"| The internal format of \"jsonb\" changed during 9.4 beta so this cluster cannot currently\n"
-				"| be upgraded.  You can remove the problem tables and restart the upgrade.  A list\n"
-				"| of the problem columns is in the file:\n"
+				"| The internal format of \"jsonb\" changed during 9.4 beta so this\n"
+				"| cluster cannot currently be upgraded.  You can\n"
+				"| drop the problem columns and restart the upgrade.\n"
+				"| A list of the problem columns is in the file:\n"
 				"|     %s\n\n", output_path);
 	}
 	else
