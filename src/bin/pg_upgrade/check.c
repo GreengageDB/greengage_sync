@@ -1197,80 +1197,6 @@ check_for_reg_data_type_usage(ClusterInfo *cluster)
 
 	snprintf(output_path, sizeof(output_path), "tables_using_reg.txt");
 
-<<<<<<< HEAD
-	for (dbnum = 0; dbnum < cluster->dbarr.ndbs; dbnum++)
-	{
-		PGresult   *res;
-		bool		db_used = false;
-		int			ntups;
-		int			rowno;
-		int			i_nspname,
-					i_relname,
-					i_attname;
-		DbInfo	   *active_db = &cluster->dbarr.dbs[dbnum];
-		PGconn	   *conn = connectToServer(cluster, active_db->db_name);
-		/*
-		 * While several relkinds don't store any data, e.g. views, they can
-		 * be used to define data types of other columns, so we check all
-		 * relkinds.
-		 */
-		res = executeQueryOrDie(conn,
-								"SELECT n.nspname, c.relname, a.attname "
-								"FROM	pg_catalog.pg_class c, "
-								"		pg_catalog.pg_namespace n, "
-								"		pg_catalog.pg_attribute a, "
-								"		pg_catalog.pg_type t "
-								"WHERE	c.oid = a.attrelid AND "
-								"		NOT a.attisdropped AND "
-								"       a.atttypid = t.oid AND "
-								"       t.typnamespace = "
-								"           (SELECT oid FROM pg_namespace "
-								"            WHERE nspname = 'pg_catalog') AND"
-								"		t.typname IN ( "
-		/* regclass.oid is preserved, so 'regclass' is OK */
-								"           'regcollation', "
-								"           'regconfig', "
-								"           'regdictionary', "
-								"           'regnamespace', "
-								"           'regoper', "
-								"           'regoperator', "
-								"           'regproc', "
-								"           'regprocedure', "
-								"						'pg_catalog.regconfig'::pg_catalog.regtype::pg_catalog.text, "
-								"						'pg_catalog.regdictionary'::pg_catalog.regtype::pg_catalog.text "
-								"			) AND "
-								"		c.relnamespace = n.oid AND "
-							  "		n.nspname NOT IN ('pg_catalog', 'information_schema')");
-
-		ntups = PQntuples(res);
-		i_nspname = PQfnumber(res, "nspname");
-		i_relname = PQfnumber(res, "relname");
-		i_attname = PQfnumber(res, "attname");
-		for (rowno = 0; rowno < ntups; rowno++)
-		{
-			found = true;
-			if (script == NULL && (script = fopen_priv(output_path, "w")) == NULL)
-				pg_fatal("could not open file \"%s\": %s\n",
-						 output_path, strerror(errno));
-			if (!db_used)
-			{
-				fprintf(script, "In database: %s\n", active_db->db_name);
-				db_used = true;
-			}
-			fprintf(script, "  %s.%s.%s\n",
-					PQgetvalue(res, rowno, i_nspname),
-					PQgetvalue(res, rowno, i_relname),
-					PQgetvalue(res, rowno, i_attname));
-		}
-
-		PQclear(res);
-
-		PQfinish(conn);
-	}
-
-	if (script)
-		fclose(script);
-=======
 	/*
 	 * Note: older servers will not have all of these reg* types, so we have
 	 * to write the query like this rather than depending on casts to regtype.
@@ -1294,27 +1220,17 @@ check_for_reg_data_type_usage(ClusterInfo *cluster)
 	/* pg_type.oid is (mostly) preserved, so 'regtype' is OK */
 									   "         )",
 									   output_path);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	if (found)
 	{
 		pg_log(PG_REPORT, "fatal\n");
-<<<<<<< HEAD
 		gp_fatal_log(
 				"| Your installation contains one of the reg* data types in user tables.\n"
 				"| These data types reference system OIDs that are not preserved by\n"
 				"| pg_upgrade, so this cluster cannot currently be upgraded.  You can\n"
-				"| remove the problem tables and restart the upgrade.  A list of the problem\n"
-				"| columns is in the file:\n"
+				"| drop the problem columns and restart the upgrade.\n"
+				"| A list of the problem columns is in the file:\n"
 				"|     %s\n\n", output_path);
-=======
-		pg_fatal("Your installation contains one of the reg* data types in user tables.\n"
-				 "These data types reference system OIDs that are not preserved by\n"
-				 "pg_upgrade, so this cluster cannot currently be upgraded.  You can\n"
-				 "drop the problem columns and restart the upgrade.\n"
-				 "A list of the problem columns is in the file:\n"
-				 "    %s\n\n", output_path);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	}
 	else
 		check_ok();
@@ -1338,21 +1254,13 @@ check_for_jsonb_9_4_usage(ClusterInfo *cluster)
 	if (check_for_data_type_usage(cluster, "pg_catalog.jsonb", output_path))
 	{
 		pg_log(PG_REPORT, "fatal\n");
-<<<<<<< HEAD
 		gp_fatal_log(
 				"| Your installation contains the \"jsonb\" data type in user tables.\n"
-				"| The internal format of \"jsonb\" changed during 9.4 beta so this cluster cannot currently\n"
-				"| be upgraded.  You can remove the problem tables and restart the upgrade.  A list\n"
-				"| of the problem columns is in the file:\n"
+				"| The internal format of \"jsonb\" changed during 9.4 beta so this\n"
+				"| cluster cannot currently be upgraded.  You can\n"
+				"| drop the problem columns and restart the upgrade.\n"
+				"| A list of the problem columns is in the file:\n"
 				"|     %s\n\n", output_path);
-=======
-		pg_fatal("Your installation contains the \"jsonb\" data type in user tables.\n"
-				 "The internal format of \"jsonb\" changed during 9.4 beta so this\n"
-				 "cluster cannot currently be upgraded.  You can\n"
-				 "drop the problem columns and restart the upgrade.\n"
-				 "A list of the problem columns is in the file:\n"
-				 "    %s\n\n", output_path);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	}
 	else
 		check_ok();
