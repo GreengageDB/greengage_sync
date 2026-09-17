@@ -4210,12 +4210,20 @@ create_projection_path_with_quals(PlannerInfo *root,
 	 * callers handle that, let's implement it here, by stripping off any
 	 * ProjectionPath in what we're given.  Given this rule, there won't be
 	 * more than one.
+	 *
+	 * GPDB: unlike upstream, a ProjectionPath here may carry
+	 * cdb_restrict_clauses (see below).  Don't let those get lost when we
+	 * strip off the inner ProjectionPath -- carry them forward onto the
+	 * clauses we're building here.
 	 */
 	if (IsA(subpath, ProjectionPath))
 	{
 		ProjectionPath *subpp = (ProjectionPath *) subpath;
 
 		Assert(subpp->path.parent == rel);
+		if (subpp->cdb_restrict_clauses)
+			restrict_clauses = list_concat(list_copy(subpp->cdb_restrict_clauses),
+										   restrict_clauses);
 		subpath = subpp->subpath;
 		Assert(!IsA(subpath, ProjectionPath));
 	}
