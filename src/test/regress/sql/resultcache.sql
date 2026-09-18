@@ -75,12 +75,6 @@ WHERE t2.unique1 < 1200;', true);
 RESET enable_sort;
 RESET enable_mergejoin;
 RESET work_mem;
-<<<<<<< HEAD
-RESET force_parallel_mode;
-=======
-RESET enable_bitmapscan;
-RESET enable_hashjoin;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 -- Test Result Cache plans.  GPDB has no intra-segment parallel workers, so
 -- upstream's "parallel plan" is just the ordinary distributed plan here.  We
