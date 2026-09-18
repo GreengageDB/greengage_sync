@@ -75,18 +75,12 @@ sub test_recovery_wal_level_minimal
 	# Use run_log instead of recovery_node->start because this test expects
 	# that the server ends with an error during recovery.
 	run_log(
-<<<<<<< HEAD
-		['pg_ctl','-D', $recovery_node->data_dir, '-l',
-		 $recovery_node->logfile, '-o',
-		   ' --gp_contentid=0',
-		 'start']);
-=======
 		[
 			'pg_ctl',                 '-D',
 			$recovery_node->data_dir, '-l',
-			$recovery_node->logfile,  'start'
+			$recovery_node->logfile,  '-o',
+			' --gp_contentid=0',      'start'
 		]);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 	# Wait up to 180s for postgres to terminate
 	foreach my $i (0 .. 1800)

@@ -124,16 +124,12 @@ ok( send_query_and_wait(
 #
 # 5. Check that changes in prepared xacts is invisible
 #
-<<<<<<< HEAD
 
 # GPDB: PREPARE TRANSACTION is not supported on GPDB, skip
 SKIP: {
 	skip "PREPARE TRANSACTION not implemented on GPDB", 4;
-ok(send_query_and_wait(\%psql_primary, q[
-=======
 ok( send_query_and_wait(
 		\%psql_primary, q[
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 DELETE from test_visibility; -- delete old data, so we start with clean slate
 BEGIN;
 INSERT INTO test_visibility VALUES('inserted in prepared will_commit');
@@ -153,13 +149,6 @@ PREPARE TRANSACTION 'will_abort';
 $node_primary->wait_for_catchup($node_standby, 'replay',
 	$node_primary->lsn('insert'));
 
-<<<<<<< HEAD
-ok(send_query_and_wait(\%psql_standby,
-					   q[SELECT * FROM test_visibility ORDER BY data;],
-					   qr/will_commit.*\n\(1 row\)$/m),
-   'finished prepared visible');
-} # end SKIP
-=======
 ok( send_query_and_wait(
 		\%psql_standby,
 		q[SELECT * FROM test_visibility ORDER BY data;],
@@ -177,7 +166,7 @@ ok( send_query_and_wait(
 		q[SELECT * FROM test_visibility ORDER BY data;],
 		qr/will_commit.*\n\(1 row\)$/m),
 	'finished prepared visible');
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+} # end SKIP
 
 # explicitly shut down psql instances gracefully - to avoid hangs
 # or worse on windows
