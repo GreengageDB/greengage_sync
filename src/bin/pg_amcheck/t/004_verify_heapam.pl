@@ -92,13 +92,8 @@ use Test::More;
 # it is convenient enough to do it this way.  We define packing code
 # constants here, where they can be compared easily against the layout.
 
-<<<<<<< HEAD
 use constant HEAPTUPLE_PACK_CODE => 'LLLSSSSSCCLLCCCCCCCCCCCCllLL';
-use constant HEAPTUPLE_PACK_LENGTH => 60;     # Total size
-=======
-use constant HEAPTUPLE_PACK_CODE => 'LLLSSSSSCCLLCCCCCCCCCCllLL';
-use constant HEAPTUPLE_PACK_LENGTH => 58;    # Total size
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+use constant HEAPTUPLE_PACK_LENGTH => 60;    # Total size
 
 # Read a tuple of our table from a heap page.
 #
@@ -118,36 +113,6 @@ sub read_tuple
 	  or BAIL_OUT("sysread failed: $!");
 
 	@_ = unpack(HEAPTUPLE_PACK_CODE, $buffer);
-<<<<<<< HEAD
-	%tup = (t_xmin => shift,
-			t_xmax => shift,
-			t_field3 => shift,
-			bi_hi => shift,
-			bi_lo => shift,
-			ip_posid => shift,
-			t_infomask2 => shift,
-			t_infomask => shift,
-			t_hoff => shift,
-			t_bits => shift,
-			a_1 => shift,
-			a_2 => shift,
-			b_header => shift,
-			b_body1 => shift,
-			b_body2 => shift,
-			b_body3 => shift,
-			b_body4 => shift,
-			b_body5 => shift,
-			b_body6 => shift,
-			b_body7 => shift,
-			c_va_header => shift,
-			c_va_vartag => shift,
-			c_va_padding1 => shift,
-			c_va_padding2 => shift,
-			c_va_rawsize => shift,
-			c_va_extinfo => shift,
-			c_va_valueid => shift,
-			c_va_toastrelid => shift);
-=======
 	%tup = (
 		t_xmin          => shift,
 		t_xmax          => shift,
@@ -171,11 +136,12 @@ sub read_tuple
 		b_body7         => shift,
 		c_va_header     => shift,
 		c_va_vartag     => shift,
+		c_va_padding1   => shift,
+		c_va_padding2   => shift,
 		c_va_rawsize    => shift,
 		c_va_extinfo    => shift,
 		c_va_valueid    => shift,
 		c_va_toastrelid => shift);
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	# Stitch together the text for column 'b'
 	$tup{b} = join('', map { chr($tup{"b_body$_"}) } (1 .. 7));
 	return \%tup;
@@ -194,57 +160,24 @@ sub read_tuple
 sub write_tuple
 {
 	my ($fh, $offset, $tup) = @_;
-<<<<<<< HEAD
-	my $buffer = pack(HEAPTUPLE_PACK_CODE,
-					$tup->{t_xmin},
-					$tup->{t_xmax},
-					$tup->{t_field3},
-					$tup->{bi_hi},
-					$tup->{bi_lo},
-					$tup->{ip_posid},
-					$tup->{t_infomask2},
-					$tup->{t_infomask},
-					$tup->{t_hoff},
-					$tup->{t_bits},
-					$tup->{a_1},
-					$tup->{a_2},
-					$tup->{b_header},
-					$tup->{b_body1},
-					$tup->{b_body2},
-					$tup->{b_body3},
-					$tup->{b_body4},
-					$tup->{b_body5},
-					$tup->{b_body6},
-					$tup->{b_body7},
-					$tup->{c_va_header},
-					$tup->{c_va_vartag},
-					$tup->{c_va_padding1},
-					$tup->{c_va_padding2},
-					$tup->{c_va_rawsize},
-					$tup->{c_va_extinfo},
-					$tup->{c_va_valueid},
-					$tup->{c_va_toastrelid});
-	seek($fh, $offset, 0)
-		or BAIL_OUT("seek failed: $!");
-=======
 	my $buffer = pack(
 		HEAPTUPLE_PACK_CODE,
-		$tup->{t_xmin},       $tup->{t_xmax},
-		$tup->{t_field3},     $tup->{bi_hi},
-		$tup->{bi_lo},        $tup->{ip_posid},
-		$tup->{t_infomask2},  $tup->{t_infomask},
-		$tup->{t_hoff},       $tup->{t_bits},
-		$tup->{a_1},          $tup->{a_2},
-		$tup->{b_header},     $tup->{b_body1},
-		$tup->{b_body2},      $tup->{b_body3},
-		$tup->{b_body4},      $tup->{b_body5},
-		$tup->{b_body6},      $tup->{b_body7},
-		$tup->{c_va_header},  $tup->{c_va_vartag},
-		$tup->{c_va_rawsize}, $tup->{c_va_extinfo},
-		$tup->{c_va_valueid}, $tup->{c_va_toastrelid});
+		$tup->{t_xmin},        $tup->{t_xmax},
+		$tup->{t_field3},      $tup->{bi_hi},
+		$tup->{bi_lo},         $tup->{ip_posid},
+		$tup->{t_infomask2},   $tup->{t_infomask},
+		$tup->{t_hoff},        $tup->{t_bits},
+		$tup->{a_1},           $tup->{a_2},
+		$tup->{b_header},      $tup->{b_body1},
+		$tup->{b_body2},       $tup->{b_body3},
+		$tup->{b_body4},       $tup->{b_body5},
+		$tup->{b_body6},       $tup->{b_body7},
+		$tup->{c_va_header},   $tup->{c_va_vartag},
+		$tup->{c_va_padding1}, $tup->{c_va_padding2},
+		$tup->{c_va_rawsize},  $tup->{c_va_extinfo},
+		$tup->{c_va_valueid},  $tup->{c_va_toastrelid});
 	seek($fh, $offset, SEEK_SET)
 	  or BAIL_OUT("seek failed: $!");
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	defined(syswrite($fh, $buffer, HEAPTUPLE_PACK_LENGTH))
 	  or BAIL_OUT("syswrite failed: $!");
 	return;
@@ -482,13 +415,8 @@ for (my $tupidx = 0; $tupidx < ROWCOUNT; $tupidx++)
 		$tup->{t_hoff} += 128;
 
 		push @expected,
-<<<<<<< HEAD
-			qr/${$header}data begins at offset 152 beyond the tuple length 60/,
-			qr/${$header}tuple data should begin at byte 24, but actually begins at byte 152 \(3 attributes, no nulls\)/;
-=======
-		  qr/${$header}data begins at offset 152 beyond the tuple length 58/,
+		  qr/${$header}data begins at offset 152 beyond the tuple length 60/,
 		  qr/${$header}tuple data should begin at byte 24, but actually begins at byte 152 \(3 attributes, no nulls\)/;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 	}
 	elsif ($offnum == 6)
 	{

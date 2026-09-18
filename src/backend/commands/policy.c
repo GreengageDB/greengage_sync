@@ -654,13 +654,22 @@ CreatePolicy(CreatePolicyStmt *stmt)
 										   NULL, false, false);
 	addNSItemToQuery(with_check_pstate, nsitem, false, true, true);
 
+	/*
+	 * GPDB: transformWhereClause (via transformSubLink) mutates its input
+	 * in place, replacing any SubLink's raw subselect with an analyzed
+	 * Query.  stmt is dispatched to segments, unanalyzed, at the end of
+	 * this function, so it must stay pristine -- unlike upstream, where
+	 * the centralized readOnlyTree copy in standard_ProcessUtility only
+	 * protects a statement that's reused via a cached plan, GPDB reuses
+	 * this same stmt for dispatch regardless of that.
+	 */
 	qual = transformWhereClause(qual_pstate,
-								stmt->qual,
+								copyObject(stmt->qual),
 								EXPR_KIND_POLICY,
 								"POLICY");
 
 	with_check_qual = transformWhereClause(with_check_pstate,
-										   stmt->with_check,
+										   copyObject(stmt->with_check),
 										   EXPR_KIND_POLICY,
 										   "POLICY");
 
@@ -846,7 +855,8 @@ AlterPolicy(AlterPolicyStmt *stmt)
 
 		addNSItemToQuery(qual_pstate, nsitem, false, true, true);
 
-		qual = transformWhereClause(qual_pstate, stmt->qual,
+		/* GPDB: keep stmt pristine, it's dispatched to segments below */
+		qual = transformWhereClause(qual_pstate, copyObject(stmt->qual),
 									EXPR_KIND_POLICY,
 									"POLICY");
 
@@ -869,8 +879,9 @@ AlterPolicy(AlterPolicyStmt *stmt)
 
 		addNSItemToQuery(with_check_pstate, nsitem, false, true, true);
 
+		/* GPDB: keep stmt pristine, it's dispatched to segments below */
 		with_check_qual = transformWhereClause(with_check_pstate,
-											   stmt->with_check,
+											   copyObject(stmt->with_check),
 											   EXPR_KIND_POLICY,
 											   "POLICY");
 

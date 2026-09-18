@@ -66,13 +66,8 @@ teardown
  DROP FUNCTION noisy_oper(text, anynonarray, text, anynonarray)
 }
 
-<<<<<<< HEAD
-session "s1"
-setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; SET client_min_messages = 'WARNING'; }
-=======
 session s1
-setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; }
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; SET client_min_messages = 'WARNING'; }
 # wx1 then wx2 checks the basic case of re-fetching up-to-date values
 step wx1	{ UPDATE accounts SET balance = balance - 200 WHERE accountid = 'checking' RETURNING balance; }
 # wy1 then wy2 checks the case where quals pass then fail
@@ -190,19 +185,11 @@ step simplepartupdate_noroute {
 }
 
 
-<<<<<<< HEAD
-session "s2"
-setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; SET client_min_messages = 'WARNING'; }
-step "wx2"	{ UPDATE accounts SET balance = balance + 450 WHERE accountid = 'checking' RETURNING balance; }
-step "wy2"	{ UPDATE accounts SET balance = balance + 1000 WHERE accountid = 'checking' AND balance < 1000  RETURNING balance; }
-step "d2"	{ DELETE FROM accounts WHERE accountid = 'checking'; }
-=======
 session s2
-setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; }
+setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; SET client_min_messages = 'WARNING'; }
 step wx2	{ UPDATE accounts SET balance = balance + 450 WHERE accountid = 'checking' RETURNING balance; }
 step wy2	{ UPDATE accounts SET balance = balance + 1000 WHERE accountid = 'checking' AND balance < 1000  RETURNING balance; }
 step d2		{ DELETE FROM accounts WHERE accountid = 'checking'; }
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 step upsert2	{
 	WITH upsert AS
@@ -281,19 +268,11 @@ step wnested2 {
 step c2	{ COMMIT; }
 step r2	{ ROLLBACK; }
 
-<<<<<<< HEAD
-session "s3"
-setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; SET client_min_messages = 'WARNING'; }
-step "read"	{ SELECT * FROM accounts ORDER BY accountid; }
-step "read_ext"	{ SELECT * FROM accounts_ext ORDER BY accountid; }
-step "read_a"	{ SELECT * FROM table_a ORDER BY id; }
-=======
 session s3
-setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; }
+setup		{ BEGIN ISOLATION LEVEL READ COMMITTED; SET client_min_messages = 'WARNING'; }
 step read	{ SELECT * FROM accounts ORDER BY accountid; }
 step read_ext	{ SELECT * FROM accounts_ext ORDER BY accountid; }
 step read_a		{ SELECT * FROM table_a ORDER BY id; }
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 # this test exercises EvalPlanQual with a CTE, cf bug #14328
 step readwcte	{

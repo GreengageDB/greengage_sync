@@ -1992,13 +1992,8 @@ my %tests = (
 		create_sql   => 'CREATE PROCEDURE dump_test.ptest1(a int)
 					   LANGUAGE SQL AS $$ INSERT INTO dump_test.test_table (col1) VALUES (a) $$;',
 		regexp => qr/^
-<<<<<<< HEAD
-			\QCREATE PROCEDURE dump_test.ptest1(a integer)\E
-			\n\s+\QLANGUAGE sql CONTAINS SQL\E
-=======
 			\QCREATE PROCEDURE dump_test.ptest1(IN a integer)\E
-			\n\s+\QLANGUAGE sql\E
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+			\n\s+\QLANGUAGE sql CONTAINS SQL\E
 			\n\s+AS\ \$\$\Q INSERT INTO dump_test.test_table (col1) VALUES (a) \E\$\$;
 			/xm,
 		like =>

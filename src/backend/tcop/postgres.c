@@ -491,6 +491,7 @@ SocketBackend(StringInfo inBuf)
 
 		case 'M':				/* Greenplum Database dispatched statement from QD */
 
+			maxmsglen = PQ_LARGE_MESSAGE_LIMIT;
 			doing_extended_query_message = false;
 
 			/* don't support old protocols with this. */
@@ -504,6 +505,7 @@ SocketBackend(StringInfo inBuf)
 
 		case 'T':				/* Greenplum Database dispatched transaction protocol from QD */
 
+			maxmsglen = PQ_LARGE_MESSAGE_LIMIT;
 			doing_extended_query_message = false;
 
 			/* don't support old protocols with this. */
