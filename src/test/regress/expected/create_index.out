@@ -2254,12 +2254,7 @@ WHERE classid = 'pg_class'::regclass AND
  index concur_reindex_ind1                | constraint concur_reindex_ind1 on table concur_reindex_tab | i
  index concur_reindex_ind2                | column c2 of table concur_reindex_tab                      | a
  index concur_reindex_ind3                | column c1 of table concur_reindex_tab                      | a
-<<<<<<< HEAD
  index concur_reindex_ind3                | column c1 of table concur_reindex_tab                      | a
- index concur_reindex_ind4                | collation "default"                                        | n
-=======
- index concur_reindex_ind3                | table concur_reindex_tab                                   | a
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
  index concur_reindex_ind4                | column c1 of table concur_reindex_tab                      | a
  index concur_reindex_ind4                | column c2 of table concur_reindex_tab                      | a
  materialized view concur_reindex_matview | schema public                                              | n
@@ -2289,12 +2284,7 @@ WHERE classid = 'pg_class'::regclass AND
  index concur_reindex_ind1                | constraint concur_reindex_ind1 on table concur_reindex_tab | i
  index concur_reindex_ind2                | column c2 of table concur_reindex_tab                      | a
  index concur_reindex_ind3                | column c1 of table concur_reindex_tab                      | a
-<<<<<<< HEAD
  index concur_reindex_ind3                | column c1 of table concur_reindex_tab                      | a
- index concur_reindex_ind4                | collation "default"                                        | n
-=======
- index concur_reindex_ind3                | table concur_reindex_tab                                   | a
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
  index concur_reindex_ind4                | column c1 of table concur_reindex_tab                      | a
  index concur_reindex_ind4                | column c2 of table concur_reindex_tab                      | a
  materialized view concur_reindex_matview | schema public                                              | n
