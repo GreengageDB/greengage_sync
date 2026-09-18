@@ -120,11 +120,7 @@ ERROR:  VACUUM option "parallel" not supported in GPDB
 LINE 1: VACUUM (PARALLEL 0) pvactst;
                 ^
 VACUUM (PARALLEL -1) pvactst; -- error
-<<<<<<< HEAD
 ERROR:  VACUUM option "parallel" not supported in GPDB
-=======
-ERROR:  parallel workers for vacuum must be between 0 and 1024
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 LINE 1: VACUUM (PARALLEL -1) pvactst;
                 ^
 VACUUM (PARALLEL 2, INDEX_CLEANUP FALSE) pvactst;
