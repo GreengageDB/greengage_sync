@@ -2092,7 +2092,6 @@ SELECT to_char(d, 'FF1 FF2 FF3 FF4 FF5 FF6  ff1 ff2 ff3 ff4 ff5 ff6  MS US')
  7 78 789 7890 78901 789012  7 78 789 7890 78901 789012  789 789012
 (4 rows)
 
-<<<<<<< HEAD
 SET DateStyle TO DEFAULT;
 -- Make sure timeofdate() and current_time() are doing roughly the same thing
 select timeofday()::date = current_timestamp::date;
@@ -2100,7 +2099,7 @@ select timeofday()::date = current_timestamp::date;
 ----------
  t
 (1 row)
-=======
+
 -- Roman months, with upper and lower case.
 SELECT i,
        to_char(i * interval '1mon', 'rm'),
@@ -2136,7 +2135,6 @@ SELECT i,
   12 | xii     | XII 
   13 | i       | I   
 (27 rows)
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 -- timestamp numeric fields constructor
 SELECT make_timestamp(2014, 12, 28, 6, 30, 45.887);
