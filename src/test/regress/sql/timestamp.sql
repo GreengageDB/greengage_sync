@@ -398,18 +398,16 @@ SELECT to_char(d, 'FF1 FF2 FF3 FF4 FF5 FF6  ff1 ff2 ff3 ff4 ff5 ff6  MS US')
        ('2018-11-02 12:34:56.78901234')
    ) d(d);
 
-<<<<<<< HEAD
 SET DateStyle TO DEFAULT;
 
 -- Make sure timeofdate() and current_time() are doing roughly the same thing
 select timeofday()::date = current_timestamp::date;
-=======
+
 -- Roman months, with upper and lower case.
 SELECT i,
        to_char(i * interval '1mon', 'rm'),
        to_char(i * interval '1mon', 'RM')
     FROM generate_series(-13, 13) i;
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 
 -- timestamp numeric fields constructor
 SELECT make_timestamp(2014, 12, 28, 6, 30, 45.887);
