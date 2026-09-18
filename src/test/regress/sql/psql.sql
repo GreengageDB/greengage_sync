@@ -1245,6 +1245,7 @@ drop role regress_partitioning_role;
 \dfa bit* small*
 \do - pg_catalog.int4
 \do && anyarray *
+<<<<<<< HEAD
 
 --
 -- combined queries
@@ -1283,3 +1284,5 @@ Susie
 SELECT 1 AS one \; SELECT warn('1.5') \; SELECT 2 AS two ;
 \set SHOW_ALL_RESULTS on
 DROP FUNCTION warn(TEXT);
+=======
+>>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
