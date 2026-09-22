@@ -136,6 +136,15 @@ check_for_data_types_usage(ClusterInfo *cluster,
 		 * composite, or range, and these container types can be nested (to
 		 * varying extents depending on server version, but that's not of
 		 * concern here).  To handle all these cases we need a recursive CTE.
+		 *
+		 * Unlike upstream, GPDB does not allow a recursive self-reference to
+		 * appear inside a subquery in the FROM clause (see
+		 * checkSelfRefInRangeSubSelect() in parse_cte.c), so we can't wrap
+		 * the recursive term in "SELECT * FROM (...) foo" the way upstream
+		 * does.  Instead, the inner "one reference only" CTE is attached
+		 * directly to the recursive term itself (via parens, not a FROM
+		 * subquery), which keeps the single reference to "oids" out of any
+		 * FROM-clause subquery.
 		 */
 		initPQExpBuffer(&querybuf);
 		appendPQExpBuffer(&querybuf,
@@ -143,34 +152,33 @@ check_for_data_types_usage(ClusterInfo *cluster,
 		/* start with the type(s) returned by base_query */
 						  "	%s "
 						  "	UNION ALL "
-						  "	SELECT * FROM ( "
 		/* inner WITH because we can only reference the CTE once */
-						  "		WITH x AS (SELECT oid FROM oids) "
+						  "	(WITH x AS (SELECT oid FROM oids) "
 		/* domains on any type selected so far */
-						  "			SELECT t.oid FROM pg_catalog.pg_type t, x WHERE typbasetype = x.oid AND typtype = 'd' "
-						  "			UNION ALL "
+						  "		SELECT t.oid FROM pg_catalog.pg_type t, x WHERE typbasetype = x.oid AND typtype = 'd' "
+						  "		UNION ALL "
 		/* arrays over any type selected so far */
-						  "			SELECT t.oid FROM pg_catalog.pg_type t, x WHERE typelem = x.oid AND typtype = 'b' "
-						  "			UNION ALL "
+						  "		SELECT t.oid FROM pg_catalog.pg_type t, x WHERE typelem = x.oid AND typtype = 'b' "
+						  "		UNION ALL "
 		/* composite types containing any type selected so far */
-						  "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_class c, pg_catalog.pg_attribute a, x "
-						  "			WHERE t.typtype = 'c' AND "
-						  "				  t.oid = c.reltype AND "
-						  "				  c.oid = a.attrelid AND "
-						  "				  NOT a.attisdropped AND "
-						  "				  a.atttypid = x.oid ",
+						  "		SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_class c, pg_catalog.pg_attribute a, x "
+						  "		WHERE t.typtype = 'c' AND "
+						  "			  t.oid = c.reltype AND "
+						  "			  c.oid = a.attrelid AND "
+						  "			  NOT a.attisdropped AND "
+						  "			  a.atttypid = x.oid ",
 						  base_query);
 
 		/* Ranges were introduced in 9.2 */
 		if (GET_MAJOR_VERSION(cluster->major_version) >= 902)
 			appendPQExpBufferStr(&querybuf,
-								 "			UNION ALL "
+								 "		UNION ALL "
 			/* ranges containing any type selected so far */
-								 "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
-								 "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid");
+								 "		SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
+								 "		WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid");
 
 		appendPQExpBufferStr(&querybuf,
-							 "	) foo "
+							 "	) "
 							 ") "
 		/* now look for stored columns of any such type */
 							 "SELECT n.nspname, c.relname, a.attname "
