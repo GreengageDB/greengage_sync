@@ -335,7 +335,7 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 	 * will be gone).
 	 */
 	OIDNewHeap = make_new_heap_with_colname(matviewOid, tableSpace, matviewRel->rd_rel->relam, NULL, relpersistence,
-							   ExclusiveLock, false, true, "_$");
+							   ExclusiveLock, false, true, "__$");
 	LockRelationOid(OIDNewHeap, AccessExclusiveLock);
 	dest = CreateTransientRelDestReceiver(OIDNewHeap, matviewOid, concurrent, relpersistence,
 										  stmt->skipData);
@@ -807,13 +807,13 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 	 */
 	resetStringInfo(&querybuf);
 	appendStringInfo(&querybuf,
-					 "SELECT newdata FROM %s newdata "
-					 "WHERE newdata IS NOT NULL AND EXISTS "
-					 "(SELECT 1 FROM %s newdata2 WHERE newdata2 IS NOT NULL "
-					 "AND newdata2 OPERATOR(pg_catalog.*=) newdata "
-					 "AND newdata2.ctid OPERATOR(pg_catalog.<>) "
-					 "newdata.ctid and newdata2.gp_segment_id = "
-					 "newdata.gp_segment_id)",
+					 "SELECT _$newdata FROM %s _$newdata "
+					 "WHERE _$newdata IS NOT NULL AND EXISTS "
+					 "(SELECT 1 FROM %s _$newdata2 WHERE _$newdata2 IS NOT NULL "
+					 "AND _$newdata2 OPERATOR(pg_catalog.*=) _$newdata "
+					 "AND _$newdata2.ctid OPERATOR(pg_catalog.<>) "
+					 "_$newdata.ctid and _$newdata2.gp_segment_id = "
+					 "_$newdata.gp_segment_id)",
 					 tempname, tempname);
 	if (SPI_execute(querybuf.data, false, 1) != SPI_OK_SELECT)
 		elog(ERROR, "SPI_exec failed: %s", querybuf.data);
