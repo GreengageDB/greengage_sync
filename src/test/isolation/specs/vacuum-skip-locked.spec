@@ -49,62 +49,6 @@ step "lock_access_exclusive_ao"
 	LOCK part1_ao IN ACCESS EXCLUSIVE MODE;
 }
 
-<<<<<<< HEAD
-session "s2"
-step "vac_specified"		{ VACUUM (SKIP_LOCKED) part1, part2; }
-step "vac_all_parts"		{ VACUUM (SKIP_LOCKED) parted; }
-step "analyze_specified"	{ ANALYZE (SKIP_LOCKED) part1, part2; }
-step "analyze_all_parts"	{ ANALYZE (SKIP_LOCKED) parted; }
-step "vac_analyze_specified"	{ VACUUM (ANALYZE, SKIP_LOCKED) part1, part2; }
-step "vac_analyze_all_parts"	{ VACUUM (ANALYZE, SKIP_LOCKED) parted; }
-step "vac_full_specified"	{ VACUUM (SKIP_LOCKED, FULL) part1, part2; }
-step "vac_full_all_parts"	{ VACUUM (SKIP_LOCKED, FULL) parted; }
-step "vac_specified_ao"		{ VACUUM (SKIP_LOCKED) part1_ao, part2_ao; }
-step "vac_all_parts_ao"		{ VACUUM (SKIP_LOCKED) parted_ao; }
-step "analyze_specified_ao"	{ ANALYZE (SKIP_LOCKED) part1_ao, part2_ao; }
-step "analyze_all_parts_ao"	{ ANALYZE (SKIP_LOCKED) parted_ao; }
-step "vac_analyze_specified_ao"	{ VACUUM (ANALYZE, SKIP_LOCKED) part1_ao, part2_ao; }
-step "vac_analyze_all_parts_ao"	{ VACUUM (ANALYZE, SKIP_LOCKED) parted_ao; }
-step "vac_full_specified_ao"	{ VACUUM (SKIP_LOCKED, FULL) part1_ao, part2_ao; }
-step "vac_full_all_parts_ao"	{ VACUUM (SKIP_LOCKED, FULL) parted_ao; }
-
-permutation "lock_share" "vac_specified" "commit"
-permutation "lock_share" "vac_all_parts" "commit"
-permutation "lock_share" "analyze_specified" "commit"
-permutation "lock_share" "analyze_all_parts" "commit"
-permutation "lock_share" "vac_analyze_specified" "commit"
-permutation "lock_share" "vac_analyze_all_parts" "commit"
-permutation "lock_share" "vac_full_specified" "commit"
-permutation "lock_share" "vac_full_all_parts" "commit"
-permutation "lock_access_exclusive" "vac_specified" "commit"
-permutation "lock_access_exclusive" "vac_all_parts" "commit"
-permutation "lock_access_exclusive" "analyze_specified" "commit"
-# GPDB: This blocks in GPDB, because the ANALYZE tries to acquire inherited
-# sample on segments, which blocks. We consider that OK, even though it's
-# different from upstream. Even in PostgreSQL, the documentation for
-# SKIP_LOCKED says that it may still block if it needs to acquire sample
-# rows from the partitions.
-#permutation "lock_access_exclusive" "analyze_all_parts" "commit"
-permutation "lock_access_exclusive" "vac_analyze_specified" "commit"
-#permutation "lock_access_exclusive" "vac_analyze_all_parts" "commit"
-permutation "lock_access_exclusive" "vac_full_specified" "commit"
-permutation "lock_access_exclusive" "vac_full_all_parts" "commit"
-
-permutation "lock_share_ao" "vac_specified_ao" "commit"
-permutation "lock_share_ao" "vac_all_parts_ao" "commit"
-permutation "lock_share_ao" "analyze_specified_ao" "commit"
-permutation "lock_share_ao" "analyze_all_parts_ao" "commit"
-permutation "lock_share_ao" "vac_analyze_specified_ao" "commit"
-permutation "lock_share_ao" "vac_analyze_all_parts_ao" "commit"
-permutation "lock_share_ao" "vac_full_specified_ao" "commit"
-permutation "lock_share_ao" "vac_full_all_parts_ao" "commit"
-permutation "lock_access_exclusive_ao" "vac_specified_ao" "commit"
-permutation "lock_access_exclusive_ao" "vac_all_parts_ao" "commit"
-permutation "lock_access_exclusive_ao" "analyze_specified_ao" "commit"
-permutation "lock_access_exclusive_ao" "vac_analyze_specified_ao" "commit"
-permutation "lock_access_exclusive_ao" "vac_full_specified_ao" "commit"
-permutation "lock_access_exclusive_ao" "vac_full_all_parts_ao" "commit"
-=======
 session s2
 step vac_specified			{ VACUUM (SKIP_LOCKED) part1, part2; }
 step vac_all_parts			{ VACUUM (SKIP_LOCKED) parted; }
@@ -114,6 +58,14 @@ step vac_analyze_specified	{ VACUUM (ANALYZE, SKIP_LOCKED) part1, part2; }
 step vac_analyze_all_parts	{ VACUUM (ANALYZE, SKIP_LOCKED) parted; }
 step vac_full_specified		{ VACUUM (SKIP_LOCKED, FULL) part1, part2; }
 step vac_full_all_parts		{ VACUUM (SKIP_LOCKED, FULL) parted; }
+step vac_specified_ao		{ VACUUM (SKIP_LOCKED) part1_ao, part2_ao; }
+step vac_all_parts_ao		{ VACUUM (SKIP_LOCKED) parted_ao; }
+step analyze_specified_ao	{ ANALYZE (SKIP_LOCKED) part1_ao, part2_ao; }
+step analyze_all_parts_ao	{ ANALYZE (SKIP_LOCKED) parted_ao; }
+step vac_analyze_specified_ao	{ VACUUM (ANALYZE, SKIP_LOCKED) part1_ao, part2_ao; }
+step vac_analyze_all_parts_ao	{ VACUUM (ANALYZE, SKIP_LOCKED) parted_ao; }
+step vac_full_specified_ao	{ VACUUM (SKIP_LOCKED, FULL) part1_ao, part2_ao; }
+step vac_full_all_parts_ao	{ VACUUM (SKIP_LOCKED, FULL) parted_ao; }
 
 permutation lock_share vac_specified commit
 permutation lock_share vac_all_parts commit
@@ -126,9 +78,28 @@ permutation lock_share vac_full_all_parts commit
 permutation lock_access_exclusive vac_specified commit
 permutation lock_access_exclusive vac_all_parts commit
 permutation lock_access_exclusive analyze_specified commit
-permutation lock_access_exclusive analyze_all_parts commit
+# GPDB: This blocks in GPDB, because the ANALYZE tries to acquire inherited
+# sample on segments, which blocks. We consider that OK, even though it's
+# different from upstream. Even in PostgreSQL, the documentation for
+# SKIP_LOCKED says that it may still block if it needs to acquire sample
+# rows from the partitions.
+#permutation lock_access_exclusive analyze_all_parts commit
 permutation lock_access_exclusive vac_analyze_specified commit
-permutation lock_access_exclusive vac_analyze_all_parts commit
+#permutation lock_access_exclusive vac_analyze_all_parts commit
 permutation lock_access_exclusive vac_full_specified commit
 permutation lock_access_exclusive vac_full_all_parts commit
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
+
+permutation lock_share_ao vac_specified_ao commit
+permutation lock_share_ao vac_all_parts_ao commit
+permutation lock_share_ao analyze_specified_ao commit
+permutation lock_share_ao analyze_all_parts_ao commit
+permutation lock_share_ao vac_analyze_specified_ao commit
+permutation lock_share_ao vac_analyze_all_parts_ao commit
+permutation lock_share_ao vac_full_specified_ao commit
+permutation lock_share_ao vac_full_all_parts_ao commit
+permutation lock_access_exclusive_ao vac_specified_ao commit
+permutation lock_access_exclusive_ao vac_all_parts_ao commit
+permutation lock_access_exclusive_ao analyze_specified_ao commit
+permutation lock_access_exclusive_ao vac_analyze_specified_ao commit
+permutation lock_access_exclusive_ao vac_full_specified_ao commit
+permutation lock_access_exclusive_ao vac_full_all_parts_ao commit
