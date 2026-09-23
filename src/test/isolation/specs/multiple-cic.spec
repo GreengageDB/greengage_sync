@@ -40,8 +40,4 @@ step s2i	{
 # (*) marker ensures that s2i is reported as "waiting", even if it
 # completes very quickly
 
-<<<<<<< HEAD
-permutation "s2l" "s1i" "s2i"(*)
-=======
 permutation s2l s1i s2i(*)
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f

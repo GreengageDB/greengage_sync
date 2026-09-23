@@ -22,47 +22,28 @@ id|data
  1|   2
 (1 row)
 
-<<<<<<< HEAD
-1              2              
-=======
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 step s1_advunlock1: SELECT pg_advisory_unlock(142857); <waiting ...>
 step s2_update: <... completed>
 step s1_advunlock1: <... completed>
 pg_advisory_unlock
-<<<<<<< HEAD
-
-t              
-=======
 ------------------
-t                 
+t
 (1 row)
 
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 step s1_advunlock2: SELECT pg_advisory_unlock(285714); <waiting ...>
 step s3_update: <... completed>
 step s1_advunlock2: <... completed>
 pg_advisory_unlock
-<<<<<<< HEAD
-
-t              
-=======
 ------------------
-t                 
+t
 (1 row)
 
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 step s1_advunlock3: SELECT pg_advisory_unlock(571428); <waiting ...>
 step s4_update: <... completed>
 step s1_advunlock3: <... completed>
 pg_advisory_unlock
-<<<<<<< HEAD
-
-t              
-=======
 ------------------
-t                 
+t
 (1 row)
 
->>>>>>> e1c1c30f635390b6a3ae4993e8cac213a33e6e3f
 step s1_commit: COMMIT;
