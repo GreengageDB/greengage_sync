@@ -1060,9 +1060,19 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		 * Partitioned tables don't have storage, so we don't set any fields
 		 * in their pg_class entries except for reltuples, which is necessary
 		 * for auto-analyze to work properly.
+		 *
+		 * We deliberately don't touch the parent's own indexes above (see
+		 * "Irel = NULL" for the inh case), so we don't know whether it
+		 * currently has any; pass through the existing relhasindex instead
+		 * of hard-coding false, which would otherwise make
+		 * vac_update_relstats() clear a true flag (partitioned tables can
+		 * have their own logical index, e.g. from CREATE INDEX on the
+		 * partitioned table) and hide all indexes on this table from the
+		 * planner.
 		 */
 		vac_update_relstats(onerel, -1, totalrows,
-							0, false, InvalidTransactionId,
+							0, onerel->rd_rel->relhasindex,
+							InvalidTransactionId,
 							InvalidMultiXactId,
 							in_outer_xact, false);
 	}
