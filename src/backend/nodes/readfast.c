@@ -2396,6 +2396,9 @@ readNodeBinary(void)
 			case T_SortBy:
 				return_value = _readSortBy();
 				break;
+			case T_WindowDef:
+				return_value = _readWindowDef();
+				break;
 			case T_TypeCast:
 				return_value = _readTypeCast();
 				break;
