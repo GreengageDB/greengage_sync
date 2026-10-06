@@ -950,7 +950,7 @@ _readDynamicSeqScan(void)
 {
 	READ_LOCALS(DynamicSeqScan);
 
-	ReadCommonScan(&local_node->seqscan);
+	ReadCommonScan(&local_node->seqscan.scan);
 	READ_NODE_FIELD(partOids);
 	READ_NODE_FIELD(part_prune_info);
 	READ_NODE_FIELD(join_prune_paramids);
@@ -2626,6 +2626,9 @@ readNodeBinary(void)
 				return_value = _readAlterTableMoveAllStmt();
 				break;
 
+			case T_PublicationTable:
+				return_value = _readPublicationTable();
+				break;
 			case T_CreatePublicationStmt:
 				return_value = _readCreatePublicationStmt();
 				break;
@@ -2669,8 +2672,8 @@ readNodeBinary(void)
 			case T_RowIdentityVarInfo:
 				return_value = _readRowIdentityVarInfo();
 				break;
-			case T_ResultCache:
-				return_value = _readResultCache();
+			case T_Memoize:
+				return_value = _readMemoize();
 				break;
 			case T_ReturnStmt:
 				return_value = _readReturnStmt();
