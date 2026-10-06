@@ -572,7 +572,7 @@ ltsConcatWorkerTapes(LogicalTapeSet *lts, TapeShare *shared,
 		lt = &lts->tapes[i];
 
 		pg_itoa(i, filename);
-		file = BufFileOpenShared(fileset, filename, O_RDONLY);
+		file = BufFileOpenFileSet(&fileset->fs, filename, O_RDONLY, false);
 		filesize = BufFileSize(file);
 
 		/*
@@ -618,7 +618,7 @@ ltsConcatWorkerTapes(LogicalTapeSet *lts, TapeShare *shared,
 	 * offset).
 	 *
 	 * The only thing that currently prevents writing to the leader tape from
-	 * working is the fact that BufFiles opened using BufFileOpenShared() are
+	 * working is the fact that BufFiles opened using BufFileOpenFileSet() are
 	 * read-only by definition, but that could be changed if it seemed
 	 * worthwhile.  For now, writing to the leader tape will raise a "Bad file
 	 * descriptor" error, so tuplesort must avoid writing to the leader tape
@@ -731,8 +731,14 @@ LogicalTapeSetCreate(int ntapes, bool preallocate, TapeShare *shared,
 		workfile_set *work_set;
 
 		pg_itoa(worker, filename);
+<<<<<<< HEAD
 		work_set = workfile_mgr_create_set("LogicalTape", filename, false /* hold pin */);
 		lts->pfile = BufFileCreateShared(fileset, filename, work_set);
+||||||| e1c1c30f635
+		lts->pfile = BufFileCreateShared(fileset, filename);
+=======
+		lts->pfile = BufFileCreateFileSet(&fileset->fs, filename);
+>>>>>>> 3b231596ccf
 	}
 	else
 	{
@@ -1108,7 +1114,7 @@ LogicalTapeFreeze(LogicalTapeSet *lts, int tapenum, TapeShare *share)
 	/* Handle extra steps when caller is to share its tapeset */
 	if (share)
 	{
-		BufFileExportShared(lts->pfile);
+		BufFileExportFileSet(lts->pfile);
 		share->firstblocknumber = lt->firstBlockNumber;
 	}
 }

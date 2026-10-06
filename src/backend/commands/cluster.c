@@ -651,7 +651,12 @@ rebuild_relation(Relation OldHeap, Oid indexOid, bool verbose)
 
 	/* Create the transient table that will receive the re-ordered data */
 	OIDNewHeap = make_new_heap(tableOid, tableSpace,
+<<<<<<< HEAD
 							   accessMethod, NULL,
+||||||| e1c1c30f635
+=======
+							   accessMethod,
+>>>>>>> 3b231596ccf
 							   relpersistence,
 							   AccessExclusiveLock,
 							   true /* createAoBlockDirectory */,
@@ -689,14 +694,22 @@ make_column_name(char *prefix, char *colname)
  * duplicates the logical structure of the OldHeap; but will have the
  * specified physical storage properties NewTableSpace, NewAccessMethod, and
  * relpersistence.
+<<<<<<< HEAD
  *
  * Specify a colprefix can create a table with different colname, incase
  * column conflict issue happens in REFRESH MATERIALIZED VIEW operation.
+||||||| e1c1c30f635
+ * duplicates the logical structure of the OldHeap, but is placed in
+ * NewTableSpace which might be different from OldHeap's.  Also, it's built
+ * with the specified persistence, which might differ from the original's.
+=======
+>>>>>>> 3b231596ccf
  *
  * After this, the caller should load the new heap with transferred/modified
  * data, then call finish_heap_swap to complete the operation.
  */
 Oid
+<<<<<<< HEAD
 make_new_heap_with_colname(Oid OIDOldHeap, Oid NewTableSpace, Oid NewAccessMethod,
 			  List *NewEncodings,
 			  char relpersistence,
@@ -704,6 +717,13 @@ make_new_heap_with_colname(Oid OIDOldHeap, Oid NewTableSpace, Oid NewAccessMetho
 			  bool createAoBlockDirectory,
 			  bool makeCdbPolicy,
 			  char *colprefix)
+||||||| e1c1c30f635
+make_new_heap(Oid OIDOldHeap, Oid NewTableSpace, char relpersistence,
+			  LOCKMODE lockmode)
+=======
+make_new_heap(Oid OIDOldHeap, Oid NewTableSpace, Oid NewAccessMethod,
+			  char relpersistence, LOCKMODE lockmode)
+>>>>>>> 3b231596ccf
 {
 	TupleDesc	OldHeapDesc;
 	char		NewHeapName[NAMEDATALEN];
@@ -889,7 +909,15 @@ make_new_heap_with_colname(Oid OIDOldHeap, Oid NewTableSpace, Oid NewAccessMetho
 									 &isNull);
 		if (isNull)
 			reloptions = (Datum) 0;
+<<<<<<< HEAD
 		NewHeapCreateToastTable(OIDNewHeap, reloptions, lockmode);
+||||||| e1c1c30f635
+
+		NewHeapCreateToastTable(OIDNewHeap, reloptions, lockmode);
+=======
+
+		NewHeapCreateToastTable(OIDNewHeap, reloptions, lockmode, toastid);
+>>>>>>> 3b231596ccf
 
 		ReleaseSysCache(tuple);
 	}
@@ -965,6 +993,7 @@ copy_table_data(Oid OIDNewHeap, Oid OIDOldHeap, Oid OIDOldIndex, bool verbose,
 	BlockNumber num_pages;
 	int			elevel = verbose ? INFO : DEBUG2;
 	PGRUsage	ru0;
+	char	   *nspname;
 
 	pg_rusage_init(&ru0);
 
@@ -977,6 +1006,9 @@ copy_table_data(Oid OIDNewHeap, Oid OIDOldHeap, Oid OIDOldIndex, bool verbose,
 		OldIndex = index_open(OIDOldIndex, AccessExclusiveLock);
 	else
 		OldIndex = NULL;
+
+	/* Store a copy of the namespace name for logging purposes */
+	nspname = get_namespace_name(RelationGetNamespace(OldHeap));
 
 	/*
 	 * Their tuple descriptors should be exactly alike, but here we only need
@@ -1076,18 +1108,18 @@ copy_table_data(Oid OIDNewHeap, Oid OIDOldHeap, Oid OIDOldIndex, bool verbose,
 	if (OldIndex != NULL && !use_sort)
 		ereport(elevel,
 				(errmsg("clustering \"%s.%s\" using index scan on \"%s\"",
-						get_namespace_name(RelationGetNamespace(OldHeap)),
+						nspname,
 						RelationGetRelationName(OldHeap),
 						RelationGetRelationName(OldIndex))));
 	else if (use_sort)
 		ereport(elevel,
 				(errmsg("clustering \"%s.%s\" using sequential scan and sort",
-						get_namespace_name(RelationGetNamespace(OldHeap)),
+						nspname,
 						RelationGetRelationName(OldHeap))));
 	else
 		ereport(elevel,
 				(errmsg("vacuuming \"%s.%s\"",
-						get_namespace_name(RelationGetNamespace(OldHeap)),
+						nspname,
 						RelationGetRelationName(OldHeap))));
 
 	/*
@@ -1112,7 +1144,8 @@ copy_table_data(Oid OIDNewHeap, Oid OIDOldHeap, Oid OIDOldIndex, bool verbose,
 
 	/* Log what we did */
 	ereport(elevel,
-			(errmsg("\"%s\": found %.0f removable, %.0f nonremovable row versions in %u pages",
+			(errmsg("\"%s.%s\": found %.0f removable, %.0f nonremovable row versions in %u pages",
+					nspname,
 					RelationGetRelationName(OldHeap),
 					tups_vacuumed, num_tuples,
 					RelationGetNumberOfBlocks(OldHeap)),
@@ -1800,6 +1833,14 @@ finish_heap_swap(Oid OIDOldHeap, Oid OIDNewHeap,
 
 			RenameRelationInternal(toastidx,
 								   NewToastName, true, true);
+
+			/*
+			 * Reset the relrewrite for the toast. The command-counter
+			 * increment is required here as we are about to update
+			 * the tuple that is updated as part of RenameRelationInternal.
+			 */
+			CommandCounterIncrement();
+			ResetRelRewrite(newrel->rd_rel->reltoastrelid);
 		}
 		relation_close(newrel, NoLock);
 	}
