@@ -1,7 +1,9 @@
 -- start_ignore
 create extension if not exists gp_debug_numsegments;
+NOTICE:  extension "gp_debug_numsegments" already exists, skipping
 -- end_ignore
 drop schema if exists test_expand_table cascade;
+NOTICE:  schema "test_expand_table" does not exist, skipping
 create schema test_expand_table;
 set search_path=test_expand_table,public;
 set default_table_access_method='heap';
@@ -19,8 +21,8 @@ Update t1 set c = gp_segment_id;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             1 |    47
              0 |    53
+             1 |    47
 (2 rows)
 
 begin;
@@ -28,26 +30,26 @@ Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             1 |    37
-             0 |    38
              2 |    25
+             0 |    38
+             1 |    37
 (3 rows)
 
 abort;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             1 |    47
              0 |    53
+             1 |    47
 (2 rows)
 
 Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
+             2 |    25
              0 |    38
              1 |    37
-             2 |    25
 (3 rows)
 
 select numsegments from gp_distribution_policy where localoid='t1'::regclass;
@@ -77,9 +79,9 @@ Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
+             2 |    37
              0 |    33
              1 |    30
-             2 |    37
 (3 rows)
 
 abort;
@@ -93,8 +95,8 @@ Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             0 |    33
              2 |    37
+             0 |    33
              1 |    30
 (3 rows)
 
@@ -125,8 +127,8 @@ insert into t1 values
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             1 |     4
              0 |     4
+             1 |     4
 (2 rows)
 
 begin;
@@ -134,17 +136,17 @@ Alter table t1 expand table;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             2 |     4
-             1 |     1
              0 |     3
+             1 |     1
+             2 |     4
 (3 rows)
 
 abort;
 Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             1 |     4
              0 |     4
+             1 |     4
 (2 rows)
 
 Alter table t1 expand table;
@@ -183,8 +185,8 @@ Select gp_segment_id, count(*) from t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
              0 |    38
-             2 |    25
              1 |    37
+             2 |    25
 (3 rows)
 
 abort;
@@ -656,8 +658,8 @@ Update part_t1 set e = gp_segment_id;
 Select gp_segment_id, count(*) from part_t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             1 |    47
              0 |    53
+             1 |    47
 (2 rows)
 
 begin;
@@ -666,24 +668,24 @@ Select gp_segment_id, count(*) from part_t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
              2 |    25
-             1 |    37
              0 |    38
+             1 |    37
 (3 rows)
 
 abort;
 Select gp_segment_id, count(*) from part_t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             1 |    47
              0 |    53
+             1 |    47
 (2 rows)
 
 Alter table part_t1 expand table;
 Select gp_segment_id, count(*) from part_t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
-             0 |    38
              2 |    25
+             0 |    38
              1 |    37
 (3 rows)
 
@@ -835,8 +837,8 @@ Select gp_segment_id, count(*) from part_t1 group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
              0 |    38
-             2 |    25
              1 |    37
+             2 |    25
 (3 rows)
 
 drop table part_t1;
@@ -914,9 +916,11 @@ CREATE VIEW expand_view AS select * from expand_table1;
 CREATE rule "_RETURN" AS ON SELECT TO expand_table2
     DO INSTEAD SELECT * FROM expand_table1;
 ALTER TABLE expand_table2 EXPAND TABLE;
-ERROR:  "expand_table2" is not a table, materialized view, or foreign table
+ERROR:  ALTER action EXPAND TABLE cannot be performed on relation "expand_table2"
+DETAIL:  This operation is not supported for views.
 ALTER TABLE expand_view EXPAND TABLE;
-ERROR:  "expand_view" is not a table, materialized view, or foreign table
+ERROR:  ALTER action EXPAND TABLE cannot be performed on relation "expand_view"
+DETAIL:  This operation is not supported for views.
 ALTER TABLE expand_table1 EXPAND TABLE;
 --
 -- Test expanding a table with a domain type as distribution key.
@@ -942,9 +946,9 @@ alter table expand_domain_tab expand table;
 select gp_segment_id, count(*) from expand_domain_tab group by gp_segment_id;
  gp_segment_id | count 
 ---------------+-------
+             2 |     4
              0 |     5
              1 |     1
-             2 |     4
 (3 rows)
 
 select numsegments from gp_distribution_policy where localoid='expand_domain_tab'::regclass;
@@ -959,4 +963,5 @@ select numsegments from gp_distribution_policy where localoid='expand_domain_tab
 -- run correctly.
 reset search_path;
 drop schema test_reshuffle cascade;
+ERROR:  schema "test_reshuffle" does not exist
 -- end_ignore
