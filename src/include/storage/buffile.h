@@ -28,8 +28,14 @@
 #ifndef BUFFILE_H
 #define BUFFILE_H
 
+<<<<<<< HEAD
 #include "storage/sharedfileset.h"
 #include "utils/workfile_mgr.h"
+||||||| e1c1c30f635
+#include "storage/sharedfileset.h"
+=======
+#include "storage/fileset.h"
+>>>>>>> 3b231596ccf
 
 /* BufFile is an opaque type whose details are not known outside buffile.c. */
 
@@ -53,12 +59,29 @@ extern int64 BufFileSize(BufFile *file);
 extern int64 BufFileGetSize(BufFile *file);
 extern long BufFileAppend(BufFile *target, BufFile *source);
 
+<<<<<<< HEAD
 extern BufFile *BufFileCreateShared(SharedFileSet *fileset, const char *name, struct workfile_set *work_set);
 extern void BufFileExportShared(BufFile *file);
 extern BufFile *BufFileOpenShared(SharedFileSet *fileset, const char *name,
 								  int mode);
 extern void BufFileDeleteShared(SharedFileSet *fileset, const char *name);
 extern void BufFileTruncateShared(BufFile *file, int fileno, off_t offset);
+||||||| e1c1c30f635
+extern BufFile *BufFileCreateShared(SharedFileSet *fileset, const char *name);
+extern void BufFileExportShared(BufFile *file);
+extern BufFile *BufFileOpenShared(SharedFileSet *fileset, const char *name,
+								  int mode);
+extern void BufFileDeleteShared(SharedFileSet *fileset, const char *name);
+extern void BufFileTruncateShared(BufFile *file, int fileno, off_t offset);
+=======
+extern BufFile *BufFileCreateFileSet(FileSet *fileset, const char *name);
+extern void BufFileExportFileSet(BufFile *file);
+extern BufFile *BufFileOpenFileSet(FileSet *fileset, const char *name,
+								   int mode, bool missing_ok);
+extern void BufFileDeleteFileSet(FileSet *fileset, const char *name,
+								 bool missing_ok);
+extern void BufFileTruncateFileSet(BufFile *file, int fileno, off_t offset);
+>>>>>>> 3b231596ccf
 
 extern void *BufFileReadFromBuffer(BufFile *file, size_t size);
 

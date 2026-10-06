@@ -81,6 +81,7 @@ DECLARE_TOAST(pg_authid, 4175, 4176);
 #define PgAuthidToastTable 4175
 #define PgAuthidToastIndex 4176
 
+<<<<<<< HEAD
 DECLARE_UNIQUE_INDEX(pg_authid_rolname_index, 2676, on pg_authid using btree(rolname name_ops));
 #define AuthIdRolnameIndexId	2676
 DECLARE_UNIQUE_INDEX_PKEY(pg_authid_oid_index, 2677, on pg_authid using btree(oid oid_ops));
@@ -89,5 +90,14 @@ DECLARE_INDEX(pg_authid_rolresqueue_index, 6029, on pg_authid using btree(rolres
 #define AuthIdRolResQueueIndexId	6029
 DECLARE_INDEX(pg_authid_rolresgroup_index, 6440, on pg_authid using btree(rolresgroup oid_ops));
 #define AuthIdRolResGroupIndexId	6440
+||||||| e1c1c30f635
+DECLARE_UNIQUE_INDEX(pg_authid_rolname_index, 2676, on pg_authid using btree(rolname name_ops));
+#define AuthIdRolnameIndexId	2676
+DECLARE_UNIQUE_INDEX_PKEY(pg_authid_oid_index, 2677, on pg_authid using btree(oid oid_ops));
+#define AuthIdOidIndexId	2677
+=======
+DECLARE_UNIQUE_INDEX(pg_authid_rolname_index, 2676, AuthIdRolnameIndexId, on pg_authid using btree(rolname name_ops));
+DECLARE_UNIQUE_INDEX_PKEY(pg_authid_oid_index, 2677, AuthIdOidIndexId, on pg_authid using btree(oid oid_ops));
+>>>>>>> 3b231596ccf
 
 #endif							/* PG_AUTHID_H */

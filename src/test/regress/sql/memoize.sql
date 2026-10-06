@@ -1,10 +1,10 @@
--- Perform tests on the Result Cache node.
+-- Perform tests on the Memoize node.
 
--- The cache hits/misses/evictions from the Result Cache node can vary between
+-- The cache hits/misses/evictions from the Memoize node can vary between
 -- machines.  Let's just replace the number with an 'N'.  In order to allow us
 -- to perform validation when the measure was zero, we replace a zero value
 -- with "Zero".  All other numbers are replaced with 'N'.
-create function explain_resultcache(query text, hide_hitmiss bool) returns setof text
+create function explain_memoize(query text, hide_hitmiss bool) returns setof text
 language plpgsql as
 $$
 declare
@@ -30,11 +30,11 @@ begin
 end;
 $$;
 
--- Ensure we get a result cache on the inner side of the nested loop
+-- Ensure we get a memoize node on the inner side of the nested loop
 SET enable_hashjoin TO off;
 SET enable_bitmapscan TO off;
 
-SELECT explain_resultcache('
+SELECT explain_memoize('
 SELECT COUNT(*),AVG(t1.unique1) FROM tenk1 t1
 INNER JOIN tenk1 t2 ON t1.unique1 = t2.twenty
 WHERE t2.unique1 < 1000;', false);
@@ -45,7 +45,7 @@ INNER JOIN tenk1 t2 ON t1.unique1 = t2.twenty
 WHERE t2.unique1 < 1000;
 
 -- Try with LATERAL joins
-SELECT explain_resultcache('
+SELECT explain_memoize('
 SELECT COUNT(*),AVG(t2.unique1) FROM tenk1 t1,
 LATERAL (SELECT t2.unique1 FROM tenk1 t2 WHERE t1.twenty = t2.unique1) t2
 WHERE t1.unique1 < 1000;', false);
@@ -68,7 +68,7 @@ SET enable_sort TO off;
 -- Ensure we get some evictions.  We're unable to validate the hits and misses
 -- here as the number of entries that fit in the cache at once will vary
 -- between different machines.
-SELECT explain_resultcache('
+SELECT explain_memoize('
 SELECT COUNT(*),AVG(t1.unique1) FROM tenk1 t1
 INNER JOIN tenk1 t2 ON t1.unique1 = t2.thousand
 WHERE t2.unique1 < 1200;', true);
@@ -76,10 +76,16 @@ RESET enable_sort;
 RESET enable_mergejoin;
 RESET work_mem;
 
+<<<<<<< HEAD:src/test/regress/sql/resultcache.sql
 -- Test Result Cache plans.  GPDB has no intra-segment parallel workers, so
 -- upstream's "parallel plan" is just the ordinary distributed plan here.  We
 -- keep enable_hashjoin/enable_bitmapscan off (see above) so the planner sticks
 -- to the Nested Loop + Result Cache shape.
+||||||| e1c1c30f635:src/test/regress/sql/resultcache.sql
+-- Test parallel plans with Result Cache.
+=======
+-- Test parallel plans with Memoize
+>>>>>>> 3b231596ccf:src/test/regress/sql/memoize.sql
 SET min_parallel_table_scan_size TO 0;
 SET parallel_setup_cost TO 0;
 SET parallel_tuple_cost TO 0;
