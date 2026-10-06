@@ -5048,7 +5048,11 @@ _outSortBy(StringInfo str, const SortBy *node)
 	WRITE_LOCATION_FIELD(location);
 }
 
-#ifndef COMPILING_BINARY_FUNCS
+/*
+ * GPDB: WindowDef is part of the raw parse tree of a SQL-standard function
+ * body, which is dispatched to the segments, so it has a binary serializer
+ * too.
+ */
 static void
 _outWindowDef(StringInfo str, const WindowDef *node)
 {
@@ -5063,6 +5067,8 @@ _outWindowDef(StringInfo str, const WindowDef *node)
 	WRITE_NODE_FIELD(endOffset);
 	WRITE_LOCATION_FIELD(location);
 }
+
+#ifndef COMPILING_BINARY_FUNCS
 
 static void
 _outRangeSubselect(StringInfo str, const RangeSubselect *node)
