@@ -5235,7 +5235,7 @@ create_nestloop_plan(PlannerInfo *root,
 	bool		partition_selectors_created;
 	bool		prefetch = false;
 
-	push_partition_selector_candidate_for_join(root, best_path);
+	push_partition_selector_candidate_for_join(root, &best_path->jpath);
 
 #if  0
 	/*
@@ -5257,7 +5257,7 @@ create_nestloop_plan(PlannerInfo *root,
 	 * inject Partition Selectors to the inner side.
 	 */
 	partition_selectors_created =
-		pop_and_inject_partition_selectors(root, best_path);
+		pop_and_inject_partition_selectors(root, &best_path->jpath);
 
 	/* For a nestloop, include outer relids in curOuterRels for inner side */
 	root->curOuterRels = bms_union(root->curOuterRels,
