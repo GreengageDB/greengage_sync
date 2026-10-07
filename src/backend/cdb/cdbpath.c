@@ -2486,7 +2486,7 @@ create_motion_path_for_merge(PlannerInfo *root, Index rti, GpPolicy *policy,
 
 	if (policyType == POLICYTYPE_PARTITIONED)
 	{
-		if (!can_elide_explicit_motion(root, rti, subpath, policy))
+		if (!can_elide_explicit_motion(root, subpath, list_make1_int(rti), &policy))
 			ereport(ERROR,
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("MERGE on a distributed table is not supported when the join requires redistributing the target table"),
