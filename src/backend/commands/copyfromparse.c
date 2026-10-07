@@ -2144,28 +2144,12 @@ CopyReadLineText(CopyFromState cstate)
 		char		c;
 
 		/*
-<<<<<<< HEAD
-		 * Load more data if needed.  Ideally we would just force four bytes
-		 * of read-ahead and avoid the many calls to
-		 * IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(), but it hardly seems worth
-		 * it, considering the size of the buffer.
-||||||| e1c1c30f635
-		 * Load more data if needed.  Ideally we would just force four bytes
-		 * of read-ahead and avoid the many calls to
-		 * IF_NEED_REFILL_AND_NOT_EOF_CONTINUE(), but the COPY_OLD_FE protocol
-		 * does not allow us to read too far ahead or we might read into the
-		 * next data, so we read-ahead only as far we know we can.  One
-		 * optimization would be to read-ahead four byte here if
-		 * cstate->copy_src != COPY_OLD_FE, but it hardly seems worth it,
-		 * considering the size of the buffer.
-=======
 		 * Load more data if needed.
 		 *
 		 * TODO: We could just force four bytes of read-ahead and avoid the
 		 * many calls to IF_NEED_REFILL_AND_NOT_EOF_CONTINUE().  That was
 		 * unsafe with the old v2 COPY protocol, but we don't support that
 		 * anymore.
->>>>>>> adadae45816
 		 */
 		if (input_buf_ptr >= copy_buf_len || need_data)
 		{

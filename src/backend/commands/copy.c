@@ -3,15 +3,9 @@
  * copy.c
  *		Implements the COPY utility command
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -902,27 +896,10 @@ ProcessCopyOptions(ParseState *pstate,
 				 errmsg("COPY delimiter cannot be \"%s\"", opts_out->delim)));
 
 	/* Check header */
-<<<<<<< HEAD
-	/*
-	 * In PostgreSQL, HEADER is not allowed in text mode either, but in GPDB,
-	 * only forbid it with BINARY.
-	 */
-||||||| e1c1c30f635
-	if (!opts_out->csv_mode && opts_out->header_line)
-=======
->>>>>>> adadae45816
 	if (opts_out->binary && opts_out->header_line)
 		ereport(ERROR,
-<<<<<<< HEAD
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("COPY cannot specify HEADER in BINARY mode")));
-||||||| e1c1c30f635
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("COPY HEADER available only in CSV mode")));
-=======
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("cannot specify HEADER in BINARY mode")));
->>>>>>> adadae45816
 
 	/* Check quote */
 	if (!opts_out->csv_mode && opts_out->quote != NULL)

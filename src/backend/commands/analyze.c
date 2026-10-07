@@ -3,8 +3,6 @@
  * analyze.c
  *	  the Postgres statistics generator
  *
-<<<<<<< HEAD
- *
  * There are a few things in Greenplum that make this more complicated
  * than in upstream:
  *
@@ -54,12 +52,7 @@
  *
  * TODO: explain how this works.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -767,6 +760,35 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		totaldeadrows = 0;
 		numrows = 0;
 		rows = NULL;
+
+		/*
+		 * GPDB: a partitioned table's statistics are derived by merging its
+		 * children's stats (merge_leaf_stats), so no sample is taken and
+		 * totalrows would otherwise stay 0.  We must still record this
+		 * partition's tuple count here, otherwise vac_update_relstats() below
+		 * writes pg_class.reltuples = 0 and the planner treats the partition
+		 * (in particular the whole table, for the top root) as empty -- wrong
+		 * cardinality.
+		 *
+		 * reltuples is the sum of the IMMEDIATE children's reltuples, not of
+		 * all leaves: a mid-level partition that has not itself been ANALYZEd
+		 * has reltuples = -1 (get_rel_reltuples() maps that to 0), so when
+		 * optimizer_analyze_midlevel_partition is off the root legitimately
+		 * gets 0 even though the leaves hold rows.  Summing immediate children
+		 * reproduces that GUC-dependent behavior (and equals the leaf total
+		 * once every level has been analyzed).  NoLock is sufficient because we
+		 * already hold ShareUpdateExclusiveLock on this relation for ANALYZE.
+		 */
+		if (onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+		{
+			List	   *children;
+			ListCell   *lc;
+
+			children = find_inheritance_children(RelationGetRelid(onerel), NoLock);
+			foreach(lc, children)
+				totalrows += get_rel_reltuples(lfirst_oid(lc));
+			list_free(children);
+		}
 	}
 
 	if (ctx)
@@ -795,7 +817,6 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		HeapTuple *validRows = (HeapTuple *) palloc(numrows * sizeof(HeapTuple));
 		MemoryContext col_context,
 					old_context;
-		bool		build_ext_stats;
 
 		pgstat_progress_update_param(PROGRESS_ANALYZE_PHASE,
 									 PROGRESS_ANALYZE_PHASE_COMPUTE_STATS);
@@ -937,18 +958,12 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 			MemoryContextResetAndDeleteChildren(col_context);
 		}
 
-<<<<<<< HEAD
 		/*
 		 * Datums exceeding WIDTH_THRESHOLD are masked as NULL in the sample, and
 		 * are used as is to evaluate index statistics. It is less likely to have
 		 * indexes on very wide columns, so the effect will be minimal.
 		 */
 		if (hasindex)
-||||||| e1c1c30f635
-		if (hasindex)
-=======
-		if (nindexes > 0)
->>>>>>> adadae45816
 			compute_index_stats(onerel, totalrows,
 								indexdata, nindexes,
 								rows, numrows,
@@ -973,46 +988,9 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 							thisdata->attr_cnt, thisdata->vacattrstats);
 		}
 
-<<<<<<< HEAD
-		/*
-		 * Should we build extended statistics for this relation?
-		 *
-		 * The extended statistics catalog does not include an inheritance
-		 * flag, so we can't store statistics built both with and without
-		 * data from child relations. We can store just one set of statistics
-		 * per relation. For plain relations that's fine, but for inheritance
-		 * trees we have to pick whether to store statistics for just the
-		 * one relation or the whole tree. For plain inheritance we store
-		 * the (!inh) version, mostly for backwards compatibility reasons.
-		 * For partitioned tables that's pointless (the non-leaf tables are
-		 * always empty), so we store stats representing the whole tree.
-		 */
-		build_ext_stats = (onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE) ? inh : (!inh);
-
-		/*
-		 * Build extended statistics (if there are any).
-		 *
-		 * For now we only build extended statistics on individual relations,
-		 * not for relations representing inheritance trees.
-		 */
-		if (build_ext_stats)
-			BuildRelationExtStatistics(onerel, totalrows, numrows, rows,
-									   attr_cnt, vacattrstats);
-||||||| e1c1c30f635
-		/*
-		 * Build extended statistics (if there are any).
-		 *
-		 * For now we only build extended statistics on individual relations,
-		 * not for relations representing inheritance trees.
-		 */
-		if (!inh)
-			BuildRelationExtStatistics(onerel, totalrows, numrows, rows,
-									   attr_cnt, vacattrstats);
-=======
 		/* Build extended statistics (if there are any). */
 		BuildRelationExtStatistics(onerel, inh, totalrows, numrows, rows,
 								   attr_cnt, vacattrstats);
->>>>>>> adadae45816
 	}
 
 	pgstat_progress_update_param(PROGRESS_ANALYZE_PHASE,
@@ -1052,15 +1030,9 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 							hasindex,
 							InvalidTransactionId,
 							InvalidMultiXactId,
-<<<<<<< HEAD
+							NULL, NULL,
 							in_outer_xact,
 							false /* isVacuum */);
-||||||| e1c1c30f635
-							in_outer_xact);
-=======
-							NULL, NULL,
-							in_outer_xact);
->>>>>>> adadae45816
 
 		/* Same for indexes */
 		for (ind = 0; ind < nindexes; ind++)
@@ -1100,58 +1072,23 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 								false,
 								InvalidTransactionId,
 								InvalidMultiXactId,
-<<<<<<< HEAD
+								NULL, NULL,
 								in_outer_xact,
 								false /* isVacuum */);
-||||||| e1c1c30f635
-								in_outer_xact);
-=======
-								NULL, NULL,
-								in_outer_xact);
->>>>>>> adadae45816
 		}
 	}
 	else if (onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
 	{
 		/*
 		 * Partitioned tables don't have storage, so we don't set any fields
-<<<<<<< HEAD
-		 * in their pg_class entries except for reltuples, which is necessary
-		 * for auto-analyze to work properly.
-		 *
-		 * We deliberately don't touch the parent's own indexes above (see
-		 * "Irel = NULL" for the inh case), so we don't know whether it
-		 * currently has any; pass through the existing relhasindex instead
-		 * of hard-coding false, which would otherwise make
-		 * vac_update_relstats() clear a true flag (partitioned tables can
-		 * have their own logical index, e.g. from CREATE INDEX on the
-		 * partitioned table) and hide all indexes on this table from the
-		 * planner.
-||||||| e1c1c30f635
-		 * in their pg_class entries except for reltuples, which is necessary
-		 * for auto-analyze to work properly.
-=======
 		 * in their pg_class entries except for reltuples and relhasindex.
->>>>>>> adadae45816
 		 */
 		vac_update_relstats(onerel, -1, totalrows,
-<<<<<<< HEAD
-							0, onerel->rd_rel->relhasindex,
-							InvalidTransactionId,
-||||||| e1c1c30f635
-							0, false, InvalidTransactionId,
-=======
 							0, hasindex, InvalidTransactionId,
->>>>>>> adadae45816
 							InvalidMultiXactId,
-<<<<<<< HEAD
-							in_outer_xact, false);
-||||||| e1c1c30f635
-							in_outer_xact);
-=======
 							NULL, NULL,
-							in_outer_xact);
->>>>>>> adadae45816
+							in_outer_xact,
+							false);
 	}
 
 	/*
@@ -1690,7 +1627,6 @@ acquire_sample_rows(Relation onerel, int elevel,
 	nblocks = BlockSampler_Init(&bs, totalblocks, targrows, randseed);
 
 #ifdef USE_PREFETCH
-<<<<<<< HEAD
 	/*
 	 * GPDB: for AO/AOCO relations, 'totalblocks' (and hence the block
 	 * numbers produced by the BlockSampler below) is actually a tuple
@@ -1703,12 +1639,7 @@ acquire_sample_rows(Relation onerel, int elevel,
 	 * fork's actual size. Skip prefetching for AO/AOCO relations.
 	 */
 	prefetch_maximum = RelationIsAppendOptimized(onerel) ?
-		0 : get_tablespace_io_concurrency(onerel->rd_rel->reltablespace);
-||||||| e1c1c30f635
-	prefetch_maximum = get_tablespace_io_concurrency(onerel->rd_rel->reltablespace);
-=======
-	prefetch_maximum = get_tablespace_maintenance_io_concurrency(onerel->rd_rel->reltablespace);
->>>>>>> adadae45816
+		0 : get_tablespace_maintenance_io_concurrency(onerel->rd_rel->reltablespace);
 	/* Create another BlockSampler, using the same seed, for prefetching */
 	if (prefetch_maximum)
 		(void) BlockSampler_Init(&prefetch_bs, totalblocks, targrows, randseed);

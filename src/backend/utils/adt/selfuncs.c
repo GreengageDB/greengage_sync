@@ -10,15 +10,9 @@
  *	  Index cost functions are located via the index AM's API struct,
  *	  which is obtained from the handler function registered in pg_am.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -3988,18 +3982,12 @@ estimate_multivariate_ndistinct(PlannerInfo *root, RelOptInfo *rel,
 	Oid			statOid = InvalidOid;
 	MVNDistinct *stats;
 	StatisticExtInfo *matched_info = NULL;
-<<<<<<< HEAD
 	RangeTblEntry		*rte;
-||||||| e1c1c30f635
-=======
-	RangeTblEntry *rte;
->>>>>>> adadae45816
 
 	/* bail out immediately if the table has no extended statistics */
 	if (!rel->statlist)
 		return false;
 
-<<<<<<< HEAD
 	/*
 	 * When dealing with regular inheritance trees, ignore extended stats
 	 * (which were built without data from child rels, and thus do not
@@ -4011,12 +3999,7 @@ estimate_multivariate_ndistinct(PlannerInfo *root, RelOptInfo *rel,
 	if (rte->inh && rte->relkind != RELKIND_PARTITIONED_TABLE)
 		return false;
 
-	/* look for the ndistinct statistics matching the most vars */
-||||||| e1c1c30f635
-	/* look for the ndistinct statistics matching the most vars */
-=======
 	/* look for the ndistinct statistics object matching the most vars */
->>>>>>> adadae45816
 	nmatches_vars = 0;			/* we require at least two matches */
 	nmatches_exprs = 0;
 	foreach(lc, rel->statlist)
@@ -6145,16 +6128,6 @@ get_variable_range(PlannerInfo *root, VariableStatData *vardata,
 						 have_data ? ATTSTATSSLOT_VALUES :
 						 (ATTSTATSSLOT_VALUES | ATTSTATSSLOT_NUMBERS)))
 	{
-<<<<<<< HEAD
-		get_stats_slot_range(&sslot, opfuncoid, &opproc,
-							 collation, typLen, typByVal,
-							 &tmin, &tmax, &have_data,
-							 vardata->atttype);
-||||||| e1c1c30f635
-		get_stats_slot_range(&sslot, opfuncoid, &opproc,
-							 collation, typLen, typByVal,
-							 &tmin, &tmax, &have_data);
-=======
 		bool		use_mcvs = have_data;
 
 		if (!have_data)
@@ -6173,8 +6146,8 @@ get_variable_range(PlannerInfo *root, VariableStatData *vardata,
 		if (use_mcvs)
 			get_stats_slot_range(&sslot, opfuncoid, &opproc,
 								 collation, typLen, typByVal,
-								 &tmin, &tmax, &have_data);
->>>>>>> adadae45816
+								 &tmin, &tmax, &have_data,
+								 vardata->atttype);
 		free_attstatsslot(&sslot);
 	}
 

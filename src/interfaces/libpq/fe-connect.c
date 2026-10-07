@@ -3,14 +3,8 @@
  * fe-connect.c
  *	  functions related to setting up a connection to the backend
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -4581,21 +4575,13 @@ optional_setsockopt(int fd, int protoid, int optid, int value)
  * error messages with strcpy/strcat is tedious but should be quite safe.
  * We also save/restore errno in case the signal handler support doesn't.
  */
-<<<<<<< HEAD
 static int
 internal_cancel(SockAddr *raddr, int be_pid, int be_key,
 				char *errbuf, int errbufsize, bool requestFinish)
-||||||| e1c1c30f635
-static int
-internal_cancel(SockAddr *raddr, int be_pid, int be_key,
-				char *errbuf, int errbufsize)
-=======
-int
-PQcancel(PGcancel *cancel, char *errbuf, int errbufsize)
->>>>>>> adadae45816
 {
 	int			save_errno = SOCK_ERRNO;
 	pgsocket	tmpsock = PGINVALID_SOCKET;
+	char		sebuf[PG_STRERROR_R_BUFLEN];
 	int			maxlen;
 	struct
 	{
@@ -4603,108 +4589,24 @@ PQcancel(PGcancel *cancel, char *errbuf, int errbufsize)
 		CancelRequestPacket cp;
 	}			crp;
 
-<<<<<<< HEAD
 #ifndef WIN32
 	struct pollfd	pollFds[1];
 	int				pollRet;
 
 retry2:
 #endif
-||||||| e1c1c30f635
-=======
-	if (!cancel)
-	{
-		strlcpy(errbuf, "PQcancel() -- no cancel object supplied", errbufsize);
-		/* strlcpy probably doesn't change errno, but be paranoid */
-		SOCK_ERRNO_SET(save_errno);
-		return false;
-	}
-
->>>>>>> adadae45816
 	/*
 	 * We need to open a temporary connection to the postmaster. Do this with
 	 * only kernel calls.
 	 */
-	if ((tmpsock = socket(cancel->raddr.addr.ss_family, SOCK_STREAM, 0)) == PGINVALID_SOCKET)
+	if ((tmpsock = socket(raddr->addr.ss_family, SOCK_STREAM, 0)) == PGINVALID_SOCKET)
 	{
 		strlcpy(errbuf, "PQcancel() -- socket() failed: ", errbufsize);
 		goto cancel_errReturn;
 	}
-
-	/*
-	 * Since this connection will only be used to send a single packet of
-	 * data, we don't need NODELAY.  We also don't set the socket to
-	 * nonblocking mode, because the API definition of PQcancel requires the
-	 * cancel to be sent in a blocking way.
-	 *
-	 * We do set socket options related to keepalives and other TCP timeouts.
-	 * This ensures that this function does not block indefinitely when
-	 * reasonable keepalive and timeout settings have been provided.
-	 */
-	if (cancel->raddr.addr.ss_family != AF_UNIX &&
-		cancel->keepalives != 0)
-	{
-#ifndef WIN32
-		if (!optional_setsockopt(tmpsock, SOL_SOCKET, SO_KEEPALIVE, 1))
-		{
-			strlcpy(errbuf, "PQcancel() -- setsockopt(SO_KEEPALIVE) failed: ", errbufsize);
-			goto cancel_errReturn;
-		}
-
-#ifdef PG_TCP_KEEPALIVE_IDLE
-		if (!optional_setsockopt(tmpsock, IPPROTO_TCP, PG_TCP_KEEPALIVE_IDLE,
-								 cancel->keepalives_idle))
-		{
-			strlcpy(errbuf, "PQcancel() -- setsockopt(" PG_TCP_KEEPALIVE_IDLE_STR ") failed: ", errbufsize);
-			goto cancel_errReturn;
-		}
-#endif
-
-#ifdef TCP_KEEPINTVL
-		if (!optional_setsockopt(tmpsock, IPPROTO_TCP, TCP_KEEPINTVL,
-								 cancel->keepalives_interval))
-		{
-			strlcpy(errbuf, "PQcancel() -- setsockopt(TCP_KEEPINTVL) failed: ", errbufsize);
-			goto cancel_errReturn;
-		}
-#endif
-
-#ifdef TCP_KEEPCNT
-		if (!optional_setsockopt(tmpsock, IPPROTO_TCP, TCP_KEEPCNT,
-								 cancel->keepalives_count))
-		{
-			strlcpy(errbuf, "PQcancel() -- setsockopt(TCP_KEEPCNT) failed: ", errbufsize);
-			goto cancel_errReturn;
-		}
-#endif
-
-#else							/* WIN32 */
-
-#ifdef SIO_KEEPALIVE_VALS
-		if (!setKeepalivesWin32(tmpsock,
-								cancel->keepalives_idle,
-								cancel->keepalives_interval))
-		{
-			strlcpy(errbuf, "PQcancel() -- WSAIoctl(SIO_KEEPALIVE_VALS) failed: ", errbufsize);
-			goto cancel_errReturn;
-		}
-#endif							/* SIO_KEEPALIVE_VALS */
-#endif							/* WIN32 */
-
-		/* TCP_USER_TIMEOUT works the same way on Unix and Windows */
-#ifdef TCP_USER_TIMEOUT
-		if (!optional_setsockopt(tmpsock, IPPROTO_TCP, TCP_USER_TIMEOUT,
-								 cancel->pgtcp_user_timeout))
-		{
-			strlcpy(errbuf, "PQcancel() -- setsockopt(TCP_USER_TIMEOUT) failed: ", errbufsize);
-			goto cancel_errReturn;
-		}
-#endif
-	}
-
 retry3:
-	if (connect(tmpsock, (struct sockaddr *) &cancel->raddr.addr,
-				cancel->raddr.salen) < 0)
+	if (connect(tmpsock, (struct sockaddr *) &raddr->addr,
+				raddr->salen) < 0)
 	{
 		if (SOCK_ERRNO == EINTR)
 			/* Interrupted system call - we'll just try again */
@@ -4713,25 +4615,19 @@ retry3:
 		goto cancel_errReturn;
 	}
 
+	/*
+	 * We needn't set nonblocking I/O or NODELAY options here.
+	 */
+
 	/* Create and send the cancel request packet. */
 
 	crp.packetlen = pg_hton32((uint32) sizeof(crp));
-<<<<<<< HEAD
 	if (requestFinish)
 		crp.cp.cancelRequestCode = (MsgType) pg_hton32(FINISH_REQUEST_CODE);
 	else
 		crp.cp.cancelRequestCode = (MsgType) pg_hton32(CANCEL_REQUEST_CODE);
 	crp.cp.backendPID = pg_hton32(be_pid);
 	crp.cp.cancelAuthCode = pg_hton32(be_key);
-||||||| e1c1c30f635
-	crp.cp.cancelRequestCode = (MsgType) pg_hton32(CANCEL_REQUEST_CODE);
-	crp.cp.backendPID = pg_hton32(be_pid);
-	crp.cp.cancelAuthCode = pg_hton32(be_key);
-=======
-	crp.cp.cancelRequestCode = (MsgType) pg_hton32(CANCEL_REQUEST_CODE);
-	crp.cp.backendPID = pg_hton32(cancel->be_pid);
-	crp.cp.cancelAuthCode = pg_hton32(cancel->be_key);
->>>>>>> adadae45816
 
 retry4:
 	if (send(tmpsock, (char *) &crp, sizeof(crp), 0) != (int) sizeof(crp))
@@ -4805,25 +4701,8 @@ cancel_errReturn:
 	maxlen = errbufsize - strlen(errbuf) - 2;
 	if (maxlen >= 0)
 	{
-		/*
-		 * We can't invoke strerror here, since it's not signal-safe.  Settle
-		 * for printing the decimal value of errno.  Even that has to be done
-		 * the hard way.
-		 */
-		int			val = SOCK_ERRNO;
-		char		buf[32];
-		char	   *bufp;
-
-		bufp = buf + sizeof(buf) - 1;
-		*bufp = '\0';
-		do
-		{
-			*(--bufp) = (val % 10) + '0';
-			val /= 10;
-		} while (val > 0);
-		bufp -= 6;
-		memcpy(bufp, "error ", 6);
-		strncat(errbuf, bufp, maxlen);
+		strncat(errbuf, SOCK_STRERROR(SOCK_ERRNO, sebuf, sizeof(sebuf)),
+				maxlen);
 		strcat(errbuf, "\n");
 	}
 	if (tmpsock != PGINVALID_SOCKET)
@@ -4832,7 +4711,6 @@ cancel_errReturn:
 	return false;
 }
 
-<<<<<<< HEAD
 /*
  * PQcancel: request query cancel
  *
@@ -4873,30 +4751,6 @@ PQrequestFinish(PGcancel *cancel, char *errbuf, int errbufsize)
 	return internal_cancel(&cancel->raddr, cancel->be_pid, cancel->be_key,
 						   errbuf, errbufsize, true);
 }
-||||||| e1c1c30f635
-/*
- * PQcancel: request query cancel
- *
- * Returns true if able to send the cancel request, false if not.
- *
- * On failure, an error message is stored in *errbuf, which must be of size
- * errbufsize (recommended size is 256 bytes).  *errbuf is not changed on
- * success return.
- */
-int
-PQcancel(PGcancel *cancel, char *errbuf, int errbufsize)
-{
-	if (!cancel)
-	{
-		strlcpy(errbuf, "PQcancel() -- no cancel object supplied", errbufsize);
-		return false;
-	}
-
-	return internal_cancel(&cancel->raddr, cancel->be_pid, cancel->be_key,
-						   errbuf, errbufsize);
-}
-=======
->>>>>>> adadae45816
 
 /*
  * PQrequestCancel: old, not thread-safe function for requesting query cancel
@@ -4931,28 +4785,9 @@ PQrequestCancel(PGconn *conn)
 		return false;
 	}
 
-<<<<<<< HEAD
 	r = internal_cancel(&conn->raddr, conn->be_pid, conn->be_key,
 						conn->errorMessage.data, conn->errorMessage.maxlen,
 						false);
-||||||| e1c1c30f635
-	r = internal_cancel(&conn->raddr, conn->be_pid, conn->be_key,
-						conn->errorMessage.data, conn->errorMessage.maxlen);
-=======
-	cancel = PQgetCancel(conn);
-	if (cancel)
-	{
-		r = PQcancel(cancel, conn->errorMessage.data,
-					 conn->errorMessage.maxlen);
-		PQfreeCancel(cancel);
-	}
-	else
-	{
-		strlcpy(conn->errorMessage.data, "out of memory",
-				conn->errorMessage.maxlen);
-		r = false;
-	}
->>>>>>> adadae45816
 
 	if (!r)
 	{

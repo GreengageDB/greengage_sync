@@ -41,15 +41,9 @@
  * and munge the system catalogs of the new database.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010 Greenplum Inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -116,8 +110,6 @@
 char	   *default_tablespace = NULL;
 char	   *temp_tablespaces = NULL;
 bool		allow_in_place_tablespaces = false;
-
-Oid			binary_upgrade_next_pg_tablespace_oid = InvalidOid;
 
 static void create_tablespace_directories(const char *location,
 										  const Oid tablespaceoid);
@@ -276,12 +268,8 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	char	   *location = NULL;
 	Oid			ownerId;
 	Datum		newOptions;
-<<<<<<< HEAD
-	List       *nonContentOptions = NIL;
-||||||| e1c1c30f635
-=======
+	List	   *nonContentOptions = NIL;
 	bool		in_place;
->>>>>>> adadae45816
 
 	/* Must be superuser */
 	if (!superuser())
@@ -310,7 +298,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 			if (strlen(defel->defname) > strlen("content") &&
 				strncmp(defel->defname, "content", strlen("content")) == 0)
 			{
-				int contentId = pg_atoi(defel->defname + strlen("content"), sizeof(int16), 0);
+				int contentId = pg_strtoint16(defel->defname + strlen("content"));
 
 				/*
 				 * The master validates the content ids are in [0, segCount)
@@ -335,7 +323,15 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	}
 
 	if (!location)
-		location = pstrdup(stmt->location);
+	{
+		/*
+		 * GPDB: an in-place tablespace (LOCATION '') has an empty location
+		 * string, which the binary dispatch from the QD delivers to the QE as
+		 * NULL. Treat that as the empty string so the in_place path below works
+		 * instead of crashing in pstrdup/canonicalize_path.
+		 */
+		location = pstrdup(stmt->location ? stmt->location : "");
+	}
 
 	/* Unix-ify the offered path, and strip any trailing slashes */
 	canonicalize_path(location);
@@ -426,29 +422,9 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 
 	MemSet(nulls, false, sizeof(nulls));
 
-<<<<<<< HEAD
 	tablespaceoid = GetNewOidForTableSpace(rel, TablespaceOidIndexId,
 										   Anum_pg_tablespace_oid,
 										   stmt->tablespacename);
-||||||| e1c1c30f635
-	tablespaceoid = GetNewOidWithIndex(rel, TablespaceOidIndexId,
-									   Anum_pg_tablespace_oid);
-=======
-	if (IsBinaryUpgrade)
-	{
-		/* Use binary-upgrade override for tablespace oid */
-		if (!OidIsValid(binary_upgrade_next_pg_tablespace_oid))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("pg_tablespace OID value not set when in binary upgrade mode")));
-
-		tablespaceoid = binary_upgrade_next_pg_tablespace_oid;
-		binary_upgrade_next_pg_tablespace_oid = InvalidOid;
-	}
-	else
-		tablespaceoid = GetNewOidWithIndex(rel, TablespaceOidIndexId,
-										   Anum_pg_tablespace_oid);
->>>>>>> adadae45816
 	values[Anum_pg_tablespace_oid - 1] = ObjectIdGetDatum(tablespaceoid);
 	values[Anum_pg_tablespace_spcname - 1] =
 		DirectFunctionCall1(namein, CStringGetDatum(stmt->tablespacename));
@@ -746,81 +722,7 @@ DropTableSpace(DropTableSpaceStmt *stmt)
 	 */
 	LWLockAcquire(TablespaceCreateLock, LW_EXCLUSIVE);
 
-<<<<<<< HEAD
 	ensure_tablespace_directory_is_empty(tablespaceoid, tablespacename);
-||||||| e1c1c30f635
-	/*
-	 * Try to remove the physical infrastructure.
-	 */
-	if (!destroy_tablespace_directories(tablespaceoid, false))
-	{
-		/*
-		 * Not all files deleted?  However, there can be lingering empty files
-		 * in the directories, left behind by for example DROP TABLE, that
-		 * have been scheduled for deletion at next checkpoint (see comments
-		 * in mdunlink() for details).  We could just delete them immediately,
-		 * but we can't tell them apart from important data files that we
-		 * mustn't delete.  So instead, we force a checkpoint which will clean
-		 * out any lingering files, and try again.
-		 *
-		 * XXX On Windows, an unlinked file persists in the directory listing
-		 * until no process retains an open handle for the file.  The DDL
-		 * commands that schedule files for unlink send invalidation messages
-		 * directing other PostgreSQL processes to close the files.  DROP
-		 * TABLESPACE should not give up on the tablespace becoming empty
-		 * until all relevant invalidation processing is complete.
-		 */
-		RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_FORCE | CHECKPOINT_WAIT);
-		if (!destroy_tablespace_directories(tablespaceoid, false))
-		{
-			/* Still not empty, the files must be important then */
-			ereport(ERROR,
-					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-					 errmsg("tablespace \"%s\" is not empty",
-							tablespacename)));
-		}
-	}
-=======
-	/*
-	 * Try to remove the physical infrastructure.
-	 */
-	if (!destroy_tablespace_directories(tablespaceoid, false))
-	{
-		/*
-		 * Not all files deleted?  However, there can be lingering empty files
-		 * in the directories, left behind by for example DROP TABLE, that
-		 * have been scheduled for deletion at next checkpoint (see comments
-		 * in mdunlink() for details).  We could just delete them immediately,
-		 * but we can't tell them apart from important data files that we
-		 * mustn't delete.  So instead, we force a checkpoint which will clean
-		 * out any lingering files, and try again.
-		 */
-		RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_FORCE | CHECKPOINT_WAIT);
-
-		/*
-		 * On Windows, an unlinked file persists in the directory listing
-		 * until no process retains an open handle for the file.  The DDL
-		 * commands that schedule files for unlink send invalidation messages
-		 * directing other PostgreSQL processes to close the files, but
-		 * nothing guarantees they'll be processed in time.  So, we'll also
-		 * use a global barrier to ask all backends to close all files, and
-		 * wait until they're finished.
-		 */
-		LWLockRelease(TablespaceCreateLock);
-		WaitForProcSignalBarrier(EmitProcSignalBarrier(PROCSIGNAL_BARRIER_SMGRRELEASE));
-		LWLockAcquire(TablespaceCreateLock, LW_EXCLUSIVE);
-
-		/* And now try again. */
-		if (!destroy_tablespace_directories(tablespaceoid, false))
-		{
-			/* Still not empty, the files must be important then */
-			ereport(ERROR,
-					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-					 errmsg("tablespace \"%s\" is not empty",
-							tablespacename)));
-		}
-	}
->>>>>>> adadae45816
 
 	/* Record the filesystem change in XLOG */
 	{
@@ -900,15 +802,6 @@ create_tablespace_directories(const char *location, const Oid tablespaceoid)
 		tablespaceoid, GpIdentity.dbid);
 
 	linkloc = psprintf("pg_tblspc/%u", tablespaceoid);
-<<<<<<< HEAD
-	location_with_dbid_dir = psprintf("%s/%d", location, GpIdentity.dbid);
-	location_with_version_dir = psprintf("%s/%s", location_with_dbid_dir,
-										 GP_TABLESPACE_VERSION_DIRECTORY);
-||||||| e1c1c30f635
-	location_with_version_dir = psprintf("%s/%s", location,
-										 TABLESPACE_VERSION_DIRECTORY);
-=======
-
 	/*
 	 * If we're asked to make an 'in place' tablespace, create the directory
 	 * directly where the symlink would normally go.  This is a developer-only
@@ -925,9 +818,11 @@ create_tablespace_directories(const char *location, const Oid tablespaceoid)
 							linkloc)));
 	}
 
-	location_with_version_dir = psprintf("%s/%s", in_place ? linkloc : location,
-										 TABLESPACE_VERSION_DIRECTORY);
->>>>>>> adadae45816
+	/* In GPDB each segment uses a per-dbid subdirectory under the location. */
+	location_with_dbid_dir = psprintf("%s/%d", location, GpIdentity.dbid);
+	location_with_version_dir = psprintf("%s/%s",
+										 in_place ? linkloc : location_with_dbid_dir,
+										 GP_TABLESPACE_VERSION_DIRECTORY);
 
 	/*
 	 * Attempt to coerce target directory to safe permissions.  If this fails,
@@ -955,7 +850,7 @@ create_tablespace_directories(const char *location, const Oid tablespaceoid)
 	 * tablespace path. Unlike the location_with_version_dir, do not error out
 	 * if it already exists.
 	 */
-	if (stat(location_with_dbid_dir, &st) < 0) 
+	if (!in_place && stat(location_with_dbid_dir, &st) < 0)
 	{
 		if (errno == ENOENT)
 		{
@@ -970,7 +865,7 @@ create_tablespace_directories(const char *location, const Oid tablespaceoid)
 						errmsg("could not stat directory \"%s\": %m", location_with_dbid_dir)));
 
 	}
-	else
+	else if (!in_place)
 		ereport(DEBUG1,
 				(errmsg("directory \"%s\" already exists in tablespace",
 					location_with_dbid_dir)));
@@ -1015,13 +910,7 @@ create_tablespace_directories(const char *location, const Oid tablespaceoid)
 	/*
 	 * Create the symlink under PGDATA
 	 */
-<<<<<<< HEAD
-	if (symlink(location_with_dbid_dir, linkloc) < 0)
-||||||| e1c1c30f635
-	if (symlink(location, linkloc) < 0)
-=======
-	if (!in_place && symlink(location, linkloc) < 0)
->>>>>>> adadae45816
+	if (!in_place && symlink(location_with_dbid_dir, linkloc) < 0)
 		ereport(ERROR,
 				(errcode_for_file_access(),
 				 errmsg("could not create symbolic link \"%s\": %m",
@@ -2127,17 +2016,11 @@ tblspc_redo(XLogReaderState *record)
 	}
 	else if (info == XLOG_TBLSPC_DROP)
 	{
-<<<<<<< HEAD
-||||||| e1c1c30f635
-		xl_tblspc_drop_rec *xlrec = (xl_tblspc_drop_rec *) XLogRecGetData(record);
-
-=======
 		xl_tblspc_drop_rec *xlrec = (xl_tblspc_drop_rec *) XLogRecGetData(record);
 
 		/* Close all smgr fds in all backends. */
 		WaitForProcSignalBarrier(EmitProcSignalBarrier(PROCSIGNAL_BARRIER_SMGRRELEASE));
 
->>>>>>> adadae45816
 		/*
 		 * We no longer remove tablespace directories while replaying
 		 * XLOG_TBLSPC_DROP. We wait until the commit for the tablespace drop

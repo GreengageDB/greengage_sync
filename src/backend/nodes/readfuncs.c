@@ -3,15 +3,9 @@
  * readfuncs.c
  *	  Reader functions for Postgres tree nodes.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -54,15 +48,11 @@
 #include "nodes/parsenodes.h"
 #include "nodes/plannodes.h"
 #include "nodes/readfuncs.h"
-<<<<<<< HEAD
 
 #include "cdb/cdbgang.h"
 #include "nodes/altertablenodes.h"
 #include "utils/builtins.h"
-||||||| e1c1c30f635
-#include "utils/builtins.h"
-=======
->>>>>>> adadae45816
+#include "catalog/gp_distribution_policy.h"
 
 /*
  * readfuncs.c is compiled normally into readfuncs.o, but it's also
@@ -109,26 +99,11 @@
 /* Read an unsigned integer field (anything written as ":fldname %u") */
 #define READ_UINT_FIELD(fldname)    READ_SCALAR_FIELD(fldname, atoui(token))
 
-<<<<<<< HEAD
-/* Read an uint64 field (anything written as ":fldname %ll") */
-#ifndef WIN32
-#define READ_UINT64_FIELD(fldname)  READ_SCALAR_FIELD(fldname, atoll(token))
-#else
-#define READ_UINT64_FIELD(fldname)  READ_SCALAR_FIELD(fldname, _atoi64(token))
-#endif
-||||||| e1c1c30f635
-/* Read an unsigned integer field (anything written using UINT64_FORMAT) */
-#define READ_UINT64_FIELD(fldname) \
-	token = pg_strtok(&length);		/* skip :fldname */ \
-	token = pg_strtok(&length);		/* get field value */ \
-	local_node->fldname = pg_strtouint64(token, NULL, 10)
-=======
 /* Read an unsigned integer field (anything written using UINT64_FORMAT) */
 #define READ_UINT64_FIELD(fldname) \
 	token = pg_strtok(&length);		/* skip :fldname */ \
 	token = pg_strtok(&length);		/* get field value */ \
 	local_node->fldname = strtou64(token, NULL, 10)
->>>>>>> adadae45816
 
 /* Read a long integer field (anything written as ":fldname %ld") */
 #define READ_LONG_FIELD(fldname) \
@@ -388,18 +363,10 @@ _readQuery(void)
 	READ_NODE_FIELD(rowMarks);
 	READ_NODE_FIELD(setOperations);
 	READ_NODE_FIELD(constraintDeps);
-<<<<<<< HEAD
-    READ_NODE_FIELD(withCheckOptions);
-    READ_LOCATION_FIELD(stmt_location);
-||||||| e1c1c30f635
-	READ_NODE_FIELD(withCheckOptions);
-	READ_LOCATION_FIELD(stmt_location);
-=======
 	READ_NODE_FIELD(withCheckOptions);
 	READ_NODE_FIELD(mergeActionList);
 	READ_BOOL_FIELD(mergeUseOuterJoin);
 	READ_LOCATION_FIELD(stmt_location);
->>>>>>> adadae45816
 	READ_INT_FIELD(stmt_len);
     READ_BOOL_FIELD(parentStmtType);
 
@@ -757,6 +724,27 @@ _readIntoClause(void)
 	READ_DONE();
 }
 
+#ifndef COMPILING_BINARY_FUNCS
+/*
+ * _readGpPolicy
+ *	  Text counterpart of readfast.c's binary _readGpPolicy; reads what
+ *	  _outGpPolicy (outfuncs.c) wrote.
+ */
+static GpPolicy *
+_readGpPolicy(void)
+{
+	READ_LOCALS(GpPolicy);
+
+	READ_ENUM_FIELD(ptype, GpPolicyType);
+	READ_INT_FIELD(numsegments);
+	READ_INT_FIELD(nattrs);
+	READ_ATTRNUMBER_ARRAY(attrs, local_node->nattrs);
+	READ_OID_ARRAY(opclasses, local_node->nattrs);
+
+	READ_DONE();
+}
+#endif /* COMPILING_BINARY_FUNCS */
+
 static CopyIntoClause *
 _readCopyIntoClause(void)
 {
@@ -871,6 +859,9 @@ _readConstraint(void)
 	READ_NODE_FIELD(old_conpfeqop);
 	READ_OID_FIELD(old_pktable_oid);
 
+	READ_BOOL_FIELD(nulls_not_distinct);
+	READ_NODE_FIELD(fk_del_set_cols);
+
 	READ_BOOL_FIELD(skip_validation);
 	READ_BOOL_FIELD(initially_valid);
 
@@ -899,6 +890,7 @@ _readIndexStmt(void)
 	READ_UINT_FIELD(oldCreateSubid);
 	READ_UINT_FIELD(oldFirstRelfilenodeSubid);
 	READ_BOOL_FIELD(unique);
+	READ_BOOL_FIELD(nulls_not_distinct);
 	READ_BOOL_FIELD(primary);
 	READ_BOOL_FIELD(isconstraint);
 	READ_BOOL_FIELD(deferrable);
@@ -1067,7 +1059,7 @@ unwrapStringList(List *list)
 
 	foreach(lc, list)
 	{
-		Value	   *val = (Value *) lfirst(lc);
+		String	   *val = (String *) lfirst(lc);
 
 		lfirst(lc) = strVal(val);
 		pfree(val);
@@ -1303,20 +1295,20 @@ _readAConst(void)
 
 	token = pg_strtok(&length);
 	token = debackslash(token,length);
-	local_node->val.type = T_String;
+	local_node->val.node.type = T_String;
 
 	if (token[0] == '"')
 	{
-		local_node->val.val.str = palloc(length - 1);
-		strncpy(local_node->val.val.str , token+1, strlen(token)-2);
-		local_node->val.val.str[strlen(token)-2] = '\0';
+		local_node->val.sval.sval = palloc(length - 1);
+		strncpy(local_node->val.sval.sval , token+1, strlen(token)-2);
+		local_node->val.sval.sval[strlen(token)-2] = '\0';
 	}
 	else if (length > 2 && (token[0] == 'b'|| token[0] == 'B') && (token[1] == '\'' || token[1] == '"'))
 	{
-		local_node->val.type = T_BitString;
-		local_node->val.val.str = palloc(length+1);
-		strncpy(local_node->val.val.str , token, length);
-		local_node->val.val.str[length] = '\0';
+		local_node->val.node.type = T_BitString;
+		local_node->val.sval.sval = palloc(length+1);
+		strncpy(local_node->val.sval.sval , token, length);
+		local_node->val.sval.sval[length] = '\0';
 	}
 	else
 	{
@@ -1336,20 +1328,20 @@ _readAConst(void)
 	 	   }
 	 	if (isInt)
 		{
-			local_node->val.type = T_Integer;
-			local_node->val.val.ival = atol(token);
+			local_node->val.node.type = T_Integer;
+			local_node->val.ival.ival = atol(token);
 		}
 		else if (isFloat)
 		{
-			local_node->val.type = T_Float;
-			local_node->val.val.str = palloc(length + 1);
-			strcpy(local_node->val.val.str , token);
+			local_node->val.node.type = T_Float;
+			local_node->val.sval.sval = palloc(length + 1);
+			strcpy(local_node->val.sval.sval , token);
 		}
 		else
 		{
 			elog(ERROR,"Deserialization problem:  A_Const not string, bitstring, float, or int");
-			local_node->val.val.str = palloc(length + 1);
-			strcpy(local_node->val.val.str , token);
+			local_node->val.sval.sval = palloc(length + 1);
+			strcpy(local_node->val.sval.sval , token);
 		}
 	}
 
@@ -2313,6 +2305,89 @@ _readJsonValueExpr(void)
 }
 
 /*
+ * GPDB: readers for the untransformed SQL/JSON and publication parse nodes
+ * that GPDB dispatches to the segments. See the matching _out* functions in
+ * outfuncs.c for why these exist.
+ */
+static JsonFuncExpr *
+_readJsonFuncExpr(void)
+{
+	READ_LOCALS(JsonFuncExpr);
+
+	READ_ENUM_FIELD(op, JsonExprOp);
+	READ_NODE_FIELD(common);
+	READ_NODE_FIELD(output);
+	READ_NODE_FIELD(on_empty);
+	READ_NODE_FIELD(on_error);
+	READ_ENUM_FIELD(wrapper, JsonWrapper);
+	READ_BOOL_FIELD(omit_quotes);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonCommon *
+_readJsonCommon(void)
+{
+	READ_LOCALS(JsonCommon);
+
+	READ_NODE_FIELD(expr);
+	READ_NODE_FIELD(pathspec);
+	READ_STRING_FIELD(pathname);
+	READ_NODE_FIELD(passing);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonOutput *
+_readJsonOutput(void)
+{
+	READ_LOCALS(JsonOutput);
+
+	READ_NODE_FIELD(typeName);
+	READ_NODE_FIELD(returning);
+
+	READ_DONE();
+}
+
+static JsonArgument *
+_readJsonArgument(void)
+{
+	READ_LOCALS(JsonArgument);
+
+	READ_NODE_FIELD(val);
+	READ_STRING_FIELD(name);
+
+	READ_DONE();
+}
+
+static PublicationObjSpec *
+_readPublicationObjSpec(void)
+{
+	READ_LOCALS(PublicationObjSpec);
+
+	READ_ENUM_FIELD(pubobjtype, PublicationObjSpecType);
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(pubtable);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static PublicationTable *
+_readPublicationTable(void)
+{
+	READ_LOCALS(PublicationTable);
+
+	READ_NODE_FIELD(relation);
+	READ_NODE_FIELD(whereClause);
+	READ_NODE_FIELD(columns);
+
+	READ_DONE();
+}
+
+/*
  * _readJsonConstructorExpr
  */
 static JsonConstructorExpr *
@@ -2932,13 +3007,9 @@ _readModifyTable(void)
 	READ_NODE_FIELD(onConflictWhere);
 	READ_UINT_FIELD(exclRelRTI);
 	READ_NODE_FIELD(exclRelTlist);
-<<<<<<< HEAD
 	READ_BOOL_FIELD(isSplitUpdate);
 	READ_BOOL_FIELD(forceTupleRouting);
-||||||| e1c1c30f635
-=======
 	READ_NODE_FIELD(mergeActionLists);
->>>>>>> adadae45816
 
 	READ_DONE();
 }
@@ -4010,6 +4081,9 @@ _readRestrictInfo(void)
 	READ_BOOL_FIELD(outerjoin_delayed);
 	READ_BOOL_FIELD(can_join);
 	READ_BOOL_FIELD(pseudoconstant);
+	READ_BOOL_FIELD(leakproof);
+	READ_ENUM_FIELD(has_volatile, VolatileFunctionStatus);
+	READ_UINT_FIELD(security_level);
 	READ_BOOL_FIELD(contain_outer_query_references);
 	READ_BITMAPSET_FIELD(clause_relids);
 	READ_BITMAPSET_FIELD(required_relids);
@@ -4027,6 +4101,8 @@ _readRestrictInfo(void)
 	READ_NODE_FIELD(right_em);
 	READ_BOOL_FIELD(outer_is_left);
 	READ_OID_FIELD(hashjoinoperator);
+	READ_OID_FIELD(left_hasheqoperator);
+	READ_OID_FIELD(right_hasheqoperator);
 
 	READ_DONE();
 }
@@ -4501,7 +4577,7 @@ _readCreatePublicationStmt()
 
 	READ_STRING_FIELD(pubname);
 	READ_NODE_FIELD(options);
-	READ_NODE_FIELD(tables);
+	READ_NODE_FIELD(pubobjects);
 	READ_BOOL_FIELD(for_all_tables);
 
 	READ_DONE();
@@ -4514,9 +4590,9 @@ _readAlterPublicationStmt()
 
 	READ_STRING_FIELD(pubname);
 	READ_NODE_FIELD(options);
-	READ_NODE_FIELD(tables);
+	READ_NODE_FIELD(pubobjects);
 	READ_BOOL_FIELD(for_all_tables);
-	READ_ENUM_FIELD(tableAction, DefElemAction);
+	READ_ENUM_FIELD(action, AlterPublicationAction);
 
 	READ_DONE();
 }
@@ -4912,6 +4988,8 @@ parseNodeString(void)
 		return_value = _readRangeVar();
 	else if (MATCH("INTOCLAUSE", 10))
 		return_value = _readIntoClause();
+	else if (MATCH("GPPOLICY", 8))
+		return_value = _readGpPolicy();
 	else if (MATCH("COPYINTOCLAUSE", 14))
 		return_value = _readCopyIntoClause();
 	else if (MATCH("REFRESHCLAUSE", 13))
@@ -5154,7 +5232,6 @@ parseNodeString(void)
 		return_value = _readRestrictInfo();
 	else if (MATCH("EXTENSIBLENODE", 14))
 		return_value = _readExtensibleNode();
-<<<<<<< HEAD
 	else if (MATCH("PARTITIONSPEC", 13))
 		return_value = _readPartitionSpec();
 	else if (MATCH("PARTITIONELEM", 13))
@@ -5349,16 +5426,6 @@ parseNodeString(void)
 		return_value = _readGpPartitionListSpec();
 	else if (MATCHX("COLUMNREFERENCESTORAGEDIRECTIVE"))
 		return_value = _readColumnReferenceStorageDirective();
-||||||| e1c1c30f635
-	else if (MATCH("PARTITIONBOUNDSPEC", 18))
-		return_value = _readPartitionBoundSpec();
-	else if (MATCH("PARTITIONRANGEDATUM", 19))
-		return_value = _readPartitionRangeDatum();
-=======
-	else if (MATCH("PARTITIONBOUNDSPEC", 18))
-		return_value = _readPartitionBoundSpec();
-	else if (MATCH("PARTITIONRANGEDATUM", 19))
-		return_value = _readPartitionRangeDatum();
 	else if (MATCH("JSONFORMAT", 10))
 		return_value = _readJsonFormat();
 	else if (MATCH("JSONRETURNING", 13))
@@ -5381,7 +5448,18 @@ parseNodeString(void)
 		return_value = _readJsonTableParent();
 	else if (MATCH("JSONTABLESIBLING", 16))
 		return_value = _readJsonTableSibling();
->>>>>>> adadae45816
+	else if (MATCH("JSONFUNCEXPR", 12))
+		return_value = _readJsonFuncExpr();
+	else if (MATCH("JSONCOMMON", 10))
+		return_value = _readJsonCommon();
+	else if (MATCH("JSONOUTPUT", 10))
+		return_value = _readJsonOutput();
+	else if (MATCH("JSONARGUMENT", 12))
+		return_value = _readJsonArgument();
+	else if (MATCH("PUBLICATIONOBJSPEC", 18))
+		return_value = _readPublicationObjSpec();
+	else if (MATCH("PUBLICATIONTABLE", 16))
+		return_value = _readPublicationTable();
 	else
 	{
         ereport(ERROR,

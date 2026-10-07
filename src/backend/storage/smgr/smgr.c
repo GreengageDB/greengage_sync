@@ -6,15 +6,9 @@
  *	  All file system operations in POSTGRES dispatch through these
  *	  routines.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -25,18 +19,12 @@
  */
 #include "postgres.h"
 
-<<<<<<< HEAD
 #include "access/aomd.h"
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "access/xlogutils.h"
 #include "catalog/catalog.h"
 #include "catalog/indexing.h"
-||||||| e1c1c30f635
-#include "access/xlog.h"
-=======
-#include "access/xlogutils.h"
->>>>>>> adadae45816
 #include "lib/ilist.h"
 #include "postmaster/postmaster.h"
 #include "storage/bufmgr.h"

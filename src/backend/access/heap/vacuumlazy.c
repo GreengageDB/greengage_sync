@@ -40,13 +40,8 @@
 #include "access/heapam_xlog.h"
 #include "access/htup_details.h"
 #include "access/multixact.h"
-<<<<<<< HEAD
 #include "access/nbtree.h"
 #include "access/parallel.h"
-||||||| e1c1c30f635
-#include "access/parallel.h"
-=======
->>>>>>> adadae45816
 #include "access/transam.h"
 #include "access/aosegfiles.h"
 #include "access/aocssegfiles.h"
@@ -329,6 +324,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 				BufferAccessStrategy bstrategy)
 {
 	LVRelState *vacrel;
+	int			elevel;
 	bool		verbose,
 				instrument,
 				aggressive,
@@ -367,7 +363,6 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 		}
 	}
 
-<<<<<<< HEAD
 	if (params->options & VACOPT_VERBOSE)
 		elevel = INFO;
 	else
@@ -376,40 +371,16 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	if (Gp_role == GP_ROLE_DISPATCH)
 		elevel = DEBUG2; /* vacuum and analyze messages aren't interesting from the QD */
 
-||||||| e1c1c30f635
-	if (params->options & VACOPT_VERBOSE)
-		elevel = INFO;
-	else
-		elevel = DEBUG2;
-
-=======
->>>>>>> adadae45816
 	pgstat_progress_start_command(PROGRESS_COMMAND_VACUUM,
 								  RelationGetRelid(rel));
 
 	/*
-<<<<<<< HEAD
 	 * MPP-23647.  Update xid limits for heap as well as appendonly
 	 * relations.  This allows setting relfrozenxid to correct value
 	 * for an appendonly (AO/CO) table.
 	 */
 
-	vacuum_set_xid_limits(rel,
-						  params->freeze_min_age,
-						  params->freeze_table_age,
-						  params->multixact_freeze_min_age,
-						  params->multixact_freeze_table_age,
-						  &OldestXmin, &FreezeLimit, &xidFullScanLimit,
-						  &MultiXactCutoff, &mxactFullScanLimit);
-||||||| e1c1c30f635
-	vacuum_set_xid_limits(rel,
-						  params->freeze_min_age,
-						  params->freeze_table_age,
-						  params->multixact_freeze_min_age,
-						  params->multixact_freeze_table_age,
-						  &OldestXmin, &FreezeLimit, &xidFullScanLimit,
-						  &MultiXactCutoff, &mxactFullScanLimit);
-=======
+	/*
 	 * Get OldestXmin cutoff, which is used to determine which deleted tuples
 	 * are considered DEAD, not just RECENTLY_DEAD.  Also get related cutoffs
 	 * used to determine which XIDs/MultiXactIds will be frozen.  If this is
@@ -434,7 +405,6 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 		aggressive = true;
 		skipwithvm = false;
 	}
->>>>>>> adadae45816
 
 	/*
 	 * Setup error traceback support for ereport() first.  The idea is to set
@@ -658,32 +628,6 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	if (new_rel_allvisible > new_rel_pages)
 		new_rel_allvisible = new_rel_pages;
 
-<<<<<<< HEAD
-	new_frozen_xid = scanned_all_unfrozen ? FreezeLimit : InvalidTransactionId;
-	new_min_multi = scanned_all_unfrozen ? MultiXactCutoff : InvalidMultiXactId;
-
-	vac_update_relstats(rel,
-						new_rel_pages,
-						new_live_tuples,
-						new_rel_allvisible,
-						vacrel->nindexes > 0,
-						new_frozen_xid,
-						new_min_multi,
-						false,
-						true /* isvacuum */);
-||||||| e1c1c30f635
-	new_frozen_xid = scanned_all_unfrozen ? FreezeLimit : InvalidTransactionId;
-	new_min_multi = scanned_all_unfrozen ? MultiXactCutoff : InvalidMultiXactId;
-
-	vac_update_relstats(rel,
-						new_rel_pages,
-						new_live_tuples,
-						new_rel_allvisible,
-						vacrel->nindexes > 0,
-						new_frozen_xid,
-						new_min_multi,
-						false);
-=======
 	/*
 	 * Now actually update rel's pg_class entry.
 	 *
@@ -694,8 +638,8 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	vac_update_relstats(rel, new_rel_pages, vacrel->new_live_tuples,
 						new_rel_allvisible, vacrel->nindexes > 0,
 						vacrel->NewRelfrozenXid, vacrel->NewRelminMxid,
-						&frozenxid_updated, &minmulti_updated, false);
->>>>>>> adadae45816
+						&frozenxid_updated, &minmulti_updated, false,
+						true /* isvacuum */);
 
 	/*
 	 * Report results to the cumulative stats system, too.
@@ -2126,7 +2070,7 @@ lazy_scan_noprune(LVRelState *vacrel,
 		tuple.t_len = ItemIdGetLength(itemid);
 		tuple.t_tableOid = RelationGetRelid(vacrel->rel);
 
-		switch (HeapTupleSatisfiesVacuum(&tuple, vacrel->OldestXmin, buf))
+		switch (HeapTupleSatisfiesVacuum(vacrel->rel, &tuple, vacrel->OldestXmin, buf))
 		{
 			case HEAPTUPLE_DELETE_IN_PROGRESS:
 			case HEAPTUPLE_LIVE:
@@ -3449,14 +3393,7 @@ update_relstats_all_indexes(LVRelState *vacrel)
 							false,
 							InvalidTransactionId,
 							InvalidMultiXactId,
-<<<<<<< HEAD
-							false,
-							true /* isvacuum */);
-||||||| e1c1c30f635
-							false);
-=======
-							NULL, NULL, false);
->>>>>>> adadae45816
+							NULL, NULL, false, true /* isvacuum */);
 	}
 }
 

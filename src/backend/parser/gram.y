@@ -6,15 +6,9 @@
  * gram.y
  *	  POSTGRESQL BISON rules/actions
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -269,64 +263,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	TypeName   *typnam;
 	FunctionParameter *fun_param;
 	FunctionParameterMode fun_param_mode;
-<<<<<<< HEAD
-	ObjectWithArgs		*objwithargs;
-	DefElem				*defelt;
-	SortBy				*sortby;
-	WindowDef			*windef;
-	JoinExpr			*jexpr;
-	IndexElem			*ielem;
-	StatsElem			*selem;
-	Alias				*alias;
-	RangeVar			*range;
-	IntoClause			*into;
-	WithClause			*with;
-	InferClause			*infer;
-	OnConflictClause	*onconflict;
-	A_Indices			*aind;
-	ResTarget			*target;
-	struct PrivTarget	*privtarget;
-	AccessPriv			*accesspriv;
-	struct ImportQual	*importqual;
-	InsertStmt			*istmt;
-	VariableSetStmt		*vsetstmt;
-	PartitionElem		*partelem;
-	PartitionSpec		*partspec;
-	PartitionBoundSpec	*partboundspec;
-	RoleSpec			*rolespec;
-	DistributionKeyElem *dkelem;
-	struct SelectLimit	*selectlimit;
-	SetQuantifier	 setquantifier;
-	struct GroupClause  *groupclause;
-||||||| e1c1c30f635
-	ObjectWithArgs		*objwithargs;
-	DefElem				*defelt;
-	SortBy				*sortby;
-	WindowDef			*windef;
-	JoinExpr			*jexpr;
-	IndexElem			*ielem;
-	StatsElem			*selem;
-	Alias				*alias;
-	RangeVar			*range;
-	IntoClause			*into;
-	WithClause			*with;
-	InferClause			*infer;
-	OnConflictClause	*onconflict;
-	A_Indices			*aind;
-	ResTarget			*target;
-	struct PrivTarget	*privtarget;
-	AccessPriv			*accesspriv;
-	struct ImportQual	*importqual;
-	InsertStmt			*istmt;
-	VariableSetStmt		*vsetstmt;
-	PartitionElem		*partelem;
-	PartitionSpec		*partspec;
-	PartitionBoundSpec	*partboundspec;
-	RoleSpec			*rolespec;
-	struct SelectLimit	*selectlimit;
-	SetQuantifier	 setquantifier;
-	struct GroupClause  *groupclause;
-=======
 	ObjectWithArgs *objwithargs;
 	DefElem	   *defelt;
 	SortBy	   *sortby;
@@ -351,6 +287,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	PartitionSpec *partspec;
 	PartitionBoundSpec *partboundspec;
 	RoleSpec   *rolespec;
+	DistributionKeyElem *dkelem;
 	PublicationObjSpec *publicationobjectspec;
 	struct SelectLimit *selectlimit;
 	SetQuantifier setquantifier;
@@ -365,7 +302,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 		JsonBehavior *on_error;
 	}			on_behavior;
 	JsonQuotes	js_quotes;
->>>>>>> adadae45816
 }
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
@@ -934,20 +870,9 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
 	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
-<<<<<<< HEAD
-	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT CONNECTION CONSTRAINT
-	CONCURRENCY
-	CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY COST CREATE
-	CROSS CSV CUBE CURRENT_P
-||||||| e1c1c30f635
-	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
+	COMMITTED COMPRESSION CONCURRENCY CONCURRENTLY CONDITIONAL CONFIGURATION CONFLICT
 	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
 	COST CREATE CROSS CSV CUBE CURRENT_P
-=======
-	COMMITTED COMPRESSION CONCURRENTLY CONDITIONAL CONFIGURATION CONFLICT
-	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
-	COST CREATE CROSS CSV CUBE CURRENT_P
->>>>>>> adadae45816
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
@@ -956,16 +881,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP
 
-<<<<<<< HEAD
-	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENDPOINT ENUM_P ESCAPE EVENT EXCEPT
-	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
-||||||| e1c1c30f635
-	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
-	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
-=======
-	EACH ELSE EMPTY_P ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ERROR_P ESCAPE
+	EACH ELSE EMPTY_P ENABLE_P ENCODING ENCRYPTED END_P ENDPOINT ENUM_P ERROR_P ESCAPE
 	EVENT EXCEPT EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
->>>>>>> adadae45816
 	EXTENSION EXTERNAL EXTRACT
 
 	FALSE_P FAMILY FETCH FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
@@ -989,15 +906,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
 
-<<<<<<< HEAD
-	MAPPING MATCH MATERIALIZED MAXVALUE MEMORY_LIMIT MEMORY_SHARED_QUOTA MEMORY_SPILL_RATIO
-	METHOD MINUTE_P MINVALUE MODE MONTH_P MOVE
-||||||| e1c1c30f635
-	MAPPING MATCH MATERIALIZED MAXVALUE METHOD MINUTE_P MINVALUE MODE MONTH_P MOVE
-=======
-	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE METHOD
-	MINUTE_P MINVALUE MODE MONTH_P MOVE
->>>>>>> adadae45816
+	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEMORY_LIMIT MEMORY_SHARED_QUOTA MEMORY_SPILL_RATIO
+	MERGE METHOD MINUTE_P MINVALUE MODE MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NESTED NEW NEXT NFC NFD NFKC NFKD NO
 	NONE NORMALIZE NORMALIZED
@@ -1059,7 +969,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 	ERRORS EVERY EXCHANGE EXPAND
 
-	FIELDS FILL FORMAT
+	FIELDS FILL
 
 	FULLSCAN
 
@@ -1102,14 +1012,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-<<<<<<< HEAD
-%token		NOT_LA NULLS_LA WITH_LA
-%token		PARTITION_TAIL
-||||||| e1c1c30f635
-%token		NOT_LA NULLS_LA WITH_LA
-=======
 %token		NOT_LA NULLS_LA WITH_LA WITH_LA_UNIQUE WITHOUT_LA
->>>>>>> adadae45816
+%token		PARTITION_TAIL
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -1254,7 +1158,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc FILL
 			%nonassoc FIRST_P
 			%nonassoc FORCE
-			%nonassoc FORMAT
 			%nonassoc FORWARD
 			%nonassoc FUNCTION
 			%nonassoc GLOBAL
@@ -1317,7 +1220,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc NOTIFY
 			%nonassoc NOWAIT
 			%nonassoc NULLS_P
-			%nonassoc OBJECT_P
 			%nonassoc OF
 			%nonassoc OIDS
 			%nonassoc OPTION
@@ -1412,7 +1314,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc VALID
 			%nonassoc VALIDATION
 			%nonassoc VALIDATOR
-			%nonassoc VALUE_P
 			%nonassoc VARYING
 			%nonassoc VERSION_P
 			%nonassoc VIEW
@@ -1420,7 +1321,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc WEB
 			%nonassoc WITH
 			%nonassoc WITHIN
-			%nonassoc WITHOUT
 			%nonassoc WORK
 			%nonassoc WRITABLE
 			%nonassoc WRITE
@@ -1470,7 +1370,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc LOG_P
 			%nonassoc OUTER_P
 			%nonassoc VERBOSE
-			%nonassoc UNKNOWN
 			%nonassoc ZONE
 
 %left		Op OPERATOR		/* multi-character ops and user-defined operators */
@@ -2074,15 +1973,10 @@ AlterOptRoleElem:
 			| USER role_list
 				{
 					$$ = makeDefElem("rolemembers", (Node *) $2, @1);
-<<<<<<< HEAD
 				}
 			| deny_login_role
 				{
 					$$ = makeDefElem("deny", (Node *) $1, @1);
-||||||| e1c1c30f635
-					$$ = makeDefElem("rolemembers", (Node *)$2, @1);
-=======
->>>>>>> adadae45816
 				}
 			| IDENT
 				{
@@ -2176,8 +2070,8 @@ deny_day_specifier: Sconst { $$ = (Node *)makeString($1); }
 deny_point: DAY_P deny_day_specifier opt_time
 				{
 					DenyLoginPoint *n = makeNode(DenyLoginPoint);
-					n->day = (Value *)$2;
-					n->time = (Value *)$3;
+					n->day = (Node *)$2;
+					n->time = (Node *)$3;
 					$$ = (Node *)n;
 				}
 		;
@@ -3833,15 +3727,6 @@ alter_table_cmd:
 					n->newowner = $3;
 					$$ = (Node *) n;
 				}
-			/* ALTER TABLE <name> SET ACCESS METHOD <amname> */
-			| SET ACCESS METHOD name
-				{
-					AlterTableCmd *n = makeNode(AlterTableCmd);
-
-					n->subtype = AT_SetAccessMethod;
-					n->name = $4;
-					$$ = (Node *) n;
-				}
 			/* ALTER TABLE <name> SET ACCESS METHOD <amname> WITH (<reloptions>) */
 			| SET ACCESS METHOD name OptWith
 				{
@@ -4290,7 +4175,7 @@ alter_table_partition_id_spec:
            | FOR '(' func_name '(' func_arg_list opt_sort_clause ')' ')'
 				{
 					Node		   *arg;
-					Value		   *val;
+					Node		   *val;
 					Node		   *fname;
 
                     /* allow RANK only */
@@ -4307,7 +4192,7 @@ alter_table_partition_id_spec:
 					arg = linitial($5);
 					if (!IsA(arg, A_Const))
 						parser_yyerror("syntax error");
-					val = &((A_Const *) arg)->val;
+					val = (Node *) &((A_Const *) arg)->val;
 					if (!IsA(val, Integer) && !IsA(val, Float))
 						parser_yyerror("syntax error");
 
@@ -4863,22 +4748,7 @@ CopyStmt:	COPY opt_binary qualified_name opt_column_list
 								 errmsg("STDIN/STDOUT not allowed with PROGRAM"),
 								 parser_errposition(@5)));
 
-<<<<<<< HEAD
-					$$ = (Node *)n;
-					/*
-					 * GPDB_96_MERGE_FIXME: The above statement changed in
-					 * upstream commit 92e38182d7c from select_with_parens to
-					 * '(' PreparableStmt ')'. This syntax was not supported in
-					 * ecpg upstream. It was supported and untested in GPDB. If
-					 * it is needed to be added back, then
-					 * preparable_stmt_with_parens should be added as ecpg does
-					 * not fair very well with \' or \( \) chars.
-					 */
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
 					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		;
 
@@ -5086,7 +4956,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $12;
 					n->tablespacename = $13;
 					n->if_not_exists = false;
-<<<<<<< HEAD
 					n->gp_style_alter_part = false;
 					n->distributedBy = (DistributedBy *) $14;
 					n->relKind = RELKIND_RELATION;
@@ -5094,11 +4963,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name '('
 			OptTableElementList ')' OptInherit OptFirstPartitionSpec table_access_method_clause
@@ -5124,7 +4988,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $15;
 					n->tablespacename = $16;
 					n->if_not_exists = true;
-<<<<<<< HEAD
 					n->gp_style_alter_part = false;
 					n->distributedBy = (DistributedBy *) $17;
 					n->relKind = RELKIND_RELATION;
@@ -5132,11 +4995,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		| CREATE OptTemp TABLE qualified_name OF any_name
 			OptTypedTableElementList OptFirstPartitionSpec table_access_method_clause
@@ -5163,7 +5021,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $11;
 					n->tablespacename = $12;
 					n->if_not_exists = false;
-<<<<<<< HEAD
 					n->gp_style_alter_part = false;
 					n->distributedBy = (DistributedBy *) $13;
 					n->relKind = RELKIND_RELATION;
@@ -5171,11 +5028,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name OF any_name
 			OptTypedTableElementList OptFirstPartitionSpec table_access_method_clause
@@ -5202,7 +5054,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $14;
 					n->tablespacename = $15;
 					n->if_not_exists = true;
-<<<<<<< HEAD
 					n->gp_style_alter_part = false;
 					n->distributedBy = (DistributedBy *) $16;
 					n->relKind = RELKIND_RELATION;
@@ -5210,11 +5061,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		| CREATE OptTemp TABLE qualified_name PARTITION OF qualified_name
 			OptTypedTableElementList PartitionBoundSpec OptFirstPartitionSpec
@@ -5241,7 +5087,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $13;
 					n->tablespacename = $14;
 					n->if_not_exists = false;
-<<<<<<< HEAD
 					n->gp_style_alter_part = false;
 					n->distributedBy = NULL;
 					n->relKind = RELKIND_RELATION;
@@ -5249,11 +5094,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name PARTITION OF
 			qualified_name OptTypedTableElementList PartitionBoundSpec OptFirstPartitionSpec
@@ -5280,7 +5120,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $16;
 					n->tablespacename = $17;
 					n->if_not_exists = true;
-<<<<<<< HEAD
 					n->gp_style_alter_part = false;
 					n->distributedBy = NULL;
 					n->relKind = RELKIND_RELATION;
@@ -5288,11 +5127,6 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		;
 
@@ -6870,13 +6704,9 @@ CreateAsStmt:
 				{
 					CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
 
-<<<<<<< HEAD
 					/* reset the hack set in OptFirstPartitionSpec */
 					pg_yyget_extra(yyscanner)->tail_partition_magic = false;
 
-||||||| e1c1c30f635
-=======
->>>>>>> adadae45816
 					ctas->query = $6;
 					ctas->into = $4;
 					ctas->objtype = OBJECT_TABLE;
@@ -8823,22 +8653,10 @@ DefineStmt:
 					n->kind = OBJECT_AGGREGATE;
 					n->oldstyle = false;
 					n->replace = $2;
-<<<<<<< HEAD
 					n->defnames = $5;
 					n->args = $6;
 					n->definition = $7;
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					n->defnames = $4;
-					n->args = $5;
-					n->definition = $6;
-					$$ = (Node *)n;
-=======
-					n->defnames = $4;
-					n->args = $5;
-					n->definition = $6;
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 			| CREATE opt_or_replace opt_ordered AGGREGATE func_name old_aggr_definition
 				{
@@ -8850,16 +8668,8 @@ DefineStmt:
 					n->replace = $2;
 					n->defnames = $5;
 					n->args = NIL;
-<<<<<<< HEAD
 					n->definition = $6;
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					n->definition = $5;
-					$$ = (Node *)n;
-=======
-					n->definition = $5;
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 			| CREATE OPERATOR any_operator definition
 				{
@@ -9047,7 +8857,6 @@ def_elem:	ColLabel '=' def_arg
 		;
 
 /* Note: any simple identifier will be returned as a type name! */
-<<<<<<< HEAD
 def_arg:	func_type						{ $$ = (Node *)$1; }
 			/* MPP-6685: allow unquoted ROW keyword as "orientation" option */
 			| ROW							{ $$ = (Node *)makeString(pstrdup("row")); }
@@ -9056,21 +8865,6 @@ def_arg:	func_type						{ $$ = (Node *)$1; }
 			| NumericOnly					{ $$ = (Node *)$1; }
 			| Sconst						{ $$ = (Node *)makeString($1); }
 			| NONE							{ $$ = (Node *)makeString(pstrdup($1)); }
-||||||| e1c1c30f635
-def_arg:	func_type						{ $$ = (Node *)$1; }
-			| reserved_keyword				{ $$ = (Node *)makeString(pstrdup($1)); }
-			| qual_all_Op					{ $$ = (Node *)$1; }
-			| NumericOnly					{ $$ = (Node *)$1; }
-			| Sconst						{ $$ = (Node *)makeString($1); }
-			| NONE							{ $$ = (Node *)makeString(pstrdup($1)); }
-=======
-def_arg:	func_type						{ $$ = (Node *) $1; }
-			| reserved_keyword				{ $$ = (Node *) makeString(pstrdup($1)); }
-			| qual_all_Op					{ $$ = (Node *) $1; }
-			| NumericOnly					{ $$ = (Node *) $1; }
-			| Sconst						{ $$ = (Node *) makeString($1); }
-			| NONE							{ $$ = (Node *) makeString(pstrdup($1)); }
->>>>>>> adadae45816
 		;
 
 old_aggr_definition: '(' old_aggr_list ')'			{ $$ = $2; }
@@ -10723,7 +10517,6 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 					n->transformed = false;
 					n->if_not_exists = false;
 					n->reset_default_tblspc = false;
-<<<<<<< HEAD
 
 					if (n->concurrent)
 						ereport(ERROR,
@@ -10731,11 +10524,6 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 								 errmsg("CREATE INDEX CONCURRENTLY is not supported")));
 
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 			| CREATE opt_unique INDEX opt_concurrently IF_P NOT EXISTS name
 			ON relation_expr access_method_clause '(' index_params ')'
@@ -10767,7 +10555,6 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 					n->transformed = false;
 					n->if_not_exists = true;
 					n->reset_default_tblspc = false;
-<<<<<<< HEAD
 
 					if (n->concurrent)
 						ereport(ERROR,
@@ -10775,11 +10562,6 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 								 errmsg("CREATE INDEX CONCURRENTLY is not supported")));
 
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		;
 
@@ -10909,14 +10691,8 @@ CreateFunctionStmt:
 					n->returnType = $7;
 					n->options = $8;
 					n->sql_body = $9;
-<<<<<<< HEAD
 					n->options = list_concat(n->options, $10);
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
 			  RETURNS TABLE '(' table_func_column_list ')' opt_createfunc_opt_list opt_routine_body
@@ -10932,14 +10708,8 @@ CreateFunctionStmt:
 					n->returnType->location = @7;
 					n->options = $11;
 					n->sql_body = $12;
-<<<<<<< HEAD
 					n->options = list_concat(n->options, $13);
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
 			  opt_createfunc_opt_list opt_routine_body
@@ -10954,14 +10724,8 @@ CreateFunctionStmt:
 					n->returnType = NULL;
 					n->options = $6;
 					n->sql_body = $7;
-<<<<<<< HEAD
 					n->options = list_concat(n->options, $8);
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 			| CREATE opt_or_replace PROCEDURE func_name func_args_with_defaults
 			  opt_createfunc_opt_list opt_routine_body
@@ -14718,14 +14482,7 @@ ExplainStmt:
 		| EXPLAIN analyze_keyword opt_verbose opt_dxl ExplainableStmt
 				{
 					ExplainStmt *n = makeNode(ExplainStmt);
-<<<<<<< HEAD
 					n->query = $5;
-||||||| e1c1c30f635
-					n->query = $4;
-=======
-
-					n->query = $4;
->>>>>>> adadae45816
 					n->options = list_make1(makeDefElem("analyze", NULL, @2));
 					if ($3)
 						n->options = lappend(n->options,
@@ -14738,14 +14495,7 @@ ExplainStmt:
 		| EXPLAIN VERBOSE opt_dxl ExplainableStmt
 				{
 					ExplainStmt *n = makeNode(ExplainStmt);
-<<<<<<< HEAD
 					n->query = $4;
-||||||| e1c1c30f635
-					n->query = $3;
-=======
-
-					n->query = $3;
->>>>>>> adadae45816
 					n->options = list_make1(makeDefElem("verbose", NULL, @2));
 					if ($3)
 						n->options = lappend(n->options,
@@ -15130,7 +14880,6 @@ LockStmt:	LOCK_P opt_table relation_expr_list opt_lock opt_nowait opt_coordinato
 					n->relations = $3;
 					n->mode = $4;
 					n->nowait = $5;
-<<<<<<< HEAD
 					if ($6 != NULL)
 						n->coordinatoronly = true;
 					else
@@ -15144,11 +14893,6 @@ LockStmt:	LOCK_P opt_table relation_expr_list opt_lock opt_nowait opt_coordinato
 								parser_errposition(@4)));
 					}
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 		;
 
@@ -18313,16 +18057,10 @@ func_application: func_name '(' ')'
 					 * "must be an aggregate", but there's no provision
 					 * for that in FuncCall at the moment.
 					 */
-<<<<<<< HEAD
 					n->func_variadic = false;
 					n->location = @1;
 					n->over = NULL;
 					$$ = (Node *)n;
-||||||| e1c1c30f635
-					$$ = (Node *)n;
-=======
-					$$ = (Node *) n;
->>>>>>> adadae45816
 				}
 			| func_name '(' DISTINCT func_arg_list opt_sort_clause ')'
 				{
@@ -20881,12 +20619,8 @@ unreserved_keyword:
 			| COMMIT
 			| COMMITTED
 			| COMPRESSION
-<<<<<<< HEAD
 			| CONCURRENCY
-||||||| e1c1c30f635
-=======
 			| CONDITIONAL
->>>>>>> adadae45816
 			| CONFIGURATION
 			| CONFLICT
 			| CONNECTION
@@ -20936,12 +20670,8 @@ unreserved_keyword:
 			| ENCRYPTED
 			| ENDPOINT
 			| ENUM_P
-<<<<<<< HEAD
-			| ERRORS
-||||||| e1c1c30f635
-=======
 			| ERROR_P
->>>>>>> adadae45816
+			| ERRORS
 			| ESCAPE
 			| EVENT
 			| EVERY
@@ -21022,14 +20752,10 @@ unreserved_keyword:
 			| MATCHED
 			| MATERIALIZED
 			| MAXVALUE
-<<<<<<< HEAD
 			| MEMORY_LIMIT
 			| MEMORY_SHARED_QUOTA
 			| MEMORY_SPILL_RATIO
-||||||| e1c1c30f635
-=======
 			| MERGE
->>>>>>> adadae45816
 			| METHOD
 			| MINUTE_P
 			| MINVALUE
@@ -21080,14 +20806,10 @@ unreserved_keyword:
 			| PARTITIONS
 			| PASSING
 			| PASSWORD
-<<<<<<< HEAD
+			| PATH
 			| PERCENT
 			| PERSISTENTLY
-||||||| e1c1c30f635
-=======
-			| PATH
 			| PLAN
->>>>>>> adadae45816
 			| PLANS
 			| POLICY
 			| PREPARE
@@ -21103,12 +20825,8 @@ unreserved_keyword:
 			| PUBLICATION
 			| QUEUE
 			| QUOTE
-<<<<<<< HEAD
-			| RANDOMLY /* gp */
-||||||| e1c1c30f635
-=======
 			| QUOTES
->>>>>>> adadae45816
+			| RANDOMLY /* gp */
 			| RANGE
 			| READ
 			| READABLE
@@ -21201,6 +20919,7 @@ unreserved_keyword:
 			| TYPE_P
 			| TYPES_P
 			| UESCAPE
+			| UNBOUNDED
 			| UNCOMMITTED
 			| UNCONDITIONAL
 			| UNENCRYPTED
@@ -21726,7 +21445,6 @@ reserved_keyword:
 			| TO
 			| TRAILING
 			| TRUE_P
-			| UNBOUNDED
 			| UNION
 			| UNIQUE
 			| USER
@@ -21878,12 +21596,8 @@ bare_label_keyword:
 			| END_P
 			| ENDPOINT
 			| ENUM_P
-<<<<<<< HEAD
-			| ERRORS
-||||||| e1c1c30f635
-=======
 			| ERROR_P
->>>>>>> adadae45816
+			| ERRORS
 			| ESCAPE
 			| EVENT
 			| EXCHANGE
@@ -21997,15 +21711,11 @@ bare_label_keyword:
 			| MATCHED
 			| MATERIALIZED
 			| MAXVALUE
-<<<<<<< HEAD
 			| MEDIAN
 			| MEMORY_LIMIT
 			| MEMORY_SHARED_QUOTA
 			| MEMORY_SPILL_RATIO
-||||||| e1c1c30f635
-=======
 			| MERGE
->>>>>>> adadae45816
 			| METHOD
 			| MINVALUE
 			| MISSING
@@ -22066,13 +21776,9 @@ bare_label_keyword:
 			| PARTITIONS
 			| PASSING
 			| PASSWORD
-<<<<<<< HEAD
+			| PATH
 			| PERCENT
 			| PERSISTENTLY
-||||||| e1c1c30f635
-=======
-			| PATH
->>>>>>> adadae45816
 			| PLACING
 			| PLAN
 			| PLANS
@@ -22093,12 +21799,8 @@ bare_label_keyword:
 			| PUBLICATION
 			| QUEUE
 			| QUOTE
-<<<<<<< HEAD
-			| RANDOMLY
-||||||| e1c1c30f635
-=======
 			| QUOTES
->>>>>>> adadae45816
+			| RANDOMLY
 			| RANGE
 			| READ
 			| READABLE

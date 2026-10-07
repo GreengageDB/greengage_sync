@@ -17,38 +17,18 @@ dnl Read the Autoconf manual for details.
 dnl
 m4_pattern_forbid(^PGAC_)dnl to catch undefined macros
 
-<<<<<<< HEAD
 dnl The PACKAGE_VERSION from upstream PostgreSQL is maintained in the
 dnl PG_PACKAGE_VERSION variable, when merging make sure to update this
 dnl variable with the merge conflict from the AC_INIT() statement.
 AC_INIT([Greenplum Database], [8.0.0-alpha.0], [support@greenplum.org], [], [https://greengagedb.org/])
-[PG_PACKAGE_VERSION=14beta2]
+[PG_PACKAGE_VERSION=15beta2]
 AC_SUBST(PG_PACKAGE_VERSION)
-||||||| e1c1c30f635
-AC_INIT([PostgreSQL], [14beta2], [pgsql-bugs@lists.postgresql.org], [], [https://www.postgresql.org/])
-=======
-AC_INIT([PostgreSQL], [15beta2], [pgsql-bugs@lists.postgresql.org], [], [https://www.postgresql.org/])
->>>>>>> adadae45816
 
-<<<<<<< HEAD
 dnl m4_if(m4_defn([m4_PACKAGE_VERSION]), [2.69], [], [m4_fatal([Autoconf version 2.69 is required.
 dnl Untested combinations of 'autoconf' and PostgreSQL versions are not
 dnl recommended.  You can remove the check from 'configure.ac' but it is then
 dnl your responsibility whether the result works or not.])])
-AC_COPYRIGHT([Copyright (c) 1996-2021, PostgreSQL Global Development Group])
-||||||| e1c1c30f635
-m4_if(m4_defn([m4_PACKAGE_VERSION]), [2.69], [], [m4_fatal([Autoconf version 2.69 is required.
-Untested combinations of 'autoconf' and PostgreSQL versions are not
-recommended.  You can remove the check from 'configure.ac' but it is then
-your responsibility whether the result works or not.])])
-AC_COPYRIGHT([Copyright (c) 1996-2021, PostgreSQL Global Development Group])
-=======
-m4_if(m4_defn([m4_PACKAGE_VERSION]), [2.69], [], [m4_fatal([Autoconf version 2.69 is required.
-Untested combinations of 'autoconf' and PostgreSQL versions are not
-recommended.  You can remove the check from 'configure.ac' but it is then
-your responsibility whether the result works or not.])])
 AC_COPYRIGHT([Copyright (c) 1996-2022, PostgreSQL Global Development Group])
->>>>>>> adadae45816
 AC_CONFIG_SRCDIR([src/backend/access/common/heaptuple.c])
 AC_CONFIG_AUX_DIR(config)
 AC_PREFIX_DEFAULT(/usr/local/gpdb)
@@ -1205,8 +1185,19 @@ AC_MSG_RESULT([$with_zstd])
 AC_SUBST(with_zstd)
 
 if test "$with_zstd" = yes; then
-  dnl zstd_errors.h was renamed from error_public.h in v1.1.1
-  PKG_CHECK_MODULES([ZSTD], [libzstd >= 1.1.1])
+  PKG_CHECK_MODULES(ZSTD, libzstd >= 1.4.0)
+  # We only care about -I, -D, and -L switches;
+  # note that -lzstd will be added by AC_CHECK_LIB below.
+  for pgac_option in $ZSTD_CFLAGS; do
+    case $pgac_option in
+      -I*|-D*) CPPFLAGS="$CPPFLAGS $pgac_option";;
+    esac
+  done
+  for pgac_option in $ZSTD_LIBS; do
+    case $pgac_option in
+      -L*) LDFLAGS="$LDFLAGS $pgac_option";;
+    esac
+  done
 fi
 
 #
@@ -1270,30 +1261,6 @@ if test "$with_lz4" = yes; then
   done
 fi
 
-#
-# ZSTD
-#
-AC_MSG_CHECKING([whether to build with ZSTD support])
-PGAC_ARG_BOOL(with, zstd, no, [build with ZSTD support],
-              [AC_DEFINE([USE_ZSTD], 1, [Define to 1 to build with ZSTD support. (--with-zstd)])])
-AC_MSG_RESULT([$with_zstd])
-AC_SUBST(with_zstd)
-
-if test "$with_zstd" = yes; then
-  PKG_CHECK_MODULES(ZSTD, libzstd >= 1.4.0)
-  # We only care about -I, -D, and -L switches;
-  # note that -lzstd will be added by AC_CHECK_LIB below.
-  for pgac_option in $ZSTD_CFLAGS; do
-    case $pgac_option in
-      -I*|-D*) CPPFLAGS="$CPPFLAGS $pgac_option";;
-    esac
-  done
-  for pgac_option in $ZSTD_LIBS; do
-    case $pgac_option in
-      -L*) LDFLAGS="$LDFLAGS $pgac_option";;
-    esac
-  done
-fi
 #
 # Assignments
 #
@@ -1828,7 +1795,16 @@ failure.  It is possible the compiler isn't looking in the proper directory.
 Use --without-zlib to disable zlib support.])])
 fi
 
-<<<<<<< HEAD
+PGAC_PATH_PROGS(LZ4, lz4)
+if test "$with_lz4" = yes; then
+  AC_CHECK_HEADER(lz4.h, [], [AC_MSG_ERROR([lz4.h header file is required for LZ4])])
+fi
+
+PGAC_PATH_PROGS(ZSTD, zstd)
+if test "$with_zstd" = yes; then
+  AC_CHECK_HEADER(zstd.h, [], [AC_MSG_ERROR([zstd.h header file is required for ZSTD])])
+fi
+
 # Check for bzlib.h
 if test "$with_libbz2" = yes ; then
   AC_CHECK_HEADER(bzlib.h, [], [AC_MSG_ERROR([header file <bzlib.h> is required for bzip2 support])], [])
@@ -1837,19 +1813,6 @@ fi
 # Check for quicklz.h
 if test "$with_quicklz" = yes; then
   AC_CHECK_HEADER(quicklz.h, [], [AC_MSG_ERROR([header file <quicklz.h> is required for QuickLZ support])])
-fi
-
-||||||| e1c1c30f635
-=======
-PGAC_PATH_PROGS(LZ4, lz4)
->>>>>>> adadae45816
-if test "$with_lz4" = yes; then
-  AC_CHECK_HEADER(lz4.h, [], [AC_MSG_ERROR([lz4.h header file is required for LZ4])])
-fi
-
-PGAC_PATH_PROGS(ZSTD, zstd)
-if test "$with_zstd" = yes; then
-  AC_CHECK_HEADER(zstd.h, [], [AC_MSG_ERROR([zstd.h header file is required for ZSTD])])
 fi
 
 if test "$with_gssapi" = yes ; then

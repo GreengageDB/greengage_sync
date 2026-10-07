@@ -3,15 +3,9 @@
  * allpaths.c
  *	  Routines to find possible search paths for processing a query
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -147,7 +141,8 @@ static void set_worktable_pathlist(PlannerInfo *root, RelOptInfo *rel,
 								   RangeTblEntry *rte);
 static RelOptInfo *make_rel_from_joinlist(PlannerInfo *root, List *joinlist);
 static Query *push_down_restrict(PlannerInfo *root, RelOptInfo *rel,
-				   RangeTblEntry *rte, Index rti, Query *subquery);
+				   RangeTblEntry *rte, Index rti, Query *subquery,
+				   Bitmapset **run_cond_attrs);
 static bool subquery_is_pushdown_safe(Query *subquery, Query *topquery,
 									  pushdown_safety_info *safetyInfo);
 static bool recurse_pushdown_safe(Node *setOp, Query *topquery,
@@ -2567,6 +2562,7 @@ find_window_run_conditions(Query *subquery, RangeTblEntry *rte, Index rti,
 			{
 				*keep_original = false;
 				runopexpr = opexpr;
+				runoperator = opexpr->opno;
 				break;
 			}
 
@@ -2742,26 +2738,16 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 		 * push down quals if possible. Note subquery might be
 		 * different pointer from original one.
 		 */
-		subquery = push_down_restrict(root, rel, rte, rti, subquery);
+		subquery = push_down_restrict(root, rel, rte, rti, subquery, &run_cond_attrs);
 
-<<<<<<< HEAD
 		/*
 		 * The upper query might not use all the subquery's output columns; if
-		 * not, we can simplify.
+		 * not, we can simplify.  Pass the attributes that were pushed down into
+		 * WindowAgg run conditions to ensure we don't accidentally think those
+		 * are unused.
 		 */
-		remove_unused_subquery_outputs(subquery, rel);
-||||||| e1c1c30f635
-		foreach(l, rel->baserestrictinfo)
-		{
-			RestrictInfo *rinfo = (RestrictInfo *) lfirst(l);
-=======
-		foreach(l, rel->baserestrictinfo)
-		{
-			RestrictInfo *rinfo = (RestrictInfo *) lfirst(l);
-			Node	   *clause = (Node *) rinfo->clause;
->>>>>>> adadae45816
+		remove_unused_subquery_outputs(subquery, rel, run_cond_attrs);
 
-<<<<<<< HEAD
 		/*
 		 * We can safely pass the outer tuple_fraction down to the subquery if the
 		 * outer level has no joining, aggregation, or sorting to do. Otherwise
@@ -2782,55 +2768,6 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 		/* Generate a subroot and Paths for the subquery */
 		config = CopyPlannerConfig(root->config);
 		config->honor_order_by = false;		/* partial order is enough */
-||||||| e1c1c30f635
-			if (!rinfo->pseudoconstant &&
-				qual_is_pushdown_safe(subquery, rti, rinfo, &safetyInfo))
-			{
-				Node	   *clause = (Node *) rinfo->clause;
-
-				/* Push it down */
-				subquery_push_qual(subquery, rte, rti, clause);
-			}
-			else
-			{
-				/* Keep it in the upper query */
-				upperrestrictlist = lappend(upperrestrictlist, rinfo);
-			}
-		}
-		rel->baserestrictinfo = upperrestrictlist;
-		/* We don't bother recomputing baserestrict_min_security */
-	}
-=======
-			if (!rinfo->pseudoconstant &&
-				qual_is_pushdown_safe(subquery, rti, rinfo, &safetyInfo))
-			{
-				/* Push it down */
-				subquery_push_qual(subquery, rte, rti, clause);
-			}
-			else
-			{
-				/*
-				 * Since we can't push the qual down into the subquery, check
-				 * if it happens to reference a window function.  If so then
-				 * it might be useful to use for the WindowAgg's runCondition.
-				 */
-				if (!subquery->hasWindowFuncs ||
-					check_and_push_window_quals(subquery, rte, rti, clause,
-												&run_cond_attrs))
-				{
-					/*
-					 * subquery has no window funcs or the clause is not a
-					 * suitable window run condition qual or it is, but the
-					 * original must also be kept in the upper query.
-					 */
-					upperrestrictlist = lappend(upperrestrictlist, rinfo);
-				}
-			}
-		}
-		rel->baserestrictinfo = upperrestrictlist;
-		/* We don't bother recomputing baserestrict_min_security */
-	}
->>>>>>> adadae45816
 
 		/*
 		 * CDB: if this subquery is the inner plan of a lateral
@@ -2842,7 +2779,6 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 			is_query_contain_limit_groupby(subquery))
 			config->force_singleQE = true;
 
-<<<<<<< HEAD
 		/*
 		 * Greenplum specific behavior:
 		 * config->may_rescan is used to guide if
@@ -2850,21 +2786,6 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 		 * in the left tree of a join.
 		 */
 		config->may_rescan = config->may_rescan || !bms_is_empty(required_outer);
-||||||| e1c1c30f635
-	/*
-	 * The upper query might not use all the subquery's output columns; if
-	 * not, we can simplify.
-	 */
-	remove_unused_subquery_outputs(subquery, rel);
-=======
-	/*
-	 * The upper query might not use all the subquery's output columns; if
-	 * not, we can simplify.  Pass the attributes that were pushed down into
-	 * WindowAgg run conditions to ensure we don't accidentally think those
-	 * are unused.
-	 */
-	remove_unused_subquery_outputs(subquery, rel, run_cond_attrs);
->>>>>>> adadae45816
 
 		/* plan_params should not be in use in current query level */
 		Assert(root->plan_params == NIL);
@@ -3224,8 +3145,6 @@ set_cte_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	}
 	if (lc == NULL)				/* shouldn't happen */
 		elog(ERROR, "could not find CTE \"%s\"", rte->ctename);
-<<<<<<< HEAD
-
 	Assert(IsA(cte->ctequery, Query));
 	/*
 	 * Copy query node since subquery_planner may trash it, and we need it
@@ -3336,7 +3255,8 @@ set_cte_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 			 * is disabled either, as push down may cause wrong results.
 			 */
 			if (!contain_volatile_function)
-				subquery = push_down_restrict(root, rel, rte, rel->relid, subquery);
+				subquery = push_down_restrict(root, rel, rte, rel->relid, subquery,
+											  NULL);
 
 			subroot = subquery_planner(cteroot->glob, subquery, root,
 									   cte->cterecursive,
@@ -3406,20 +3326,6 @@ set_cte_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	}
 
 	pathkeys = subroot->query_pathkeys;
-||||||| e1c1c30f635
-	if (ndx >= list_length(cteroot->cte_plan_ids))
-		elog(ERROR, "could not find plan for CTE \"%s\"", rte->ctename);
-	plan_id = list_nth_int(cteroot->cte_plan_ids, ndx);
-	Assert(plan_id > 0);
-	cteplan = (Plan *) list_nth(root->glob->subplans, plan_id - 1);
-=======
-	if (ndx >= list_length(cteroot->cte_plan_ids))
-		elog(ERROR, "could not find plan for CTE \"%s\"", rte->ctename);
-	plan_id = list_nth_int(cteroot->cte_plan_ids, ndx);
-	if (plan_id <= 0)
-		elog(ERROR, "no plan was made for CTE \"%s\"", rte->ctename);
-	cteplan = (Plan *) list_nth(root->glob->subplans, plan_id - 1);
->>>>>>> adadae45816
 
 	/* Mark rel with estimated output rows, width, etc */
 	{
@@ -4098,10 +4004,17 @@ standard_join_search(PlannerInfo *root, int levels_needed, List *initial_rels)
  *
  * XXX Are there any cases where we want to make a policy decision not to
  * push down a pushable qual, because it'd result in a worse plan?
+ *
+ * GGDB: if run_cond_attrs is not NULL, a clause that cannot be pushed down
+ * may still become a WindowAgg run condition (see
+ * check_and_push_window_quals()); the subquery output columns it references
+ * are added to *run_cond_attrs.  Pass NULL to keep every such clause in the
+ * upper query only.
  */
 static Query *
 push_down_restrict(PlannerInfo *root, RelOptInfo *rel,
-				   RangeTblEntry *rte, Index rti, Query *subquery)
+				   RangeTblEntry *rte, Index rti, Query *subquery,
+				   Bitmapset **run_cond_attrs)
 {
 	pushdown_safety_info safetyInfo;
 
@@ -4138,19 +4051,33 @@ push_down_restrict(PlannerInfo *root, RelOptInfo *rel,
 		foreach(l, rel->baserestrictinfo)
 		{
 			RestrictInfo *rinfo = (RestrictInfo *) lfirst(l);
+			Node	   *clause = (Node *) rinfo->clause;
 
 			if (!rinfo->pseudoconstant &&
 				qual_is_pushdown_safe(subquery, rti, rinfo, &safetyInfo))
 			{
-				Node	   *clause = (Node *) rinfo->clause;
-
 				/* Push it down */
 				subquery_push_qual(subquery, rte, rti, clause);
 			}
 			else
 			{
-				/* Keep it in the upper query */
-				upperrestrictlist = lappend(upperrestrictlist, rinfo);
+				/*
+				 * Since we can't push the qual down into the subquery, check
+				 * if it happens to reference a window function.  If so then
+				 * it might be useful to use for the WindowAgg's runCondition.
+				 */
+				if (run_cond_attrs == NULL ||
+					!subquery->hasWindowFuncs ||
+					check_and_push_window_quals(subquery, rte, rti, clause,
+												run_cond_attrs))
+				{
+					/*
+					 * subquery has no window funcs or the clause is not a
+					 * suitable window run condition qual or it is, but the
+					 * original must also be kept in the upper query.
+					 */
+					upperrestrictlist = lappend(upperrestrictlist, rinfo);
+				}
 			}
 		}
 		rel->baserestrictinfo = upperrestrictlist;
