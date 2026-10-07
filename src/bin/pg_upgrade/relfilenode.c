@@ -126,6 +126,8 @@ transfer_all_new_dbs(DbInfoArr *old_db_arr, DbInfoArr *new_db_arr,
 									new_pgdata);
 		if (n_maps)
 		{
+			print_maps(mappings, n_maps, new_db->db_name);
+
 			transfer_single_new_db(mappings, n_maps, old_tablespace);
 		}
 		/* We allocate something even for n_maps == 0 */
@@ -233,15 +235,15 @@ transfer_relfile_segment(int segno, FileNameMap *map,
 	snprintf(old_file, sizeof(old_file), "%s%s/%u/%u%s%s",
 			map->old_tablespace,
 			map->old_tablespace_suffix,
-			map->db_oid,
-			map->relfilenode,
+			map->old_db_oid,
+			map->old_relfilenode,
 			type_suffix,
 			extent_suffix);
 	snprintf(new_file, sizeof(new_file), "%s%s/%u/%u%s%s",
 			map->new_tablespace,
 			map->new_tablespace_suffix,
-			map->db_oid,
-			map->relfilenode,
+			map->new_db_oid,
+			map->new_relfilenode,
 			type_suffix,
 			extent_suffix);
 

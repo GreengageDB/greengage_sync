@@ -220,9 +220,17 @@ create_rel_filename_map(const char *old_data, const char *new_data,
 		map->new_tablespace_suffix = new_cluster.tablespace_suffix;
 	}
 
-	/* DB oid and relfilenodes are preserved between old and new cluster */
-	map->db_oid = old_db->db_oid;
-	map->relfilenode = old_rel->relfilenode;
+	map->old_db_oid = old_db->db_oid;
+	map->new_db_oid = new_db->db_oid;
+
+	/*
+	 * old_relfilenode might differ from pg_class.oid (and hence
+	 * new_relfilenode) because of CLUSTER, REINDEX, or VACUUM FULL.
+	 */
+	map->old_relfilenode = old_rel->relfilenode;
+
+	/* new_relfilenode will match old and new pg_class.oid */
+	map->new_relfilenode = new_rel->relfilenode;
 
 	/* GPDB additions to map data */
 	map->has_numerics = old_rel->has_numerics;
@@ -302,6 +310,27 @@ report_unmatched_relation(const RelInfo *rel, const DbInfo *db, bool is_new_db)
 		pg_log(PG_WARNING, "No match found in new cluster for old relation with OID %u in database \"%s\": %s\n",
 			   reloid, db->db_name, reldesc);
 }
+
+
+void
+print_maps(FileNameMap *maps, int n_maps, const char *db_name)
+{
+	if (log_opts.verbose)
+	{
+		int			mapnum;
+
+		pg_log(PG_VERBOSE, "mappings for database \"%s\":\n", db_name);
+
+		for (mapnum = 0; mapnum < n_maps; mapnum++)
+			pg_log(PG_VERBOSE, "%s.%s: %u to %u\n",
+				   maps[mapnum].nspname, maps[mapnum].relname,
+				   maps[mapnum].old_relfilenode,
+				   maps[mapnum].new_relfilenode);
+
+		pg_log(PG_VERBOSE, "\n\n");
+	}
+}
+
 
 /*
  * get_db_and_rel_infos()

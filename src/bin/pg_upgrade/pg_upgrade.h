@@ -266,8 +266,21 @@ typedef struct
 	const char *new_tablespace;
 	const char *old_tablespace_suffix;
 	const char *new_tablespace_suffix;
-	Oid			db_oid;
-	Oid			relfilenode;
+	Oid			old_db_oid;
+	Oid			new_db_oid;
+
+	/*
+	 * old/new relfilenodes might differ for pg_largeobject(_metadata) indexes
+	 * due to VACUUM FULL or REINDEX.  Other relfilenodes are preserved.
+	 *
+	 * GGDB: not so in Greengage.  Relfilenodes are allocated independently
+	 * of the relation OID on every segment, and the binary-upgrade dump does
+	 * not carry them over (the relfilenode setters of upstream 9a974cbcba0
+	 * are not used), so the old and new relfilenodes generally differ.
+	 * Database OIDs are kept separate as well rather than assumed preserved.
+	 */
+	Oid			old_relfilenode;
+	Oid			new_relfilenode;
 	/* the rest are used only for logging and error reporting */
 	char	   *nspname;		/* namespaces */
 	char	   *relname;
@@ -510,6 +523,8 @@ FileNameMap *gen_db_file_maps(DbInfo *old_db,
 							  DbInfo *new_db, int *nmaps, const char *old_pgdata,
 							  const char *new_pgdata);
 void		get_db_and_rel_infos(ClusterInfo *cluster);
+void		print_maps(FileNameMap *maps, int n,
+					   const char *db_name);
 
 /* option.c */
 
