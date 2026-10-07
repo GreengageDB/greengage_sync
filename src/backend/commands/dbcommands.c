@@ -1336,6 +1336,10 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE)),
 					errmsg("data directory with the specified OID %u already exists", dboid));
+
+		/* GPDB: the segments take the database OID from the dispatcher */
+		if (Gp_role == GP_ROLE_DISPATCH)
+			RememberAssignedOidForDatabase(dbname, dboid);
 	}
 	else
 	{
