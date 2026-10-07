@@ -7,6 +7,9 @@ CREATE TABLE testjsonb (
 
 \set filename :abs_srcdir '/data/jsonb.data'
 COPY testjsonb FROM :'filename';
+-- GPDB: analyze right after loading, like the other regress data sets, so
+-- that the plans below do not depend on whether auto-analyze has run yet.
+ANALYZE testjsonb;
 
 -- Strings.
 SELECT '""'::jsonb;				-- OK.

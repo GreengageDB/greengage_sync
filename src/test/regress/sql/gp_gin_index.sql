@@ -9,6 +9,10 @@ COPY testjsonb FROM :'filename';
 CREATE TABLE test_tsvector (t text, a tsvector);
 \set filename :abs_srcdir '/data/tsearch.data'
 COPY test_tsvector FROM :'filename';
+-- GPDB: analyze both, as the old copy.source setup did before this test ran,
+-- so the plans below do not depend on whether auto-analyze has run yet.
+ANALYZE testjsonb;
+ANALYZE test_tsvector;
 
 CREATE INDEX jidx ON testjsonb USING gin (j);
 SET optimizer_enable_tablescan = off;

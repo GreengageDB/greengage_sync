@@ -8,22 +8,22 @@
 CREATE TABLE hash_i4_heap (
 	seqno 		int4,
 	random 		int4
-);
+) distributed by (seqno);
 
 CREATE TABLE hash_name_heap (
 	seqno 		int4,
 	random 		name
-);
+) distributed by (seqno);
 
 CREATE TABLE hash_txt_heap (
 	seqno 		int4,
 	random 		text
-);
+) distributed by (seqno);
 
 CREATE TABLE hash_f8_heap (
 	seqno		int4,
 	random 		float8
-);
+) distributed by (seqno);
 
 \set filename :abs_srcdir '/data/hash.data'
 COPY hash_i4_heap FROM :'filename';
@@ -57,9 +57,9 @@ CREATE INDEX hash_f8_index ON hash_f8_heap USING hash (random float8_ops)
 -- Also try building functional, expressional, and partial indexes on
 -- tables that already contain data.
 --
-create unique index hash_f8_index_1 on hash_f8_heap(abs(random));
-create unique index hash_f8_index_2 on hash_f8_heap((seqno + 1), random);
-create unique index hash_f8_index_3 on hash_f8_heap(random) where seqno > 1000;
+create index hash_f8_index_1 on hash_f8_heap(abs(random));
+create index hash_f8_index_2 on hash_f8_heap((seqno + 1), random);
+create index hash_f8_index_3 on hash_f8_heap(random) where seqno > 1000;
 
 --
 -- hash index

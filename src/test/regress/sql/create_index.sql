@@ -486,15 +486,6 @@ ALTER TABLE covering_index_heap ADD CONSTRAINT covering_pkey PRIMARY KEY USING I
 covering_pkey;
 DROP TABLE covering_index_heap;
 
-
---
--- Also try building functional, expressional, and partial indexes on
--- tables that already contain data.
---
-create index hash_f8_index_1 on hash_f8_heap(abs(random));
-create index hash_f8_index_2 on hash_f8_heap((seqno + 1), random);
-create index hash_f8_index_3 on hash_f8_heap(random) where seqno > 1000;
-
 --
 -- Try some concurrent index builds
 --

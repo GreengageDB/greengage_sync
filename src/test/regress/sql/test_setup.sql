@@ -177,7 +177,7 @@ CREATE TABLE onek (
 COPY onek FROM :'filename';
 VACUUM ANALYZE onek;
 
-CREATE TABLE onek2 AS SELECT * FROM onek;
+CREATE TABLE onek2 AS SELECT * FROM onek DISTRIBUTED BY (unique1);
 VACUUM ANALYZE onek2;
 
 CREATE TABLE tenk1 (
@@ -299,7 +299,7 @@ CREATE FUNCTION binary_coercible(oid, oid)
 CREATE FUNCTION ttdummy ()
     RETURNS trigger
     AS :'regresslib'
-    LANGUAGE C;
+    LANGUAGE C READS SQL DATA;
 
 CREATE FUNCTION get_columns_length(oid[])
     RETURNS int
