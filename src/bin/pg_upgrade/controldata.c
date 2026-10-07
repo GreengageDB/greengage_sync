@@ -3,7 +3,7 @@
  *
  *	controldata functions
  *
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/controldata.c
  */
 
@@ -617,7 +617,14 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 	}
 
 	/* verify that we got all the mandatory pg_control data */
+<<<<<<< HEAD
 	if (!got_xid || !got_gxid || !got_oid ||
+||||||| e1c1c30f635
+	if (!got_xid || !got_oid ||
+		!got_multi ||
+=======
+	if (!got_xid || !got_oid ||
+>>>>>>> adadae45816
 		!got_multi || !got_oldestxid ||
 		(!got_oldestmulti &&
 		 cluster->controldata.cat_ver >= MULTIXACT_FORMATCHANGE_CAT_VER) ||

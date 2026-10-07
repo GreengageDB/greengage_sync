@@ -3,7 +3,7 @@
  * nodeSeqscan.c
  *	  Support routines for sequential scans of relations.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -170,7 +170,19 @@ ExecInitSeqScanForPartition(SeqScan *node, EState *estate,
 	/*
 	 * open the scan relation
 	 */
+<<<<<<< HEAD
 	scanstate->ss.ss_currentRelation = currentRelation;
+||||||| e1c1c30f635
+	scanstate->ss.ss_currentRelation =
+		ExecOpenScanRelation(estate,
+							 node->scanrelid,
+							 eflags);
+=======
+	scanstate->ss.ss_currentRelation =
+		ExecOpenScanRelation(estate,
+							 node->scan.scanrelid,
+							 eflags);
+>>>>>>> adadae45816
 
 	/* and create slot with the appropriate rowtype */
 	ExecInitScanTupleSlot(estate, &scanstate->ss,
@@ -187,7 +199,7 @@ ExecInitSeqScanForPartition(SeqScan *node, EState *estate,
 	 * initialize child expressions
 	 */
 	scanstate->ss.ps.qual =
-		ExecInitQual(node->plan.qual, (PlanState *) scanstate);
+		ExecInitQual(node->scan.plan.qual, (PlanState *) scanstate);
 
 	return scanstate;
 }

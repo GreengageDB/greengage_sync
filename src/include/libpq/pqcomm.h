@@ -6,7 +6,7 @@
  * NOTE: for historical reasons, this does not correspond to pqcomm.c.
  * pqcomm.c's routines are declared in libpq.h.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/libpq/pqcomm.h
@@ -62,7 +62,13 @@ struct sockaddr_storage
 typedef struct
 {
 	struct sockaddr_storage addr;
+<<<<<<< HEAD
 	socklen_t salen;
+||||||| e1c1c30f635
+	ACCEPT_TYPE_ARG3 salen;
+=======
+	socklen_t	salen;
+>>>>>>> adadae45816
 } SockAddr;
 
 /* Configure the UNIX socket location for the well known port. */
@@ -139,7 +145,7 @@ typedef ProtocolVersion MsgType;
 
 typedef uint32 PacketLen;
 
-extern bool Db_user_namespace;
+extern PGDLLIMPORT bool Db_user_namespace;
 
 /*
  * In protocol 3.0 and later, the startup packet length is not fixed, but

@@ -3,7 +3,7 @@
  *
  *	file system operations
  *
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/file.c
  */
 
@@ -19,8 +19,14 @@
 #include <linux/fs.h>
 #endif
 
+<<<<<<< HEAD
 #include "greenplum/pg_upgrade_greenplum.h"
 #include "access/visibilitymap.h"
+||||||| e1c1c30f635
+#include "access/visibilitymap.h"
+=======
+#include "access/visibilitymapdefs.h"
+>>>>>>> adadae45816
 #include "common/file_perm.h"
 #include "pg_upgrade.h"
 #include "storage/bufpage.h"

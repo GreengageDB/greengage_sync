@@ -17,7 +17,7 @@
  * the backend's "backend/libpq" is quite separate from "interfaces/libpq".
  * All that remains is similarities of names to trap the unwary...
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *	src/backend/libpq/pqcomm.c
@@ -226,7 +226,7 @@ pq_init(void)
 				(errmsg("could not set socket to nonblocking mode: %m")));
 #endif
 
-	FeBeWaitSet = CreateWaitEventSet(TopMemoryContext, 3);
+	FeBeWaitSet = CreateWaitEventSet(TopMemoryContext, FeBeWaitSetNEvents);
 	socket_pos = AddWaitEventToSet(FeBeWaitSet, WL_SOCKET_WRITEABLE,
 								   MyProcPort->sock, NULL, NULL);
 	latch_pos = AddWaitEventToSet(FeBeWaitSet, WL_LATCH_SET, PGINVALID_SOCKET,
@@ -433,7 +433,7 @@ StreamServerPort(int family, const char *hostName, unsigned short portNumber,
 
 	for (addr = addrs; addr; addr = addr->ai_next)
 	{
-		if (!IS_AF_UNIX(family) && IS_AF_UNIX(addr->ai_family))
+		if (family != AF_UNIX && addr->ai_family == AF_UNIX)
 		{
 			/*
 			 * Only set up a unix domain socket when they really asked for it.
@@ -518,7 +518,7 @@ StreamServerPort(int family, const char *hostName, unsigned short portNumber,
 		 * unpredictable behavior. With no flags at all, win32 behaves as Unix
 		 * with SO_REUSEADDR.
 		 */
-		if (!IS_AF_UNIX(addr->ai_family))
+		if (addr->ai_family != AF_UNIX)
 		{
 			if ((setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
 							(char *) &one, sizeof(one))) == -1)
@@ -570,7 +570,7 @@ StreamServerPort(int family, const char *hostName, unsigned short portNumber,
 					 errmsg("could not bind %s address \"%s\": %m",
 							familyDesc, addrDesc),
 					 saved_errno == EADDRINUSE ?
-					 (IS_AF_UNIX(addr->ai_family) ?
+					 (addr->ai_family == AF_UNIX ?
 					  errhint("Is another postmaster already running on port %d?",
 							  (int) portNumber) :
 					  errhint("Is another postmaster already running on port %d?"
@@ -805,7 +805,7 @@ StreamConnection(pgsocket server_fd, Port *port)
 	}
 
 	/* select NODELAY and KEEPALIVE options if it's a TCP connection */
-	if (!IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port->laddr.addr.ss_family != AF_UNIX)
 	{
 		int			on;
 #ifdef WIN32
@@ -1257,6 +1257,18 @@ pq_discardbytes(size_t len)
 		len -= amount;
 	}
 	return 0;
+}
+
+/* --------------------------------
+ *		pq_buffer_has_data		- is any buffered data available to read?
+ *
+ * This will *not* attempt to read more data.
+ * --------------------------------
+ */
+bool
+pq_buffer_has_data(void)
+{
+	return (PqRecvPointer < PqRecvLength);
 }
 
 
@@ -1732,7 +1744,7 @@ int
 pq_getkeepalivesidle(Port *port)
 {
 #if defined(PG_TCP_KEEPALIVE_IDLE) || defined(SIO_KEEPALIVE_VALS)
-	if (port == NULL || IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port == NULL || port->laddr.addr.ss_family == AF_UNIX)
 		return 0;
 
 	if (port->keepalives_idle != 0)
@@ -1741,7 +1753,7 @@ pq_getkeepalivesidle(Port *port)
 	if (port->default_keepalives_idle == 0)
 	{
 #ifndef WIN32
-		ACCEPT_TYPE_ARG3 size = sizeof(port->default_keepalives_idle);
+		socklen_t	size = sizeof(port->default_keepalives_idle);
 
 		if (getsockopt(port->sock, IPPROTO_TCP, PG_TCP_KEEPALIVE_IDLE,
 					   (char *) &port->default_keepalives_idle,
@@ -1766,7 +1778,7 @@ pq_getkeepalivesidle(Port *port)
 int
 pq_setkeepalivesidle(int idle, Port *port)
 {
-	if (port == NULL || IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port == NULL || port->laddr.addr.ss_family == AF_UNIX)
 		return STATUS_OK;
 
 /* check SIO_KEEPALIVE_VALS here, not just WIN32, as some toolchains lack it */
@@ -1817,7 +1829,7 @@ int
 pq_getkeepalivesinterval(Port *port)
 {
 #if defined(TCP_KEEPINTVL) || defined(SIO_KEEPALIVE_VALS)
-	if (port == NULL || IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port == NULL || port->laddr.addr.ss_family == AF_UNIX)
 		return 0;
 
 	if (port->keepalives_interval != 0)
@@ -1826,7 +1838,7 @@ pq_getkeepalivesinterval(Port *port)
 	if (port->default_keepalives_interval == 0)
 	{
 #ifndef WIN32
-		ACCEPT_TYPE_ARG3 size = sizeof(port->default_keepalives_interval);
+		socklen_t	size = sizeof(port->default_keepalives_interval);
 
 		if (getsockopt(port->sock, IPPROTO_TCP, TCP_KEEPINTVL,
 					   (char *) &port->default_keepalives_interval,
@@ -1851,7 +1863,7 @@ pq_getkeepalivesinterval(Port *port)
 int
 pq_setkeepalivesinterval(int interval, Port *port)
 {
-	if (port == NULL || IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port == NULL || port->laddr.addr.ss_family == AF_UNIX)
 		return STATUS_OK;
 
 #if defined(TCP_KEEPINTVL) || defined(SIO_KEEPALIVE_VALS)
@@ -1901,7 +1913,7 @@ int
 pq_getkeepalivescount(Port *port)
 {
 #ifdef TCP_KEEPCNT
-	if (port == NULL || IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port == NULL || port->laddr.addr.ss_family == AF_UNIX)
 		return 0;
 
 	if (port->keepalives_count != 0)
@@ -1909,7 +1921,13 @@ pq_getkeepalivescount(Port *port)
 
 	if (port->default_keepalives_count == 0)
 	{
+<<<<<<< HEAD
 		socklen_t size = sizeof(port->default_keepalives_count);
+||||||| e1c1c30f635
+		ACCEPT_TYPE_ARG3 size = sizeof(port->default_keepalives_count);
+=======
+		socklen_t	size = sizeof(port->default_keepalives_count);
+>>>>>>> adadae45816
 
 		if (getsockopt(port->sock, IPPROTO_TCP, TCP_KEEPCNT,
 					   (char *) &port->default_keepalives_count,
@@ -1930,7 +1948,7 @@ pq_getkeepalivescount(Port *port)
 int
 pq_setkeepalivescount(int count, Port *port)
 {
-	if (port == NULL || IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port == NULL || port->laddr.addr.ss_family == AF_UNIX)
 		return STATUS_OK;
 
 #ifdef TCP_KEEPCNT
@@ -1976,7 +1994,7 @@ int
 pq_gettcpusertimeout(Port *port)
 {
 #ifdef TCP_USER_TIMEOUT
-	if (port == NULL || IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port == NULL || port->laddr.addr.ss_family == AF_UNIX)
 		return 0;
 
 	if (port->tcp_user_timeout != 0)
@@ -1984,7 +2002,7 @@ pq_gettcpusertimeout(Port *port)
 
 	if (port->default_tcp_user_timeout == 0)
 	{
-		ACCEPT_TYPE_ARG3 size = sizeof(port->default_tcp_user_timeout);
+		socklen_t	size = sizeof(port->default_tcp_user_timeout);
 
 		if (getsockopt(port->sock, IPPROTO_TCP, TCP_USER_TIMEOUT,
 					   (char *) &port->default_tcp_user_timeout,
@@ -2005,7 +2023,7 @@ pq_gettcpusertimeout(Port *port)
 int
 pq_settcpusertimeout(int timeout, Port *port)
 {
-	if (port == NULL || IS_AF_UNIX(port->laddr.addr.ss_family))
+	if (port == NULL || port->laddr.addr.ss_family == AF_UNIX)
 		return STATUS_OK;
 
 #ifdef TCP_USER_TIMEOUT
@@ -2053,6 +2071,7 @@ pq_settcpusertimeout(int timeout, Port *port)
 bool
 pq_check_connection(void)
 {
+<<<<<<< HEAD
 	struct pollfd pollfd;
 	int         rc;
 	short		poll_ev_aux;
@@ -2076,23 +2095,66 @@ pq_check_connection(void)
 #else
 	return true;
 #endif
+||||||| e1c1c30f635
+#if defined(POLLRDHUP)
+	/*
+	 * POLLRDHUP is a Linux extension to poll(2) to detect sockets closed by
+	 * the other end.  We don't have a portable way to do that without
+	 * actually trying to read or write data on other systems.  We don't want
+	 * to read because that would be confused by pipelined queries and COPY
+	 * data. Perhaps in future we'll try to write a heartbeat message instead.
+	 */
+	struct pollfd pollfd;
+	int			rc;
+=======
+	WaitEvent	events[FeBeWaitSetNEvents];
+	int			rc;
+>>>>>>> adadae45816
 
+<<<<<<< HEAD
 	pollfd.fd = MyProcPort->sock;
 	pollfd.events = POLLOUT | POLLIN | poll_ev_aux;
 
 	pollfd.revents = 0;
+||||||| e1c1c30f635
+	pollfd.fd = MyProcPort->sock;
+	pollfd.events = POLLOUT | POLLIN | POLLRDHUP;
+	pollfd.revents = 0;
+=======
+	/*
+	 * It's OK to modify the socket event filter without restoring, because
+	 * all FeBeWaitSet socket wait sites do the same.
+	 */
+	ModifyWaitEvent(FeBeWaitSet, FeBeWaitSetSocketPos, WL_SOCKET_CLOSED, NULL);
+>>>>>>> adadae45816
 
-	rc = poll(&pollfd, 1, 0);
-
-	if (rc < 0)
+retry:
+	rc = WaitEventSetWait(FeBeWaitSet, 0, events, lengthof(events), 0);
+	for (int i = 0; i < rc; ++i)
 	{
-		ereport(COMMERROR,
-				(errcode_for_socket_access(),
-				 errmsg("could not poll socket: %m")));
-		return false;
+		if (events[i].events & WL_SOCKET_CLOSED)
+			return false;
+		if (events[i].events & WL_LATCH_SET)
+		{
+			/*
+			 * A latch event might be preventing other events from being
+			 * reported.  Reset it and poll again.  No need to restore it
+			 * because no code should expect latches to survive across
+			 * CHECK_FOR_INTERRUPTS().
+			 */
+			ResetLatch(MyLatch);
+			goto retry;
+		}
 	}
+<<<<<<< HEAD
 	else if (rc == 1 && (pollfd.revents & (POLLHUP | poll_ev_aux)))
 		return false;
+||||||| e1c1c30f635
+	else if (rc == 1 && (pollfd.revents & (POLLHUP | POLLRDHUP)))
+		return false;
+#endif
+=======
+>>>>>>> adadae45816
 
 	return true;
 }

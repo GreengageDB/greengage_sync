@@ -3,7 +3,7 @@
  * nodeAppend.c
  *	  routines to handle append nodes.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -138,30 +138,17 @@ ExecInitAppend(Append *node, EState *estate, int eflags)
 	{
 		PartitionPruneState *prunestate;
 
-		/* We may need an expression context to evaluate partition exprs */
-		ExecAssignExprContext(estate, &appendstate->ps);
-
-		/* Create the working data structure for pruning. */
-		prunestate = ExecCreatePartitionPruneState(&appendstate->ps,
-												   node->part_prune_info);
+		/*
+		 * Set up pruning data structure.  This also initializes the set of
+		 * subplans to initialize (validsubplans) by taking into account the
+		 * result of performing initial pruning if any.
+		 */
+		prunestate = ExecInitPartitionPruning(&appendstate->ps,
+											  list_length(node->appendplans),
+											  node->part_prune_info,
+											  &validsubplans);
 		appendstate->as_prune_state = prunestate;
-
-		/* Perform an initial partition prune, if required. */
-		if (prunestate->do_initial_prune)
-		{
-			/* Determine which subplans survive initial pruning */
-			validsubplans = ExecFindInitialMatchingSubPlans(prunestate,
-															list_length(node->appendplans));
-
-			nplans = bms_num_members(validsubplans);
-		}
-		else
-		{
-			/* We'll need to initialize all subplans */
-			nplans = list_length(node->appendplans);
-			Assert(nplans > 0);
-			validsubplans = bms_add_range(NULL, 0, nplans - 1);
-		}
+		nplans = bms_num_members(validsubplans);
 
 		/*
 		 * When no run-time pruning is required and there's at least one
@@ -599,11 +586,17 @@ choose_next_subplan_locally(AppendState *node)
 			Append	   *plan = (Append *) node->ps.plan;
 
 			node->as_valid_subplans =
+<<<<<<< HEAD
 				ExecFindMatchingSubPlans(node->as_prune_state,
 										 node->ps.state,
 										 list_length(plan->appendplans),
 										 plan->join_prune_paramids);
 		}
+||||||| e1c1c30f635
+				ExecFindMatchingSubPlans(node->as_prune_state);
+=======
+				ExecFindMatchingSubPlans(node->as_prune_state, false);
+>>>>>>> adadae45816
 
 		whichplan = -1;
 	}
@@ -670,10 +663,16 @@ choose_next_subplan_for_leader(AppendState *node)
 			Append	   *plan = (Append *) node->ps.plan;
 
 			node->as_valid_subplans =
+<<<<<<< HEAD
 				ExecFindMatchingSubPlans(node->as_prune_state,
 										 node->ps.state,
 										 list_length(plan->appendplans),
 										 plan->join_prune_paramids);
+||||||| e1c1c30f635
+				ExecFindMatchingSubPlans(node->as_prune_state);
+=======
+				ExecFindMatchingSubPlans(node->as_prune_state, false);
+>>>>>>> adadae45816
 
 			/*
 			 * Mark each invalid plan as finished to allow the loop below to
@@ -750,10 +749,16 @@ choose_next_subplan_for_worker(AppendState *node)
 		Append	   *plan = (Append *) node->ps.plan;
 
 		node->as_valid_subplans =
+<<<<<<< HEAD
 			ExecFindMatchingSubPlans(node->as_prune_state,
 									 node->ps.state,
 									 list_length(plan->appendplans),
 									 plan->join_prune_paramids);
+||||||| e1c1c30f635
+			ExecFindMatchingSubPlans(node->as_prune_state);
+=======
+			ExecFindMatchingSubPlans(node->as_prune_state, false);
+>>>>>>> adadae45816
 		mark_invalid_subplans_as_finished(node);
 	}
 
@@ -906,10 +911,16 @@ ExecAppendAsyncBegin(AppendState *node)
 		Append	   *plan = (Append *) node->ps.plan;
 
 		node->as_valid_subplans =
+<<<<<<< HEAD
 			ExecFindMatchingSubPlans(node->as_prune_state,
 									 node->ps.state,
 									 list_length(plan->appendplans),
 									 plan->join_prune_paramids);
+||||||| e1c1c30f635
+			ExecFindMatchingSubPlans(node->as_prune_state);
+=======
+			ExecFindMatchingSubPlans(node->as_prune_state, false);
+>>>>>>> adadae45816
 
 		classify_matching_subplans(node);
 	}
@@ -1071,6 +1082,17 @@ ExecAppendAsyncEventWait(AppendState *node)
 			ExecAsyncConfigureWait(areq);
 	}
 
+	/*
+	 * No need for further processing if there are no configured events other
+	 * than the postmaster death event.
+	 */
+	if (GetNumRegisteredWaitEvents(node->as_eventset) == 1)
+	{
+		FreeWaitEventSet(node->as_eventset);
+		node->as_eventset = NULL;
+		return;
+	}
+
 	/* We wait on at most EVENT_BUFFER_SIZE events. */
 	if (nevents > EVENT_BUFFER_SIZE)
 		nevents = EVENT_BUFFER_SIZE;
@@ -1099,16 +1121,18 @@ ExecAppendAsyncEventWait(AppendState *node)
 		{
 			AsyncRequest *areq = (AsyncRequest *) w->user_data;
 
-			/*
-			 * Mark it as no longer needing a callback.  We must do this
-			 * before dispatching the callback in case the callback resets the
-			 * flag.
-			 */
-			Assert(areq->callback_pending);
-			areq->callback_pending = false;
+			if (areq->callback_pending)
+			{
+				/*
+				 * Mark it as no longer needing a callback.  We must do this
+				 * before dispatching the callback in case the callback resets
+				 * the flag.
+				 */
+				areq->callback_pending = false;
 
-			/* Do the actual work. */
-			ExecAsyncNotify(areq);
+				/* Do the actual work. */
+				ExecAsyncNotify(areq);
+			}
 		}
 	}
 }

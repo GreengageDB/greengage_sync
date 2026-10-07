@@ -2,7 +2,7 @@
  * execPartition.h
  *		POSTGRES partitioning executor interface
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -21,6 +21,17 @@
 /* See execPartition.c for the definitions. */
 typedef struct PartitionDispatchData *PartitionDispatch;
 typedef struct PartitionTupleRouting PartitionTupleRouting;
+
+extern PartitionTupleRouting *ExecSetupPartitionTupleRouting(EState *estate,
+															 Relation rel);
+extern ResultRelInfo *ExecFindPartition(ModifyTableState *mtstate,
+										ResultRelInfo *rootResultRelInfo,
+										PartitionTupleRouting *proute,
+										TupleTableSlot *slot,
+										EState *estate);
+extern void ExecCleanupTupleRouting(ModifyTableState *mtstate,
+									PartitionTupleRouting *proute);
+
 
 /*
  * PartitionedRelPruningData - Per-partitioned-table data for run-time pruning
@@ -110,6 +121,7 @@ typedef struct PartitionPruneState
 	PartitionPruningData *partprunedata[FLEXIBLE_ARRAY_MEMBER];
 } PartitionPruneState;
 
+<<<<<<< HEAD
 extern PartitionTupleRouting *ExecSetupPartitionTupleRouting(EState *estate,
 															 Relation rel);
 extern ResultRelInfo *ExecFindPartition(ModifyTableState *mtstate,
@@ -130,5 +142,28 @@ extern int get_partition_for_tuple(PartitionKey key, PartitionDesc partdesc,
 								   Datum *values, bool *isnull);
 
 extern Bitmapset *ExecAddMatchingSubPlans(PartitionPruneState *prunestate, Bitmapset *result);
+||||||| e1c1c30f635
+extern PartitionTupleRouting *ExecSetupPartitionTupleRouting(EState *estate,
+															 Relation rel);
+extern ResultRelInfo *ExecFindPartition(ModifyTableState *mtstate,
+										ResultRelInfo *rootResultRelInfo,
+										PartitionTupleRouting *proute,
+										TupleTableSlot *slot,
+										EState *estate);
+extern void ExecCleanupTupleRouting(ModifyTableState *mtstate,
+									PartitionTupleRouting *proute);
+extern PartitionPruneState *ExecCreatePartitionPruneState(PlanState *planstate,
+														  PartitionPruneInfo *partitionpruneinfo);
+extern Bitmapset *ExecFindMatchingSubPlans(PartitionPruneState *prunestate);
+extern Bitmapset *ExecFindInitialMatchingSubPlans(PartitionPruneState *prunestate,
+												  int nsubplans);
+=======
+extern PartitionPruneState *ExecInitPartitionPruning(PlanState *planstate,
+													 int n_total_subplans,
+													 PartitionPruneInfo *pruneinfo,
+													 Bitmapset **initially_valid_subplans);
+extern Bitmapset *ExecFindMatchingSubPlans(PartitionPruneState *prunestate,
+										   bool initial_prune);
+>>>>>>> adadae45816
 
 #endif							/* EXECPARTITION_H */

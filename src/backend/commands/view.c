@@ -3,9 +3,15 @@
  * view.c
  *	  use rewrite rules to construct views
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| e1c1c30f635
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -309,7 +315,12 @@ checkViewTupleDesc(TupleDesc newdesc, TupleDesc olddesc)
 							NameStr(oldattr->attname),
 							NameStr(newattr->attname)),
 					 errhint("Use ALTER VIEW ... RENAME COLUMN ... to change name of view column instead.")));
-		/* XXX would it be safe to allow atttypmod to change?  Not sure */
+
+		/*
+		 * We cannot allow type, typmod, or collation to change, since these
+		 * properties may be embedded in Vars of other views/rules referencing
+		 * this one.  Other column attributes can be ignored.
+		 */
 		if (newattr->atttypid != oldattr->atttypid ||
 			newattr->atttypmod != oldattr->atttypmod)
 			ereport(ERROR,
@@ -320,7 +331,18 @@ checkViewTupleDesc(TupleDesc newdesc, TupleDesc olddesc)
 													 oldattr->atttypmod),
 							format_type_with_typemod(newattr->atttypid,
 													 newattr->atttypmod))));
-		/* We can ignore the remaining attributes of an attribute... */
+
+		/*
+		 * At this point, attcollations should be both valid or both invalid,
+		 * so applying get_collation_name unconditionally should be fine.
+		 */
+		if (newattr->attcollation != oldattr->attcollation)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("cannot change collation of view column \"%s\" from \"%s\" to \"%s\"",
+							NameStr(oldattr->attname),
+							get_collation_name(oldattr->attcollation),
+							get_collation_name(newattr->attcollation))));
 	}
 
 	/*
@@ -456,11 +478,17 @@ DefineView(ViewStmt *stmt, const char *queryString,
 		rawstmt->stmt_location = stmt_location;
 		rawstmt->stmt_len = stmt_len;
 
+<<<<<<< HEAD
 		viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
 	}
 	else
 		viewParse = (Query *) stmt->query;
 	viewParse_orig = copyObject(viewParse);
+||||||| e1c1c30f635
+	viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
+=======
+	viewParse = parse_analyze_fixedparams(rawstmt, queryString, NULL, 0, NULL);
+>>>>>>> adadae45816
 
 	/*
 	 * The grammar should ensure that the result is a single SELECT Query.

@@ -55,12 +55,18 @@ select count(*) > 0 as ok from gin_test_tbl where i @> array[1];
 reset gin_fuzzy_search_limit;
 
 -- Test optimization of empty queries
+<<<<<<< HEAD
 -- In a plan Orca can invert the order of operands in condition, so use matchsubs to fix it.
 -- start_matchsubs
 -- m/Recheck Cond: \(i @> '\{0\}'::integer\[\]\)/
 -- s/Recheck Cond: \(i @> '\{0\}'::integer\[\]\)/Recheck Cond: \('\{0\}'::integer\[\] <@ i\)/
 -- end_matchsubs
 create temp table t_gin_test_tbl(i int4[], j int4[]);
+||||||| e1c1c30f635
+create temp table t_gin_test_tbl(i int4[], j int4[]);
+=======
+create unlogged table t_gin_test_tbl(i int4[], j int4[]);
+>>>>>>> adadae45816
 create index on t_gin_test_tbl using gin (i, j);
 insert into t_gin_test_tbl
 values

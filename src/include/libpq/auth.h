@@ -4,7 +4,7 @@
  *	  Definitions for network authentication routines
  *
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/libpq/auth.h
@@ -17,12 +17,18 @@
 #include "libpq/libpq-be.h"
 #include "utils/date.h"
 
-extern char *pg_krb_server_keyfile;
-extern bool pg_krb_caseins_users;
-extern char *pg_krb_realm;
+extern PGDLLIMPORT char *pg_krb_server_keyfile;
+extern PGDLLIMPORT bool pg_krb_caseins_users;
+extern PGDLLIMPORT char *pg_krb_realm;
 
 extern void ClientAuthentication(Port *port);
+<<<<<<< HEAD
 extern void FakeClientAuthentication(Port *port);  /* GPDB only */
+||||||| e1c1c30f635
+=======
+extern void sendAuthRequest(Port *port, AuthRequest areq, const char *extradata,
+							int extralen);
+>>>>>>> adadae45816
 
 /* Hook for plugins to get control in ClientAuthentication() */
 typedef void (*ClientAuthentication_hook_type) (Port *, int);

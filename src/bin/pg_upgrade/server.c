@@ -3,7 +3,7 @@
  *
  *	database server functions
  *
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/server.c
  */
 
@@ -11,7 +11,12 @@
 
 #include "common/connect.h"
 #include "fe_utils/string_utils.h"
+<<<<<<< HEAD
 #include "greenplum/pg_upgrade_greenplum.h"
+||||||| e1c1c30f635
+=======
+#include "libpq/pqcomm.h"
+>>>>>>> adadae45816
 #include "pg_upgrade.h"
 
 static PGconn *get_db_conn(ClusterInfo *cluster, const char *db_name);
@@ -235,14 +240,7 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 #endif
 
 	/*
-	 * Since PG 9.1, we have used -b to disable autovacuum.  For earlier
-	 * releases, setting autovacuum=off disables cleanup vacuum and analyze,
-	 * but freeze vacuums can still happen, so we set
-	 * autovacuum_freeze_max_age to its maximum.
-	 * (autovacuum_multixact_freeze_max_age was introduced after 9.1, so there
-	 * is no need to set that.)  We assume all datfrozenxid and relfrozenxid
-	 * values are less than a gap of 2000000000 from the current xid counter,
-	 * so autovacuum will not touch them.
+	 * Use -b to disable autovacuum.
 	 *
 	 * Turn off durability requirements to improve object creation speed, and
 	 * we only modify the new cluster, so only use it there.  If there is a
@@ -266,6 +264,7 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 	}
 
 	snprintf(cmd, sizeof(cmd),
+<<<<<<< HEAD
 			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -c %s %s%s %s%s %s\" start",
 			 cluster->bindir, SERVER_LOG_FILE, cluster->pgconfig, cluster->port,
 			 (GET_MAJOR_VERSION(cluster->major_version) < 1200) ?
@@ -274,6 +273,18 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 			 (cluster->controldata.cat_ver >=
 			  BINARY_UPGRADE_SERVER_FLAG_CAT_VER) ? " -b" :
 			 " -c autovacuum=off -c autovacuum_freeze_max_age=2000000000",
+||||||| e1c1c30f635
+			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d%s%s %s%s\" start",
+			 cluster->bindir, SERVER_LOG_FILE, cluster->pgconfig, cluster->port,
+			 (cluster->controldata.cat_ver >=
+			  BINARY_UPGRADE_SERVER_FLAG_CAT_VER) ? " -b" :
+			 " -c autovacuum=off -c autovacuum_freeze_max_age=2000000000",
+=======
+			 "\"%s/pg_ctl\" -w -l \"%s/%s\" -D \"%s\" -o \"-p %d -b%s %s%s\" start",
+			 cluster->bindir,
+			 log_opts.logdir,
+			 SERVER_LOG_FILE, cluster->pgconfig, cluster->port,
+>>>>>>> adadae45816
 			 (cluster == &new_cluster) ?
 			 " -c synchronous_commit=off -c fsync=off -c full_page_writes=off -c vacuum_defer_cleanup_age=0" : "",
 			 cluster->pgopts ? cluster->pgopts : "", socket_string, version_opts);
@@ -400,7 +411,7 @@ check_pghost_envvar(void)
 			if (value && strlen(value) > 0 &&
 			/* check for 'local' host values */
 				(strcmp(value, "localhost") != 0 && strcmp(value, "127.0.0.1") != 0 &&
-				 strcmp(value, "::1") != 0 && value[0] != '/'))
+				 strcmp(value, "::1") != 0 && !is_unixsock_path(value)))
 				pg_fatal("libpq environment variable %s has a non-local server value: %s\n",
 						 option->envvar, value);
 		}

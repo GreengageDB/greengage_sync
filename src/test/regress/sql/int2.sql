@@ -2,6 +2,7 @@
 -- INT2
 --
 
+<<<<<<< HEAD
 CREATE TABLE INT2_TBL(f1 int2);
 
 INSERT INTO INT2_TBL(f1) VALUES ('0   ');
@@ -10,15 +11,20 @@ ANALYZE INT2_TBL;
 INSERT INTO INT2_TBL(f1) VALUES ('  1234 ');
 
 INSERT INTO INT2_TBL(f1) VALUES ('    -1234');
+||||||| e1c1c30f635
+CREATE TABLE INT2_TBL(f1 int2);
+
+INSERT INTO INT2_TBL(f1) VALUES ('0   ');
+
+INSERT INTO INT2_TBL(f1) VALUES ('  1234 ');
+
+INSERT INTO INT2_TBL(f1) VALUES ('    -1234');
+=======
+-- int2_tbl was already created and filled in test_setup.sql.
+-- Here we just try to insert bad values.
+>>>>>>> adadae45816
 
 INSERT INTO INT2_TBL(f1) VALUES ('34.5');
-
--- largest and smallest values
-INSERT INTO INT2_TBL(f1) VALUES ('32767');
-
-INSERT INTO INT2_TBL(f1) VALUES ('-32767');
-
--- bad input values -- should give errors
 INSERT INTO INT2_TBL(f1) VALUES ('100000');
 INSERT INTO INT2_TBL(f1) VALUES ('asdf');
 INSERT INTO INT2_TBL(f1) VALUES ('    ');
@@ -29,6 +35,10 @@ INSERT INTO INT2_TBL(f1) VALUES ('');
 
 
 SELECT * FROM INT2_TBL;
+
+SELECT * FROM INT2_TBL AS f(a, b);
+
+SELECT * FROM (TABLE int2_tbl) AS s (a, b);
 
 SELECT i.* FROM INT2_TBL i WHERE i.f1 <> int2 '0';
 

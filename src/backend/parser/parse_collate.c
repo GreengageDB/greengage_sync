@@ -29,7 +29,7 @@
  * at runtime.  If we knew exactly which functions require collation
  * information, we could throw those errors at parse time instead.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -488,7 +488,12 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 		case T_FromExpr:
 		case T_OnConflictExpr:
 		case T_SortGroupClause:
+<<<<<<< HEAD
 		case T_WindowClause:
+||||||| e1c1c30f635
+=======
+		case T_MergeAction:
+>>>>>>> adadae45816
 			(void) expression_tree_walker(node,
 										  assign_collations_walker,
 										  (void *) &loccontext);
@@ -695,6 +700,13 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 							(void) assign_collations_walker((Node *) sbsref->refassgnexpr,
 															&loccontext);
 						}
+						break;
+					case T_JsonExpr:
+
+						/*
+						 * Context item and PASSING arguments are already
+						 * marked with collations in parse_expr.c.
+						 */
 						break;
 					default:
 
