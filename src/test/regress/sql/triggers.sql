@@ -17,23 +17,23 @@ CREATE FUNCTION autoinc ()
 
 CREATE FUNCTION check_primary_key ()
 	RETURNS trigger
-	AS :'refintlib'
-	LANGUAGE C;
+	AS :'regresslib'
+	LANGUAGE C READS SQL DATA;
 
 CREATE FUNCTION check_foreign_key ()
 	RETURNS trigger
-	AS :'refintlib'
-	LANGUAGE C;
+	AS :'regresslib'
+	LANGUAGE C READS SQL DATA;
 
 CREATE FUNCTION trigger_return_old ()
         RETURNS trigger
         AS :'regresslib'
-        LANGUAGE C;
+        LANGUAGE C READS SQL DATA;
 
 CREATE FUNCTION set_ttdummy (int4)
         RETURNS int4
         AS :'regresslib'
-        LANGUAGE C STRICT;
+        LANGUAGE C STRICT READS SQL DATA;
 
 create table pkeys (pkey1 int4 not null, pkey2 text not null);
 create table fkeys (fkey1 int4, fkey2 text, fkey3 int);

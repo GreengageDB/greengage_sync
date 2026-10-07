@@ -15,22 +15,22 @@
 CREATE FUNCTION widget_in(cstring)
    RETURNS widget
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE FUNCTION widget_out(widget)
    RETURNS cstring
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE FUNCTION int44in(cstring)
    RETURNS city_budget
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE FUNCTION int44out(city_budget)
    RETURNS cstring
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE TYPE widget (
    internallength = 24,
