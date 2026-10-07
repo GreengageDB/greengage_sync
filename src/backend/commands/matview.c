@@ -712,9 +712,12 @@ transientrel_destroy(DestReceiver *self)
 /*
  * Given a qualified temporary table name, append an underscore followed by
  * the given integer, to make a new table name based on the old one.
+ * The result is a palloc'd string.
  *
- * This leaks memory through palloc(), which won't be cleaned up until the
- * current memory context is freed.
+ * As coded, this would fail to make a valid SQL name if the given name were,
+ * say, "FOO"."BAR".  Currently, the table name portion of the input will
+ * never be double-quoted because it's of the form "pg_temp_NNN", cf
+ * make_new_heap().  But we might have to work harder someday.
  */
 static char *
 make_temptable_name_n(char *tempname, int n)
@@ -804,6 +807,16 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 	 * that in a way that allows showing the first duplicated row found.  Even
 	 * after we pass this test, a unique index on the materialized view may
 	 * find a duplicate key problem.
+	 *
+	 * Note: here and below, we use "tablename.*::tablerowtype" as a hack to
+	 * keep ".*" from being expanded into multiple columns in a SELECT list.
+	 * Compare ruleutils.c's get_variable().
+	 *
+	 * GPDB does not use that hack: the transient table's columns carry a
+	 * "__$" prefix (see make_new_heap_with_colname()), so the "_$" aliases
+	 * below cannot be mistaken for column names, and the diff table keeps the
+	 * new data as expanded columns so that it can be distributed like the
+	 * matview.
 	 */
 	resetStringInfo(&querybuf);
 	appendStringInfo(&querybuf,

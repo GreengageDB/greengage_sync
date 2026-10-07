@@ -149,13 +149,13 @@ SELECT f1 FROM FLOAT8_TBL;
                      0
                 -34.84
                -1004.3
- -1.2345678901234e+200
  -1.2345678901234e-200
                      0
                 -34.84
                -1004.3
- -1.2345678901234e+200
  -1.2345678901234e-200
+ -1.2345678901234e+200
+ -1.2345678901234e+200
 (10 rows)
 
 SELECT f1 AS nine FROM FLOAT8_TBL
@@ -183,11 +183,11 @@ SELECT f1 FROM INT4_TBL;
                      0
                 -34.84
                -1004.3
- -1.2345678901234e+200
  -1.2345678901234e-200
-                     0
                 123456
                -123456
+ -1.2345678901234e+200
+                     0
             2147483647
            -2147483647
 (10 rows)
@@ -234,14 +234,14 @@ UNION ALL
 SELECT f1 FROM CHAR_TBL;
  eight 
 -------
- a
+ ab
+ abcd
+ abcd
  ab
  abcd
  abcd
  a
- ab
- abcd
- abcd
+ a
 (8 rows)
 
 SELECT f1 AS five FROM TEXT_TBL
@@ -557,7 +557,8 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) union select x from (va
    ->  Append
          ->  Values Scan on "*VALUES*"
          ->  Values Scan on "*VALUES*_1"
-(5 rows)
+ Optimizer: Postgres query optimizer
+(6 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) union select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -577,7 +578,8 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from
                ->  Values Scan on "*VALUES*"
          ->  Subquery Scan on "*SELECT* 2"
                ->  Values Scan on "*VALUES*_1"
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -595,7 +597,8 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (v
                ->  Values Scan on "*VALUES*"
          ->  Subquery Scan on "*SELECT* 2"
                ->  Values Scan on "*VALUES*_1"
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -661,7 +664,8 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from
                      ->  Values Scan on "*VALUES*"
                ->  Subquery Scan on "*SELECT* 2"
                      ->  Values Scan on "*VALUES*_1"
-(8 rows)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) intersect select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -681,7 +685,8 @@ select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (v
                      ->  Values Scan on "*VALUES*"
                ->  Subquery Scan on "*SELECT* 2"
                      ->  Values Scan on "*VALUES*_1"
-(8 rows)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 select x from (values (array[1, 2]), (array[1, 3])) _(x) except select x from (values (array[1, 2]), (array[1, 4])) _(x);
    x   
@@ -694,34 +699,40 @@ reset enable_hashagg;
 set enable_hashagg to on;
 explain (costs off)
 select x from (values (row(1, 2)), (row(1, 3))) _(x) union select x from (values (row(1, 2)), (row(1, 4))) _(x);
-               QUERY PLAN                
------------------------------------------
- HashAggregate
+                  QUERY PLAN                   
+-----------------------------------------------
+ Unique
    Group Key: "*VALUES*".column1
-   ->  Append
-         ->  Values Scan on "*VALUES*"
-         ->  Values Scan on "*VALUES*_1"
-(5 rows)
+   ->  Sort
+         Sort Key: "*VALUES*".column1
+         ->  Append
+               ->  Values Scan on "*VALUES*"
+               ->  Values Scan on "*VALUES*_1"
+ Optimizer: Postgres query optimizer
+(8 rows)
 
 select x from (values (row(1, 2)), (row(1, 3))) _(x) union select x from (values (row(1, 2)), (row(1, 4))) _(x);
    x   
 -------
- (1,4)
- (1,3)
  (1,2)
+ (1,3)
+ (1,4)
 (3 rows)
 
 explain (costs off)
 select x from (values (row(1, 2)), (row(1, 3))) _(x) intersect select x from (values (row(1, 2)), (row(1, 4))) _(x);
-                  QUERY PLAN                   
------------------------------------------------
- HashSetOp Intersect
-   ->  Append
-         ->  Subquery Scan on "*SELECT* 1"
-               ->  Values Scan on "*VALUES*"
-         ->  Subquery Scan on "*SELECT* 2"
-               ->  Values Scan on "*VALUES*_1"
-(6 rows)
+                     QUERY PLAN                      
+-----------------------------------------------------
+ SetOp Intersect
+   ->  Sort
+         Sort Key: "*SELECT* 1".x
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Values Scan on "*VALUES*"
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Values Scan on "*VALUES*_1"
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 select x from (values (row(1, 2)), (row(1, 3))) _(x) intersect select x from (values (row(1, 2)), (row(1, 4))) _(x);
    x   
@@ -731,15 +742,18 @@ select x from (values (row(1, 2)), (row(1, 3))) _(x) intersect select x from (va
 
 explain (costs off)
 select x from (values (row(1, 2)), (row(1, 3))) _(x) except select x from (values (row(1, 2)), (row(1, 4))) _(x);
-                  QUERY PLAN                   
------------------------------------------------
- HashSetOp Except
-   ->  Append
-         ->  Subquery Scan on "*SELECT* 1"
-               ->  Values Scan on "*VALUES*"
-         ->  Subquery Scan on "*SELECT* 2"
-               ->  Values Scan on "*VALUES*_1"
-(6 rows)
+                     QUERY PLAN                      
+-----------------------------------------------------
+ SetOp Except
+   ->  Sort
+         Sort Key: "*SELECT* 1".x
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Values Scan on "*VALUES*"
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Values Scan on "*VALUES*_1"
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 select x from (values (row(1, 2)), (row(1, 3))) _(x) except select x from (values (row(1, 2)), (row(1, 4))) _(x);
    x   
@@ -748,21 +762,30 @@ select x from (values (row(1, 2)), (row(1, 3))) _(x) except select x from (value
 (1 row)
 
 -- non-hashable type
--- With an anonymous row type, the typcache reports that the type is
--- hashable, but then it will fail at run time.
+-- With an anonymous row type, the typcache does not report that the
+-- type is hashable.  (Otherwise, this would fail at execution time.)
 explain (costs off)
 select x from (values (row(100::money)), (row(200::money))) _(x) union select x from (values (row(100::money)), (row(300::money))) _(x);
-               QUERY PLAN                
------------------------------------------
- HashAggregate
+                  QUERY PLAN                   
+-----------------------------------------------
+ Unique
    Group Key: "*VALUES*".column1
-   ->  Append
-         ->  Values Scan on "*VALUES*"
-         ->  Values Scan on "*VALUES*_1"
-(5 rows)
+   ->  Sort
+         Sort Key: "*VALUES*".column1
+         ->  Append
+               ->  Values Scan on "*VALUES*"
+               ->  Values Scan on "*VALUES*_1"
+ Optimizer: Postgres query optimizer
+(8 rows)
 
 select x from (values (row(100::money)), (row(200::money))) _(x) union select x from (values (row(100::money)), (row(300::money))) _(x);
-ERROR:  could not identify a hash function for type money
+     x     
+-----------
+ ($100.00)
+ ($200.00)
+ ($300.00)
+(3 rows)
+
 -- With a defined row type, the typcache can inspect the type's fields
 -- for hashability.
 create type ct1 as (f1 money);
@@ -824,7 +847,8 @@ select x from (values (row(1, 2)), (row(1, 3))) _(x) intersect select x from (va
                      ->  Values Scan on "*VALUES*"
                ->  Subquery Scan on "*SELECT* 2"
                      ->  Values Scan on "*VALUES*_1"
-(8 rows)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 select x from (values (row(1, 2)), (row(1, 3))) _(x) intersect select x from (values (row(1, 2)), (row(1, 4))) _(x);
    x   
@@ -844,7 +868,8 @@ select x from (values (row(1, 2)), (row(1, 3))) _(x) except select x from (value
                      ->  Values Scan on "*VALUES*"
                ->  Subquery Scan on "*SELECT* 2"
                      ->  Values Scan on "*VALUES*_1"
-(8 rows)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 select x from (values (row(1, 2)), (row(1, 3))) _(x) except select x from (values (row(1, 2)), (row(1, 4))) _(x);
    x   
@@ -915,13 +940,13 @@ SELECT q1 FROM int8_tbl UNION ALL SELECT q2 FROM int8_tbl EXCEPT SELECT q1 FROM 
 SELECT q1 FROM int8_tbl UNION ALL (((SELECT q2 FROM int8_tbl EXCEPT SELECT q1 FROM int8_tbl ORDER BY 1))); --order none
         q1         
 -------------------
-               123
-               123
   4567890123456789
   4567890123456789
   4567890123456789
  -4567890123456789
                456
+               123
+               123
 (7 rows)
 
 (((SELECT q1 FROM int8_tbl UNION ALL SELECT q2 FROM int8_tbl))) EXCEPT SELECT q1 FROM int8_tbl ORDER BY 1;
@@ -996,7 +1021,8 @@ select from generate_series(1,5) union select from generate_series(1,3);
    ->  Append
          ->  Function Scan on generate_series
          ->  Function Scan on generate_series generate_series_1
-(4 rows)
+ Optimizer: Postgres query optimizer
+(5 rows)
 
 explain (costs off)
 select from generate_series(1,5) intersect select from generate_series(1,3);
@@ -1008,7 +1034,8 @@ select from generate_series(1,5) intersect select from generate_series(1,3);
                ->  Function Scan on generate_series
          ->  Subquery Scan on "*SELECT* 2"
                ->  Function Scan on generate_series generate_series_1
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 select from generate_series(1,5) union select from generate_series(1,3);
 --
@@ -1045,7 +1072,8 @@ select from generate_series(1,5) union select from generate_series(1,3);
    ->  Append
          ->  Function Scan on generate_series
          ->  Function Scan on generate_series generate_series_1
-(4 rows)
+ Optimizer: Postgres query optimizer
+(5 rows)
 
 explain (costs off)
 select from generate_series(1,5) intersect select from generate_series(1,3);
@@ -1057,7 +1085,8 @@ select from generate_series(1,5) intersect select from generate_series(1,3);
                ->  Function Scan on generate_series
          ->  Subquery Scan on "*SELECT* 2"
                ->  Function Scan on generate_series generate_series_1
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 select from generate_series(1,5) union select from generate_series(1,3);
 --
@@ -1112,6 +1141,8 @@ LINE 1: SELECT '3.4'::numeric UNION SELECT 'foo';
 -- UNION or UNION ALL
 --
 CREATE TEMP TABLE t1 (a text, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE INDEX t1_ab_idx on t1 ((a || b));
 CREATE TEMP TABLE t2 (ab text primary key);
 INSERT INTO t1 VALUES ('a', 'b'), ('x', 'y');
@@ -1164,6 +1195,8 @@ explain (costs off)
 -- children.
 --
 CREATE TEMP TABLE t1c (b text, a text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'b' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE t1c INHERIT t1;
 CREATE TEMP TABLE t2c (primary key (ab)) INHERITS (t2);
 INSERT INTO t1c VALUES ('v', 'w'), ('c', 'd'), ('m', 'n'), ('e', 'f');
@@ -1221,6 +1254,7 @@ set enable_seqscan=off;
 create table events (event_id int primary key);
 create table other_events (event_id int primary key);
 create table events_child () inherits (events);
+NOTICE:  table has parent, setting distribution columns to match parent table
 explain (costs off)
 select event_id
  from (select event_id from events
@@ -1450,6 +1484,8 @@ create function expensivefunc(int) returns int
 language plpgsql immutable strict cost 10000
 as $$begin return $1; end$$;
 create temp table t3 as select generate_series(-1000,1000) as x;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create index t3i on t3 (expensivefunc(x));
 analyze t3;
 explain (costs off)
@@ -1505,12 +1541,12 @@ select * from
 where (x = 0) or (q1 >= q2 and q1 <= q2);
         q1        |        q2         | x 
 ------------------+-------------------+---
-              123 |               456 | 0
-              123 |  4567890123456789 | 0
  4567890123456789 |               123 | 0
  4567890123456789 |  4567890123456789 | 0
  4567890123456789 | -4567890123456789 | 0
  4567890123456789 |  4567890123456789 | 1
+              123 |               456 | 0
+              123 |  4567890123456789 | 0
 (6 rows)
 
 reset optimizer_trace_fallback;

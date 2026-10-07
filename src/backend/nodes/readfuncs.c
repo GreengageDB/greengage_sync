@@ -1621,6 +1621,7 @@ _readScalarArrayOpExpr(void)
 	READ_OID_FIELD(opno);
 	READ_OID_FIELD(opfuncid);
 	READ_OID_FIELD(hashfuncid);
+	READ_OID_FIELD(negfuncid);
 	READ_BOOL_FIELD(useOr);
 	READ_OID_FIELD(inputcollid);
 	READ_NODE_FIELD(args);
@@ -2312,6 +2313,23 @@ _readSortBy(void)
 	READ_DONE();
 }
 
+static WindowDef *
+_readWindowDef(void)
+{
+	READ_LOCALS(WindowDef);
+
+	READ_STRING_FIELD(name);
+	READ_STRING_FIELD(refname);
+	READ_NODE_FIELD(partitionClause);
+	READ_NODE_FIELD(orderClause);
+	READ_INT_FIELD(frameOptions);
+	READ_NODE_FIELD(startOffset);
+	READ_NODE_FIELD(endOffset);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
 static TypeCast *
 _readTypeCast(void)
 {
@@ -2804,7 +2822,7 @@ _readSeqScan(void)
 {
 	READ_LOCALS_NO_FIELDS(SeqScan);
 
-	ReadCommonScan(local_node);
+	ReadCommonScan(&local_node->scan);
 
 	READ_DONE();
 }
@@ -3284,12 +3302,12 @@ _readMaterial(void)
 }
 
 /*
- * _readResultCache
+ * _readMemoize
  */
-static ResultCache *
-_readResultCache(void)
+static Memoize *
+_readMemoize(void)
 {
-	READ_LOCALS(ResultCache);
+	READ_LOCALS(Memoize);
 
 	ReadCommonPlan(&local_node->plan);
 
@@ -4219,6 +4237,19 @@ _readVacuumRelation(void)
 	READ_DONE();
 }
 
+/*
+ * GPDB: see _outPublicationTable.
+ */
+static PublicationTable *
+_readPublicationTable(void)
+{
+	READ_LOCALS(PublicationTable);
+
+	READ_NODE_FIELD(relation);
+
+	READ_DONE();
+}
+
 static CreatePublicationStmt *
 _readCreatePublicationStmt()
 {
@@ -4821,8 +4852,8 @@ parseNodeString(void)
 		return_value = _readHashJoin();
 	else if (MATCH("MATERIAL", 8))
 		return_value = _readMaterial();
-	else if (MATCH("RESULTCACHE", 11))
-		return_value = _readResultCache();
+	else if (MATCH("MEMOIZE", 7))
+		return_value = _readMemoize();
 	else if (MATCH("SORT", 4))
 		return_value = _readSort();
 	else if (MATCH("INCREMENTALSORT", 15))
@@ -4965,6 +4996,8 @@ parseNodeString(void)
 		return_value = _readCreateOpFamilyStmt();
 	else if (MATCHX("CREATEPLANGSTMT"))
 		return_value = _readCreatePLangStmt();
+	else if (MATCHX("PUBLICATIONTABLE"))
+		return_value = _readPublicationTable();
 	else if (MATCHX("CREATEPUBLICATIONSTMT"))
 		return_value = _readCreatePublicationStmt();
 	else if (MATCHX("ALTERPUBLICATIONSTMT"))
@@ -5039,6 +5072,8 @@ parseNodeString(void)
 		return_value = _readSliceTable();
 	else if (MATCHX("SORTBY"))
 		return_value = _readSortBy();
+	else if (MATCHX("WINDOWDEF"))
+		return_value = _readWindowDef();
 	else if (MATCHX("TABLEVALUEEXPR"))
 		return_value = _readTableValueExpr();
 	else if (MATCHX("TRUNCATESTMT"))
