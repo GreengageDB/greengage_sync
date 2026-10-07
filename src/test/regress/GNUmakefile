@@ -216,9 +216,6 @@ endif
 installcheck-mirrorless: all tablespace-setup
 	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/mirrorless_schedule --dbname=regress-mirrorless $(EXTRA_TESTS)
 
-standbycheck: all
-	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/standby_schedule  $(EXTRA_TESTS)
-
 # old interfaces follow...
 
 runcheck: check
