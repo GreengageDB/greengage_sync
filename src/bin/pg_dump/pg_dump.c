@@ -5273,6 +5273,43 @@ getNamespaces(Archive *fout, int *numNamespaces)
 		/* Mark whether namespace has an ACL */
 		if (!PQgetisnull(res, i, i_nspacl))
 			nsinfo[i].dobj.components |= DUMP_COMPONENT_ACL;
+
+		/*
+		 * We ignore any pg_init_privs.initprivs entry for the public schema
+		 * and assume a predetermined default, for two reasons.  First,
+		 * dropping and recreating the schema removes its pg_init_privs entry,
+		 * but an empty destination database starts with this ACL nonetheless.
+		 * Second, we support dump/reload of public schema ownership changes.
+		 * ALTER SCHEMA OWNER filters nspacl through aclnewowner(), but
+		 * initprivs continues to reflect the initial owner.  Hence,
+		 * synthesize the value that nspacl will have after the restore's
+		 * ALTER SCHEMA OWNER.  (a7a7be1f2fa, in the shape of 0c9d84427f4;
+		 * the default ACL is the pre-v15 one.)
+		 */
+		if (strcmp(nsinfo[i].dobj.name, "public") == 0)
+		{
+			PQExpBuffer aclarray = createPQExpBuffer();
+			PQExpBuffer aclitem = createPQExpBuffer();
+
+			/* Standard ACL is {owner=UC/owner,=UC/owner} */
+			appendPQExpBufferChar(aclarray, '{');
+			quoteAclUserName(aclitem, nsinfo[i].rolname);
+			appendPQExpBufferStr(aclitem, "=UC/");
+			quoteAclUserName(aclitem, nsinfo[i].rolname);
+			appendPGArray(aclarray, aclitem->data);
+			resetPQExpBuffer(aclitem);
+			appendPQExpBufferStr(aclitem, "=UC/");
+			quoteAclUserName(aclitem, nsinfo[i].rolname);
+			appendPGArray(aclarray, aclitem->data);
+			appendPQExpBufferChar(aclarray, '}');
+
+			nsinfo[i].dacl.privtype = 'i';
+			nsinfo[i].dacl.initprivs = pstrdup(aclarray->data);
+			nsinfo[i].dobj.components |= DUMP_COMPONENT_ACL;
+
+			destroyPQExpBuffer(aclarray);
+			destroyPQExpBuffer(aclitem);
+		}
 	}
 
 	PQclear(res);
@@ -10290,6 +10327,14 @@ getAdditionalACLs(Archive *fout)
 									   classoid, objoid, objsubid);
 					continue;
 				}
+
+				/*
+				 * We ignore any pg_init_privs.initprivs entry for the public
+				 * schema, as explained in getNamespaces().
+				 */
+				if (dobj->objType == DO_NAMESPACE &&
+					strcmp(dobj->name, "public") == 0)
+					continue;
 
 				/* Else it had better be of a type we think has ACLs */
 				if (dobj->objType == DO_NAMESPACE ||
