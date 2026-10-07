@@ -772,9 +772,9 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		 *
 		 * reltuples is the sum of the IMMEDIATE children's reltuples, not of
 		 * all leaves: a mid-level partition that has not itself been ANALYZEd
-		 * has reltuples = -1 (get_rel_reltuples() maps that to 0), so when
-		 * optimizer_analyze_midlevel_partition is off the root legitimately
-		 * gets 0 even though the leaves hold rows.  Summing immediate children
+		 * has reltuples = -1 ("never analyzed"), which counts as 0 here, so
+		 * when optimizer_analyze_midlevel_partition is off the root
+		 * legitimately gets 0 even though the leaves hold rows.  Summing immediate children
 		 * reproduces that GUC-dependent behavior (and equals the leaf total
 		 * once every level has been analyzed).  NoLock is sufficient because we
 		 * already hold ShareUpdateExclusiveLock on this relation for ANALYZE.
@@ -786,7 +786,13 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 
 			children = find_inheritance_children(RelationGetRelid(onerel), NoLock);
 			foreach(lc, children)
-				totalrows += get_rel_reltuples(lfirst_oid(lc));
+			{
+				float4		childtuples = get_rel_reltuples(lfirst_oid(lc));
+
+				/* -1 = never analyzed; leaf_parts_analyzed() relies on it */
+				if (childtuples > 0)
+					totalrows += childtuples;
+			}
 			list_free(children);
 		}
 	}
