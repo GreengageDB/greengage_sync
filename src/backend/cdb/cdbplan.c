@@ -1127,5 +1127,5 @@ get_tle_name(TargetEntry *tle, List *rtable, const char *default_name)
 		name = pstrdup(default_name);
 	}
 	
-	return makeString(name);
+	return (Node *) makeString(name);
 }

@@ -18401,7 +18401,7 @@ func_expr_common_subexpr:
 
 					n = makeNode(FuncCall);
 					n->funcname = SystemFuncName("median");
-					n->args = list_make1(makeAConst(makeFloat(pstrdup("0.5")), @1));
+					n->args = list_make1(makeAConst((Node *) makeFloat(pstrdup("0.5")), @1));
 
 					sortby = makeNode(SortBy);
 					sortby->node = $3;
