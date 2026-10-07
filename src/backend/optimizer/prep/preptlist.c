@@ -199,12 +199,12 @@ preprocess_targetlist(PlannerInfo *root)
 			ListCell   *l2;
 
 			if (action->commandType == CMD_INSERT)
-				action->targetList = expand_targetlist(root, action->targetList,
+				action->targetList = expand_targetlist(action->targetList,
 													   CMD_INSERT, result_relation,
 													   target_relation);
 			else if (action->commandType == CMD_UPDATE)
 				action->updateColnos =
-					extract_update_targetlist_colnos(action->targetList, true);
+					extract_update_targetlist_colnos(action->targetList);
 
 			/*
 			 * Add resjunk entries for any Vars used in each action's

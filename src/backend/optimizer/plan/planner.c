@@ -7907,9 +7907,6 @@ create_partial_grouping_paths(PlannerInfo *root,
 			ListCell   *lc2;
 			Path	   *path = (Path *) lfirst(lc);
 			Path	   *path_original = path;
-			bool		is_sorted;
-			int			presorted_keys;
-
 			List	   *pathkey_orderings = NIL;
 
 			List	   *group_pathkeys = root->group_pathkeys;
@@ -8025,59 +8022,6 @@ create_partial_grouping_paths(PlannerInfo *root,
 													   dNumPartialPartialGroups));
 #endif
 			}
-
-			/*
-			 * Now we may consider incremental sort on this path, but only
-			 * when the path is not already sorted and when incremental sort
-			 * is enabled.
-			 */
-			if (is_sorted || !enable_incremental_sort)
-				continue;
-
-			/* Restore the input path (we might have added Sort on top). */
-			path = path_original;
-
-			/* no shared prefix, not point in building incremental sort */
-			if (presorted_keys == 0)
-				continue;
-
-			/*
-			 * We should have already excluded pathkeys of length 1 because
-			 * then presorted_keys > 0 would imply is_sorted was true.
-			 */
-			Assert(list_length(root->group_pathkeys) != 1);
-
-			path = (Path *) create_incremental_sort_path(root,
-														 partially_grouped_rel,
-														 path,
-														 root->group_pathkeys,
-														 presorted_keys,
-														 -1.0);
-
-			if (parse->hasAggs)
-				add_partial_path(partially_grouped_rel, (Path *)
-								 create_agg_path(root,
-												 partially_grouped_rel,
-												 path,
-												 partially_grouped_rel->reltarget,
-												 parse->groupClause ? AGG_SORTED : AGG_PLAIN,
-												 AGGSPLIT_INITIAL_SERIAL,
-												 false, /* streaming */
-												 parse->groupClause,
-												 NIL,
-												 agg_partial_costs,
-												 dNumPartialPartialGroups));
-			/* Group nodes are not used in GPDB */
-#if 0
-			else
-				add_partial_path(partially_grouped_rel, (Path *)
-								 create_group_path(root,
-												   partially_grouped_rel,
-												   path,
-												   parse->groupClause,
-												   NIL,
-												   dNumPartialPartialGroups));
-#endif
 		}
 	}
 
