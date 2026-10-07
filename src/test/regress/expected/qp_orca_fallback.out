@@ -258,3 +258,13 @@ explain select * from ext_part;
  Optimizer: Postgres query optimizer
 (5 rows)
 
+-- JSON_TABLE in FROM is an RTE_TABLEFUNC, which ORCA does not translate.  It
+-- must fall back cleanly; in a non-cassert build this used to reach
+-- __builtin_unreachable() in CTranslatorQueryToDXL::UnsupportedRTEKind.
+select * from json_table('[{"a":1},{"a":2}]'::jsonb, '$[*]' columns (a int path '$.a')) jt;
+ a 
+---
+ 1
+ 2
+(2 rows)
+
