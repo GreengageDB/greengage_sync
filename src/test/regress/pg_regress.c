@@ -2936,6 +2936,7 @@ regression_main(int argc, char *argv[],
 	};
 
 	bool		use_unix_sockets;
+	bool		make_testtablespace_dir = false;
 	_stringlist *sl;
 	int			c;
 	int			i;
@@ -3162,6 +3163,9 @@ regression_main(int argc, char *argv[],
 #if defined(HAVE_GETRLIMIT) && defined(RLIMIT_CORE)
 	unlimit_core_size();
 #endif
+
+	if (make_testtablespace_dir)
+		prepare_testtablespace_dir();
 
 	if (temp_instance)
 	{

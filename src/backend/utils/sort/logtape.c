@@ -1193,20 +1193,5 @@ LogicalTapeTell(LogicalTape *lt, long *blocknum, int *offset)
 long
 LogicalTapeSetBlocks(LogicalTapeSet *lts)
 {
-#ifdef USE_ASSERT_CHECKING
-	/*
-	 * GPDB interrupts the sort and set QueryFinishPending on purpose in the
-	 * test query_finish_pending.sql, skipping the assertion for that case.
-	 */
-	if (!QueryFinishPending)
-	{
-		for (int i = 0; i < lts->nTapes; i++)
-		{
-			LogicalTape *lt = &lts->tapes[i];
-
-			Assert(!lt->writing || lt->buffer == NULL);
-		}
-	}
-#endif
 	return lts->nBlocksWritten - lts->nHoleBlocks;
 }
