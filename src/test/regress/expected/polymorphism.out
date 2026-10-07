@@ -179,20 +179,6 @@ LINE 2:   from polyf(11, array[1, 2.2], 42, 34.5);
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 drop function polyf(a anyelement, b anyarray,
                     c anycompatible, d anycompatible);
-<<<<<<< HEAD
--- In GPDB, rows can be returned from segments in any order. Normally, we
--- mask differences in result set order in regression tests with gpdiff.pl,
--- but the aggregates in this test file result in arrays that have elements
--- in random order. To fix, we force them in order with this function.
-create or replace function array_sort(x anyarray) returns anyarray as $$
-  select array_agg(x) from (select unnest($1) AS x order by x) as _;
-$$ language sql;
--- GPDB: the line right after Legend has been intentionally changed to not look
--- like a psql result set header, like it does in upstream. atmsort.pl got
--- confused by it and treated the whole comment as a result set, and re-ordered
--- it.
-||||||| e1c1c30f635
-=======
 create function polyf(anyrange) returns anymultirange
 as 'select multirange($1);' language sql;
 select polyf(int4range(1,10));
@@ -259,7 +245,17 @@ select polyf(int4multirange(int4range(1,10), int4range(20,30)));
 select polyf(null);
 ERROR:  could not determine polymorphic type anycompatiblemultirange because input has type unknown
 drop function polyf(anycompatiblemultirange);
->>>>>>> 3b231596ccf
+-- In GPDB, rows can be returned from segments in any order. Normally, we
+-- mask differences in result set order in regression tests with gpdiff.pl,
+-- but the aggregates in this test file result in arrays that have elements
+-- in random order. To fix, we force them in order with this function.
+create or replace function array_sort(x anyarray) returns anyarray as $$
+  select array_agg(x) from (select unnest($1) AS x order by x) as _;
+$$ language sql;
+-- GPDB: the line right after Legend has been intentionally changed to not look
+-- like a psql result set header, like it does in upstream. atmsort.pl got
+-- confused by it and treated the whole comment as a result set, and re-ordered
+-- it.
 --
 -- Polymorphic aggregate tests
 --
@@ -606,6 +602,8 @@ CREATE AGGREGATE mysum2(anyelement,anyelement) (SFUNC = sum3,
   STYPE = anyelement, INITCOND = '0');
 -- create test data for polymorphic aggregates
 create temp table t(f1 int, f2 int[], f3 text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into t values(1,array[1],'a');
 insert into t values(1,array[11],'b');
 insert into t values(1,array[111],'c');
@@ -822,11 +820,11 @@ insert into int4_tbl_new values(1, 0), (1, 123456), (1, -123456), (1, 2147483647
 -- Note this would fail with integer overflow, never mind wrong bleat() output,
 -- if the CASE expression were not successfully inlined
 select f1, sql_if(f1 > 0, bleat(f1), bleat(f1 + 1)) from int4_tbl_new;
-NOTICE:  bleat 1
-NOTICE:  bleat 123456
-NOTICE:  bleat -123455
-NOTICE:  bleat 2147483647
-NOTICE:  bleat -2147483646
+NOTICE:  bleat 1  (seg1 slice1 172.17.0.2:7003 pid=21767)
+NOTICE:  bleat 123456  (seg1 slice1 172.17.0.2:7003 pid=21767)
+NOTICE:  bleat -123455  (seg1 slice1 172.17.0.2:7003 pid=21767)
+NOTICE:  bleat 2147483647  (seg1 slice1 172.17.0.2:7003 pid=21767)
+NOTICE:  bleat -2147483646  (seg1 slice1 172.17.0.2:7003 pid=21767)
      f1      |   sql_if    
 -------------+-------------
            0 |           1
@@ -1806,11 +1804,11 @@ CREATE VIEW dfview AS
 select * from dfview;
         q1        |        q2         |        c3        |        c4         
 ------------------+-------------------+------------------+-------------------
-              123 |               456 |              456 |               123
-              123 |  4567890123456789 | 4567890123456789 |               123
  4567890123456789 |               123 | 4567890123456789 |               123
  4567890123456789 |  4567890123456789 | 4567890123456789 |  4567890123456789
  4567890123456789 | -4567890123456789 | 4567890123456789 | -4567890123456789
+              123 |               456 |              456 |               123
+              123 |  4567890123456789 | 4567890123456789 |               123
 (5 rows)
 
 \d+ dfview
