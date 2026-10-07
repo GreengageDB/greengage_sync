@@ -1581,6 +1581,7 @@ _readLockingClause(void)
 
 	READ_NODE_FIELD(lockedRels);
 	READ_ENUM_FIELD(strength, LockClauseStrength);
+	READ_ENUM_FIELD(waitPolicy, LockWaitPolicy);
 
 	READ_DONE();
 }
