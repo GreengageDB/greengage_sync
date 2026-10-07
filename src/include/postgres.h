@@ -44,6 +44,14 @@
 #define POSTGRES_H
 
 #include "c.h"
+
+/*
+ * GPDB: the varlena header macros below keep the length word in network
+ * byte order on every platform, so they need ntohl()/htonl().  Until PG15
+ * port.h included <netdb.h>, which brought them in.
+ */
+#include <arpa/inet.h>
+
 #include "utils/elog.h"
 #include "utils/palloc.h"
 #include "storage/itemptr.h"
