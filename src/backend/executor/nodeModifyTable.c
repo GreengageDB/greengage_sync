@@ -67,6 +67,7 @@
 #include "catalog/aocatalog.h"
 #include "cdb/cdbaocsam.h"
 #include "cdb/cdbappendonlyam.h"
+#include "cdb/cdbhash.h"
 #include "cdb/cdbvars.h"
 #include "parser/parsetree.h"
 #include "utils/lsyscache.h"
@@ -2919,6 +2920,52 @@ ExecMerge(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	return NULL;
 }
 
+
+/*
+ * GPDB: MERGE runs its actions on the segment where the target row (WHEN
+ * MATCHED) or the source row (WHEN NOT MATCHED) was joined, and writes the
+ * new tuple there.  Nothing re-routes it, so a new row whose distribution key
+ * hashes to another segment would be stored on the wrong segment.  Until
+ * MERGE can redistribute its output, refuse to write such a row.
+ */
+static void
+mergeCheckRowSegment(EState *estate, ResultRelInfo *resultRelInfo,
+					 TupleTableSlot *slot)
+{
+	Relation	rel = resultRelInfo->ri_RelationDesc;
+	GpPolicy   *policy = rel->rd_cdbpolicy;
+	MemoryContext oldcxt;
+	CdbHash    *hash;
+	unsigned int target_seg;
+
+	if (Gp_role != GP_ROLE_EXECUTE || !GpPolicyIsHashPartitioned(policy))
+		return;
+
+	/* the CdbHash is rebuilt per tuple; MERGE is not a bulk path */
+	oldcxt = MemoryContextSwitchTo(GetPerTupleMemoryContext(estate));
+	hash = makeCdbHashForRelation(rel);
+	cdbhashinit(hash);
+	for (int i = 0; i < policy->nattrs; i++)
+	{
+		Datum		d;
+		bool		isnull;
+
+		d = slot_getattr(slot, policy->attrs[i], &isnull);
+		cdbhash(hash, i + 1, d, isnull);
+	}
+	target_seg = cdbhashreduce(hash);
+	MemoryContextSwitchTo(oldcxt);
+
+	if (target_seg != GpIdentity.segindex)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("MERGE cannot write a row of \"%s\" that belongs to another segment",
+						RelationGetRelationName(rel)),
+				 errdetail("The new row's distribution key belongs to segment %d, but the MERGE action runs on segment %d.",
+						   target_seg, GpIdentity.segindex),
+				 errhint("Do not change distribution key columns in MERGE, and insert the target's distribution key from the source column it is joined on.")));
+}
+
 /*
  * Check and execute the first qualifying MATCHED action. The current target
  * tuple is identified by tupleid.
@@ -3046,6 +3093,7 @@ lmerge_matched:;
 					break;
 				}
 				ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
+				mergeCheckRowSegment(context->estate, resultRelInfo, newslot);
 				result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
 									   newslot, GpIdentity.segindex,
 									   mtstate->canSetTag, &updateCxt);
@@ -3340,6 +3388,8 @@ ExecMergeNotMatched(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 				newslot = ExecProject(action->mas_proj);
 				context->relaction = action;
 
+				mergeCheckRowSegment(context->estate, mtstate->rootResultRelInfo,
+									 newslot);
 				(void) ExecInsert(context, mtstate->rootResultRelInfo, newslot,
 								  canSetTag, NULL, NULL, false /* splitUpdate */);
 				mtstate->mt_merge_inserted += 1;
