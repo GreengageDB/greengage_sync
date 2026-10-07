@@ -86,15 +86,7 @@ static void flagInhAttrs(DumpOptions *dopt, TableInfo *tblinfo, int numTables);
 static void findParentsByOid(TableInfo *self,
 							 InhInfo *inhinfo, int numInherits);
 static int	strInArray(const char *pattern, char **arr, int arr_size);
-<<<<<<< HEAD
-||||||| e1c1c30f635
-static IndxInfo *findIndexByOid(Oid oid, DumpableObject **idxinfoindex,
-								int numIndexes);
 
-=======
-static IndxInfo *findIndexByOid(Oid oid);
-
->>>>>>> adadae45816
 
 /*
  * getSchemaData
@@ -186,15 +178,9 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 
 	pg_log_info("reading user-defined operators");
 	(void) getOperators(fout, &numOperators);
-<<<<<<< HEAD
 
 	pg_log_info("reading user-defined external protocols");
 	getExtProtocols(fout, &numExtProtocols);
-||||||| e1c1c30f635
-	oprinfo = getOperators(fout, &numOperators);
-	oprinfoindex = buildIndexArray(oprinfo, numOperators, sizeof(OprInfo));
-=======
->>>>>>> adadae45816
 
 	pg_log_info("reading user-defined access methods");
 	getAccessMethods(fout, &numAccessMethods);
@@ -832,13 +818,7 @@ findTableByOid(Oid oid)
  *	  finds the DumpableObject for the index with the given oid
  *	  returns NULL if not found
  */
-<<<<<<< HEAD
 IndxInfo *
-||||||| e1c1c30f635
-	return (TableInfo *) findObjectByOid(oid, tblinfoindex, numTables);
-=======
-static IndxInfo *
->>>>>>> adadae45816
 findIndexByOid(Oid oid)
 {
 	CatalogId	catId;

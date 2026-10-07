@@ -179,19 +179,7 @@ int			autovacuum_multixact_freeze_max_age;
 double		autovacuum_vac_cost_delay;
 int			autovacuum_vac_cost_limit;
 
-<<<<<<< HEAD
-int			Log_autovacuum_min_duration = 0;
-
-/* how long to keep pgstat data in the launcher, in milliseconds */
-#define STATS_READ_DELAY 1000
-||||||| e1c1c30f635
-int			Log_autovacuum_min_duration = -1;
-
-/* how long to keep pgstat data in the launcher, in milliseconds */
-#define STATS_READ_DELAY 1000
-=======
 int			Log_autovacuum_min_duration = 600000;
->>>>>>> adadae45816
 
 /* the minimum allowed time between two awakenings of the launcher */
 #define MIN_AUTOVAC_SLEEPTIME 100.0 /* milliseconds */
@@ -2162,18 +2150,11 @@ do_autovacuum(void)
 		bool		wraparound;
 
 		if (classForm->relkind != RELKIND_RELATION &&
-<<<<<<< HEAD
 			classForm->relkind != RELKIND_MATVIEW &&
 			classForm->relkind != RELKIND_PARTITIONED_TABLE &&
 			classForm->relkind != RELKIND_AOSEGMENTS &&
 			classForm->relkind != RELKIND_AOBLOCKDIR &&
 			classForm->relkind != RELKIND_AOVISIMAP)
-||||||| e1c1c30f635
-			classForm->relkind != RELKIND_MATVIEW &&
-			classForm->relkind != RELKIND_PARTITIONED_TABLE)
-=======
-			classForm->relkind != RELKIND_MATVIEW)
->>>>>>> adadae45816
 			continue;
 
 		relid = classForm->oid;
@@ -2850,19 +2831,12 @@ extract_autovac_opts(HeapTuple tup, TupleDesc pg_class_desc)
 
 	Assert(((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_RELATION ||
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_MATVIEW ||
-<<<<<<< HEAD
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_PARTITIONED_TABLE ||
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_TOASTVALUE ||
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_AOSEGMENTS ||
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_AOBLOCKDIR ||
 		   ((Form_pg_class) GETSTRUCT(tup))->relkind ==  RELKIND_AOVISIMAP);
 
-||||||| e1c1c30f635
-		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_PARTITIONED_TABLE ||
-		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_TOASTVALUE);
-=======
-		   ((Form_pg_class) GETSTRUCT(tup))->relkind == RELKIND_TOASTVALUE);
->>>>>>> adadae45816
 
 	relopts = extractRelOptions(tup, pg_class_desc, NULL);
 	if (relopts == NULL)

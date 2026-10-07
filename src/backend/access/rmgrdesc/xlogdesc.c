@@ -209,13 +209,7 @@ xlog_desc(StringInfo buf, XLogReaderState *record)
 
 		memcpy(&xlrec, rec, sizeof(xl_overwrite_contrecord));
 		appendStringInfo(buf, "lsn %X/%X; time %s",
-<<<<<<< HEAD
-						 (uint32) (xlrec.overwritten_lsn >> 32),
-						 (uint32) xlrec.overwritten_lsn,
-||||||| e1c1c30f635
-=======
 						 LSN_FORMAT_ARGS(xlrec.overwritten_lsn),
->>>>>>> adadae45816
 						 timestamptz_to_str(xlrec.overwrite_time));
 	}
 }

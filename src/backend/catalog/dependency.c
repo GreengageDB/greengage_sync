@@ -1150,77 +1150,37 @@ reportDependentObjects(const ObjectAddresses *targetObjects,
 			char	   *otherDesc = getObjectDescription(&extra->dependee,
 														 false);
 
-<<<<<<< HEAD
-			if (msglevel == NOTICE && Gp_role == GP_ROLE_EXECUTE)
-||||||| e1c1c30f635
-			if (numReportedClient < MAX_REPORTED_DEPS)
-=======
 			if (otherDesc)
->>>>>>> adadae45816
 			{
-<<<<<<< HEAD
-				ereport(DEBUG1,
-						(errmsg("%s depends on %s",
-								objDesc, otherDesc)));
-||||||| e1c1c30f635
-				/* separate entries with a newline */
-				if (clientdetail.len != 0)
-					appendStringInfoChar(&clientdetail, '\n');
-				appendStringInfo(&clientdetail, _("%s depends on %s"),
-								 objDesc, otherDesc);
-				numReportedClient++;
-=======
-				if (numReportedClient < MAX_REPORTED_DEPS)
+				if (msglevel == NOTICE && Gp_role == GP_ROLE_EXECUTE)
 				{
-					/* separate entries with a newline */
-					if (clientdetail.len != 0)
-						appendStringInfoChar(&clientdetail, '\n');
-					appendStringInfo(&clientdetail, _("%s depends on %s"),
-									 objDesc, otherDesc);
-					numReportedClient++;
+					ereport(DEBUG1,
+							(errmsg("%s depends on %s",
+									objDesc, otherDesc)));
 				}
 				else
-					numNotReportedClient++;
-				/* separate entries with a newline */
-				if (logdetail.len != 0)
-					appendStringInfoChar(&logdetail, '\n');
-				appendStringInfo(&logdetail, _("%s depends on %s"),
-								 objDesc, otherDesc);
-				pfree(otherDesc);
->>>>>>> adadae45816
+				{
+					if (numReportedClient < MAX_REPORTED_DEPS)
+					{
+						/* separate entries with a newline */
+						if (clientdetail.len != 0)
+							appendStringInfoChar(&clientdetail, '\n');
+						appendStringInfo(&clientdetail, _("%s depends on %s"),
+										 objDesc, otherDesc);
+						numReportedClient++;
+					}
+					else
+						numNotReportedClient++;
+					/* separate entries with a newline */
+					if (logdetail.len != 0)
+						appendStringInfoChar(&logdetail, '\n');
+					appendStringInfo(&logdetail, _("%s depends on %s"),
+									 objDesc, otherDesc);
+					pfree(otherDesc);
+				}
 			}
 			else
-<<<<<<< HEAD
-			{
-				if (numReportedClient < MAX_REPORTED_DEPS)
-				{
-					/* separate entries with a newline */
-					if (clientdetail.len != 0)
-						appendStringInfoChar(&clientdetail, '\n');
-					appendStringInfo(&clientdetail, _("%s depends on %s"),
-									 objDesc, otherDesc);
-					numReportedClient++;
-				}
-				else
-					numNotReportedClient++;
-				/* separate entries with a newline */
-				if (logdetail.len != 0)
-					appendStringInfoChar(&logdetail, '\n');
-				appendStringInfo(&logdetail, _("%s depends on %s"),
-								 objDesc, otherDesc);
-				pfree(otherDesc);
-			}
-||||||| e1c1c30f635
 				numNotReportedClient++;
-			/* separate entries with a newline */
-			if (logdetail.len != 0)
-				appendStringInfoChar(&logdetail, '\n');
-			appendStringInfo(&logdetail, _("%s depends on %s"),
-							 objDesc, otherDesc);
-			pfree(otherDesc);
-=======
-				numNotReportedClient++;
->>>>>>> adadae45816
 			ok = false;
 		}
 		else
@@ -2973,15 +2933,11 @@ getObjectClass(const ObjectAddress *object)
 		case EventTriggerRelationId:
 			return OCLASS_EVENT_TRIGGER;
 
-<<<<<<< HEAD
 		case ExtprotocolRelationId:
 			Assert(object->objectSubId == 0);
 			return OCLASS_EXTPROTOCOL;
-||||||| e1c1c30f635
-=======
 		case ParameterAclRelationId:
 			return OCLASS_PARAMETER_ACL;
->>>>>>> adadae45816
 
 		case PolicyRelationId:
 			return OCLASS_POLICY;

@@ -84,16 +84,10 @@ pqGetpwuid(uid_t uid, struct passwd *resultbuf, char *buffer,
 bool
 pg_get_user_name(uid_t user_id, char *buffer, size_t buflen)
 {
-<<<<<<< HEAD
-#if defined(ENABLE_THREAD_SAFETY) && defined(HAVE_GETHOSTBYNAME_R)
-||||||| e1c1c30f635
-#if defined(FRONTEND) && defined(ENABLE_THREAD_SAFETY) && defined(HAVE_GETHOSTBYNAME_R)
-=======
 	char		pwdbuf[BUFSIZ];
 	struct passwd pwdstr;
 	struct passwd *pw = NULL;
 	int			pwerr;
->>>>>>> adadae45816
 
 	pwerr = pqGetpwuid(user_id, &pwdstr, pwdbuf, sizeof(pwdbuf), &pw);
 	if (pw != NULL)

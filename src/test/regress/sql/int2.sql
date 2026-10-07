@@ -2,27 +2,8 @@
 -- INT2
 --
 
-<<<<<<< HEAD
-CREATE TABLE INT2_TBL(f1 int2);
-
-INSERT INTO INT2_TBL(f1) VALUES ('0   ');
-ANALYZE INT2_TBL;
-
-INSERT INTO INT2_TBL(f1) VALUES ('  1234 ');
-
-INSERT INTO INT2_TBL(f1) VALUES ('    -1234');
-||||||| e1c1c30f635
-CREATE TABLE INT2_TBL(f1 int2);
-
-INSERT INTO INT2_TBL(f1) VALUES ('0   ');
-
-INSERT INTO INT2_TBL(f1) VALUES ('  1234 ');
-
-INSERT INTO INT2_TBL(f1) VALUES ('    -1234');
-=======
 -- int2_tbl was already created and filled in test_setup.sql.
 -- Here we just try to insert bad values.
->>>>>>> adadae45816
 
 INSERT INTO INT2_TBL(f1) VALUES ('34.5');
 INSERT INTO INT2_TBL(f1) VALUES ('100000');

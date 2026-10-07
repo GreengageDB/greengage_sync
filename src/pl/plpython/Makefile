@@ -77,23 +77,7 @@ endif # win32
 
 SHLIB_LINK = $(python_libspec) $(python_additional_libs) $(filter -lintl,$(LIBS))
 
-<<<<<<< HEAD
 REGRESS_OPTS = --dbname=$(PL_TESTDB) --init-file=$(srcdir)/init_file
-# Only load plpythonu with Python 2.  The test files themselves load
-# the versioned language plpython(2|3)u.
-ifeq ($(python_majorversion),2)
-REGRESS_OPTS += --load-extension=plpythonu
-endif
-||||||| e1c1c30f635
-REGRESS_OPTS = --dbname=$(PL_TESTDB)
-# Only load plpythonu with Python 2.  The test files themselves load
-# the versioned language plpython(2|3)u.
-ifeq ($(python_majorversion),2)
-REGRESS_OPTS += --load-extension=plpythonu
-endif
-=======
-REGRESS_OPTS = --dbname=$(PL_TESTDB)
->>>>>>> adadae45816
 
 # FIXME: enable plpython_returns test. exec() functionality changed
 # between Python2 and Python3. plpython_returns test uses it

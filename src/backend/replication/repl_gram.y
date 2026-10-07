@@ -68,21 +68,12 @@ Node *replication_parse_result;
 %token K_DROP_REPLICATION_SLOT
 %token K_TIMELINE_HISTORY
 %token K_WAIT
-<<<<<<< HEAD
 %token K_NOWAIT
 %token K_EXCLUDE
 %token K_MAX_RATE
 %token K_WAL
 %token K_TABLESPACE_MAP
 %token K_NOVERIFY_CHECKSUMS
-||||||| e1c1c30f635
-%token K_NOWAIT
-%token K_MAX_RATE
-%token K_WAL
-%token K_TABLESPACE_MAP
-%token K_NOVERIFY_CHECKSUMS
-=======
->>>>>>> adadae45816
 %token K_TIMELINE
 %token K_PHYSICAL
 %token K_LOGICAL
@@ -188,135 +179,6 @@ base_backup:
 				}
 			;
 
-<<<<<<< HEAD
-base_backup_opt_list:
-			base_backup_opt_list base_backup_opt
-				{ $$ = lappend($1, $2); }
-			| /* EMPTY */
-				{ $$ = NIL; }
-			;
-
-base_backup_opt:
-			K_LABEL SCONST
-				{
-				  $$ = makeDefElem("label",
-								   (Node *)makeString($2), -1);
-				}
-			| K_PROGRESS
-				{
-				  $$ = makeDefElem("progress",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_FAST
-				{
-				  $$ = makeDefElem("fast",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_WAL
-				{
-				  $$ = makeDefElem("wal",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_NOWAIT
-				{
-				  $$ = makeDefElem("nowait",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_MAX_RATE UCONST
-				{
-				  $$ = makeDefElem("max_rate",
-								   (Node *)makeInteger($2), -1);
-				}
-			| K_TABLESPACE_MAP
-				{
-				  $$ = makeDefElem("tablespace_map",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_NOVERIFY_CHECKSUMS
-				{
-				  $$ = makeDefElem("noverify_checksums",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_EXCLUDE SCONST
-				{
-				  $$ = makeDefElem("exclude",
-						  (Node *) makeString($2), -1);
-				}
-			| K_MANIFEST SCONST
-				{
-				  $$ = makeDefElem("manifest",
-								   (Node *)makeString($2), -1);
-				}
-			| K_MANIFEST_CHECKSUMS SCONST
-				{
-				  $$ = makeDefElem("manifest_checksums",
-								   (Node *)makeString($2), -1);
-				}
-			;
-
-||||||| e1c1c30f635
-base_backup_opt_list:
-			base_backup_opt_list base_backup_opt
-				{ $$ = lappend($1, $2); }
-			| /* EMPTY */
-				{ $$ = NIL; }
-			;
-
-base_backup_opt:
-			K_LABEL SCONST
-				{
-				  $$ = makeDefElem("label",
-								   (Node *)makeString($2), -1);
-				}
-			| K_PROGRESS
-				{
-				  $$ = makeDefElem("progress",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_FAST
-				{
-				  $$ = makeDefElem("fast",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_WAL
-				{
-				  $$ = makeDefElem("wal",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_NOWAIT
-				{
-				  $$ = makeDefElem("nowait",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_MAX_RATE UCONST
-				{
-				  $$ = makeDefElem("max_rate",
-								   (Node *)makeInteger($2), -1);
-				}
-			| K_TABLESPACE_MAP
-				{
-				  $$ = makeDefElem("tablespace_map",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_NOVERIFY_CHECKSUMS
-				{
-				  $$ = makeDefElem("noverify_checksums",
-								   (Node *)makeInteger(true), -1);
-				}
-			| K_MANIFEST SCONST
-				{
-				  $$ = makeDefElem("manifest",
-								   (Node *)makeString($2), -1);
-				}
-			| K_MANIFEST_CHECKSUMS SCONST
-				{
-				  $$ = makeDefElem("manifest_checksums",
-								   (Node *)makeString($2), -1);
-				}
-			;
-
-=======
->>>>>>> adadae45816
 create_replication_slot:
 			/* CREATE_REPLICATION_SLOT slot TEMPORARY PHYSICAL [options] */
 			K_CREATE_REPLICATION_SLOT IDENT opt_temporary K_PHYSICAL create_slot_options

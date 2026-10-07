@@ -47,14 +47,10 @@
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/datum.h"
-<<<<<<< HEAD
 #include "utils/fmgroids.h"
-||||||| e1c1c30f635
-=======
 #include "utils/json.h"
 #include "utils/jsonb.h"
 #include "utils/jsonpath.h"
->>>>>>> adadae45816
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
 
@@ -2008,8 +2004,18 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				}
 				else
 				{
-					/* it's been cast to a named type, use that */
-					tupdesc = lookup_rowtype_tupdesc_copy(rowexpr->row_typeid, -1);
+					/*
+					 * It's been cast to a named type, use that.
+					 *
+					 * GPDB: row_typeid may be a domain over a composite type
+					 * (e.g. a whole-row reference to a set-returning function
+					 * whose declared return type is such a domain, which the
+					 * planner reconstructs as ROW(...)::domain).  Look through
+					 * the domain to its base rowtype: the value is already a
+					 * valid domain value, here we only need its physical tuple
+					 * descriptor.  getBaseType() is a no-op for non-domains.
+					 */
+					tupdesc = lookup_rowtype_tupdesc_copy(getBaseType(rowexpr->row_typeid), -1);
 				}
 
 				/*

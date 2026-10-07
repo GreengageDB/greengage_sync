@@ -483,7 +483,6 @@ IsSharedRelation(Oid relationId)
 }
 
 /*
-<<<<<<< HEAD
  * OIDs for catalog object are normally allocated in the master, and
  * executor nodes should just use the OIDs passed by the master. But
  * there are some exceptions.
@@ -532,8 +531,8 @@ RelationNeedsSynchronizedOIDs(Relation relation)
 	}
 	return false;
 }
-||||||| e1c1c30f635
-=======
+
+/*
  * IsPinnedObject
  *		Given the class + OID identity of a database object, report whether
  *		it is "pinned", that is not droppable because the system requires it.
@@ -594,8 +593,6 @@ IsPinnedObject(Oid classId, Oid objectId)
 	 */
 	return true;
 }
-
->>>>>>> adadae45816
 
 /*
  * GetNewOidWithIndex

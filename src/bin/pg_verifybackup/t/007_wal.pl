@@ -15,15 +15,8 @@ my $primary = PostgreSQL::Test::Cluster->new('primary');
 $primary->init(allows_streaming => 1);
 $primary->start;
 my $backup_path = $primary->backup_dir . '/test_wal';
-<<<<<<< HEAD
 $primary->command_ok([ 'pg_basebackup', '-D', $backup_path, '--no-sync',
 					'--target-gp-dbid', '1' ],
-||||||| e1c1c30f635
-$primary->command_ok([ 'pg_basebackup', '-D', $backup_path, '--no-sync' ],
-=======
-$primary->command_ok(
-	[ 'pg_basebackup', '-D', $backup_path, '--no-sync', '-cfast' ],
->>>>>>> adadae45816
 	"base backup ok");
 
 # Rename pg_wal.

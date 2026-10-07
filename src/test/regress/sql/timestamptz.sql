@@ -435,7 +435,6 @@ SELECT make_timestamptz(2014, 12, 10, 10, 10, 10, 'PST8PDT');
 
 RESET TimeZone;
 
-<<<<<<< HEAD
 -- MPP-18998
 create table dttm_com
 (id int primary key,
@@ -449,8 +448,6 @@ insert into dttm_com values
      (2, current_timestamp, localtimestamp::date, current_date::date, date_in(date_out(current_date))),
      (3, now(), current_timestamp, now(), current_date);
 select id from dttm_com where d1 <> current_date;
-||||||| e1c1c30f635
-=======
 -- generate_series for timestamptz
 select * from generate_series('2020-01-01 00:00'::timestamptz,
                               '2020-01-02 03:00'::timestamptz,
@@ -464,7 +461,6 @@ select generate_series('2022-01-01 00:00'::timestamptz,
 select * from generate_series('2020-01-01 00:00'::timestamptz,
                               '2020-01-02 03:00'::timestamptz,
                               '0 hour'::interval);
->>>>>>> adadae45816
 
 --
 -- Test behavior with a dynamic (time-varying) timezone abbreviation.

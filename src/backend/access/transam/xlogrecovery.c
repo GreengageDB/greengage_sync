@@ -41,6 +41,7 @@
 #include "access/xlogrecovery.h"
 #include "access/xlogutils.h"
 #include "catalog/pg_control.h"
+#include "cdb/cdbtm.h"
 #include "commands/tablespace.h"
 #include "miscadmin.h"
 #include "pgstat.h"
@@ -2259,7 +2260,8 @@ getRecordTimestamp(XLogReaderState *record, TimestampTz *recordXtime)
 		return true;
 	}
 	if (rmid == RM_XACT_ID && (xact_info == XLOG_XACT_COMMIT ||
-							   xact_info == XLOG_XACT_COMMIT_PREPARED))
+							   xact_info == XLOG_XACT_COMMIT_PREPARED ||
+							   xact_info == XLOG_XACT_DISTRIBUTED_COMMIT))
 	{
 		*recordXtime = ((xl_xact_commit *) XLogRecGetData(record))->xact_time;
 		return true;
@@ -2443,7 +2445,8 @@ recoveryStopsBefore(XLogReaderState *record)
 
 	xact_info = XLogRecGetInfo(record) & XLOG_XACT_OPMASK;
 
-	if (xact_info == XLOG_XACT_COMMIT)
+	if (xact_info == XLOG_XACT_COMMIT ||
+		xact_info == XLOG_XACT_DISTRIBUTED_COMMIT)
 	{
 		isCommit = true;
 		recordXid = XLogRecGetXid(record);
@@ -2608,7 +2611,8 @@ recoveryStopsAfter(XLogReaderState *record)
 	if (xact_info == XLOG_XACT_COMMIT ||
 		xact_info == XLOG_XACT_COMMIT_PREPARED ||
 		xact_info == XLOG_XACT_ABORT ||
-		xact_info == XLOG_XACT_ABORT_PREPARED)
+		xact_info == XLOG_XACT_ABORT_PREPARED ||
+		xact_info == XLOG_XACT_DISTRIBUTED_COMMIT)
 	{
 		TransactionId recordXid;
 
@@ -2659,7 +2663,8 @@ recoveryStopsAfter(XLogReaderState *record)
 			recoveryStopName[0] = '\0';
 
 			if (xact_info == XLOG_XACT_COMMIT ||
-				xact_info == XLOG_XACT_COMMIT_PREPARED)
+				xact_info == XLOG_XACT_COMMIT_PREPARED ||
+				xact_info == XLOG_XACT_DISTRIBUTED_COMMIT)
 			{
 				ereport(LOG,
 						(errmsg("recovery stopping after commit of transaction %u, time %s",
@@ -2829,7 +2834,8 @@ recoveryApplyDelay(XLogReaderState *record)
 	xact_info = XLogRecGetInfo(record) & XLOG_XACT_OPMASK;
 
 	if (xact_info != XLOG_XACT_COMMIT &&
-		xact_info != XLOG_XACT_COMMIT_PREPARED)
+		xact_info != XLOG_XACT_COMMIT_PREPARED &&
+		xact_info != XLOG_XACT_DISTRIBUTED_COMMIT)
 		return false;
 
 	if (!getRecordTimestamp(record, &xtime))
@@ -3840,6 +3846,31 @@ emode_for_corrupt_record(int emode, XLogRecPtr RecPtr)
 
 
 /*
+ * Process passed checkpoint record either during normal recovery or
+ * in standby mode.
+ *
+ * GPDB writes an extended checkpoint record that carries distributed
+ * transaction information (the in-doubt distributed-committed transactions)
+ * appended after the CheckPoint struct.  This must be extracted and handed to
+ * the DTM recovery machinery so that the second phase of 2PC can complete
+ * during crash recovery.  Without this, a distributed transaction that has
+ * committed on the coordinator can be wrongly aborted on the segments.
+ */
+static void
+XLogProcessCheckpointRecord(XLogReaderState *rec)
+{
+	CheckpointExtendedRecord ckptExtended;
+
+	UnpackCheckPointRecord(rec, &ckptExtended);
+
+	if (ckptExtended.dtxCheckpoint)
+	{
+		/* Handle the DTX information. */
+		redoDtxCheckPoint(ckptExtended.dtxCheckpoint);
+	}
+}
+
+/*
  * Subroutine to try to fetch and validate a prior checkpoint record.
  *
  * whichChkpt identifies the checkpoint (merely for reporting purposes).
@@ -3851,6 +3882,11 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 {
 	XLogRecord *record;
 	uint8		info;
+	bool		sizeOk;
+	uint32		chkpt_len;
+	uint32		chkpt_hdr_len_short;
+	uint32		chkpt_hdr_len_long;
+	bool		length_match;
 
 	Assert(xlogreader != NULL);
 
@@ -3926,7 +3962,31 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 		}
 		return NULL;
 	}
-	if (record->xl_tot_len != SizeOfXLogRecord + SizeOfXLogRecordDataHeaderShort + sizeof(CheckPoint))
+	/*
+	 * GPDB: Verify the Checkpoint record length.  GPDB writes an extended
+	 * Checkpoint record whose total length is greater than a regular
+	 * checkpoint record (e.g. when it carries DTX info appended after the
+	 * CheckPoint struct), so we cannot require an exact match against
+	 * sizeof(CheckPoint).  Validate the fixed part and allow the extra
+	 * variable-length DTX payload.
+	 */
+	sizeOk = false;
+	chkpt_len = XLogRecGetDataLen(xlogreader);
+	chkpt_hdr_len_short = SizeOfXLogRecord + SizeOfXLogRecordDataHeaderShort + sizeof(CheckPoint);
+	chkpt_hdr_len_long = SizeOfXLogRecord + SizeOfXLogRecordDataHeaderLong + sizeof(CheckPoint);
+
+	if (chkpt_len > 255)		/* for XLR_BLOCK_ID_DATA_LONG */
+		length_match = ((chkpt_len - sizeof(CheckPoint)) == (record->xl_tot_len - chkpt_hdr_len_long));
+	else						/* for XLR_BLOCK_ID_DATA_SHORT */
+		length_match = ((chkpt_len - sizeof(CheckPoint)) == (record->xl_tot_len - chkpt_hdr_len_short));
+
+	if ((chkpt_len == sizeof(CheckPoint) && record->xl_tot_len == chkpt_hdr_len_short) ||
+		(chkpt_len > sizeof(CheckPoint) &&
+		 record->xl_tot_len > chkpt_hdr_len_short &&
+		 length_match))
+		sizeOk = true;
+
+	if (!sizeOk)
 	{
 		switch (whichChkpt)
 		{
@@ -3941,6 +4001,18 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 		}
 		return NULL;
 	}
+
+	/*
+	 * Find Xacts that are distributed-committed from the checkpoint record and
+	 * store them such that they can be utilized later during DTM recovery.
+	 *
+	 * The 'report' parameter is currently always true when we want to process
+	 * the extended (GPDB) checkpoint record, so reuse it as the guard here to
+	 * avoid a wider diff against upstream.
+	 */
+	if (report)
+		XLogProcessCheckpointRecord(xlogreader);
+
 	return record;
 }
 

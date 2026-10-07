@@ -6,7 +6,7 @@
  *
  * Portions Copyright (c) 2005-2009, Greenplum inc.
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/utils/relcache.h
@@ -16,6 +16,12 @@
 #ifndef RELCACHE_H
 #define RELCACHE_H
 
+/*
+ * GPDB: pull in postgres.h for the Datum typedef.  Greenplum's catalog.h
+ * (which includes this header) is included by several frontend tools for the
+ * gp_dbid helpers, so relcache.h must be self-sufficient for Datum.
+ */
+#include "postgres.h"
 #include "access/tupdesc.h"
 #include "nodes/bitmapset.h"
 

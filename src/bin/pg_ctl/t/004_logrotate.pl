@@ -95,15 +95,7 @@ note "current_logfiles = $current_logfiles";
 
 like(
 	$current_logfiles,
-<<<<<<< HEAD
 	qr|^stderr log/gpdb-.*csv$|,
-||||||| e1c1c30f635
-	qr|^stderr log/postgresql-.*log$|,
-=======
-	qr|^stderr log/postgresql-.*log
-csvlog log/postgresql-.*csv
-jsonlog log/postgresql-.*json$|,
->>>>>>> adadae45816
 	'current_logfiles is sane');
 
 check_log_pattern('stderr',  $current_logfiles, 'division by zero', $node);
@@ -129,15 +121,7 @@ note "now current_logfiles = $new_current_logfiles";
 
 like(
 	$new_current_logfiles,
-<<<<<<< HEAD
 	qr|^stderr log/gpdb-.*csv$|,
-||||||| e1c1c30f635
-	qr|^stderr log/postgresql-.*log$|,
-=======
-	qr|^stderr log/postgresql-.*log
-csvlog log/postgresql-.*csv
-jsonlog log/postgresql-.*json$|,
->>>>>>> adadae45816
 	'new current_logfiles is sane');
 
 # Verify that log output gets to this file, too

@@ -3,15 +3,9 @@
  * relcache.c
  *	  POSTGRES relation descriptor cache code
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2009, Greenplum inc.
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1223,7 +1217,6 @@ retry:
 	/*
 	 * initialize access method information
 	 */
-<<<<<<< HEAD
 	switch (relation->rd_rel->relkind)
 	{
 		case RELKIND_INDEX:
@@ -1254,41 +1247,6 @@ retry:
 			RelationInitTableAccessMethod(relation);
 			break;
 	}
-||||||| e1c1c30f635
-	switch (relation->rd_rel->relkind)
-	{
-		case RELKIND_INDEX:
-		case RELKIND_PARTITIONED_INDEX:
-			Assert(relation->rd_rel->relam != InvalidOid);
-			RelationInitIndexAccessInfo(relation);
-			break;
-		case RELKIND_RELATION:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_MATVIEW:
-			Assert(relation->rd_rel->relam != InvalidOid);
-			RelationInitTableAccessMethod(relation);
-			break;
-		case RELKIND_SEQUENCE:
-			Assert(relation->rd_rel->relam == InvalidOid);
-			RelationInitTableAccessMethod(relation);
-			break;
-		case RELKIND_VIEW:
-		case RELKIND_COMPOSITE_TYPE:
-		case RELKIND_FOREIGN_TABLE:
-		case RELKIND_PARTITIONED_TABLE:
-			Assert(relation->rd_rel->relam == InvalidOid);
-			break;
-	}
-=======
-	if (relation->rd_rel->relkind == RELKIND_INDEX ||
-		relation->rd_rel->relkind == RELKIND_PARTITIONED_INDEX)
-		RelationInitIndexAccessInfo(relation);
-	else if (RELKIND_HAS_TABLE_AM(relation->rd_rel->relkind) ||
-			 relation->rd_rel->relkind == RELKIND_SEQUENCE)
-		RelationInitTableAccessMethod(relation);
-	else
-		Assert(relation->rd_rel->relam == InvalidOid);
->>>>>>> adadae45816
 
 	/* extract reloptions if any */
 	RelationParseRelOptions(relation, pg_class_tuple);
@@ -3937,8 +3895,20 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 	newrnode = relation->rd_node;
 	newrnode.relNode = newrelfilenode;
 
-	if (RELKIND_HAS_TABLE_AM(relation->rd_rel->relkind))
+	if (RELKIND_HAS_TABLE_AM(relation->rd_rel->relkind) ||
+		relation->rd_rel->relkind == RELKIND_AOSEGMENTS ||
+		relation->rd_rel->relkind == RELKIND_AOVISIMAP ||
+		relation->rd_rel->relkind == RELKIND_AOBLOCKDIR)
 	{
+		/*
+		 * GPDB: the append-optimized auxiliary relations (aoseg, block
+		 * directory, visimap) are heaps with a table AM, but the upstream
+		 * RELKIND_HAS_TABLE_AM() macro doesn't list them.  Route them through
+		 * the table AM here too so they get a valid relfrozenxid assigned;
+		 * otherwise TRUNCATE would leave relfrozenxid invalid and a later
+		 * heap VACUUM of the aux relation would trip the wraparound-failsafe
+		 * assert.
+		 */
 		table_relation_set_new_filenode(relation, &newrnode,
 										persistence,
 										&freezeXid, &minmulti);
@@ -3948,55 +3918,7 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 		/* handle these directly, at least for now */
 		SMgrRelation srel;
 
-<<<<<<< HEAD
-				srel = RelationCreateStorage(newrnode, persistence,
-											 0 /* default storage implementation */);
-				smgrclose(srel);
-			}
-			break;
-
-		case RELKIND_RELATION:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_MATVIEW:
-			table_relation_set_new_filenode(relation, &newrnode,
-											persistence,
-											&freezeXid, &minmulti);
-			break;
-
-		case RELKIND_AOSEGMENTS:
-		case RELKIND_AOVISIMAP:
-		case RELKIND_AOBLOCKDIR:
-			table_relation_set_new_filenode(relation, &newrnode,
-											persistence,
-											&freezeXid, &minmulti);
-			break;
-
-		default:
-			/* we shouldn't be called for anything else */
-			elog(ERROR, "relation \"%s\" does not have storage",
-				 RelationGetRelationName(relation));
-			break;
-||||||| e1c1c30f635
-				srel = RelationCreateStorage(newrnode, persistence);
-				smgrclose(srel);
-			}
-			break;
-
-		case RELKIND_RELATION:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_MATVIEW:
-			table_relation_set_new_filenode(relation, &newrnode,
-											persistence,
-											&freezeXid, &minmulti);
-			break;
-
-		default:
-			/* we shouldn't be called for anything else */
-			elog(ERROR, "relation \"%s\" does not have storage",
-				 RelationGetRelationName(relation));
-			break;
-=======
-		srel = RelationCreateStorage(newrnode, persistence, true);
+		srel = RelationCreateStorage(newrnode, persistence, SMGR_MD, true);
 		smgrclose(srel);
 	}
 	else
@@ -4004,7 +3926,6 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 		/* we shouldn't be called for anything else */
 		elog(ERROR, "relation \"%s\" does not have storage",
 			 RelationGetRelationName(relation));
->>>>>>> adadae45816
 	}
 
 	/*

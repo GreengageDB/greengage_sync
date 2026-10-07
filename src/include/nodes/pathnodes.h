@@ -4,15 +4,9 @@
  *	  Definitions for planner's internal data structures, especially Paths.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/nodes/pathnodes.h
@@ -908,15 +902,9 @@ typedef struct RelOptInfo
 	List	   *indexlist;		/* list of IndexOptInfo */
 	List	   *statlist;		/* list of StatisticExtInfo */
 	BlockNumber pages;			/* size estimates derived from pg_class */
-<<<<<<< HEAD
-	double		tuples;
+	Cardinality tuples;
     struct GpPolicy   *cdbpolicy;      /* distribution of stored tuples */
 	Oid			relam;			/* form_pg_class access method */
-||||||| e1c1c30f635
-	double		tuples;
-=======
-	Cardinality tuples;
->>>>>>> adadae45816
 	double		allvisfrac;
 	Bitmapset  *eclass_indexes; /* Indexes in PlannerInfo's eq_classes list of
 								 * ECs that mention this rel */
@@ -1286,7 +1274,6 @@ typedef struct PathKey
 } PathKey;
 
 /*
-<<<<<<< HEAD
  * DistributionKeys
  *
  * Like PathKey, but is used to represent data distribution by hash across
@@ -1310,8 +1297,8 @@ typedef struct DistributionKey
  */
 #define CdbEquivClassIsConstant(eclass)						\
 	((eclass)->ec_has_const && !(eclass)->ec_below_outer_join)
-||||||| e1c1c30f635
-=======
+
+/*
  * Combines information about pathkeys and the associated clauses.
  */
 typedef struct PathKeyInfo
@@ -1320,7 +1307,6 @@ typedef struct PathKeyInfo
 	List	   *pathkeys;
 	List	   *clauses;
 } PathKeyInfo;
->>>>>>> adadae45816
 
 /*
  * VolatileFunctionStatus -- allows nodes to cache their
@@ -1694,7 +1680,6 @@ typedef struct TidPath
 } TidPath;
 
 /*
-<<<<<<< HEAD
  * CdbMotionPath represents transmission of the child Path results
  * from a set of sending processes to a set of receiving processes.
  *
@@ -1714,11 +1699,6 @@ typedef struct CdbMotionPath
 
 /*
  * TidRangePath represents a scan by a continguous range of TIDs
-||||||| e1c1c30f635
- * TidRangePath represents a scan by a continguous range of TIDs
-=======
- * TidRangePath represents a scan by a contiguous range of TIDs
->>>>>>> adadae45816
  *
  * tidrangequals is an implicitly AND'ed list of qual expressions of the form
  * "CTID relop pseudoconstant", where relop is one of >,>=,<,<=.
@@ -2305,7 +2285,6 @@ typedef struct LockRowsPath
 } LockRowsPath;
 
 /*
-<<<<<<< HEAD
  * SplitUpdatePath
  */
 typedef struct SplitUpdatePath
@@ -2319,12 +2298,7 @@ typedef struct SplitUpdatePath
 } SplitUpdatePath;
 
 /*
- * ModifyTablePath represents performing INSERT/UPDATE/DELETE modifications
-||||||| e1c1c30f635
- * ModifyTablePath represents performing INSERT/UPDATE/DELETE modifications
-=======
  * ModifyTablePath represents performing INSERT/UPDATE/DELETE/MERGE
->>>>>>> adadae45816
  *
  * We represent most things that will be in the ModifyTable plan node
  * literally, except we have a child Path not Plan.  But analysis of the

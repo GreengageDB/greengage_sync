@@ -4,36 +4,15 @@
 use strict;
 use warnings;
 
-<<<<<<< HEAD
 use Config;
 use Fcntl ':mode';
 use File::stat qw{lstat};
-use PostgresNode;
-use TestLib;
-use Test::More tests => 26;
-||||||| e1c1c30f635
-use Config;
-use Fcntl ':mode';
-use File::stat qw{lstat};
-use PostgresNode;
-use TestLib;
-use Test::More tests => 24;
-=======
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More;
->>>>>>> adadae45816
+use Test::More tests => 26;
 
-<<<<<<< HEAD
-my $tempdir = TestLib::tempdir;
-my $tempdir_short = TestLib::tempdir_short;
-||||||| e1c1c30f635
-my $tempdir       = TestLib::tempdir;
-my $tempdir_short = TestLib::tempdir_short;
-=======
-my $tempdir       = PostgreSQL::Test::Utils::tempdir;
+my $tempdir = PostgreSQL::Test::Utils::tempdir;
 my $tempdir_short = PostgreSQL::Test::Utils::tempdir_short;
->>>>>>> adadae45816
 
 program_help_ok('pg_ctl');
 program_version_ok('pg_ctl');
@@ -66,14 +45,8 @@ else
 close $conf;
 my $ctlcmd = [
 	'pg_ctl', 'start', '-D', "$tempdir/data", '-l',
-<<<<<<< HEAD
-	"$TestLib::log_path/001_start_stop_server.log"
-	,'-o', '-c gp_role=utility --gp_dbid=-1 --gp_contentid=-1',
-||||||| e1c1c30f635
-	"$TestLib::log_path/001_start_stop_server.log"
-=======
 	"$PostgreSQL::Test::Utils::log_path/001_start_stop_server.log"
->>>>>>> adadae45816
+	,'-o', '-c gp_role=utility --gp_dbid=-1 --gp_contentid=-1',
 ];
 command_like($ctlcmd, qr/done.*server started/s, 'pg_ctl start');
 
@@ -133,7 +106,6 @@ command_ok([ 'pg_ctl', 'restart', '-D', "$tempdir/data" ],
 
 system_or_bail 'pg_ctl', 'stop', '-D', "$tempdir/data";
 
-<<<<<<< HEAD
 # gpdb specific: verify that --wrapper and --wrapper-args work as expected
 if (not $windows_os)
 {
@@ -157,7 +129,3 @@ if (not $windows_os)
 
 	system_or_bail 'pg_ctl', 'stop', '-D', "$tempdir/data", '-m', 'fast';
 }
-||||||| e1c1c30f635
-=======
-done_testing();
->>>>>>> adadae45816

@@ -2013,30 +2013,13 @@ bytea *
 partitioned_table_reloptions(Datum reloptions, bool validate)
 {
 	/*
-<<<<<<< HEAD
 	 * autovacuum_enabled, autovacuum_analyze_threshold and
 	 * autovacuum_analyze_scale_factor are supported for partitioned tables.
 	 *
 	 * GPDB: we maintain reloptions for partition roots to support reloption
 	 * inheritance and hierarchy wide ALTER TABLE SET().
-||||||| e1c1c30f635
-	 * autovacuum_enabled, autovacuum_analyze_threshold and
-	 * autovacuum_analyze_scale_factor are supported for partitioned tables.
-=======
-	 * There are no options for partitioned tables yet, but this is able to do
-	 * some validation.
->>>>>>> adadae45816
 	 */
-<<<<<<< HEAD
 	return default_reloptions(reloptions, validate, RELOPT_KIND_HEAP);
-||||||| e1c1c30f635
-
-	return default_reloptions(reloptions, validate, RELOPT_KIND_PARTITIONED);
-=======
-	return (bytea *) build_reloptions(reloptions, validate,
-									  RELOPT_KIND_PARTITIONED,
-									  0, NULL, 0);
->>>>>>> adadae45816
 }
 
 /*

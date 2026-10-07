@@ -2,15 +2,11 @@
 -- AGGREGATES
 --
 
-<<<<<<< HEAD
 -- start_ignore
 SET optimizer_trace_fallback to on;
 -- end_ignore
-||||||| e1c1c30f635
-=======
 -- directory paths are passed to us in environment variables
 \getenv abs_srcdir PG_ABS_SRCDIR
->>>>>>> adadae45816
 
 -- avoid bit-exact output here because operations may not be bit-exact.
 SET extra_float_digits = 0;
@@ -1561,4 +1557,11 @@ drop table agg_hash_3;
 drop table agg_hash_4;
 
 -- fix github issue #12061 numsegments of general locus is not -1 on create_minmaxagg_path
+-- GPDB: force a seqscan so the pg_class scan method (and thus the normalized
+-- plan) doesn't flip between Seq Scan and Index Only Scan as pg_class's size
+-- and stats change from run to run; the locus behavior under test is unaffected.
+set enable_indexscan = off;
+set enable_indexonlyscan = off;
 explain analyze select count(*) from pg_class,  (select count(*) >0 from  (select count(*) from pg_class where relname like 't%')x)y;
+reset enable_indexscan;
+reset enable_indexonlyscan;

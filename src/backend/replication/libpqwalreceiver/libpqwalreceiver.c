@@ -134,16 +134,9 @@ libpqrcv_connect(const char *conninfo, bool logical, const char *appname,
 {
 	WalReceiverConn *conn;
 	PostgresPollingStatusType status;
-<<<<<<< HEAD
-	const char *keys[5 + 1];
-	const char *vals[5 + 1];
-||||||| e1c1c30f635
-	const char *keys[5];
-	const char *vals[5];
-=======
-	const char *keys[6];
-	const char *vals[6];
->>>>>>> adadae45816
+	/* 6 connection keys (incl. GPDB's GPCONN_TYPE) plus NULL terminator */
+	const char *keys[6 + 1];
+	const char *vals[6 + 1];
 	int			i = 0;
 
 	/*

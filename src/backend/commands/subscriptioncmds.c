@@ -48,13 +48,10 @@
 #include "utils/pg_lsn.h"
 #include "utils/syscache.h"
 
-<<<<<<< HEAD
 #include "catalog/heap.h"
 #include "catalog/oid_dispatch.h"
 #include "cdb/cdbdisp_query.h"
 #include "cdb/cdbvars.h"
-||||||| e1c1c30f635
-=======
 /*
  * Options that can be specified by the user in CREATE/ALTER SUBSCRIPTION
  * command.
@@ -95,7 +92,6 @@ typedef struct SubOpts
 	bool		disableonerr;
 	XLogRecPtr	lsn;
 } SubOpts;
->>>>>>> adadae45816
 
 static List *fetch_table_list(WalReceiverConn *wrconn, List *publications);
 static void check_duplicates_in_publist(List *publist, Datum *datums);
@@ -749,7 +745,6 @@ CreateSubscription(ParseState *pstate, CreateSubscriptionStmt *stmt,
 
 	table_close(rel, RowExclusiveLock);
 
-<<<<<<< HEAD
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
 		CdbDispatchUtilityStatement((Node *) stmt,
@@ -766,14 +761,9 @@ CreateSubscription(ParseState *pstate, CreateSubscriptionStmt *stmt,
 						   "CREATE", "SUBSCRIPTION");
 	}
 
-	if (enabled)
-||||||| e1c1c30f635
-	if (enabled)
-=======
 	pgstat_create_subscription(subid);
 
 	if (opts.enabled)
->>>>>>> adadae45816
 		ApplyLauncherWakeupAtCommit();
 
 	ObjectAddressSet(myself, SubscriptionRelationId, subid);

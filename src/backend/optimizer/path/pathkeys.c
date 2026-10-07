@@ -7,15 +7,9 @@
  * the nature and use of path keys.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -25,12 +19,8 @@
  */
 #include "postgres.h"
 
-<<<<<<< HEAD
 #include "access/hash.h"
-||||||| e1c1c30f635
-=======
 #include "miscadmin.h"
->>>>>>> adadae45816
 #include "access/stratnum.h"
 #include "catalog/pg_opfamily.h"
 #include "nodes/makefuncs.h"
@@ -44,7 +34,6 @@
 #include "utils/lsyscache.h"
 #include "utils/selfuncs.h"
 
-<<<<<<< HEAD
 #include "cdb/cdbhash.h"
 #include "cdb/cdbpullup.h"		/* cdbpullup_expr(), cdbpullup_make_var() */
 #include "optimizer/clauses.h"
@@ -52,11 +41,8 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "parser/parsetree.h"
-||||||| e1c1c30f635
-=======
 /* Consider reordering of GROUP BY keys? */
 bool		enable_group_by_reordering = true;
->>>>>>> adadae45816
 
 static bool pathkey_is_redundant(PathKey *new_pathkey, List *pathkeys);
 static bool matches_boolean_partition_clause(RestrictInfo *rinfo,

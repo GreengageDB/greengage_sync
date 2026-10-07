@@ -16,6 +16,7 @@
 #include "bbstreamer.h"
 #include "common/logging.h"
 #include "common/file_perm.h"
+#include "common/relpath.h"		/* GPDB: GP_TABLESPACE_VERSION_DIRECTORY */
 #include "common/string.h"
 
 typedef struct bbstreamer_plain_writer
@@ -34,6 +35,7 @@ typedef struct bbstreamer_extractor
 	void		(*report_output_file) (const char *);
 	char		filename[MAXPGPATH];
 	FILE	   *file;
+	bool		forceoverwrite;
 } bbstreamer_extractor;
 
 static void bbstreamer_plain_writer_content(bbstreamer *streamer,
@@ -55,9 +57,12 @@ static void bbstreamer_extractor_content(bbstreamer *streamer,
 										 bbstreamer_archive_context context);
 static void bbstreamer_extractor_finalize(bbstreamer *streamer);
 static void bbstreamer_extractor_free(bbstreamer *streamer);
-static void extract_directory(const char *filename, mode_t mode);
-static void extract_link(const char *filename, const char *linktarget);
-static FILE *create_file_for_extract(const char *filename, mode_t mode);
+static void extract_directory(const char *filename, mode_t mode,
+							  bool forceoverwrite);
+static void extract_link(const char *filename, const char *linktarget,
+						 bool forceoverwrite);
+static FILE *create_file_for_extract(const char *filename, mode_t mode,
+									 bool forceoverwrite);
 
 const bbstreamer_ops bbstreamer_extractor_ops = {
 	.content = bbstreamer_extractor_content,
@@ -182,7 +187,8 @@ bbstreamer_plain_writer_free(bbstreamer *streamer)
 bbstreamer *
 bbstreamer_extractor_new(const char *basepath,
 						 const char *(*link_map) (const char *),
-						 void (*report_output_file) (const char *))
+						 void (*report_output_file) (const char *),
+						 bool forceoverwrite)
 {
 	bbstreamer_extractor *streamer;
 
@@ -192,6 +198,7 @@ bbstreamer_extractor_new(const char *basepath,
 	streamer->basepath = pstrdup(basepath);
 	streamer->link_map = link_map;
 	streamer->report_output_file = report_output_file;
+	streamer->forceoverwrite = forceoverwrite;
 
 	return &streamer->base;
 }
@@ -226,19 +233,22 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 
 			/* Dispatch based on file type. */
 			if (member->is_directory)
-				extract_directory(mystreamer->filename, member->mode);
+				extract_directory(mystreamer->filename, member->mode,
+								   mystreamer->forceoverwrite);
 			else if (member->is_link)
 			{
 				const char *linktarget = member->linktarget;
 
 				if (mystreamer->link_map)
 					linktarget = mystreamer->link_map(linktarget);
-				extract_link(mystreamer->filename, linktarget);
+				extract_link(mystreamer->filename, linktarget,
+							 mystreamer->forceoverwrite);
 			}
 			else
 				mystreamer->file =
 					create_file_for_extract(mystreamer->filename,
-											member->mode);
+											member->mode,
+											mystreamer->forceoverwrite);
 
 			/* Report output file change. */
 			if (mystreamer->report_output_file)
@@ -280,7 +290,7 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
  * Create a directory.
  */
 static void
-extract_directory(const char *filename, mode_t mode)
+extract_directory(const char *filename, mode_t mode, bool forceoverwrite)
 {
 	if (mkdir(filename, pg_dir_create_mode) != 0)
 	{
@@ -290,10 +300,24 @@ extract_directory(const char *filename, mode_t mode)
 		 * directory location was specified, pg_wal (or pg_xlog) has already
 		 * been created as a symbolic link before starting the actual backup.
 		 * So just ignore creation failures on related directories.
+		 *
+		 * GPDB: with --force-overwrite the backup is extracted into an
+		 * existing data directory (e.g. gprecoverseg full recovery in place),
+		 * so any pre-existing directory is expected; tolerate EEXIST for all
+		 * directories in that case.
+		 *
+		 * GPDB: for a user-defined tablespace the per-dbid version directory
+		 * (<location>/<dbid>/GP_TABLESPACE_VERSION_DIRECTORY) was already
+		 * created (empty) from the tablespace list by
+		 * verify_dir_is_empty_or_create() before streaming began, so its
+		 * archive member legitimately pre-exists -- tolerate EEXIST for it just
+		 * like pg_wal.
 		 */
 		if (!((pg_str_endswith(filename, "/pg_wal") ||
 			   pg_str_endswith(filename, "/pg_xlog") ||
-			   pg_str_endswith(filename, "/archive_status")) &&
+			   pg_str_endswith(filename, "/archive_status") ||
+			   pg_str_endswith(filename, GP_TABLESPACE_VERSION_DIRECTORY) ||
+			   forceoverwrite) &&
 			  errno == EEXIST))
 			pg_fatal("could not create directory \"%s\": %m",
 					 filename);
@@ -317,8 +341,20 @@ extract_directory(const char *filename, mode_t mode)
  * undocumented feature that you can map them too.)
  */
 static void
-extract_link(const char *filename, const char *linktarget)
+extract_link(const char *filename, const char *linktarget, bool forceoverwrite)
 {
+	/*
+	 * GPDB: with --force-overwrite the backup is extracted into an existing
+	 * data directory (e.g. an in-place gprecoverseg full recovery of a segment
+	 * that has tablespaces).  In that case a pg_tblspc symlink may already
+	 * exist, pointing at the old location; unlike upstream, extract_directory
+	 * only tolerates EEXIST rather than clearing the directory, so the stale
+	 * symlink would otherwise survive and symlink() below fails with EEXIST,
+	 * aborting the recovery.  Remove any existing link first.
+	 */
+	if (forceoverwrite)
+		unlink(filename);
+
 	if (symlink(linktarget, filename) != 0)
 		pg_fatal("could not create symbolic link from \"%s\" to \"%s\": %m",
 				 filename, linktarget);
@@ -330,9 +366,20 @@ extract_link(const char *filename, const char *linktarget)
  * Return the resulting handle so we can write the content to the file.
  */
 static FILE *
-create_file_for_extract(const char *filename, mode_t mode)
+create_file_for_extract(const char *filename, mode_t mode, bool forceoverwrite)
 {
 	FILE	   *file;
+
+	/*
+	 * GPDB: with --force-overwrite the target file may already exist and be
+	 * read-only (e.g. a chmod'd append-only segfile during gprecoverseg full
+	 * recovery), which makes fopen(..., "wb") fail with EACCES.  Remove it
+	 * first, the same way extract_directory()/extract_link() honor
+	 * forceoverwrite.  The PG15 bbsink/bbstreamer rewrite dropped this for the
+	 * regular-file path (the directory/link paths were re-grafted earlier).
+	 */
+	if (forceoverwrite)
+		unlink(filename);
 
 	file = fopen(filename, "wb");
 	if (file == NULL)

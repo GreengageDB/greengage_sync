@@ -40,13 +40,7 @@
 #include "utils/builtins.h"
 #include "utils/float.h"
 #include "utils/guc.h"
-<<<<<<< HEAD
-#include "utils/int8.h"
 #include "utils/memutils.h"
-||||||| e1c1c30f635
-#include "utils/int8.h"
-=======
->>>>>>> adadae45816
 #include "utils/numeric.h"
 #include "utils/pg_lsn.h"
 #include "utils/sortsupport.h"
@@ -9569,7 +9563,7 @@ div_var_int(const NumericVar *var, int ival, int ival_weight,
 	}
 
 	/* Store the quotient in result */
-	digitbuf_free(result->buf);
+	digitbuf_free(result);
 	result->ndigits = res_ndigits;
 	result->buf = res_buf;
 	result->digits = res_digits;
@@ -10790,17 +10784,9 @@ power_var(const NumericVar *base, const NumericVar *exp, NumericVar *result)
 		return;
 	}
 
-<<<<<<< HEAD
+	init_var(&abs_base);
 	quick_init_var(&ln_base);
 	quick_init_var(&ln_num);
-||||||| e1c1c30f635
-	init_var(&ln_base);
-	init_var(&ln_num);
-=======
-	init_var(&abs_base);
-	init_var(&ln_base);
-	init_var(&ln_num);
->>>>>>> adadae45816
 
 	/*
 	 * If base is negative, insist that exp be an integer.  The result is then

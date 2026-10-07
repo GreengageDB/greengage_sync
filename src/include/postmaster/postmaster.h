@@ -17,36 +17,6 @@
 extern PGDLLIMPORT bool EnableSSL;
 extern PGDLLIMPORT int ReservedBackends;
 extern PGDLLIMPORT int PostPortNumber;
-<<<<<<< HEAD
-extern int	Unix_socket_permissions;
-extern char *Unix_socket_group;
-extern char *Unix_socket_directories;
-extern char *ListenAddresses;
-extern char *interconnect_address;
-extern bool ClientAuthInProgress;
-extern int	PreAuthDelay;
-extern int	AuthenticationTimeout;
-extern bool Log_connections;
-extern bool log_hostname;
-extern bool enable_bonjour;
-extern char *bonjour_name;
-extern bool restart_after_crash;
-extern bool remove_temp_files_after_crash;
-||||||| e1c1c30f635
-extern int	Unix_socket_permissions;
-extern char *Unix_socket_group;
-extern char *Unix_socket_directories;
-extern char *ListenAddresses;
-extern bool ClientAuthInProgress;
-extern int	PreAuthDelay;
-extern int	AuthenticationTimeout;
-extern bool Log_connections;
-extern bool log_hostname;
-extern bool enable_bonjour;
-extern char *bonjour_name;
-extern bool restart_after_crash;
-extern bool remove_temp_files_after_crash;
-=======
 extern PGDLLIMPORT int Unix_socket_permissions;
 extern PGDLLIMPORT char *Unix_socket_group;
 extern PGDLLIMPORT char *Unix_socket_directories;
@@ -60,7 +30,9 @@ extern PGDLLIMPORT bool enable_bonjour;
 extern PGDLLIMPORT char *bonjour_name;
 extern PGDLLIMPORT bool restart_after_crash;
 extern PGDLLIMPORT bool remove_temp_files_after_crash;
->>>>>>> adadae45816
+
+/* GPDB: local address used for the interconnect (set in cdbutil.c) */
+extern PGDLLIMPORT char *interconnect_address;
 
 #ifdef WIN32
 extern PGDLLIMPORT HANDLE PostmasterHandle;

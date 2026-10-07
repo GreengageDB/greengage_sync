@@ -318,15 +318,7 @@ ERROR:  unsupported XML feature
 LINE 1: SELECT '<>' IS NOT DOCUMENT;
                ^
 DETAIL:  This functionality requires the server to be built with libxml support.
-<<<<<<< HEAD
-HINT:  You need to rebuild PostgreSQL using --with-libxml.
-SELECT xmlagg(data order by id) FROM xmltest;
-||||||| e1c1c30f635
-HINT:  You need to rebuild PostgreSQL using --with-libxml.
 SELECT xmlagg(data) FROM xmltest;
-=======
-SELECT xmlagg(data) FROM xmltest;
->>>>>>> adadae45816
  xmlagg 
 --------
  

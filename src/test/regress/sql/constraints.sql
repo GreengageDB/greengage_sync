@@ -8,16 +8,12 @@
 --  - EXCLUDE clauses
 --
 
-<<<<<<< HEAD:src/test/regress/input/constraints.source
 -- start_matchsubs
 -- m/DETAIL:  Failing row contains \(.*\)/
 -- s/DETAIL:  Failing row contains \(.*\)/DETAIL:  Failing row contains (#####)/
 -- end_matchsubs
-||||||| e1c1c30f635:src/test/regress/input/constraints.source
-=======
 -- directory paths are passed to us in environment variables
 \getenv abs_srcdir PG_ABS_SRCDIR
->>>>>>> adadae45816:src/test/regress/sql/constraints.sql
 
 --
 -- DEFAULT syntax
@@ -32,7 +28,7 @@ INSERT INTO DEFAULT_TBL (i, f) VALUES (2, 987.654);
 INSERT INTO DEFAULT_TBL (x) VALUES ('marc');
 INSERT INTO DEFAULT_TBL VALUES (3, null, 1.0);
 
-SELECT * FROM DEFAULT_TBL;
+SELECT '' AS five, * FROM DEFAULT_TBL;
 
 CREATE SEQUENCE DEFAULT_SEQ CACHE 1;
 
@@ -44,7 +40,7 @@ INSERT INTO DEFAULTEXPR_TBL (i1) VALUES (-3);
 INSERT INTO DEFAULTEXPR_TBL (i2) VALUES (-4);
 INSERT INTO DEFAULTEXPR_TBL (i2) VALUES (NULL);
 
-SELECT * FROM DEFAULTEXPR_TBL;
+SELECT '' AS four, * FROM DEFAULTEXPR_TBL;
 
 -- syntax errors
 --  test for extraneous comma
@@ -72,7 +68,7 @@ INSERT INTO CHECK_TBL VALUES (2);
 INSERT INTO CHECK_TBL VALUES (6);
 INSERT INTO CHECK_TBL VALUES (1);
 
-SELECT * FROM CHECK_TBL;
+SELECT '' AS three, * FROM CHECK_TBL;
 
 CREATE SEQUENCE CHECK_SEQ CACHE 1;
 
@@ -87,7 +83,7 @@ INSERT INTO CHECK2_TBL VALUES (0, 'check failed', -2);
 INSERT INTO CHECK2_TBL VALUES (6, 'check failed', 11);
 INSERT INTO CHECK2_TBL VALUES (7, 'check ok', 7);
 
-SELECT * from CHECK2_TBL;
+SELECT '' AS two, * from CHECK2_TBL;
 
 --
 -- Check constraints on INSERT
@@ -103,7 +99,7 @@ CREATE TABLE INSERT_TBL (x INT DEFAULT nextval('insert_seq'),
 
 INSERT INTO INSERT_TBL(x,z) VALUES (2, -2);
 
-SELECT * FROM INSERT_TBL;
+SELECT '' AS zero, * FROM INSERT_TBL;
 
 SELECT 'one' AS one, nextval('insert_seq');
 
@@ -115,7 +111,7 @@ INSERT INTO INSERT_TBL VALUES (5, 'check failed', -5);
 INSERT INTO INSERT_TBL VALUES (7, '!check failed', -7);
 INSERT INTO INSERT_TBL(y) VALUES ('-!NULL-');
 
-SELECT * FROM INSERT_TBL;
+SELECT '' AS four, * FROM INSERT_TBL;
 
 -- GPDB: reset the table contents to match upstream.
 delete from insert_tbl;
@@ -137,7 +133,7 @@ insert into insert_tbl values
   (5, '!check failed', -5),
   (6, '-!NULL-', -6);
 
-SELECT * FROM INSERT_TBL;
+SELECT '' AS six, * FROM INSERT_TBL;
 
 SELECT 'seven' AS one, nextval('insert_seq');
 
@@ -150,7 +146,7 @@ SELECT 'eight' AS one, nextval('insert_seq');
 -- was wrong:
 INSERT INTO INSERT_TBL VALUES (null, null, null);
 
-SELECT * FROM INSERT_TBL;
+SELECT '' AS nine, * FROM INSERT_TBL;
 
 --
 -- Check constraints on system columns
@@ -242,7 +238,7 @@ INSERT INTO INSERT_TBL VALUES
   (5, '!check failed', -5),
   (6, 'try again', -6);
 
-SELECT * FROM INSERT_TBL;
+SELECT '' AS three, * FROM INSERT_TBL;
 
 INSERT INTO INSERT_TBL SELECT * FROM tmp WHERE yd = 'try again';
 INSERT INTO INSERT_TBL(y,z) SELECT yd, -7 FROM tmp WHERE yd = 'try again';
@@ -251,7 +247,7 @@ INSERT INTO INSERT_TBL(y,z) SELECT yd, -8 FROM tmp WHERE yd = 'try again';
 -- GPDB: Fixup
 INSERT INTO INSERT_TBL VALUES (7, 'try again', -7);
 
-SELECT * FROM INSERT_TBL;
+SELECT '' AS four, * FROM INSERT_TBL;
 
 DROP TABLE tmp;
 
@@ -279,7 +275,7 @@ CREATE TABLE COPY_TBL (x INT, y TEXT, z INT,
 \set filename :abs_srcdir '/data/constro.data'
 COPY COPY_TBL FROM :'filename';
 
-SELECT * FROM COPY_TBL;
+SELECT '' AS two, * FROM COPY_TBL;
 
 \set filename :abs_srcdir '/data/constrf.data'
 COPY COPY_TBL FROM :'filename';
@@ -299,7 +295,7 @@ INSERT INTO PRIMARY_TBL VALUES (4, 'three');
 INSERT INTO PRIMARY_TBL VALUES (5, 'one');
 INSERT INTO PRIMARY_TBL (t) VALUES ('six');
 
-SELECT * FROM PRIMARY_TBL;
+SELECT '' AS four, * FROM PRIMARY_TBL;
 
 DROP TABLE PRIMARY_TBL;
 
@@ -313,7 +309,7 @@ INSERT INTO PRIMARY_TBL VALUES (4, 'three');
 INSERT INTO PRIMARY_TBL VALUES (5, 'one');
 INSERT INTO PRIMARY_TBL (t) VALUES ('six');
 
-SELECT * FROM PRIMARY_TBL;
+SELECT '' AS three, * FROM PRIMARY_TBL;
 
 DROP TABLE PRIMARY_TBL;
 
@@ -336,7 +332,7 @@ INSERT INTO UNIQUE_TBL VALUES (6, 'six-upsert-insert') ON CONFLICT (i) DO UPDATE
 -- should fail
 INSERT INTO UNIQUE_TBL VALUES (1, 'a'), (2, 'b'), (2, 'b') ON CONFLICT (i) DO UPDATE SET t = 'fails';
 
-SELECT * FROM UNIQUE_TBL;
+SELECT '' AS five, * FROM UNIQUE_TBL;
 
 DROP TABLE UNIQUE_TBL;
 
@@ -364,7 +360,7 @@ INSERT INTO UNIQUE_TBL VALUES (1, 'one');
 INSERT INTO UNIQUE_TBL VALUES (5, 'one');
 INSERT INTO UNIQUE_TBL (t) VALUES ('six');
 
-SELECT * FROM UNIQUE_TBL;
+SELECT '' AS five, * FROM UNIQUE_TBL;
 
 DROP TABLE UNIQUE_TBL;
 

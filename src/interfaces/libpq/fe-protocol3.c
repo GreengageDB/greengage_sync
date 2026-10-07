@@ -3,14 +3,8 @@
  * fe-protocol3.c
  *	  functions that are specific to frontend/backend protocol version 3
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1109,7 +1103,6 @@ pqGetErrorNotice3(PGconn *conn, bool isError)
 	 */
 	if (isError)
 	{
-<<<<<<< HEAD
 		if (res)
 			res->errMsg = pqResultStrdup(res, workBuf.data);
 
@@ -1135,11 +1128,6 @@ pqGetErrorNotice3(PGconn *conn, bool isError)
 			res->cdbstats = prev;
 		}
 
-||||||| e1c1c30f635
-		if (res)
-			res->errMsg = pqResultStrdup(res, workBuf.data);
-=======
->>>>>>> adadae45816
 		pqClearAsyncResult(conn);	/* redundant, but be safe */
 		if (res)
 		{

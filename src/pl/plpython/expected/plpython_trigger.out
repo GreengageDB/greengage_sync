@@ -450,17 +450,8 @@ SET DateStyle = 'ISO';
 CREATE FUNCTION set_modif_time() RETURNS trigger AS $$
     TD['new']['modif_time'] = '2010-10-13 21:57:28.930486'
     return 'MODIFY'
-<<<<<<< HEAD
-$$ LANGUAGE plpythonu;
--- Add 'DISTRIBUTED RANDOMLY' to avoid "ERROR:  Cannot parallelize an UPDATE statement that updates the distribution columns"
-CREATE TABLE pb (a TEXT, modif_time TIMESTAMP(0) WITHOUT TIME ZONE) DISTRIBUTED RANDOMLY;
-||||||| e1c1c30f635
-$$ LANGUAGE plpythonu;
-CREATE TABLE pb (a TEXT, modif_time TIMESTAMP(0) WITHOUT TIME ZONE);
-=======
 $$ LANGUAGE plpython3u;
 CREATE TABLE pb (a TEXT, modif_time TIMESTAMP(0) WITHOUT TIME ZONE);
->>>>>>> adadae45816
 CREATE TRIGGER set_modif_time BEFORE UPDATE ON pb
   FOR EACH ROW EXECUTE PROCEDURE set_modif_time();
 INSERT INTO pb VALUES ('a', '2010-10-09 21:57:33.930486');

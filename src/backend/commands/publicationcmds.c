@@ -53,7 +53,6 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
-<<<<<<< HEAD
 #include "catalog/heap.h"
 #include "catalog/oid_dispatch.h"
 #include "cdb/cdbdisp_query.h"
@@ -61,10 +60,7 @@
 
 /* Same as MAXNUMMESSAGES in sinvaladt.c */
 #define MAX_RELCACHE_INVAL_MSGS 4096
-||||||| e1c1c30f635
-/* Same as MAXNUMMESSAGES in sinvaladt.c */
-#define MAX_RELCACHE_INVAL_MSGS 4096
-=======
+
 /*
  * Information used to validate the columns in the row filter expression. See
  * contain_invalid_rfcolumn_walker for details.
@@ -77,7 +73,6 @@ typedef struct rf_context
 	Oid			relid;			/* relid of the relation */
 	Oid			parentid;		/* relid of the parent relation */
 } rf_context;
->>>>>>> adadae45816
 
 static List *OpenRelIdList(List *relids);
 static List *OpenTableList(List *tables);

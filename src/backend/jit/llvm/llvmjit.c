@@ -171,14 +171,7 @@ static void
 llvm_release_context(JitContext *context)
 {
 	LLVMJitContext *llvm_context = (LLVMJitContext *) context;
-<<<<<<< HEAD
-||||||| e1c1c30f635
-
-	llvm_enter_fatal_on_oom();
-
-=======
 	ListCell   *lc;
->>>>>>> adadae45816
 
 	/*
 	 * When this backend is exiting, don't clean up LLVM. As an error might
@@ -897,14 +890,8 @@ llvm_shutdown(int code, Datum arg)
 	 * has occurred in the middle of LLVM code. It is not safe to call back
 	 * into LLVM (which is why a FATAL error was thrown).
 	 *
-<<<<<<< HEAD
-	 * We do need to shutdown LLVM in other shutdown cases, otherwise
-	 * e.g. profiling data won't be written out.
-||||||| e1c1c30f635
-=======
 	 * We do need to shutdown LLVM in other shutdown cases, otherwise e.g.
 	 * profiling data won't be written out.
->>>>>>> adadae45816
 	 */
 	if (llvm_in_fatal_on_oom())
 	{

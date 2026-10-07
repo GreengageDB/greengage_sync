@@ -68,7 +68,6 @@ extern Expr *transform_array_Const_to_ArrayExpr(Const *c);
 extern Query *inline_set_returning_function(PlannerInfo *root,
 											RangeTblEntry *rte);
 
-<<<<<<< HEAD
 extern Expr *evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod,
 			  Oid result_collation);
 
@@ -76,9 +75,6 @@ extern bool subexpression_match(Expr *expr1, Expr *expr2);
 
 // resolve the join alias varno/varattno information to its base varno/varattno information
 extern Query *flatten_join_alias_var_optimizer(Query *query, int queryLevel);
-||||||| e1c1c30f635
-=======
 extern Bitmapset *pull_paramids(Expr *expr);
->>>>>>> adadae45816
 
 #endif							/* CLAUSES_H */

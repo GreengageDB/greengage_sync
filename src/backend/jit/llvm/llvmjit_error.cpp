@@ -91,12 +91,7 @@ llvm_leave_fatal_on_oom(void)
 }
 
 /*
-<<<<<<< HEAD
- * Are we currently in an fatal-on-oom section? Useful to skip cleanup in case
-||||||| e1c1c30f635
-=======
  * Are we currently in a fatal-on-oom section? Useful to skip cleanup in case
->>>>>>> adadae45816
  * of errors.
  */
 bool

@@ -18,15 +18,9 @@
  * "x" to be considered equal() to another reference to "x" in the query.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -3586,10 +3580,22 @@ _equalCommonTableExpr(const CommonTableExpr *a, const CommonTableExpr *b)
 }
 
 static bool
-<<<<<<< HEAD
 _equalTableValueExpr(const TableValueExpr *a, const TableValueExpr *b)
 {
 	COMPARE_NODE_FIELD(subquery);
+
+	return true;
+}
+
+static bool
+_equalMergeWhenClause(const MergeWhenClause *a, const MergeWhenClause *b)
+{
+	COMPARE_SCALAR_FIELD(matched);
+	COMPARE_SCALAR_FIELD(commandType);
+	COMPARE_SCALAR_FIELD(override);
+	COMPARE_NODE_FIELD(condition);
+	COMPARE_NODE_FIELD(targetList);
+	COMPARE_NODE_FIELD(values);
 
 	return true;
 }
@@ -3617,16 +3623,6 @@ static bool
 _equalRowIdExpr(const RowIdExpr *a, const RowIdExpr *b)
 {
 	COMPARE_SCALAR_FIELD(rowidexpr_id);
-||||||| e1c1c30f635
-=======
-_equalMergeWhenClause(const MergeWhenClause *a, const MergeWhenClause *b)
-{
-	COMPARE_SCALAR_FIELD(matched);
-	COMPARE_SCALAR_FIELD(commandType);
-	COMPARE_SCALAR_FIELD(override);
-	COMPARE_NODE_FIELD(condition);
-	COMPARE_NODE_FIELD(targetList);
-	COMPARE_NODE_FIELD(values);
 
 	return true;
 }
@@ -3640,7 +3636,6 @@ _equalMergeAction(const MergeAction *a, const MergeAction *b)
 	COMPARE_NODE_FIELD(qual);
 	COMPARE_NODE_FIELD(targetList);
 	COMPARE_NODE_FIELD(updateColnos);
->>>>>>> adadae45816
 
 	return true;
 }
@@ -4712,11 +4707,9 @@ equal(const void *a, const void *b)
 		case T_PartitionCmd:
 			retval = _equalPartitionCmd(a, b);
 			break;
-<<<<<<< HEAD
 		case T_DistributionKeyElem:
 			retval = _equalDistributionKeyElem(a, b);
-||||||| e1c1c30f635
-=======
+			break;
 		case T_PublicationObjSpec:
 			retval = _equalPublicationObject(a, b);
 			break;
@@ -4761,7 +4754,6 @@ equal(const void *a, const void *b)
 			break;
 		case T_JsonTableColumn:
 			retval = _equalJsonTableColumn(a, b);
->>>>>>> adadae45816
 			break;
 
 		default:

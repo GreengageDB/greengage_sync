@@ -3,15 +3,9 @@
  * joinpath.c
  *	  Routines to find all possible paths for processing a set of joins
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -2038,28 +2032,12 @@ consider_parallel_nestloop(PlannerInfo *root,
 			 * Try generating a memoize path and see if that makes the nested
 			 * loop any cheaper.
 			 */
-<<<<<<< HEAD
-			rcpath = get_resultcache_path(root, innerrel, outerrel,
-										  innerpath, outerpath, jointype,
-										  extra);
-			if (rcpath != NULL)
-				try_partial_nestloop_path(root, joinrel, outerpath, rcpath,
-										  pathkeys, jointype, save_jointype, extra);
-||||||| e1c1c30f635
-			rcpath = get_resultcache_path(root, innerrel, outerrel,
-										  innerpath, outerpath, jointype,
-										  extra);
-			if (rcpath != NULL)
-				try_partial_nestloop_path(root, joinrel, outerpath, rcpath,
-										  pathkeys, jointype, extra);
-=======
 			mpath = get_memoize_path(root, innerrel, outerrel,
 									 innerpath, outerpath, jointype,
 									 extra);
 			if (mpath != NULL)
 				try_partial_nestloop_path(root, joinrel, outerpath, mpath,
-										  pathkeys, jointype, extra);
->>>>>>> adadae45816
+										  pathkeys, jointype, save_jointype, extra);
 		}
 	}
 }

@@ -14,15 +14,9 @@
  * contain optimizable statements, which we should transform.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *	src/backend/parser/analyze.c
@@ -2458,7 +2452,6 @@ transformSetOperationTree_internal(ParseState *pstate, SelectStmt *stmt,
 		 * We will do another coercion at the top, after processing the second
 		 * branch.
 		 */
-<<<<<<< HEAD
 		if (isTopLevel &&
 			pstate->p_parent_cte &&
 			pstate->p_parent_cte->cterecursive)
@@ -2471,13 +2464,6 @@ transformSetOperationTree_internal(ParseState *pstate, SelectStmt *stmt,
 
 			coerceSetOpTypes(pstate, op->larg, selected_types, selected_typmods, &ltargetlist);
 
-||||||| e1c1c30f635
-		if (isTopLevel &&
-			pstate->p_parent_cte &&
-			pstate->p_parent_cte->cterecursive)
-=======
-		if (isTopLevel && recursive)
->>>>>>> adadae45816
 			determineRecursiveColTypes(pstate, op->larg, ltargetlist);
 		}
 
@@ -2706,7 +2692,7 @@ coerceSetOpTypes(ParseState *pstate, Node *sop,
 				 * support.
 				 */
 				op->groupClauses = lappend(op->groupClauses,
-										   makeSortGroupClauseForSetOp(rescoltype, recursive));
+										   makeSortGroupClauseForSetOp(rescoltype, (pstate->p_parent_cte && pstate->p_parent_cte->cterecursive)));
 
 				cancel_parser_errposition_callback(&pcbstate);
 			}

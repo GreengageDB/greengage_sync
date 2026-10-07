@@ -45,13 +45,9 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
-<<<<<<< HEAD
 #include "catalog/oid_dispatch.h"
-||||||| e1c1c30f635
-=======
 static void publication_translate_columns(Relation targetrel, List *columns,
 										  int *natts, AttrNumber **attrs);
->>>>>>> adadae45816
 
 /*
  * Check if relation can be in given publication and throws appropriate
@@ -394,20 +390,10 @@ publication_add_relation(Oid pubid, PublicationRelInfo *pri,
 	memset(values, 0, sizeof(values));
 	memset(nulls, false, sizeof(nulls));
 
-<<<<<<< HEAD
-	prrelid = GetNewOidForPublicationRel(rel, PublicationRelObjectIndexId,
+	pubreloid = GetNewOidForPublicationRel(rel, PublicationRelObjectIndexId,
 										 Anum_pg_publication_rel_oid,
 										 relid, pubid);
-	values[Anum_pg_publication_rel_oid - 1] = ObjectIdGetDatum(prrelid);
-||||||| e1c1c30f635
-	prrelid = GetNewOidWithIndex(rel, PublicationRelObjectIndexId,
-								 Anum_pg_publication_rel_oid);
-	values[Anum_pg_publication_rel_oid - 1] = ObjectIdGetDatum(prrelid);
-=======
-	pubreloid = GetNewOidWithIndex(rel, PublicationRelObjectIndexId,
-								   Anum_pg_publication_rel_oid);
 	values[Anum_pg_publication_rel_oid - 1] = ObjectIdGetDatum(pubreloid);
->>>>>>> adadae45816
 	values[Anum_pg_publication_rel_prpubid - 1] =
 		ObjectIdGetDatum(pubid);
 	values[Anum_pg_publication_rel_prrelid - 1] =
@@ -641,8 +627,9 @@ publication_add_schema(Oid pubid, Oid schemaid, bool if_not_exists)
 	memset(values, 0, sizeof(values));
 	memset(nulls, false, sizeof(nulls));
 
-	psschid = GetNewOidWithIndex(rel, PublicationNamespaceObjectIndexId,
-								 Anum_pg_publication_namespace_oid);
+	psschid = GetNewOidForPublicationNamespace(rel, PublicationNamespaceObjectIndexId,
+											   Anum_pg_publication_namespace_oid,
+											   schemaid, pubid);
 	values[Anum_pg_publication_namespace_oid - 1] = ObjectIdGetDatum(psschid);
 	values[Anum_pg_publication_namespace_pnpubid - 1] =
 		ObjectIdGetDatum(pubid);

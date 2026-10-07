@@ -1039,12 +1039,8 @@ get_object_address(ObjectType objtype, Node *object,
 			case OBJECT_FDW:
 			case OBJECT_FOREIGN_SERVER:
 			case OBJECT_EVENT_TRIGGER:
-<<<<<<< HEAD
 			case OBJECT_EXTPROTOCOL:
-||||||| e1c1c30f635
-=======
 			case OBJECT_PARAMETER_ACL:
->>>>>>> adadae45816
 			case OBJECT_ACCESS_METHOD:
 			case OBJECT_PUBLICATION:
 			case OBJECT_SUBSCRIPTION:
@@ -2648,18 +2644,14 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 		case OBJECT_EXTPROTOCOL:
 			if (!pg_extprotocol_ownercheck(address.objectId, roleid))
 				aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_EXTPROTOCOL,
-							   strVal((Value *) object));
+							   strVal(object));
 			break;
 		case OBJECT_TSPARSER:
 		case OBJECT_TSTEMPLATE:
 		case OBJECT_ACCESS_METHOD:
-<<<<<<< HEAD
 		case OBJECT_RESQUEUE:
 		case OBJECT_RESGROUP:
-||||||| e1c1c30f635
-=======
 		case OBJECT_PARAMETER_ACL:
->>>>>>> adadae45816
 			/* We treat these object types as being owned by superusers */
 			if (!superuser_arg(roleid))
 				ereport(ERROR,

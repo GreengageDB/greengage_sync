@@ -619,13 +619,7 @@ heapam_relation_set_new_filenode(Relation rel,
 	 */
 	*minmulti = GetOldestMultiXactId();
 
-<<<<<<< HEAD
-	srel = RelationCreateStorage(*newrnode, persistence, SMGR_MD);
-||||||| e1c1c30f635
-	srel = RelationCreateStorage(*newrnode, persistence);
-=======
-	srel = RelationCreateStorage(*newrnode, persistence, true);
->>>>>>> adadae45816
+	srel = RelationCreateStorage(*newrnode, persistence, SMGR_MD, true);
 
 	/*
 	 * If required, set up an init fork for an unlogged table so that it can
@@ -663,15 +657,7 @@ heapam_relation_copy_data(Relation rel, const RelFileNode *newrnode)
 {
 	SMgrRelation dstrel;
 
-<<<<<<< HEAD
 	dstrel = smgropen(*newrnode, rel->rd_backend, SMGR_MD);
-	RelationOpenSmgr(rel);
-||||||| e1c1c30f635
-	dstrel = smgropen(*newrnode, rel->rd_backend);
-	RelationOpenSmgr(rel);
-=======
-	dstrel = smgropen(*newrnode, rel->rd_backend);
->>>>>>> adadae45816
 
 	/*
 	 * Since we copy the file directly without looking at the shared buffers,
@@ -688,13 +674,7 @@ heapam_relation_copy_data(Relation rel, const RelFileNode *newrnode)
 	 * NOTE: any conflict in relfilenode value will be caught in
 	 * RelationCreateStorage().
 	 */
-<<<<<<< HEAD
-	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, SMGR_MD);
-||||||| e1c1c30f635
-	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence);
-=======
-	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, true);
->>>>>>> adadae45816
+	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, SMGR_MD, true);
 
 	/* copy main fork */
 	RelationCopyStorage(RelationGetSmgr(rel), dstrel, MAIN_FORKNUM,
@@ -715,16 +695,8 @@ heapam_relation_copy_data(Relation rel, const RelFileNode *newrnode)
 			if (RelationIsPermanent(rel) ||
 				(rel->rd_rel->relpersistence == RELPERSISTENCE_UNLOGGED &&
 				 forkNum == INIT_FORKNUM))
-<<<<<<< HEAD
 				log_smgrcreate(newrnode, forkNum, SMGR_MD);
-			RelationCopyStorage(rel->rd_smgr, dstrel, forkNum,
-||||||| e1c1c30f635
-				log_smgrcreate(newrnode, forkNum);
-			RelationCopyStorage(rel->rd_smgr, dstrel, forkNum,
-=======
-				log_smgrcreate(newrnode, forkNum);
 			RelationCopyStorage(RelationGetSmgr(rel), dstrel, forkNum,
->>>>>>> adadae45816
 								rel->rd_rel->relpersistence);
 		}
 	}

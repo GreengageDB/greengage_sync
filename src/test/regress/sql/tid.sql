@@ -1,10 +1,7 @@
-<<<<<<< HEAD
 -- start_matchignore
 -- m/NOTICE:  SELECT uses system-defined column "tid_tab.ctid" without the necessary companion column "tid_tab.gp_segment_id"/
 -- m/HINT:  To uniquely identify a row within a distributed table, use the "gp_segment_id" column together with the "ctid" column./
 -- end_matchignore
-||||||| e1c1c30f635
-=======
 -- basic tests for the TID data type
 
 SELECT
@@ -16,7 +13,6 @@ SELECT
 SELECT '(4294967296,1)'::tid;  -- error
 SELECT '(1,65536)'::tid;  -- error
 
->>>>>>> adadae45816
 
 -- tests for functions related to TID handling
 

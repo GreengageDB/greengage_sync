@@ -4,7 +4,6 @@
 --
 
 --
-<<<<<<< HEAD
 -- create required tables
 --
 CREATE TABLE FLOAT8_NUMER_TBL(i INT DEFAULT 1, f1 float8);
@@ -27,8 +26,6 @@ INSERT INTO INT4_NUMER_TBL(f1) VALUES ('123456     ');
 INSERT INTO INT4_NUMER_TBL(f1) VALUES ('    -123456');
 INSERT INTO INT4_NUMER_TBL(f1) VALUES ('2147483647');
 INSERT INTO INT4_NUMER_TBL(f1) VALUES ('-2147483647');
-||||||| e1c1c30f635
-=======
 -- Trailing junk in numeric literals
 --
 
@@ -42,7 +39,6 @@ SELECT 0.0e1a;
 SELECT 0.0e;
 SELECT 0.0e+a;
 PREPARE p1 AS SELECT $1a;
->>>>>>> adadae45816
 
 --
 -- Test implicit type conversions

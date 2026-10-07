@@ -3,15 +3,9 @@
  * bufmgr.c
  *	  buffer manager interface routines
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -3106,60 +3100,7 @@ RelationGetNumberOfBlocksInFork(Relation relation, ForkNumber forkNum)
 
 		szbytes = table_relation_size(relation, forkNum);
 
-<<<<<<< HEAD
-		case RELKIND_RELATION:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_MATVIEW:
-		case RELKIND_AOSEGMENTS:
-		case RELKIND_AOVISIMAP:
-		case RELKIND_AOBLOCKDIR:
-			{
-				/*
-				 * Not every table AM uses BLCKSZ wide fixed size blocks.
-				 * Therefore tableam returns the size in bytes - but for the
-				 * purpose of this routine, we want the number of blocks.
-				 * Therefore divide, rounding up.
-				 */
-				uint64		szbytes;
-
-				szbytes = table_relation_size(relation, forkNum);
-
-				return (szbytes + (BLCKSZ - 1)) / BLCKSZ;
-			}
-		case RELKIND_VIEW:
-		case RELKIND_COMPOSITE_TYPE:
-		case RELKIND_FOREIGN_TABLE:
-		case RELKIND_PARTITIONED_TABLE:
-		default:
-			Assert(false);
-			break;
-||||||| e1c1c30f635
-		case RELKIND_RELATION:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_MATVIEW:
-			{
-				/*
-				 * Not every table AM uses BLCKSZ wide fixed size blocks.
-				 * Therefore tableam returns the size in bytes - but for the
-				 * purpose of this routine, we want the number of blocks.
-				 * Therefore divide, rounding up.
-				 */
-				uint64		szbytes;
-
-				szbytes = table_relation_size(relation, forkNum);
-
-				return (szbytes + (BLCKSZ - 1)) / BLCKSZ;
-			}
-		case RELKIND_VIEW:
-		case RELKIND_COMPOSITE_TYPE:
-		case RELKIND_FOREIGN_TABLE:
-		case RELKIND_PARTITIONED_TABLE:
-		default:
-			Assert(false);
-			break;
-=======
 		return (szbytes + (BLCKSZ - 1)) / BLCKSZ;
->>>>>>> adadae45816
 	}
 	else if (RELKIND_HAS_STORAGE(relation->rd_rel->relkind))
 	{
@@ -3735,19 +3676,12 @@ FlushRelationBuffers(Relation rel)
 	int			i;
 	BufferDesc *bufHdr;
 
-<<<<<<< HEAD
 	/* Open rel at the smgr level if not already done */
 	RelationOpenSmgr(rel);
 
 	if (!RelationUsesBufferManager(rel))
 		return;
 
-||||||| e1c1c30f635
-	/* Open rel at the smgr level if not already done */
-	RelationOpenSmgr(rel);
-
-=======
->>>>>>> adadae45816
 	if (RelationUsesLocalBuffers(rel))
 	{
 		for (i = 0; i < NLocBuffer; i++)
@@ -3812,19 +3746,9 @@ FlushRelationBuffers(Relation rel)
 			(buf_state & (BM_VALID | BM_DIRTY)) == (BM_VALID | BM_DIRTY))
 		{
 			PinBuffer_Locked(bufHdr);
-<<<<<<< HEAD
-			AcquireContentLock(bufHdr, LW_SHARED);
-			FlushBuffer(bufHdr, rel->rd_smgr);
-			ReleaseContentLock(bufHdr);
-||||||| e1c1c30f635
-			LWLockAcquire(BufferDescriptorGetContentLock(bufHdr), LW_SHARED);
-			FlushBuffer(bufHdr, rel->rd_smgr);
-			LWLockRelease(BufferDescriptorGetContentLock(bufHdr));
-=======
 			LWLockAcquire(BufferDescriptorGetContentLock(bufHdr), LW_SHARED);
 			FlushBuffer(bufHdr, RelationGetSmgr(rel));
 			LWLockRelease(BufferDescriptorGetContentLock(bufHdr));
->>>>>>> adadae45816
 			UnpinBuffer(bufHdr, true);
 		}
 		else
@@ -3981,11 +3905,18 @@ RelationCopyStorageUsingBuffer(Relation src, Relation dst, ForkNumber forkNum,
 										   RBM_NORMAL, bstrategy_src,
 										   permanent);
 		srcPage = BufferGetPage(srcBuf);
-		if (PageIsNew(srcPage) || PageIsEmpty(srcPage))
-		{
-			ReleaseBuffer(srcBuf);
-			continue;
-		}
+
+		/*
+		 * Copy every block, including empty/new ones.  The upstream PG15.0
+		 * code skipped PageIsNew/PageIsEmpty source pages while extending the
+		 * destination with P_NEW; that silently dropped those blocks and
+		 * shifted the number of every later block, corrupting any relation
+		 * with an empty-but-referenced page -- e.g. an empty btree's root
+		 * leaf (PageIsEmpty), which left the metapage pointing at a block
+		 * that was never copied ("could not read block N ... read only 0 of
+		 * 8192 bytes" when such a database was later read).  Upstream fixed
+		 * this in PG16; copy all blocks so block numbers are preserved.
+		 */
 
 		/* Use P_NEW to extend the destination relation. */
 		dstBuf = ReadBufferWithoutRelcache(dst->rd_node, forkNum, P_NEW,
@@ -4050,7 +3981,7 @@ CreateAndCopyRelationData(RelFileNode src_rnode, RelFileNode dst_rnode,
 	 * directory.  Therefore, each individual relation doesn't need to be
 	 * registered for cleanup.
 	 */
-	RelationCreateStorage(dst_rnode, relpersistence, false);
+	RelationCreateStorage(dst_rnode, relpersistence, SMGR_MD, false);
 
 	/* copy main fork. */
 	RelationCopyStorageUsingBuffer(src_rel, dst_rel, MAIN_FORKNUM, permanent);
@@ -4068,7 +3999,7 @@ CreateAndCopyRelationData(RelFileNode src_rnode, RelFileNode dst_rnode,
 			 * init fork of an unlogged relation.
 			 */
 			if (permanent || forkNum == INIT_FORKNUM)
-				log_smgrcreate(&dst_rnode, forkNum);
+				log_smgrcreate(&dst_rnode, forkNum, SMGR_MD);
 
 			/* Copy a fork's data, block by block. */
 			RelationCopyStorageUsingBuffer(src_rel, dst_rel, forkNum,

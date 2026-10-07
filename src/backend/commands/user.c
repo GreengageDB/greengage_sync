@@ -3,15 +3,9 @@
  * user.c
  *	  Commands for manipulating roles (formerly called users).
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/backend/commands/user.c
@@ -87,7 +81,7 @@ static void SetCreateExtTableForRole(List* allow,
 
 static char *daysofweek[] = {"Sunday", "Monday", "Tuesday", "Wednesday",
 							 "Thursday", "Friday", "Saturday"};
-static int16 ExtractAuthInterpretDay(Value * day);
+static int16 ExtractAuthInterpretDay(Node * day);
 static void ExtractAuthIntervalClause(DefElem *defel,
 			authInterval *authInterval);
 static void AddRoleDenials(const char *rolename, Oid roleid,
@@ -719,16 +713,10 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	char	   *rolename;
 	char	   *password = NULL;	/* user password */
 	int			connlimit = -1; /* maximum connections allowed */
-<<<<<<< HEAD
 	char	   *resqueue = NULL;	/* resource queue for this role */
 	char	   *resgroup = NULL;	/* resource group for this role */
 	List	   *exttabcreate = NIL;	/* external table create privileges being added  */
 	List	   *exttabnocreate = NIL;	/* external table create privileges being removed */
-	List	   *rolemembers = NIL;	/* roles to be added/removed */
-||||||| e1c1c30f635
-	List	   *rolemembers = NIL;	/* roles to be added/removed */
-=======
->>>>>>> adadae45816
 	char	   *validUntil = NULL;	/* time the login is valid until */
 	Datum		validUntil_datum;	/* same, as timestamptz Datum */
 	bool		validUntil_null;
@@ -929,18 +917,10 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	}
 	if (dvalidUntil)
 		validUntil = strVal(dvalidUntil->arg);
-<<<<<<< HEAD
 	if (dresqueue)
 		resqueue = strVal(linitial((List *) dresqueue->arg));
 	if (dresgroup)
 		resgroup = strVal(linitial((List *) dresgroup->arg));
-	if (dbypassRLS)
-		bypassrls = intVal(dbypassRLS->arg);
-||||||| e1c1c30f635
-	if (dbypassRLS)
-		bypassrls = intVal(dbypassRLS->arg);
-=======
->>>>>>> adadae45816
 
 	/*
 	 * Scan the pg_authid relation to be certain the user exists.
@@ -959,16 +939,9 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	 * property.  Otherwise, if you don't have createrole, you're only allowed
 	 * to change your own password.
 	 */
-<<<<<<< HEAD
-
 	bWas_super = ((Form_pg_authid) GETSTRUCT(tuple))->rolsuper;
 
-	if (authform->rolsuper || issuper >= 0)
-||||||| e1c1c30f635
-	if (authform->rolsuper || issuper >= 0)
-=======
 	if (authform->rolsuper || dissuper)
->>>>>>> adadae45816
 	{
 		if (!superuser())
 			ereport(ERROR,
@@ -991,35 +964,10 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	}
 	else if (!have_createrole_privilege())
 	{
-<<<<<<< HEAD
-		/* We already checked issuper, isreplication, and bypassrls */
-		if (!(inherit < 0 &&
-			  createrole < 0 &&
-			  createdb < 0 &&
-			  canlogin < 0 &&
-			  !dconnlimit &&
-			  !rolemembers &&
-			  !validUntil &&
-			  dpassword &&
-			  !exttabcreate &&
-			  !exttabnocreate &&
-			  roleid == GetUserId()))
-||||||| e1c1c30f635
-		/* We already checked issuper, isreplication, and bypassrls */
-		if (!(inherit < 0 &&
-			  createrole < 0 &&
-			  createdb < 0 &&
-			  canlogin < 0 &&
-			  !dconnlimit &&
-			  !rolemembers &&
-			  !validUntil &&
-			  dpassword &&
-			  roleid == GetUserId()))
-=======
 		/* check the rest */
 		if (dinherit || dcreaterole || dcreatedb || dcanlogin || dconnlimit ||
-			drolemembers || dvalidUntil || !dpassword || roleid != GetUserId())
->>>>>>> adadae45816
+			drolemembers || dvalidUntil || !dpassword ||
+			exttabcreate || exttabnocreate || roleid != GetUserId())
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("permission denied")));
@@ -1064,16 +1012,11 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	 */
 	if (dissuper)
 	{
-<<<<<<< HEAD
 		bool isNull;
 		Oid roleResgroup;
+		int issuper = boolVal(dissuper->arg);
 
-		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(issuper > 0);
-||||||| e1c1c30f635
-		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(issuper > 0);
-=======
-		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(boolVal(dissuper->arg));
->>>>>>> adadae45816
+		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(issuper);
 		new_record_repl[Anum_pg_authid_rolsuper - 1] = true;
 
 		roleResgroup = heap_getattr(tuple, Anum_pg_authid_rolresgroup,
@@ -1173,7 +1116,6 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	new_record_nulls[Anum_pg_authid_rolvaliduntil - 1] = validUntil_null;
 	new_record_repl[Anum_pg_authid_rolvaliduntil - 1] = true;
 
-<<<<<<< HEAD
 	/* Set the CREATE EXTERNAL TABLE permissions for this role, if specified in ALTER */
 	if (exttabcreate || exttabnocreate)
 	{
@@ -1284,12 +1226,7 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 		}
 	}
 
-	if (bypassrls >= 0)
-||||||| e1c1c30f635
-	if (bypassrls >= 0)
-=======
 	if (dbypassRLS)
->>>>>>> adadae45816
 	{
 		new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(boolVal(dbypassRLS->arg));
 		new_record_repl[Anum_pg_authid_rolbypassrls - 1] = true;
@@ -1314,24 +1251,20 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 
 		CommandCounterIncrement();
 
-<<<<<<< HEAD
-	if (stmt->action == +1)		/* add members to role */
-	{
-		if (rolemembers)
+		if (stmt->action == +1)		/* add members to role */
+		{
 			alter_subtype = "ADD USER";
-
-		AddRoleMems(rolename, roleid,
-					rolemembers, roleSpecsToIds(rolemembers),
-					GetUserId(), false);
-	}
-	else if (stmt->action == -1)	/* drop members from role */
-	{
-		if (rolemembers)
+			AddRoleMems(rolename, roleid,
+						rolemembers, roleSpecsToIds(rolemembers),
+						GetUserId(), false);
+		}
+		else if (stmt->action == -1)	/* drop members from role */
+		{
 			alter_subtype = "DROP USER";
-
-		DelRoleMems(rolename, roleid,
-					rolemembers, roleSpecsToIds(rolemembers),
-					false);
+			DelRoleMems(rolename, roleid,
+						rolemembers, roleSpecsToIds(rolemembers),
+						false);
+		}
 	}
 
 	if (bWas_super)
@@ -1381,26 +1314,6 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 						   roleid,
 						   GetUserId(),
 						   "ALTER", alter_subtype);
-||||||| e1c1c30f635
-	if (stmt->action == +1)		/* add members to role */
-		AddRoleMems(rolename, roleid,
-					rolemembers, roleSpecsToIds(rolemembers),
-					GetUserId(), false);
-	else if (stmt->action == -1)	/* drop members from role */
-		DelRoleMems(rolename, roleid,
-					rolemembers, roleSpecsToIds(rolemembers),
-					false);
-=======
-		if (stmt->action == +1) /* add members to role */
-			AddRoleMems(rolename, roleid,
-						rolemembers, roleSpecsToIds(rolemembers),
-						GetUserId(), false);
-		else if (stmt->action == -1)	/* drop members from role */
-			DelRoleMems(rolename, roleid,
-						rolemembers, roleSpecsToIds(rolemembers),
-						false);
-	}
->>>>>>> adadae45816
 
 	/*
 	 * Close pg_authid, but keep lock till commit.
@@ -2646,7 +2559,7 @@ ExtractAuthIntervalClause(DefElem *defel, authInterval *interval)
  *		or a string giving name of day in English
  */
 static int16
-ExtractAuthInterpretDay(Value * day)
+ExtractAuthInterpretDay(Node * day)
 {
 	int16   ret;
 	if (day->type == T_Integer)

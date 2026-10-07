@@ -3,15 +3,9 @@
  * view.c
  *	  use rewrite rules to construct views
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -478,17 +472,11 @@ DefineView(ViewStmt *stmt, const char *queryString,
 		rawstmt->stmt_location = stmt_location;
 		rawstmt->stmt_len = stmt_len;
 
-<<<<<<< HEAD
-		viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
+		viewParse = parse_analyze_fixedparams(rawstmt, queryString, NULL, 0, NULL);
 	}
 	else
 		viewParse = (Query *) stmt->query;
 	viewParse_orig = copyObject(viewParse);
-||||||| e1c1c30f635
-	viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
-=======
-	viewParse = parse_analyze_fixedparams(rawstmt, queryString, NULL, 0, NULL);
->>>>>>> adadae45816
 
 	/*
 	 * The grammar should ensure that the result is a single SELECT Query.

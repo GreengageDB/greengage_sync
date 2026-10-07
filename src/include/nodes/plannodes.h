@@ -4,15 +4,9 @@
  *	  definitions for query plan nodes
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/nodes/plannodes.h
@@ -415,7 +409,6 @@ typedef struct ModifyTable
 	Node	   *onConflictWhere;	/* WHERE for ON CONFLICT UPDATE */
 	Index		exclRelRTI;		/* RTI of the EXCLUDED pseudo relation */
 	List	   *exclRelTlist;	/* tlist of the EXCLUDED pseudo relation */
-<<<<<<< HEAD
 
 	/*
 	 * GGDB: true if this UPDATE is executed as a delete+insert pair, because
@@ -427,11 +420,8 @@ typedef struct ModifyTable
 	bool		isSplitUpdate;
 
 	bool		forceTupleRouting; /* dynamic scans require tuple routing */
-||||||| e1c1c30f635
-=======
 	List	   *mergeActionLists;	/* per-target-table lists of actions for
 									 * MERGE */
->>>>>>> adadae45816
 } ModifyTable;
 
 struct PartitionPruneInfo;		/* forward reference to struct below */
@@ -686,18 +676,12 @@ typedef struct DynamicIndexScan
  * indextlist, which represents the contents of the index as a targetlist
  * with one TLE per index column.  Vars appearing in this list reference
  * the base table, and this is the only field in the plan node that may
-<<<<<<< HEAD
- * contain such Vars.
- *
- * GPDB: We need indexqualorig to determine direct dispatch, however there
- * is no need to dispatch it.
-||||||| e1c1c30f635
- * contain such Vars.
-=======
  * contain such Vars.  Also, for the convenience of setrefs.c, TLEs in
  * indextlist are marked as resjunk if they correspond to columns that
  * the index AM cannot reconstruct.
->>>>>>> adadae45816
+ *
+ * GPDB: We need indexqualorig to determine direct dispatch, however there
+ * is no need to dispatch it.
  * ----------------
  */
 typedef struct IndexOnlyScan
@@ -705,12 +689,8 @@ typedef struct IndexOnlyScan
 	Scan		scan;
 	Oid			indexid;		/* OID of index to scan */
 	List	   *indexqual;		/* list of index quals (usually OpExprs) */
-<<<<<<< HEAD
 	List	   *indexqualorig;	/* the same in original form (GPDB keeps it) */
-||||||| e1c1c30f635
-=======
 	List	   *recheckqual;	/* index quals in recheckable form */
->>>>>>> adadae45816
 	List	   *indexorderby;	/* list of index ORDER BY exprs */
 	List	   *indextlist;		/* TargetEntry list describing index's cols */
 	ScanDirection indexorderdir;	/* forward or backward or don't care */
@@ -1907,7 +1887,6 @@ typedef struct PlanInvalItem
 	uint32		hashValue;		/* hash value of object's cache lookup key */
 } PlanInvalItem;
 
-<<<<<<< HEAD
 /* ----------------
  * PartitionSelector node
  *
@@ -1927,8 +1906,7 @@ typedef struct PartitionSelector
 	int32		paramid;	/* result is stored here */
 
 } PartitionSelector;
-||||||| e1c1c30f635
-=======
+
 /*
  * MonotonicFunction
  *
@@ -1945,6 +1923,5 @@ typedef enum MonotonicFunction
 	MONOTONICFUNC_DECREASING = (1 << 1),
 	MONOTONICFUNC_BOTH = MONOTONICFUNC_INCREASING | MONOTONICFUNC_DECREASING
 } MonotonicFunction;
->>>>>>> adadae45816
 
 #endif							/* PLANNODES_H */

@@ -306,33 +306,6 @@ AddInvalidationMessage(InvalidationMsgsGroup *group, int subgroup,
 			/* Create new storage array in TopTransactionContext */
 			int			reqsize = 32;	/* arbitrary */
 
-<<<<<<< HEAD
-		/*
-		 * Keep in mind: the max allowed alloc size is about 1GB, for
-		 * simplification we set the upper limit to half of that.
-		 */
-#define MAXCHUNKSIZE (MaxAllocSize / 2 / sizeof(SharedInvalidationMessage))
-		if (chunksize > MAXCHUNKSIZE)
-			chunksize >>= 1;
-
-		chunk = (InvalidationChunk *)
-			MemoryContextAlloc(CurTransactionContext,
-							   offsetof(InvalidationChunk, msgs) +
-							   chunksize * sizeof(SharedInvalidationMessage));
-		chunk->nitems = 0;
-		chunk->maxitems = chunksize;
-		chunk->next = *listHdr;
-		*listHdr = chunk;
-||||||| e1c1c30f635
-		chunk = (InvalidationChunk *)
-			MemoryContextAlloc(CurTransactionContext,
-							   offsetof(InvalidationChunk, msgs) +
-							   chunksize * sizeof(SharedInvalidationMessage));
-		chunk->nitems = 0;
-		chunk->maxitems = chunksize;
-		chunk->next = *listHdr;
-		*listHdr = chunk;
-=======
 			ima->msgs = (SharedInvalidationMessage *)
 				MemoryContextAlloc(TopTransactionContext,
 								   reqsize * sizeof(SharedInvalidationMessage));
@@ -349,7 +322,6 @@ AddInvalidationMessage(InvalidationMsgsGroup *group, int subgroup,
 						 reqsize * sizeof(SharedInvalidationMessage));
 			ima->maxmsgs = reqsize;
 		}
->>>>>>> adadae45816
 	}
 	/* Okay, add message to current group */
 	ima->msgs[nextindex] = *msg;

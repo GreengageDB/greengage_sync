@@ -1,19 +1,13 @@
 -- Tests for range data types.
 
-<<<<<<< HEAD
 -- start_matchsubs
 -- m/NOTICE:  One or more columns in the following table\(s\) do not have statistics: /
 -- s/.//gs
 -- m/HINT:  For non-partitioned tables, run analyze .+\. For partitioned tables, run analyze rootpartition .+\. See log for columns missing statistics\./
 -- s/.//gs
 -- end_matchsubs
-create type textrange as range (subtype=text, collation="C");
+-- NB: type "textrange" is created in test_setup.sql (shared by several tests).
 
-||||||| e1c1c30f635
-create type textrange as range (subtype=text, collation="C");
-
-=======
->>>>>>> adadae45816
 --
 -- test input parser
 -- (type textrange was already made in test_setup.sql)

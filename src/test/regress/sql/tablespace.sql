@@ -1,10 +1,7 @@
-<<<<<<< HEAD:src/test/regress/input/tablespace.source
 -- start_matchignore
 -- m/WARNING:  tablespace symlink path is too long for TAR/
 -- m/DETAIL:  The symlinked path \".*\" will be truncated to 100 characters when sending a TAR to the utilities \(e.g. pg_basebackup\)/
 -- end_matchignore
-||||||| e1c1c30f635:src/test/regress/input/tablespace.source
-=======
 -- relative tablespace locations are not allowed
 CREATE TABLESPACE regress_tblspace LOCATION 'relative'; -- fail
 
@@ -17,7 +14,6 @@ CREATE TABLESPACE regress_tblspace LOCATION ''; -- fail
 -- as a directory in pg_tblspc, rather than being a symlink
 SET allow_in_place_tablespaces = true;
 
->>>>>>> adadae45816:src/test/regress/sql/tablespace.sql
 -- create a tablespace using WITH clause
 CREATE TABLESPACE regress_tblspacewith LOCATION '' WITH (some_nonexistent_parameter = true); -- fail
 CREATE TABLESPACE regress_tblspacewith LOCATION '' WITH (random_page_cost = 3.0); -- ok
@@ -441,8 +437,11 @@ RESET ROLE;
 ALTER TABLESPACE regress_tblspace RENAME TO regress_tblspace_renamed;
 
 -- Test that default_tablespace GUC is honored even after gang reset.
+\getenv abs_builddir PG_ABS_BUILDDIR
+\getenv dlsuffix PG_DLSUFFIX
+\set regresslib :abs_builddir '/regress' :dlsuffix
 CREATE OR REPLACE FUNCTION cleanupAllGangs() RETURNS BOOL
-AS '@abs_builddir@/regress@DLSUFFIX@', 'cleanupAllGangs' LANGUAGE C;
+AS :'regresslib', 'cleanupAllGangs' LANGUAGE C;
 
 SET default_tablespace TO regress_tblspace_renamed;
 
@@ -477,7 +476,8 @@ DROP ROLE regress_tablespace_user2;
 
 -- Test that altering tablespace of a partition table should recurse into its child tables unless ONLY is specified.
 CREATE TABLE tablespace_part(a int, b int) PARTITION BY RANGE(a) (partition t1 START (1) END (100));
-CREATE TABLESPACE myts LOCATION '@testtablespace@';
+SET allow_in_place_tablespaces = true;
+CREATE TABLESPACE myts LOCATION '';
 ALTER TABLE tablespace_part SET TABLESPACE myts;
 
 -- Both parent and child tables use the new tablespace

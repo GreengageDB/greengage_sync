@@ -72,19 +72,9 @@ usage(unsigned short int pager)
 	 */
 	initPQExpBuffer(&buf);
 
-<<<<<<< HEAD
-	fprintf(output, _("psql is the PostgreSQL interactive terminal (Greenplum version).\n\n"));
-	fprintf(output, _("Usage:\n"));
-	fprintf(output, _("  psql [OPTION]... [DBNAME [USERNAME]]\n\n"));
-||||||| e1c1c30f635
-	fprintf(output, _("psql is the PostgreSQL interactive terminal.\n\n"));
-	fprintf(output, _("Usage:\n"));
-	fprintf(output, _("  psql [OPTION]... [DBNAME [USERNAME]]\n\n"));
-=======
-	HELP0("psql is the PostgreSQL interactive terminal.\n\n");
+	HELP0("psql is the PostgreSQL interactive terminal (Greenplum version).\n\n");
 	HELP0("Usage:\n");
 	HELP0("  psql [OPTION]... [DBNAME [USERNAME]]\n\n");
->>>>>>> adadae45816
 
 	HELP0("General options:\n");
 	/* Display default database */
@@ -251,119 +241,6 @@ slashUsage(unsigned short int pager)
 	HELP0("  \\endif                 end conditional block\n");
 	HELP0("\n");
 
-<<<<<<< HEAD
-	fprintf(output, _("Informational\n"));
-	fprintf(output, _("  (options: S = show system objects, + = additional detail)\n"));
-	fprintf(output, _("  \\d[S+]                 list tables, views, and sequences\n"));
-	fprintf(output, _("  \\d[S+]  NAME           describe table, view, sequence, or index\n"));
-	fprintf(output, _("  \\da[S]  [PATTERN]      list aggregates\n"));
-	fprintf(output, _("  \\dA[+]  [PATTERN]      list access methods\n"));
-	fprintf(output, _("  \\dAc[+] [AMPTRN [TYPEPTRN]]  list operator classes\n"));
-	fprintf(output, _("  \\dAf[+] [AMPTRN [TYPEPTRN]]  list operator families\n"));
-	fprintf(output, _("  \\dAo[+] [AMPTRN [OPFPTRN]]   list operators of operator families\n"));
-	fprintf(output, _("  \\dAp[+] [AMPTRN [OPFPTRN]]   list support functions of operator families\n"));
-	fprintf(output, _("  \\db[+]  [PATTERN]      list tablespaces\n"));
-	fprintf(output, _("  \\dc[S+] [PATTERN]      list conversions\n"));
-	fprintf(output, _("  \\dC[+]  [PATTERN]      list casts\n"));
-	fprintf(output, _("  \\dd[S]  [PATTERN]      show object descriptions not displayed elsewhere\n"));
-	fprintf(output, _("  \\dD[S+] [PATTERN]      list domains\n"));
-	fprintf(output, _("  \\ddp    [PATTERN]      list default privileges\n"));
-	fprintf(output, _("  \\dE[S+] [PATTERN]      list foreign tables\n"));
-	fprintf(output, _("  \\det[+] [PATTERN]      list foreign tables\n"));
-	fprintf(output, _("  \\des[+] [PATTERN]      list foreign servers\n"));
-	fprintf(output, _("  \\deu[+] [PATTERN]      list user mappings\n"));
-	fprintf(output, _("  \\dew[+] [PATTERN]      list foreign-data wrappers\n"));
-	fprintf(output, _("  \\df[anptw][S+] [FUNCPTRN [TYPEPTRN ...]]\n"
-					  "                         list [only agg/normal/procedure/trigger/window] functions\n"));
-	fprintf(output, _("  \\dF[+]  [PATTERN]      list text search configurations\n"));
-	fprintf(output, _("  \\dFd[+] [PATTERN]      list text search dictionaries\n"));
-	fprintf(output, _("  \\dFp[+] [PATTERN]      list text search parsers\n"));
-	fprintf(output, _("  \\dFt[+] [PATTERN]      list text search templates\n"));
-	fprintf(output, _("  \\dg[S+] [PATTERN]      list roles\n"));
-	fprintf(output, _("  \\di[S+] [PATTERN]      list indexes\n"));
-	fprintf(output, _("  \\dl                    list large objects, same as \\lo_list\n"));
-	fprintf(output, _("  \\dL[S+] [PATTERN]      list procedural languages\n"));
-	fprintf(output, _("  \\dm[S+] [PATTERN]      list materialized views\n"));
-	fprintf(output, _("  \\dn[S+] [PATTERN]      list schemas\n"));
-	fprintf(output, _("  \\do[S+] [OPPTRN [TYPEPTRN [TYPEPTRN]]]\n"
-					  "                         list operators\n"));
-	fprintf(output, _("  \\dO[S+] [PATTERN]      list collations\n"));
-	fprintf(output, _("  \\dp     [PATTERN]      list table, view, and sequence access privileges\n"));
-	fprintf(output, _("  \\dP[itn+] [PATTERN]    list [only index/table] partitioned relations [n=nested]\n"));
-	fprintf(output, _("  \\drds [PATRN1 [PATRN2]] list per-database role settings\n"));
-	fprintf(output, _("  \\dRp[+] [PATTERN]      list replication publications\n"));
-	fprintf(output, _("  \\dRs[+] [PATTERN]      list replication subscriptions\n"));
-	fprintf(output, _("  \\ds[S+] [PATTERN]      list sequences\n"));
-	fprintf(output, _("  \\dt[S+] [PATTERN]      list tables\n"));
-	fprintf(output, _("  \\dT[S+] [PATTERN]      list data types\n"));
-	fprintf(output, _("  \\du[S+] [PATTERN]      list roles\n"));
-	fprintf(output, _("  \\dv[S+] [PATTERN]      list views\n"));
-	/* In GPDB, we use \dE for both external and foreign tables. */
-	fprintf(output, _("  \\dE[S+] [PATTERN]      list foreign and external tables\n"));
-	fprintf(output, _("  \\dx[+]  [PATTERN]      list extensions\n"));
-	fprintf(output, _("  \\dX     [PATTERN]      list extended statistics\n"));
-	fprintf(output, _("  \\dy[+]  [PATTERN]      list event triggers\n"));
-	fprintf(output, _("  \\l[+]   [PATTERN]      list databases\n"));
-	fprintf(output, _("  \\sf[+]  FUNCNAME       show a function's definition\n"));
-	fprintf(output, _("  \\sv[+]  VIEWNAME       show a view's definition\n"));
-	fprintf(output, _("  \\z      [PATTERN]      same as \\dp\n"));
-	fprintf(output, "\n");
-||||||| e1c1c30f635
-	fprintf(output, _("Informational\n"));
-	fprintf(output, _("  (options: S = show system objects, + = additional detail)\n"));
-	fprintf(output, _("  \\d[S+]                 list tables, views, and sequences\n"));
-	fprintf(output, _("  \\d[S+]  NAME           describe table, view, sequence, or index\n"));
-	fprintf(output, _("  \\da[S]  [PATTERN]      list aggregates\n"));
-	fprintf(output, _("  \\dA[+]  [PATTERN]      list access methods\n"));
-	fprintf(output, _("  \\dAc[+] [AMPTRN [TYPEPTRN]]  list operator classes\n"));
-	fprintf(output, _("  \\dAf[+] [AMPTRN [TYPEPTRN]]  list operator families\n"));
-	fprintf(output, _("  \\dAo[+] [AMPTRN [OPFPTRN]]   list operators of operator families\n"));
-	fprintf(output, _("  \\dAp[+] [AMPTRN [OPFPTRN]]   list support functions of operator families\n"));
-	fprintf(output, _("  \\db[+]  [PATTERN]      list tablespaces\n"));
-	fprintf(output, _("  \\dc[S+] [PATTERN]      list conversions\n"));
-	fprintf(output, _("  \\dC[+]  [PATTERN]      list casts\n"));
-	fprintf(output, _("  \\dd[S]  [PATTERN]      show object descriptions not displayed elsewhere\n"));
-	fprintf(output, _("  \\dD[S+] [PATTERN]      list domains\n"));
-	fprintf(output, _("  \\ddp    [PATTERN]      list default privileges\n"));
-	fprintf(output, _("  \\dE[S+] [PATTERN]      list foreign tables\n"));
-	fprintf(output, _("  \\det[+] [PATTERN]      list foreign tables\n"));
-	fprintf(output, _("  \\des[+] [PATTERN]      list foreign servers\n"));
-	fprintf(output, _("  \\deu[+] [PATTERN]      list user mappings\n"));
-	fprintf(output, _("  \\dew[+] [PATTERN]      list foreign-data wrappers\n"));
-	fprintf(output, _("  \\df[anptw][S+] [FUNCPTRN [TYPEPTRN ...]]\n"
-					  "                         list [only agg/normal/procedure/trigger/window] functions\n"));
-	fprintf(output, _("  \\dF[+]  [PATTERN]      list text search configurations\n"));
-	fprintf(output, _("  \\dFd[+] [PATTERN]      list text search dictionaries\n"));
-	fprintf(output, _("  \\dFp[+] [PATTERN]      list text search parsers\n"));
-	fprintf(output, _("  \\dFt[+] [PATTERN]      list text search templates\n"));
-	fprintf(output, _("  \\dg[S+] [PATTERN]      list roles\n"));
-	fprintf(output, _("  \\di[S+] [PATTERN]      list indexes\n"));
-	fprintf(output, _("  \\dl                    list large objects, same as \\lo_list\n"));
-	fprintf(output, _("  \\dL[S+] [PATTERN]      list procedural languages\n"));
-	fprintf(output, _("  \\dm[S+] [PATTERN]      list materialized views\n"));
-	fprintf(output, _("  \\dn[S+] [PATTERN]      list schemas\n"));
-	fprintf(output, _("  \\do[S+] [OPPTRN [TYPEPTRN [TYPEPTRN]]]\n"
-					  "                         list operators\n"));
-	fprintf(output, _("  \\dO[S+] [PATTERN]      list collations\n"));
-	fprintf(output, _("  \\dp     [PATTERN]      list table, view, and sequence access privileges\n"));
-	fprintf(output, _("  \\dP[itn+] [PATTERN]    list [only index/table] partitioned relations [n=nested]\n"));
-	fprintf(output, _("  \\drds [PATRN1 [PATRN2]] list per-database role settings\n"));
-	fprintf(output, _("  \\dRp[+] [PATTERN]      list replication publications\n"));
-	fprintf(output, _("  \\dRs[+] [PATTERN]      list replication subscriptions\n"));
-	fprintf(output, _("  \\ds[S+] [PATTERN]      list sequences\n"));
-	fprintf(output, _("  \\dt[S+] [PATTERN]      list tables\n"));
-	fprintf(output, _("  \\dT[S+] [PATTERN]      list data types\n"));
-	fprintf(output, _("  \\du[S+] [PATTERN]      list roles\n"));
-	fprintf(output, _("  \\dv[S+] [PATTERN]      list views\n"));
-	fprintf(output, _("  \\dx[+]  [PATTERN]      list extensions\n"));
-	fprintf(output, _("  \\dX     [PATTERN]      list extended statistics\n"));
-	fprintf(output, _("  \\dy[+]  [PATTERN]      list event triggers\n"));
-	fprintf(output, _("  \\l[+]   [PATTERN]      list databases\n"));
-	fprintf(output, _("  \\sf[+]  FUNCNAME       show a function's definition\n"));
-	fprintf(output, _("  \\sv[+]  VIEWNAME       show a view's definition\n"));
-	fprintf(output, _("  \\z      [PATTERN]      same as \\dp\n"));
-	fprintf(output, "\n");
-=======
 	HELP0("Informational\n");
 	HELP0("  (options: S = show system objects, + = additional detail)\n");
 	HELP0("  \\d[S+]                 list tables, views, and sequences\n");
@@ -419,7 +296,6 @@ slashUsage(unsigned short int pager)
 	HELP0("  \\sv[+]  VIEWNAME       show a view's definition\n");
 	HELP0("  \\z      [PATTERN]      same as \\dp\n");
 	HELP0("\n");
->>>>>>> adadae45816
 
 	HELP0("Large Objects\n");
 	HELP0("  \\lo_export LOBOID FILE write large object to file\n");
@@ -871,22 +747,12 @@ helpSQL(const char *topic, unsigned short int pager)
 void
 print_copyright(void)
 {
-<<<<<<< HEAD
 	puts("Greenplum Database version of PostgreSQL Database Management System\n"
 		 "Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group\n\n"
 		 "Portions Copyright (c) 2014-Present VMware, Inc. or its affiliates.\n\n"
 		 "Portions Copyright (c) 2011-2014 EMC\n\n"
 		 "This software is based on Postgres95, formerly known as Postgres, which\n"
 		 "contains the following notice:\n\n"
-||||||| e1c1c30f635
-	puts("PostgreSQL Database Management System\n"
-		 "(formerly known as Postgres, then as Postgres95)\n\n"
-		 "Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group\n\n"
-=======
-	puts("PostgreSQL Database Management System\n"
-		 "(formerly known as Postgres, then as Postgres95)\n\n"
-		 "Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group\n\n"
->>>>>>> adadae45816
 		 "Portions Copyright (c) 1994, The Regents of the University of California\n\n"
 		 "Permission to use, copy, modify, and distribute this software and its\n"
 		 "documentation for any purpose, without fee, and without a written agreement\n"

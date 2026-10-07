@@ -297,7 +297,6 @@ typedef struct VacuumParams
 	bool		auto_stats;		/* invoked via automatic statistic collection */
 } VacuumParams;
 
-<<<<<<< HEAD
 typedef struct
 {
 	/* Table being sampled */
@@ -325,8 +324,7 @@ typedef struct
 	int			index;
 	bool		summary_sent;
 } gp_acquire_sample_rows_context;
-||||||| e1c1c30f635
-=======
+
 /*
  * VacDeadItems stores TIDs whose index tuples are deleted by index vacuuming.
  */
@@ -341,7 +339,6 @@ typedef struct VacDeadItems
 
 #define MAXDEADITEMS(avail_mem) \
 	(((avail_mem) - offsetof(VacDeadItems, items)) / sizeof(ItemPointerData))
->>>>>>> adadae45816
 
 /* GUC parameters */
 extern PGDLLIMPORT int default_statistics_target;	/* PGDLLIMPORT for PostGIS */
@@ -380,19 +377,11 @@ extern void vac_update_relstats(Relation relation,
 								bool hasindex,
 								TransactionId frozenxid,
 								MultiXactId minmulti,
-<<<<<<< HEAD
-								bool in_outer_xact,
-								bool isvacuum);
-extern void vacuum_set_xid_limits(Relation rel,
-||||||| e1c1c30f635
-								bool in_outer_xact);
-extern void vacuum_set_xid_limits(Relation rel,
-=======
 								bool *frozenxid_updated,
 								bool *minmulti_updated,
-								bool in_outer_xact);
+								bool in_outer_xact,
+								bool isvacuum);
 extern bool vacuum_set_xid_limits(Relation rel,
->>>>>>> adadae45816
 								  int freeze_min_age, int freeze_table_age,
 								  int multixact_freeze_min_age,
 								  int multixact_freeze_table_age,

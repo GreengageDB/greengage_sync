@@ -60,15 +60,9 @@
  * values.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -146,16 +140,8 @@ bool		enable_hashagg = true;
 bool		enable_groupagg = true;
 bool		enable_nestloop = false;
 bool		enable_material = true;
-<<<<<<< HEAD
-bool		enable_resultcache = true;
-bool		enable_mergejoin = false;
-||||||| e1c1c30f635
-bool		enable_resultcache = true;
-bool		enable_mergejoin = true;
-=======
 bool		enable_memoize = true;
-bool		enable_mergejoin = true;
->>>>>>> adadae45816
+bool		enable_mergejoin = false;
 bool		enable_hashjoin = true;
 bool		enable_gathermerge = true;
 bool		enable_partitionwise_join = false;
@@ -302,7 +288,6 @@ adjust_reloptinfo(RelOptInfoPerSegment *basescan, RelOptInfo *baserel_orig,
 }
 
 /*
-<<<<<<< HEAD
  * ADJUST_BASESCAN initializes the proxy structs for RelOptInfo and ParamPathInfo,
  * adjusting them by # of segments as needed.
  */
@@ -312,8 +297,8 @@ adjust_reloptinfo(RelOptInfoPerSegment *basescan, RelOptInfo *baserel_orig,
 	RelOptInfoPerSegment *baserel = &baserel_adjusted; \
 	ParamPathInfoPerSegment *param_info = adjust_reloptinfo(&baserel_adjusted, baserel_orig, \
 															&param_info_adjusted, param_info_orig)
-||||||| e1c1c30f635
-=======
+
+/*
  * clamp_cardinality_to_long
  *		Cast a Cardinality value to a sane long value.
  */
@@ -338,7 +323,6 @@ clamp_cardinality_to_long(Cardinality x)
 	 */
 	return (x < (double) LONG_MAX) ? (long) x : LONG_MAX;
 }
->>>>>>> adadae45816
 
 
 /*
@@ -1569,40 +1553,21 @@ cost_subqueryscan(SubqueryScanPath *path, PlannerInfo *root,
 	List	   *qpquals;
 	QualCost	qpqual_cost;
 	Cost		cpu_per_tuple;
-	double		numsegments;
 
 	/* Should only be applied to base relations that are subqueries */
 	Assert(baserel->relid > 0);
 	Assert(baserel->rtekind == RTE_SUBQUERY);
 
-<<<<<<< HEAD
-	/* Adjust row count if this runs in multiple segments */
-	if (CdbPathLocus_IsPartitioned(path->path.locus))
-		numsegments = CdbPathLocus_NumSegments(path->path.locus);
-	else
-		numsegments = 1;
-
-	/* Mark the path with the correct row estimate */
-||||||| e1c1c30f635
-	/* Mark the path with the correct row estimate */
-=======
 	/*
 	 * We compute the rowcount estimate as the subplan's estimate times the
 	 * selectivity of relevant restriction clauses.  In simple cases this will
 	 * come out the same as baserel->rows; but when dealing with parallelized
 	 * paths we must do it like this to get the right answer.
 	 */
->>>>>>> adadae45816
 	if (param_info)
 		qpquals = list_concat_copy(param_info->ppi_clauses,
 								   baserel->baserestrictinfo);
 	else
-<<<<<<< HEAD
-		path->path.rows = baserel->rows;
-	path->path.rows = clamp_row_est(path->path.rows / numsegments);
-||||||| e1c1c30f635
-		path->path.rows = baserel->rows;
-=======
 		qpquals = baserel->baserestrictinfo;
 
 	path->path.rows = clamp_row_est(path->subpath->rows *
@@ -1610,8 +1575,8 @@ cost_subqueryscan(SubqueryScanPath *path, PlannerInfo *root,
 														   qpquals,
 														   0,
 														   JOIN_INNER,
-														   NULL));
->>>>>>> adadae45816
+														   NULL,
+                                       false /* no damping */));
 
 	/*
 	 * Cost of path is cost of evaluating the subplan, plus cost of evaluating
@@ -1626,13 +1591,7 @@ cost_subqueryscan(SubqueryScanPath *path, PlannerInfo *root,
 
 	startup_cost = qpqual_cost.startup;
 	cpu_per_tuple = cpu_tuple_cost + qpqual_cost.per_tuple;
-<<<<<<< HEAD
-	run_cost = cpu_per_tuple * clamp_row_est(baserel->tuples / numsegments);
-||||||| e1c1c30f635
-	run_cost = cpu_per_tuple * baserel->tuples;
-=======
 	run_cost = cpu_per_tuple * path->subpath->rows;
->>>>>>> adadae45816
 
 	/* tlist eval costs are paid per output row, not per tuple scanned */
 	startup_cost += path->path.pathtarget->cost.startup;
@@ -3648,8 +3607,8 @@ final_cost_nestloop(PlannerInfo *root, NestPath *path,
 	if (inner_path_rows <= 0)
 		inner_path_rows = 1;
 
-	if (CdbPathLocus_IsPartitioned(path->path.locus))
-		numsegments = CdbPathLocus_NumSegments(path->path.locus);
+	if (CdbPathLocus_IsPartitioned(path->jpath.path.locus))
+		numsegments = CdbPathLocus_NumSegments(path->jpath.path.locus);
 	else
 		numsegments = 1;
 
@@ -3657,14 +3616,8 @@ final_cost_nestloop(PlannerInfo *root, NestPath *path,
 	if (path->jpath.path.param_info)
 		path->jpath.path.rows = path->jpath.path.param_info->ppi_rows;
 	else
-<<<<<<< HEAD
-		path->path.rows = path->path.parent->rows;
-	path->path.rows /= numsegments;
-||||||| e1c1c30f635
-		path->path.rows = path->path.parent->rows;
-=======
 		path->jpath.path.rows = path->jpath.path.parent->rows;
->>>>>>> adadae45816
+	path->jpath.path.rows /= numsegments;
 
 	/* For partial paths, scale row estimate. */
 	if (path->jpath.path.parallel_workers > 0)
@@ -4540,14 +4493,6 @@ final_cost_hashjoin(PlannerInfo *root, HashPath *path,
 	Cost		run_cost = workspace->run_cost;
 	int			numbuckets = workspace->numbuckets;
 	int			numbatches = workspace->numbatches;
-<<<<<<< HEAD
-	int			hash_mem;
-||||||| e1c1c30f635
-	int			hash_mem;
-	Cost		cpu_per_tuple;
-=======
-	Cost		cpu_per_tuple;
->>>>>>> adadae45816
 	QualCost	hash_qual_cost;
 	QualCost	qp_qual_cost;
 	double		hashjointuples;

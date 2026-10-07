@@ -184,6 +184,7 @@ static char *ExecBuildSlotPartitionKeyDescription(Relation rel,
 												  bool *isnull,
 												  int maxfieldlen);
 static List *adjust_partition_colnos(List *colnos, ResultRelInfo *leaf_part_rri);
+int get_partition_for_tuple(PartitionKey key, PartitionDesc partdesc, Datum *values, bool *isnull);
 static List *adjust_partition_colnos_using_map(List *colnos, AttrMap *attrMap);
 static PartitionPruneState *CreatePartitionPruneState(PlanState *planstate,
 													  PartitionPruneInfo *pruneinfo);
@@ -869,12 +870,9 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		lappend(estate->es_tuple_routing_result_relations,
 				leaf_part_rri);
 
-<<<<<<< HEAD
 	if (leaf_part_rri->ri_RelationDesc->rd_tableam)
 		table_dml_init(leaf_part_rri->ri_RelationDesc);
 
-||||||| e1c1c30f635
-=======
 	/*
 	 * Initialize information about this partition that's needed to handle
 	 * MERGE.  We take the "first" result relation's mergeActionList as
@@ -968,7 +966,6 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 				ExecInitQual((List *) action->qual, &mtstate->ps);
 		}
 	}
->>>>>>> adadae45816
 	MemoryContextSwitchTo(oldcxt);
 
 	return leaf_part_rri;
@@ -1673,7 +1670,8 @@ ExecInitPartitionPruning(PlanState *planstate,
 	 * Perform an initial partition prune pass, if required.
 	 */
 	if (prunestate->do_initial_prune)
-		*initially_valid_subplans = ExecFindMatchingSubPlans(prunestate, true);
+		*initially_valid_subplans =
+			ExecFindMatchingSubPlans(prunestate, estate, -1, NIL, true);
 	else
 	{
 		/* No pruning, so we'll need to initialize all subplans */
@@ -1701,6 +1699,25 @@ ExecInitPartitionPruning(PlanState *planstate,
 	}
 
 	return prunestate;
+}
+
+/*
+ * ExecCreatePartitionPruneState
+ *		GPDB: standalone prune-state builder for PartitionSelector nodes.
+ *
+ * PG15 folded the public builder into ExecInitPartitionPruning and made the
+ * core (CreatePartitionPruneState) static.  GPDB's PartitionSelector drives
+ * partition pruning on its own (results are consumed by dynamic scans via
+ * PARAM_EXEC), so it still needs to build the state without the initial-prune
+ * and subplan-map fixup that ExecInitPartitionPruning performs.  The caller
+ * must already have set up the node's ExprContext (ExecAssignExprContext),
+ * which CreatePartitionPruneState reads via planstate->ps_ExprContext.
+ */
+PartitionPruneState *
+ExecCreatePartitionPruneState(PlanState *planstate,
+							  PartitionPruneInfo *partitionpruneinfo)
+{
+	return CreatePartitionPruneState(planstate, partitionpruneinfo);
 }
 
 /*
@@ -2137,7 +2154,7 @@ ExecAddMatchingSubPlans(PartitionPruneState *prunestate, Bitmapset *result)
 {
 	Bitmapset *thisresult;
 
-	thisresult = ExecFindMatchingSubPlans(prunestate, NULL, -1, NIL);
+	thisresult = ExecFindMatchingSubPlans(prunestate, NULL, -1, NIL, false);
 
 	result = bms_add_members(result, thisresult);
 
@@ -2151,30 +2168,20 @@ ExecAddMatchingSubPlans(PartitionPruneState *prunestate, Bitmapset *result)
  *		Determine which subplans match the pruning steps detailed in
  *		'prunestate' for the current comparison expression values.
  *
-<<<<<<< HEAD
- * Here we assume we may evaluate PARAM_EXEC Params.
- *
  * GPDB: 'join_prune_paramids' can contain a list of PARAM_EXEC Param IDs
- * containing results that were computed earlier by PartitionSelector
- * nodes.
-||||||| e1c1c30f635
- * Here we assume we may evaluate PARAM_EXEC Params.
-=======
+ * holding results computed earlier by PartitionSelector nodes; 'estate' and
+ * 'nplans' bound that intersection (MPP join pruning).
+ *
  * Pass initial_prune if PARAM_EXEC Params cannot yet be evaluated.  This
  * differentiates the initial executor-time pruning step from later
  * runtime pruning.
->>>>>>> adadae45816
  */
 Bitmapset *
 ExecFindMatchingSubPlans(PartitionPruneState *prunestate,
-<<<<<<< HEAD
 						 EState *estate,
-						 int nplans, List *join_prune_paramids)
-||||||| e1c1c30f635
-ExecFindMatchingSubPlans(PartitionPruneState *prunestate)
-=======
+						 int nplans,
+						 List *join_prune_paramids,
 						 bool initial_prune)
->>>>>>> adadae45816
 {
 	Bitmapset  *result = NULL;
 	MemoryContext oldcontext;

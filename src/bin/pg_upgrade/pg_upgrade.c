@@ -3,14 +3,8 @@
  *
  *	main source file
  *
-<<<<<<< HEAD
  *	Portions Copyright (c) 2016-Present, VMware, Inc. or its affiliates
  *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
-=======
- *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  *	src/bin/pg_upgrade/pg_upgrade.c
  */
 
@@ -155,7 +149,6 @@ main(int argc, char **argv)
 	 */
 	check_cluster_compatibility(live_check);
 
-<<<<<<< HEAD
 	/* Set mask based on PGDATA permissions */
 	if (!is_skip_target_check())
 	{
@@ -167,18 +160,6 @@ main(int argc, char **argv)
 	umask(pg_mode_mask);
 
 	check_and_dump_old_cluster(live_check, &sequence_script_file_name);
-||||||| e1c1c30f635
-	/* Set mask based on PGDATA permissions */
-	if (!GetDataDirectoryCreatePerm(new_cluster.pgdata))
-		pg_fatal("could not read permissions of directory \"%s\": %s\n",
-				 new_cluster.pgdata, strerror(errno));
-
-	umask(pg_mode_mask);
-
-	check_and_dump_old_cluster(live_check);
-=======
-	check_and_dump_old_cluster(live_check);
->>>>>>> adadae45816
 
 
 	/* -- NEW -- */
@@ -267,7 +248,6 @@ main(int argc, char **argv)
 			  new_cluster.pgdata);
 	check_ok();
 
-<<<<<<< HEAD
 	/* For non-master segments, uniquify the system identifier. */
 	if (!is_greenplum_dispatcher_mode())
 		reset_system_identifier();
@@ -277,13 +257,6 @@ main(int argc, char **argv)
 			  "\"%s/initdb\" --sync-only \"%s\"", new_cluster.bindir,
 			  new_cluster.pgdata);
 	check_ok();
-||||||| e1c1c30f635
-	prep_status("Sync data directory to disk");
-	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
-			  "\"%s/initdb\" --sync-only \"%s\"", new_cluster.bindir,
-			  new_cluster.pgdata);
-	check_ok();
-=======
 	if (user_opts.do_sync)
 	{
 		prep_status("Sync data directory to disk");
@@ -292,7 +265,6 @@ main(int argc, char **argv)
 				  new_cluster.pgdata);
 		check_ok();
 	}
->>>>>>> adadae45816
 
 	create_script_for_old_cluster_deletion(&deletion_script_file_name);
 
@@ -315,7 +287,6 @@ main(int argc, char **argv)
 	return 0;
 }
 
-<<<<<<< HEAD
 #ifdef WIN32
 typedef BOOL(WINAPI * __CreateRestrictedToken) (HANDLE, DWORD, DWORD, PSID_AND_ATTRIBUTES, DWORD, PLUID_AND_ATTRIBUTES, DWORD, PSID_AND_ATTRIBUTES, PHANDLE);
 
@@ -424,8 +395,6 @@ CreateRestrictedProcess(char *cmd, PROCESS_INFORMATION *processInfo, const char 
 	return ResumeThread(processInfo->hThread);
 }
 #endif
-||||||| e1c1c30f635
-=======
 /*
  * Create and assign proper permissions to the set of output directories
  * used to store any data generated internally, filling in log_opts in
@@ -515,7 +484,6 @@ make_outputdirs(char *pgdata)
 	}
 }
 
->>>>>>> adadae45816
 
 static void
 setup(char *argv0, bool *live_check)
@@ -638,14 +606,8 @@ prepare_new_globals(void)
 	prep_status("Restoring global objects in the new cluster");
 
 	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
-<<<<<<< HEAD
-			  "%s \"%s/psql\" " EXEC_PSQL_ARGS " %s -f \"%s\"",
+			  "%s \"%s/psql\" " EXEC_PSQL_ARGS " %s -f \"%s/%s\"",
 			  PG_OPTIONS_UTILITY_MODE_VERSION(new_cluster.major_version),
-||||||| e1c1c30f635
-			  "\"%s/psql\" " EXEC_PSQL_ARGS " %s -f \"%s\"",
-=======
-			  "\"%s/psql\" " EXEC_PSQL_ARGS " %s -f \"%s/%s\"",
->>>>>>> adadae45816
 			  new_cluster.bindir, cluster_conn_opts(&new_cluster),
 			  log_opts.dumpdir,
 			  GLOBALS_DUMP_FILE);
@@ -729,18 +691,10 @@ create_new_objects(void)
 
 		parallel_exec_prog(log_file_name,
 						   NULL,
-<<<<<<< HEAD
 						   "%s \"%s/pg_restore\" %s %s --exit-on-error --verbose "
 						   "--binary-upgrade "
-						   "--dbname template1 \"%s\"",
-						   PG_OPTIONS_UTILITY_MODE_VERSION(new_cluster.major_version),
-||||||| e1c1c30f635
-						   "\"%s/pg_restore\" %s %s --exit-on-error --verbose "
-						   "--dbname template1 \"%s\"",
-=======
-						   "\"%s/pg_restore\" %s %s --exit-on-error --verbose "
 						   "--dbname template1 \"%s/%s\"",
->>>>>>> adadae45816
+						   PG_OPTIONS_UTILITY_MODE_VERSION(new_cluster.major_version),
 						   new_cluster.bindir,
 						   cluster_conn_opts(&new_cluster),
 						   create_opts,
@@ -839,7 +793,6 @@ copy_xact_xlog_xid(void)
 					  GET_MAJOR_VERSION(new_cluster.major_version) <= 906 ?
 					  "pg_clog" : "pg_xact");
 
-<<<<<<< HEAD
 	/*
 	 * GPDB: FIXME: If we want to support upgrades from 5X -> 7X and above, we
 	 * would need to construct the old_cluster.controldata.chkpnt_oldstxid
@@ -848,12 +801,6 @@ copy_xact_xlog_xid(void)
 	prep_status("Setting oldest XID for new cluster");
 	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
 			  "\"%s/pg_resetwal\" --binary-upgrade -f -u %u \"%s\"",
-||||||| e1c1c30f635
-=======
-	prep_status("Setting oldest XID for new cluster");
-	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
-			  "\"%s/pg_resetwal\" -f -u %u \"%s\"",
->>>>>>> adadae45816
 			  new_cluster.bindir, old_cluster.controldata.chkpnt_oldstxid,
 			  new_cluster.pgdata);
 	check_ok();
@@ -1094,7 +1041,6 @@ set_frozenxids(bool minmxid_only)
 
 	check_ok();
 }
-<<<<<<< HEAD
 
 static void
 cleanup(void)
@@ -1128,40 +1074,3 @@ cleanup(void)
 			}
 	}
 }
-||||||| e1c1c30f635
-
-
-static void
-cleanup(void)
-{
-	fclose(log_opts.internal);
-
-	/* Remove dump and log files? */
-	if (!log_opts.retain)
-	{
-		int			dbnum;
-		char	  **filename;
-
-		for (filename = output_files; *filename != NULL; filename++)
-			unlink(*filename);
-
-		/* remove dump files */
-		unlink(GLOBALS_DUMP_FILE);
-
-		if (old_cluster.dbarr.dbs)
-			for (dbnum = 0; dbnum < old_cluster.dbarr.ndbs; dbnum++)
-			{
-				char		sql_file_name[MAXPGPATH],
-							log_file_name[MAXPGPATH];
-				DbInfo	   *old_db = &old_cluster.dbarr.dbs[dbnum];
-
-				snprintf(sql_file_name, sizeof(sql_file_name), DB_DUMP_FILE_MASK, old_db->db_oid);
-				unlink(sql_file_name);
-
-				snprintf(log_file_name, sizeof(log_file_name), DB_DUMP_LOG_FILE_MASK, old_db->db_oid);
-				unlink(log_file_name);
-			}
-	}
-}
-=======
->>>>>>> adadae45816

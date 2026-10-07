@@ -3,15 +3,9 @@
  * explain.c
  *	  Explain query execution plans
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994-5, Regents of the University of California
  *
  * IDENTIFICATION
@@ -745,14 +739,9 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	/* Create textual dump of plan tree */
 	ExplainPrintPlan(es, queryDesc);
 
-<<<<<<< HEAD
 	if (cursorOptions & CURSOR_OPT_PARALLEL_RETRIEVE)
 		ExplainParallelRetrieveCursor(es, queryDesc);
 
-	if (es->verbose && plannedstmt->queryId != UINT64CONST(0))
-||||||| e1c1c30f635
-	if (es->verbose && plannedstmt->queryId != UINT64CONST(0))
-=======
 	/*
 	 * COMPUTE_QUERY_ID_REGRESS means COMPUTE_QUERY_ID_AUTO, but we don't show
 	 * the queryid in any of the EXPLAIN plans to keep stable the results
@@ -760,7 +749,6 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	 */
 	if (es->verbose && plannedstmt->queryId != UINT64CONST(0) &&
 		compute_query_id != COMPUTE_QUERY_ID_REGRESS)
->>>>>>> adadae45816
 	{
 		/*
 		 * Output the queryid as an int64 rather than a uint64 so we match
@@ -2431,7 +2419,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				char *buf;
 				Oid relid;
 				relid = rt_fetch(((DynamicSeqScan *)plan)
-							->seqscan.scanrelid,
+							->seqscan.scan.scanrelid,
 							es->rtable)->relid;
 				buf = psprintf("(out of %d)",  countLeafPartTables(relid));
 				ExplainPropertyInteger(
@@ -2644,19 +2632,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				show_instrumentation_count("Rows Removed by Filter", 1,
 										   planstate, es);
 			break;
-<<<<<<< HEAD
 #if 0 /* Group node has been disabled in GPDB */
-||||||| e1c1c30f635
-=======
-		case T_WindowAgg:
-			show_upper_qual(plan->qual, "Filter", planstate, ancestors, es);
-			if (plan->qual)
-				show_instrumentation_count("Rows Removed by Filter", 1,
-										   planstate, es);
-			show_upper_qual(((WindowAgg *) plan)->runConditionOrig,
-							"Run Condition", planstate, ancestors, es);
-			break;
->>>>>>> adadae45816
 		case T_Group:
 			show_group_keys(castNode(GroupState, planstate), ancestors, es);
 			show_upper_qual(plan->qual, "Filter", planstate, ancestors, es);
@@ -2667,6 +2643,12 @@ ExplainNode(PlanState *planstate, List *ancestors,
 #endif
 		case T_WindowAgg:
 			show_windowagg_keys((WindowAggState *) planstate, ancestors, es);
+			show_upper_qual(plan->qual, "Filter", planstate, ancestors, es);
+			if (plan->qual)
+				show_instrumentation_count("Rows Removed by Filter", 1,
+										   planstate, es);
+			show_upper_qual(((WindowAgg *) plan)->runConditionOrig,
+							"Run Condition", planstate, ancestors, es);
 			break;
 		case T_TableFunctionScan:
 			show_scan_qual(plan->qual, "Filter", planstate, ancestors, es);
@@ -2709,7 +2691,6 @@ ExplainNode(PlanState *planstate, List *ancestors,
 		case T_Hash:
 			show_hash_info(castNode(HashState, planstate), es);
 			break;
-<<<<<<< HEAD
 		case T_Motion:
 			{
 				Motion	   *pMotion = (Motion *) plan;
@@ -2738,18 +2719,9 @@ ExplainNode(PlanState *planstate, List *ancestors,
 		case T_Append:
 			show_join_pruning_info(((Append *) plan)->join_prune_paramids, es);
 			break;
-		case T_ResultCache:
-			show_resultcache_info(castNode(ResultCacheState, planstate),
-								  ancestors, es);
-||||||| e1c1c30f635
-		case T_ResultCache:
-			show_resultcache_info(castNode(ResultCacheState, planstate),
-								  ancestors, es);
-=======
 		case T_Memoize:
 			show_memoize_info(castNode(MemoizeState, planstate), ancestors,
 							  es);
->>>>>>> adadae45816
 			break;
 		default:
 			break;

@@ -596,12 +596,14 @@ LogicalTapeSetCreate(bool preallocate, SharedFileSet *fileset, int worker)
 	else if (fileset)
 	{
 		char		filename[MAXPGPATH];
+		workfile_set *work_set;
 
 		pg_itoa(worker, filename);
-		lts->pfile = BufFileCreateFileSet(&fileset->fs, filename);
+		work_set = workfile_mgr_create_set("LogicalTape", filename, false /* hold pin */);
+		lts->pfile = BufFileCreateFileSet(&fileset->fs, filename, work_set);
 	}
 	else
-		lts->pfile = BufFileCreateTemp(false);
+		lts->pfile = BufFileCreateTemp("Logical Tape", false);
 
 	return lts;
 }
@@ -734,153 +736,9 @@ ltsCreateTape(LogicalTapeSet *lts)
 /*
  * Close a logical tape.
  *
-<<<<<<< HEAD
- * Each tape is initialized in write state.  Serial callers pass ntapes,
- * NULL argument for shared, and -1 for worker.  Parallel worker callers
- * pass ntapes, a shared file handle, NULL shared argument,  and their own
- * worker number.  Leader callers, which claim shared worker tapes here,
- * must supply non-sentinel values for all arguments except worker number,
- * which should be -1.
- *
- * Leader caller is passing back an array of metadata each worker captured
- * when LogicalTapeFreeze() was called for their final result tapes.  Passed
- * tapes array is actually sized ntapes - 1, because it includes only
- * worker tapes, whereas leader requires its own leader tape.  Note that we
- * rely on the assumption that reclaimed worker tapes will only be read
- * from once by leader, and never written to again (tapes are initialized
- * for writing, but that's only to be consistent).  Leader may not write to
- * its own tape purely due to a restriction in the shared buffile
- * infrastructure that may be lifted in the future.
- */
-LogicalTapeSet *
-LogicalTapeSetCreate(int ntapes, bool preallocate, TapeShare *shared,
-					 SharedFileSet *fileset, int worker)
-{
-	LogicalTapeSet *lts;
-	int			i;
-
-	/*
-	 * Create top-level struct including per-tape LogicalTape structs.
-	 */
-	Assert(ntapes > 0);
-	lts = (LogicalTapeSet *) palloc(sizeof(LogicalTapeSet));
-	lts->nBlocksAllocated = 0L;
-	lts->nBlocksWritten = 0L;
-	lts->nHoleBlocks = 0L;
-	lts->forgetFreeSpace = false;
-	lts->freeBlocksLen = 32;	/* reasonable initial guess */
-	lts->freeBlocks = (long *) palloc(lts->freeBlocksLen * sizeof(long));
-	lts->nFreeBlocks = 0;
-	lts->enable_prealloc = preallocate;
-	lts->nTapes = ntapes;
-	lts->tapes = (LogicalTape *) palloc(ntapes * sizeof(LogicalTape));
-
-	for (i = 0; i < ntapes; i++)
-		ltsInitTape(&lts->tapes[i]);
-
-	/*
-	 * Create temp BufFile storage as required.
-	 *
-	 * Leader concatenates worker tapes, which requires special adjustment to
-	 * final tapeset data.  Things are simpler for the worker case and the
-	 * serial case, though.  They are generally very similar -- workers use a
-	 * shared fileset, whereas serial sorts use a conventional serial BufFile.
-	 */
-	if (shared)
-		ltsConcatWorkerTapes(lts, shared, fileset);
-	else if (fileset)
-	{
-		char		filename[MAXPGPATH];
-		workfile_set *work_set;
-
-		pg_itoa(worker, filename);
-		work_set = workfile_mgr_create_set("LogicalTape", filename, false /* hold pin */);
-		lts->pfile = BufFileCreateShared(fileset, filename, work_set);
-	}
-	else
-	{
-		lts->pfile = BufFileCreateTemp("LogicalTape", false);
-	}
-
-	return lts;
-}
-
-/*
- * Close a logical tape set and release all resources.
-||||||| e1c1c30f635
- * Each tape is initialized in write state.  Serial callers pass ntapes,
- * NULL argument for shared, and -1 for worker.  Parallel worker callers
- * pass ntapes, a shared file handle, NULL shared argument,  and their own
- * worker number.  Leader callers, which claim shared worker tapes here,
- * must supply non-sentinel values for all arguments except worker number,
- * which should be -1.
- *
- * Leader caller is passing back an array of metadata each worker captured
- * when LogicalTapeFreeze() was called for their final result tapes.  Passed
- * tapes array is actually sized ntapes - 1, because it includes only
- * worker tapes, whereas leader requires its own leader tape.  Note that we
- * rely on the assumption that reclaimed worker tapes will only be read
- * from once by leader, and never written to again (tapes are initialized
- * for writing, but that's only to be consistent).  Leader may not write to
- * its own tape purely due to a restriction in the shared buffile
- * infrastructure that may be lifted in the future.
- */
-LogicalTapeSet *
-LogicalTapeSetCreate(int ntapes, bool preallocate, TapeShare *shared,
-					 SharedFileSet *fileset, int worker)
-{
-	LogicalTapeSet *lts;
-	int			i;
-
-	/*
-	 * Create top-level struct including per-tape LogicalTape structs.
-	 */
-	Assert(ntapes > 0);
-	lts = (LogicalTapeSet *) palloc(sizeof(LogicalTapeSet));
-	lts->nBlocksAllocated = 0L;
-	lts->nBlocksWritten = 0L;
-	lts->nHoleBlocks = 0L;
-	lts->forgetFreeSpace = false;
-	lts->freeBlocksLen = 32;	/* reasonable initial guess */
-	lts->freeBlocks = (long *) palloc(lts->freeBlocksLen * sizeof(long));
-	lts->nFreeBlocks = 0;
-	lts->enable_prealloc = preallocate;
-	lts->nTapes = ntapes;
-	lts->tapes = (LogicalTape *) palloc(ntapes * sizeof(LogicalTape));
-
-	for (i = 0; i < ntapes; i++)
-		ltsInitTape(&lts->tapes[i]);
-
-	/*
-	 * Create temp BufFile storage as required.
-	 *
-	 * Leader concatenates worker tapes, which requires special adjustment to
-	 * final tapeset data.  Things are simpler for the worker case and the
-	 * serial case, though.  They are generally very similar -- workers use a
-	 * shared fileset, whereas serial sorts use a conventional serial BufFile.
-	 */
-	if (shared)
-		ltsConcatWorkerTapes(lts, shared, fileset);
-	else if (fileset)
-	{
-		char		filename[MAXPGPATH];
-
-		pg_itoa(worker, filename);
-		lts->pfile = BufFileCreateShared(fileset, filename);
-	}
-	else
-		lts->pfile = BufFileCreateTemp(false);
-
-	return lts;
-}
-
-/*
- * Close a logical tape set and release all resources.
-=======
  * Note: This doesn't return any blocks to the free list!  You must read
  * the tape to the end first, to reuse the space.  In current use, though,
  * we only close tapes after fully reading them.
->>>>>>> adadae45816
  */
 void
 LogicalTapeClose(LogicalTape *lt)
@@ -1335,7 +1193,6 @@ LogicalTapeTell(LogicalTape *lt, long *blocknum, int *offset)
 long
 LogicalTapeSetBlocks(LogicalTapeSet *lts)
 {
-<<<<<<< HEAD
 #ifdef USE_ASSERT_CHECKING
 	/*
 	 * GPDB interrupts the sort and set QueryFinishPending on purpose in the
@@ -1351,16 +1208,5 @@ LogicalTapeSetBlocks(LogicalTapeSet *lts)
 		}
 	}
 #endif
-||||||| e1c1c30f635
-#ifdef USE_ASSERT_CHECKING
-	for (int i = 0; i < lts->nTapes; i++)
-	{
-		LogicalTape *lt = &lts->tapes[i];
-
-		Assert(!lt->writing || lt->buffer == NULL);
-	}
-#endif
-=======
->>>>>>> adadae45816
 	return lts->nBlocksWritten - lts->nHoleBlocks;
 }
