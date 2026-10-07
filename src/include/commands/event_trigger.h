@@ -3,7 +3,7 @@
  * event_trigger.h
  *	  Declarations for command trigger handling.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/commands/event_trigger.h
@@ -33,10 +33,14 @@ typedef struct EventTriggerData
 #define AT_REWRITE_DEFAULT_VAL			0x02
 #define AT_REWRITE_COLUMN_REWRITE		0x04
 #define AT_REWRITE_ACCESS_METHOD		0x08
+<<<<<<< HEAD
 /* set if AOCS and only the AT_PASS_ADD_COL subcmd is populated */
 #define AT_REWRITE_NEW_COLUMNS_ONLY_AOCS	0x10
 /* set if we need to rewrite a table due to a relopt change. */
 #define AT_REWRITE_ALTER_RELOPTS			0x20
+||||||| e1c1c30f635
+=======
+>>>>>>> adadae45816
 
 /*
  * EventTriggerData is the node type that is passed as fmgr "context" info

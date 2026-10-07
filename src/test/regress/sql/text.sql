@@ -6,12 +6,22 @@ SELECT text 'this is a text string' = text 'this is a text string' AS true;
 
 SELECT text 'this is a text string' = text 'this is a text strin' AS false;
 
+<<<<<<< HEAD
 CREATE TABLE TEXT_TBL (f1 text);
 
 INSERT INTO TEXT_TBL VALUES ('doh!');
 ANALYZE TEXT_TBL;
 INSERT INTO TEXT_TBL VALUES ('hi de ho neighbor');
 
+||||||| e1c1c30f635
+CREATE TABLE TEXT_TBL (f1 text);
+
+INSERT INTO TEXT_TBL VALUES ('doh!');
+INSERT INTO TEXT_TBL VALUES ('hi de ho neighbor');
+
+=======
+-- text_tbl was already created and filled in test_setup.sql.
+>>>>>>> adadae45816
 SELECT * FROM TEXT_TBL;
 
 -- As of 8.3 we have removed most implicit casts to text, so that for example

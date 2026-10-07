@@ -4,9 +4,15 @@
  *	  prototypes for functions in backend/catalog/heap.c
  *
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| e1c1c30f635
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/catalog/heap.h
@@ -76,7 +82,8 @@ extern Relation heap_create(const char *relname,
 							bool mapped_relation,
 							bool allow_system_table_mods,
 							TransactionId *relfrozenxid,
-							MultiXactId *relminmxid);
+							MultiXactId *relminmxid,
+							bool create_storage);
 
 extern Oid	heap_create_with_catalog(const char *relname,
 									 Oid relnamespace,
@@ -138,6 +145,7 @@ extern List *AddRelationConstraints(Relation rel,
 extern void RelationClearMissing(Relation rel);
 extern void SetAttrMissing(Oid relid, char *attname, char *value);
 
+<<<<<<< HEAD
 extern Oid	StoreAttrDefault(Relation rel, AttrNumber attnum,
 							 Node *expr,
 							 bool *cookedMissingVal,
@@ -146,6 +154,13 @@ extern Oid	StoreAttrDefault(Relation rel, AttrNumber attnum,
 							 bool is_internal,
 							 bool add_column_mode);
 
+||||||| e1c1c30f635
+extern Oid	StoreAttrDefault(Relation rel, AttrNumber attnum,
+							 Node *expr, bool is_internal,
+							 bool add_column_mode);
+
+=======
+>>>>>>> adadae45816
 extern Node *cookDefault(ParseState *pstate,
 						 Node *raw_default,
 						 Oid atttypid,
@@ -157,9 +172,7 @@ extern void DeleteRelationTuple(Oid relid);
 extern void DeleteAttributeTuples(Oid relid);
 extern void DeleteSystemAttributeTuples(Oid relid);
 extern void RemoveAttributeById(Oid relid, AttrNumber attnum);
-extern void RemoveAttrDefault(Oid relid, AttrNumber attnum,
-							  DropBehavior behavior, bool complain, bool internal);
-extern void RemoveAttrDefaultById(Oid attrdefId);
+
 extern void CopyStatistics(Oid fromrelid, Oid torelid);
 extern void RemoveStatistics(Oid relid, AttrNumber attnum);
 

@@ -3,7 +3,7 @@
  * llvmjit.c
  *	  Core part of the LLVM JIT provider.
  *
- * Copyright (c) 2016-2021, PostgreSQL Global Development Group
+ * Copyright (c) 2016-2022, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
  *	  src/backend/jit/llvm/llvmjit.c
@@ -171,6 +171,14 @@ static void
 llvm_release_context(JitContext *context)
 {
 	LLVMJitContext *llvm_context = (LLVMJitContext *) context;
+<<<<<<< HEAD
+||||||| e1c1c30f635
+
+	llvm_enter_fatal_on_oom();
+
+=======
+	ListCell   *lc;
+>>>>>>> adadae45816
 
 	/*
 	 * When this backend is exiting, don't clean up LLVM. As an error might
@@ -188,12 +196,9 @@ llvm_release_context(JitContext *context)
 		llvm_context->module = NULL;
 	}
 
-	while (llvm_context->handles != NIL)
+	foreach(lc, llvm_context->handles)
 	{
-		LLVMJitHandle *jit_handle;
-
-		jit_handle = (LLVMJitHandle *) linitial(llvm_context->handles);
-		llvm_context->handles = list_delete_first(llvm_context->handles);
+		LLVMJitHandle *jit_handle = (LLVMJitHandle *) lfirst(lc);
 
 #if LLVM_VERSION_MAJOR > 11
 		{
@@ -221,6 +226,8 @@ llvm_release_context(JitContext *context)
 
 		pfree(jit_handle);
 	}
+	list_free(llvm_context->handles);
+	llvm_context->handles = NIL;
 }
 
 /*
@@ -890,8 +897,14 @@ llvm_shutdown(int code, Datum arg)
 	 * has occurred in the middle of LLVM code. It is not safe to call back
 	 * into LLVM (which is why a FATAL error was thrown).
 	 *
+<<<<<<< HEAD
 	 * We do need to shutdown LLVM in other shutdown cases, otherwise
 	 * e.g. profiling data won't be written out.
+||||||| e1c1c30f635
+=======
+	 * We do need to shutdown LLVM in other shutdown cases, otherwise e.g.
+	 * profiling data won't be written out.
+>>>>>>> adadae45816
 	 */
 	if (llvm_in_fatal_on_oom())
 	{

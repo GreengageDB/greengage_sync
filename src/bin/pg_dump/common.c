@@ -4,7 +4,7 @@
  *	Catalog routines used by pg_dump; long ago these were shared
  *	by another dump tool, but not anymore.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -86,6 +86,15 @@ static void flagInhAttrs(DumpOptions *dopt, TableInfo *tblinfo, int numTables);
 static void findParentsByOid(TableInfo *self,
 							 InhInfo *inhinfo, int numInherits);
 static int	strInArray(const char *pattern, char **arr, int arr_size);
+<<<<<<< HEAD
+||||||| e1c1c30f635
+static IndxInfo *findIndexByOid(Oid oid, DumpableObject **idxinfoindex,
+								int numIndexes);
+
+=======
+static IndxInfo *findIndexByOid(Oid oid);
+
+>>>>>>> adadae45816
 
 /*
  * getSchemaData
@@ -177,9 +186,15 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 
 	pg_log_info("reading user-defined operators");
 	(void) getOperators(fout, &numOperators);
+<<<<<<< HEAD
 
 	pg_log_info("reading user-defined external protocols");
 	getExtProtocols(fout, &numExtProtocols);
+||||||| e1c1c30f635
+	oprinfo = getOperators(fout, &numOperators);
+	oprinfoindex = buildIndexArray(oprinfo, numOperators, sizeof(OprInfo));
+=======
+>>>>>>> adadae45816
 
 	pg_log_info("reading user-defined access methods");
 	getAccessMethods(fout, &numAccessMethods);
@@ -274,8 +289,11 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 	pg_log_info("reading publications");
 	(void) getPublications(fout, &numPublications);
 
-	pg_log_info("reading publication membership");
+	pg_log_info("reading publication membership of tables");
 	getPublicationTables(fout, tblinfo, numTables);
+
+	pg_log_info("reading publication membership of schemas");
+	getPublicationNamespaces(fout);
 
 	pg_log_info("reading subscriptions");
 	getSubscriptions(fout);
@@ -365,9 +383,9 @@ flagInhTables(Archive *fout, TableInfo *tblinfo, int numTables,
 
 			/* With partitions there can only be one parent */
 			if (tblinfo[i].numParents != 1)
-				fatal("invalid number of parents %d for table \"%s\"",
-					  tblinfo[i].numParents,
-					  tblinfo[i].dobj.name);
+				pg_fatal("invalid number of parents %d for table \"%s\"",
+						 tblinfo[i].numParents,
+						 tblinfo[i].dobj.name);
 
 			attachinfo = (TableAttachInfo *) palloc(sizeof(TableAttachInfo));
 			attachinfo->dobj.objType = DO_TABLE_ATTACH;
@@ -814,7 +832,13 @@ findTableByOid(Oid oid)
  *	  finds the DumpableObject for the index with the given oid
  *	  returns NULL if not found
  */
+<<<<<<< HEAD
 IndxInfo *
+||||||| e1c1c30f635
+	return (TableInfo *) findObjectByOid(oid, tblinfoindex, numTables);
+=======
+static IndxInfo *
+>>>>>>> adadae45816
 findIndexByOid(Oid oid)
 {
 	CatalogId	catId;
@@ -1034,13 +1058,10 @@ findParentsByOid(TableInfo *self,
 
 				parent = findTableByOid(inhinfo[i].inhparent);
 				if (parent == NULL)
-				{
-					pg_log_error("failed sanity check, parent OID %u of table \"%s\" (OID %u) not found",
-								 inhinfo[i].inhparent,
-								 self->dobj.name,
-								 oid);
-					exit_nicely(1);
-				}
+					pg_fatal("failed sanity check, parent OID %u of table \"%s\" (OID %u) not found",
+							 inhinfo[i].inhparent,
+							 self->dobj.name,
+							 oid);
 				self->parents[j++] = parent;
 			}
 		}
@@ -1076,10 +1097,7 @@ parseOidArray(const char *str, Oid *array, int arraysize)
 			if (j > 0)
 			{
 				if (argNum >= arraysize)
-				{
-					pg_log_error("could not parse numeric array \"%s\": too many numbers", str);
-					exit_nicely(1);
-				}
+					pg_fatal("could not parse numeric array \"%s\": too many numbers", str);
 				temp[j] = '\0';
 				array[argNum++] = atooid(temp);
 				j = 0;
@@ -1091,10 +1109,7 @@ parseOidArray(const char *str, Oid *array, int arraysize)
 		{
 			if (!(isdigit((unsigned char) s) || s == '-') ||
 				j >= sizeof(temp) - 1)
-			{
-				pg_log_error("could not parse numeric array \"%s\": invalid character in number", str);
-				exit_nicely(1);
-			}
+				pg_fatal("could not parse numeric array \"%s\": invalid character in number", str);
 			temp[j++] = s;
 		}
 	}

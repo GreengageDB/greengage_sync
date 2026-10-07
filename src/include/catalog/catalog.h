@@ -4,7 +4,7 @@
  *	  prototypes for functions in backend/catalog/catalog.c
  *
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/catalog/catalog.h
@@ -45,6 +45,7 @@ extern char* GetReservedPrefix(const char *name);
 
 extern bool IsSharedRelation(Oid relationId);
 
+<<<<<<< HEAD
 extern Oid GetNewOidWithIndex(Relation relation, Oid indexId,
 							  AttrNumber oidcolumn);
 extern Oid GetNewRelFileNode(Oid reltablespace, Relation pg_class,
@@ -53,5 +54,18 @@ extern Oid GetNewRelFileNode(Oid reltablespace, Relation pg_class,
 extern void reldir_and_filename(RelFileNode rnode, BackendId backend, ForkNumber forknum,
 					char **dir, char **filename);
 extern char *aorelpathbackend(RelFileNode node, BackendId backend, int32 segno);
+||||||| e1c1c30f635
+extern Oid	GetNewOidWithIndex(Relation relation, Oid indexId,
+							   AttrNumber oidcolumn);
+extern Oid	GetNewRelFileNode(Oid reltablespace, Relation pg_class,
+							  char relpersistence);
+=======
+extern bool IsPinnedObject(Oid classId, Oid objectId);
+
+extern Oid	GetNewOidWithIndex(Relation relation, Oid indexId,
+							   AttrNumber oidcolumn);
+extern Oid	GetNewRelFileNode(Oid reltablespace, Relation pg_class,
+							  char relpersistence);
+>>>>>>> adadae45816
 
 #endif							/* CATALOG_H */

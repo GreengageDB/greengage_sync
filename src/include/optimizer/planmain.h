@@ -4,9 +4,15 @@
  *	  prototypes for various files in optimizer/plan
  *
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| e1c1c30f635
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/optimizer/planmain.h
@@ -20,8 +26,16 @@
 #include "nodes/plannodes.h"
 
 /* GUC parameters */
+<<<<<<< HEAD
 #define DEFAULT_CURSOR_TUPLE_FRACTION 1.0 /* assume all rows will be fetched */
 extern double cursor_tuple_fraction;
+||||||| e1c1c30f635
+#define DEFAULT_CURSOR_TUPLE_FRACTION 0.1
+extern double cursor_tuple_fraction;
+=======
+#define DEFAULT_CURSOR_TUPLE_FRACTION 0.1
+extern PGDLLIMPORT double cursor_tuple_fraction;
+>>>>>>> adadae45816
 
 /* query_planner callback to compute query_pathkeys */
 typedef void (*query_pathkeys_callback) (PlannerInfo *root, void *extra);
@@ -101,8 +115,8 @@ extern TupleSplit *make_tup_split(List *tlist, List *dqa_info_lst, int numGroupC
 /*
  * prototypes for plan/initsplan.c
  */
-extern int	from_collapse_limit;
-extern int	join_collapse_limit;
+extern PGDLLIMPORT int from_collapse_limit;
+extern PGDLLIMPORT int join_collapse_limit;
 
 extern void add_base_rels_to_query(PlannerInfo *root, Node *jtnode);
 extern void add_other_rels_to_query(PlannerInfo *root);
@@ -156,6 +170,7 @@ extern bool innerrel_is_unique(PlannerInfo *root,
  * prototypes for plan/setrefs.c
  */
 extern Plan *set_plan_references(PlannerInfo *root, Plan *plan);
+extern bool trivial_subqueryscan(SubqueryScan *plan);
 extern void record_plan_function_dependency(PlannerInfo *root, Oid funcid);
 extern void record_plan_type_dependency(PlannerInfo *root, Oid typid);
 extern bool extract_query_dependencies_walker(Node *node, PlannerInfo *root);

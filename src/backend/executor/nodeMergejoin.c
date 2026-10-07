@@ -3,9 +3,15 @@
  * nodeMergejoin.c
  *	  routines supporting merge joins
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| e1c1c30f635
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -970,11 +976,10 @@ ExecMergeJoin_guts(PlanState *pstate)
 
 						if (compareResult == 0)
 							node->mj_JoinState = EXEC_MJ_JOINTUPLES;
-						else
-						{
-							Assert(compareResult < 0);
+						else if (compareResult < 0)
 							node->mj_JoinState = EXEC_MJ_NEXTOUTER;
-						}
+						else	/* compareResult > 0 should not happen */
+							elog(ERROR, "mergejoin input data is out of order");
 						break;
 					case MJEVAL_NONMATCHABLE:
 
@@ -1178,7 +1183,7 @@ ExecMergeJoin_guts(PlanState *pstate)
 
 					node->mj_JoinState = EXEC_MJ_JOINTUPLES;
 				}
-				else
+				else if (compareResult > 0)
 				{
 					/* ----------------
 					 *	if the new outer tuple didn't match the marked inner
@@ -1197,8 +1202,13 @@ ExecMergeJoin_guts(PlanState *pstate)
 					 *	no more inners, no more matches are possible.
 					 * ----------------
 					 */
+<<<<<<< HEAD
 					if (compareResult <= 0 && !((MergeJoin*)node->js.ps.plan)->unique_outer)
 						elog(ERROR, "Mergejoin: compareResult > 0, bad plan ?");
+||||||| e1c1c30f635
+					Assert(compareResult > 0);
+=======
+>>>>>>> adadae45816
 					innerTupleSlot = node->mj_InnerTupleSlot;
 
 					/* reload comparison data for current inner */
@@ -1232,10 +1242,12 @@ ExecMergeJoin_guts(PlanState *pstate)
 							return NULL;
 					}
 				}
+				else			/* compareResult < 0 should not happen */
+					elog(ERROR, "mergejoin input data is out of order");
 				break;
 
 				/*----------------------------------------------------------
-				 * EXEC_MJ_SKIP means compare tuples and if they do not
+				 * EXEC_MJ_SKIP_TEST means compare tuples and if they do not
 				 * match, skip whichever is lesser.
 				 *
 				 * For example:
@@ -1291,8 +1303,8 @@ ExecMergeJoin_guts(PlanState *pstate)
 				break;
 
 				/*
-				 * SKIPOUTER_ADVANCE: advance over an outer tuple that is
-				 * known not to join to any inner tuple.
+				 * EXEC_MJ_SKIPOUTER_ADVANCE: advance over an outer tuple that
+				 * is known not to join to any inner tuple.
 				 *
 				 * Before advancing, we check to see if we must emit an
 				 * outer-join fill tuple for this outer tuple.
@@ -1353,8 +1365,8 @@ ExecMergeJoin_guts(PlanState *pstate)
 				break;
 
 				/*
-				 * SKIPINNER_ADVANCE: advance over an inner tuple that is
-				 * known not to join to any outer tuple.
+				 * EXEC_MJ_SKIPINNER_ADVANCE: advance over an inner tuple that
+				 * is known not to join to any outer tuple.
 				 *
 				 * Before advancing, we check to see if we must emit an
 				 * outer-join fill tuple for this inner tuple.
@@ -1812,5 +1824,4 @@ ExecReScanMergeJoin(MergeJoinState *node)
 		ExecReScan(node->js.ps.lefttree);
 	if (node->js.ps.righttree->chgParam == NULL)
 		ExecReScan(node->js.ps.righttree);
-
 }

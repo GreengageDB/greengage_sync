@@ -3,7 +3,7 @@
 # GNUmakefile--
 #    Makefile for src/test/regress (the regression tests)
 #
-# Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+# Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
 # Portions Copyright (c) 1994, Regents of the University of California
 #
 # src/test/regress/GNUmakefile
@@ -31,8 +31,7 @@ endif
 
 # stuff to pass into build of pg_regress
 EXTRADEFS = '-DHOST_TUPLE="$(host_tuple)"' \
-	'-DSHELLPROG="$(SHELL)"' \
-	'-DDLSUFFIX="$(DLSUFFIX)"'
+	'-DSHELLPROG="$(SHELL)"'
 
 ##
 ## Prepare for tests
@@ -98,20 +97,40 @@ all: all-lib
 # Ensure parallel safety if a build is started in this directory
 $(OBJS): | submake-libpgport submake-generated-headers
 
+<<<<<<< HEAD
+# Test input and expected files.  These are created by pg_regress itself, so we
+# don't have a rule to create them.  We do need rules to clean them however.
+input_files = $(patsubst $(srcdir)/input/%.source,sql/%.sql, $(wildcard $(srcdir)/input/*.source))
+output_files := $(patsubst $(srcdir)/output/%.source,expected/%.out, $(wildcard $(srcdir)/output/*.source))
+||||||| e1c1c30f635
 # Test input and expected files.  These are created by pg_regress itself, so we
 # don't have a rule to create them.  We do need rules to clean them however.
 input_files = $(patsubst $(srcdir)/input/%.source,sql/%.sql, $(wildcard $(srcdir)/input/*.source))
 output_files := $(patsubst $(srcdir)/output/%.source,expected/%.out, $(wildcard $(srcdir)/output/*.source))
 
+
+=======
+>>>>>>> adadae45816
+
 # not installed by default
 
 regress_data_files = \
+<<<<<<< HEAD
 	$(filter-out $(addprefix $(srcdir)/,$(output_files)),$(wildcard $(srcdir)/expected/*.out)) \
 	$(wildcard $(srcdir)/input/*.source) \
 	$(wildcard $(srcdir)/output/*.source) \
 	$(wildcard $(srcdir)/output/uao_dml/*.source) \
 	$(wildcard $(srcdir)/output/uao_ddl/*.source) \
 	$(filter-out $(addprefix $(srcdir)/,$(input_files)),$(wildcard $(srcdir)/sql/*.sql)) \
+||||||| e1c1c30f635
+	$(filter-out $(addprefix $(srcdir)/,$(output_files)),$(wildcard $(srcdir)/expected/*.out)) \
+	$(wildcard $(srcdir)/input/*.source) \
+	$(wildcard $(srcdir)/output/*.source) \
+	$(filter-out $(addprefix $(srcdir)/,$(input_files)),$(wildcard $(srcdir)/sql/*.sql)) \
+=======
+	$(wildcard $(srcdir)/sql/*.sql) \
+	$(wildcard $(srcdir)/expected/*.out) \
+>>>>>>> adadae45816
 	$(wildcard $(srcdir)/data/*.data) \
 	$(srcdir)/parallel_schedule $(srcdir)/resultmap
 
@@ -181,7 +200,15 @@ query_info_hook_test:
 ## Run tests
 ##
 
+<<<<<<< HEAD
 REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir --init-file=$(srcdir)/init_file $(EXTRA_REGRESS_OPTS)
+||||||| e1c1c30f635
+REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir \
+	$(EXTRA_REGRESS_OPTS)
+=======
+REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 \
+	$(EXTRA_REGRESS_OPTS)
+>>>>>>> adadae45816
 
 check: all
 	$(pg_regress_check) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
@@ -205,6 +232,7 @@ installcheck-parallel: all
 installcheck-tests: all
 	$(pg_regress_installcheck) $(REGRESS_OPTS) $(TESTS) $(EXTRA_TESTS)
 
+<<<<<<< HEAD
 ifeq ($(BUILD_TYPE),prod)
 .PHONY: installcheck-icudp
 installcheck-icudp:
@@ -220,6 +248,12 @@ installcheck-mirrorless: all tablespace-setup
 standbycheck: all
 	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/standby_schedule  $(EXTRA_TESTS)
 
+||||||| e1c1c30f635
+standbycheck: all
+	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/standby_schedule --use-existing
+
+=======
+>>>>>>> adadae45816
 # old interfaces follow...
 
 runcheck: check
@@ -245,8 +279,14 @@ clean maintainer-clean: clean-lib
 	$(MAKE) -C hooktest/ clean
 	$(MAKE) -C query_info_hook_test/ clean
 # things created by various check targets
+<<<<<<< HEAD
 	rm -f $(output_files) $(input_files)
 	rm -rf ./testtablespace ./testtablespace_*
+||||||| e1c1c30f635
+	rm -f $(output_files) $(input_files)
+	rm -rf testtablespace
+=======
+>>>>>>> adadae45816
 	rm -rf $(pg_regress_clean_files)
 
 distclean: clean

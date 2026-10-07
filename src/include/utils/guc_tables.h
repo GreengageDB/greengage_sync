@@ -7,7 +7,7 @@
  *
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  *
  *	  src/include/utils/guc_tables.h
  *
@@ -75,6 +75,7 @@ enum config_group
 	WAL_SETTINGS,
 	WAL_CHECKPOINTS,
 	WAL_ARCHIVING,
+	WAL_RECOVERY,
 	WAL_ARCHIVE_RECOVERY,
 	WAL_RECOVERY_TARGET,
 	REPLICATION_SENDING,
@@ -90,7 +91,7 @@ enum config_group
 	PROCESS_TITLE,
 	STATS_ANALYZE,                      /*CDB*/
 	STATS_MONITORING,
-	STATS_COLLECTOR,
+	STATS_CUMULATIVE,
 	AUTOVACUUM,
 	CLIENT_CONN_STATEMENT,
 	CLIENT_CONN_LOCALE,
@@ -289,10 +290,10 @@ struct config_enum
 };
 
 /* constant tables corresponding to enums above and in guc.h */
-extern const char *const config_group_names[];
-extern const char *const config_type_names[];
-extern const char *const GucContext_Names[];
-extern const char *const GucSource_Names[];
+extern PGDLLIMPORT const char *const config_group_names[];
+extern PGDLLIMPORT const char *const config_type_names[];
+extern PGDLLIMPORT const char *const GucContext_Names[];
+extern PGDLLIMPORT const char *const GucSource_Names[];
 
 /* get the current set of variables */
 extern struct config_generic **get_guc_variables(void);

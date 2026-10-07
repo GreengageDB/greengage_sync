@@ -2,7 +2,12 @@
 -- FLOAT8
 --
 
-CREATE TABLE FLOAT8_TBL(f1 float8);
+--
+-- Build a table for testing
+-- (This temporarily hides the table created in test_setup.sql)
+--
+
+CREATE TEMP TABLE FLOAT8_TBL(f1 float8);
 
 INSERT INTO FLOAT8_TBL(f1) VALUES ('    0.0   ');
 INSERT INTO FLOAT8_TBL(f1) VALUES ('1004.30  ');
@@ -242,6 +247,7 @@ INSERT INTO FLOAT8_TBL(f1) VALUES ('10e-400');
 
 INSERT INTO FLOAT8_TBL(f1) VALUES ('-10e-400');
 
+<<<<<<< HEAD
 INSERT INTO FLOAT8_TBL(f1) VALUES ('1e-324');
 
 INSERT INTO FLOAT8_TBL(f1) VALUES ('1e308');
@@ -322,18 +328,14 @@ DELETE FROM FLOAT8_TBL WHERE f1='NaN'::float8;
 
 -- maintain external table consistency across platforms
 -- delete all values and reinsert well-behaved ones
+||||||| e1c1c30f635
+-- maintain external table consistency across platforms
+-- delete all values and reinsert well-behaved ones
+=======
+DROP TABLE FLOAT8_TBL;
+>>>>>>> adadae45816
 
-DELETE FROM FLOAT8_TBL;
-
-INSERT INTO FLOAT8_TBL(f1) VALUES ('0.0');
-
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-34.84');
-
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1004.30');
-
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1.2345678901234e+200');
-
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1.2345678901234e-200');
+-- Check the float8 values exported for use by other tests
 
 SELECT * FROM FLOAT8_TBL;
 

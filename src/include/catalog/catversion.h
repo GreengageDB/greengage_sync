@@ -34,7 +34,7 @@
  * database contents or layout, such as altering tuple headers.
  *
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/catalog/catversion.h
@@ -55,7 +55,15 @@
  * catalog versions from Greenplum.
  */
 
+<<<<<<< HEAD
 /*							3yyymmddN */
 #define CATALOG_VERSION_NO	302609281
+||||||| e1c1c30f635
+/*							yyyymmddN */
+#define CATALOG_VERSION_NO	202106151
+=======
+/*							yyyymmddN */
+#define CATALOG_VERSION_NO	202205191
+>>>>>>> adadae45816
 
 #endif

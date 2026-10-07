@@ -2,6 +2,7 @@
 -- INT4
 --
 
+<<<<<<< HEAD
 CREATE TABLE INT4_TBL(f1 int4);
 
 INSERT INTO INT4_TBL(f1) VALUES ('   0  ');
@@ -10,15 +11,20 @@ ANALYZE INT4_TBL;
 INSERT INTO INT4_TBL(f1) VALUES ('123456     ');
 
 INSERT INTO INT4_TBL(f1) VALUES ('    -123456');
+||||||| e1c1c30f635
+CREATE TABLE INT4_TBL(f1 int4);
+
+INSERT INTO INT4_TBL(f1) VALUES ('   0  ');
+
+INSERT INTO INT4_TBL(f1) VALUES ('123456     ');
+
+INSERT INTO INT4_TBL(f1) VALUES ('    -123456');
+=======
+-- int4_tbl was already created and filled in test_setup.sql.
+-- Here we just try to insert bad values.
+>>>>>>> adadae45816
 
 INSERT INTO INT4_TBL(f1) VALUES ('34.5');
-
--- largest and smallest values
-INSERT INTO INT4_TBL(f1) VALUES ('2147483647');
-
-INSERT INTO INT4_TBL(f1) VALUES ('-2147483647');
-
--- bad input values -- should give errors
 INSERT INTO INT4_TBL(f1) VALUES ('1000000000000');
 INSERT INTO INT4_TBL(f1) VALUES ('asdf');
 INSERT INTO INT4_TBL(f1) VALUES ('     ');

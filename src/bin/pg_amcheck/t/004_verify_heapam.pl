@@ -1,13 +1,12 @@
 
-# Copyright (c) 2021, PostgreSQL Global Development Group
+# Copyright (c) 2021-2022, PostgreSQL Global Development Group
 
 use strict;
 use warnings;
 
-use PostgresNode;
-use TestLib;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 
-use Fcntl qw(:seek);
 use Test::More;
 
 # This regression test demonstrates that the pg_amcheck binary correctly
@@ -107,8 +106,8 @@ sub read_tuple
 {
 	my ($fh, $offset) = @_;
 	my ($buffer, %tup);
-	seek($fh, $offset, SEEK_SET)
-	  or BAIL_OUT("seek failed: $!");
+	sysseek($fh, $offset, 0)
+	  or BAIL_OUT("sysseek failed: $!");
 	defined(sysread($fh, $buffer, HEAPTUPLE_PACK_LENGTH))
 	  or BAIL_OUT("sysread failed: $!");
 
@@ -162,6 +161,7 @@ sub write_tuple
 	my ($fh, $offset, $tup) = @_;
 	my $buffer = pack(
 		HEAPTUPLE_PACK_CODE,
+<<<<<<< HEAD
 		$tup->{t_xmin},        $tup->{t_xmax},
 		$tup->{t_field3},      $tup->{bi_hi},
 		$tup->{bi_lo},         $tup->{ip_posid},
@@ -178,6 +178,39 @@ sub write_tuple
 		$tup->{c_va_valueid},  $tup->{c_va_toastrelid});
 	seek($fh, $offset, SEEK_SET)
 	  or BAIL_OUT("seek failed: $!");
+||||||| e1c1c30f635
+		$tup->{t_xmin},       $tup->{t_xmax},
+		$tup->{t_field3},     $tup->{bi_hi},
+		$tup->{bi_lo},        $tup->{ip_posid},
+		$tup->{t_infomask2},  $tup->{t_infomask},
+		$tup->{t_hoff},       $tup->{t_bits},
+		$tup->{a_1},          $tup->{a_2},
+		$tup->{b_header},     $tup->{b_body1},
+		$tup->{b_body2},      $tup->{b_body3},
+		$tup->{b_body4},      $tup->{b_body5},
+		$tup->{b_body6},      $tup->{b_body7},
+		$tup->{c_va_header},  $tup->{c_va_vartag},
+		$tup->{c_va_rawsize}, $tup->{c_va_extinfo},
+		$tup->{c_va_valueid}, $tup->{c_va_toastrelid});
+	seek($fh, $offset, SEEK_SET)
+	  or BAIL_OUT("seek failed: $!");
+=======
+		$tup->{t_xmin},       $tup->{t_xmax},
+		$tup->{t_field3},     $tup->{bi_hi},
+		$tup->{bi_lo},        $tup->{ip_posid},
+		$tup->{t_infomask2},  $tup->{t_infomask},
+		$tup->{t_hoff},       $tup->{t_bits},
+		$tup->{a_1},          $tup->{a_2},
+		$tup->{b_header},     $tup->{b_body1},
+		$tup->{b_body2},      $tup->{b_body3},
+		$tup->{b_body4},      $tup->{b_body5},
+		$tup->{b_body6},      $tup->{b_body7},
+		$tup->{c_va_header},  $tup->{c_va_vartag},
+		$tup->{c_va_rawsize}, $tup->{c_va_extinfo},
+		$tup->{c_va_valueid}, $tup->{c_va_toastrelid});
+	sysseek($fh, $offset, 0)
+	  or BAIL_OUT("sysseek failed: $!");
+>>>>>>> adadae45816
 	defined(syswrite($fh, $buffer, HEAPTUPLE_PACK_LENGTH))
 	  or BAIL_OUT("syswrite failed: $!");
 	return;
@@ -189,7 +222,7 @@ umask(0077);
 # Set up the node.  Once we create and corrupt the table,
 # autovacuum workers visiting the table could crash the backend.
 # Disable autovacuum so that won't happen.
-my $node = get_new_node('test');
+my $node = PostgreSQL::Test::Cluster->new('test');
 $node->init;
 $node->append_conf('postgresql.conf', 'autovacuum=off');
 
@@ -308,7 +341,6 @@ close($file)
 $node->start;
 
 # Ok, Xids and page layout look ok.  We can run corruption tests.
-plan tests => 19;
 
 # Check that pg_amcheck runs against the uncorrupted table without error.
 $node->command_ok(
@@ -338,14 +370,14 @@ sub header
 {
 	my ($blkno, $offnum, $attnum) = @_;
 	return
-	  qr/heap table "postgres"\."public"\."test", block $blkno, offset $offnum, attribute $attnum:\s+/ms
+	  qr/heap table "postgres\.public\.test", block $blkno, offset $offnum, attribute $attnum:\s+/ms
 	  if (defined $attnum);
 	return
-	  qr/heap table "postgres"\."public"\."test", block $blkno, offset $offnum:\s+/ms
+	  qr/heap table "postgres\.public\.test", block $blkno, offset $offnum:\s+/ms
 	  if (defined $offnum);
-	return qr/heap table "postgres"\."public"\."test", block $blkno:\s+/ms
+	return qr/heap table "postgres\.public\.test", block $blkno:\s+/ms
 	  if (defined $blkno);
-	return qr/heap table "postgres"\."public"\."test":\s+/ms;
+	return qr/heap table "postgres\.public\.test":\s+/ms;
 }
 
 # Corrupt the tuples, one type of corruption per tuple.  Some types of
@@ -539,3 +571,5 @@ $node->command_checks_all(
 
 $node->teardown_node;
 $node->clean_node;
+
+done_testing();

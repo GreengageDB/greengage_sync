@@ -1,5 +1,6 @@
 -- Tests for range data types.
 
+<<<<<<< HEAD
 -- start_matchsubs
 -- m/NOTICE:  One or more columns in the following table\(s\) do not have statistics: /
 -- s/.//gs
@@ -8,8 +9,14 @@
 -- end_matchsubs
 create type textrange as range (subtype=text, collation="C");
 
+||||||| e1c1c30f635
+create type textrange as range (subtype=text, collation="C");
+
+=======
+>>>>>>> adadae45816
 --
 -- test input parser
+-- (type textrange was already made in test_setup.sql)
 --
 
 -- negative tests; should fail
@@ -28,7 +35,6 @@ select '[z,a]'::textrange;
 select '  empty  '::textrange;
 select ' ( empty, empty )  '::textrange;
 select ' ( " a " " a ", " z " " z " )  '::textrange;
-select '(,z)'::textrange;
 select '(a,)'::textrange;
 select '[,z]'::textrange;
 select '[a,]'::textrange;
@@ -434,13 +440,12 @@ set timezone to default;
 
 --
 -- Test user-defined range of floats
+-- (type float8range was already made in test_setup.sql)
 --
 
 --should fail
-create type float8range as range (subtype=float8, subtype_diff=float4mi);
+create type bogus_float8range as range (subtype=float8, subtype_diff=float4mi);
 
---should succeed
-create type float8range as range (subtype=float8, subtype_diff=float8mi);
 select '[123.001, 5.e9)'::float8range @> 888.882::float8;
 create table float8range_test(f8r float8range, i int);
 insert into float8range_test values(float8range(-100.00007, '1.111113e9'), 42);

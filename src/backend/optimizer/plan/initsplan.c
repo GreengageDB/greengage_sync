@@ -3,9 +3,15 @@
  * initsplan.c
  *	  Target list, qualification, joininfo initialization routines
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| e1c1c30f635
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -83,7 +89,17 @@ static bool check_outerjoin_delay(PlannerInfo *root, Relids *relids_p,
 static bool check_equivalence_delay(PlannerInfo *root,
 									RestrictInfo *restrictinfo);
 static bool check_redundant_nullability_qual(PlannerInfo *root, Node *clause);
+<<<<<<< HEAD
 static void check_resultcacheable(RestrictInfo *restrictinfo);
+||||||| e1c1c30f635
+static void check_mergejoinable(RestrictInfo *restrictinfo);
+static void check_hashjoinable(RestrictInfo *restrictinfo);
+static void check_resultcacheable(RestrictInfo *restrictinfo);
+=======
+static void check_mergejoinable(RestrictInfo *restrictinfo);
+static void check_hashjoinable(RestrictInfo *restrictinfo);
+static void check_memoizable(RestrictInfo *restrictinfo);
+>>>>>>> adadae45816
 
 
 /*****************************************************************************
@@ -2326,10 +2342,10 @@ distribute_restrictinfo_to_rels(PlannerInfo *root,
 
 			/*
 			 * Likewise, check if the clause is suitable to be used with a
-			 * Result Cache node to cache inner tuples during a parameterized
+			 * Memoize node to cache inner tuples during a parameterized
 			 * nested loop.
 			 */
-			check_resultcacheable(restrictinfo);
+			check_memoizable(restrictinfo);
 
 			/*
 			 * Add clause to the join lists of all the relevant relations.
@@ -2573,7 +2589,7 @@ build_implied_join_equality(PlannerInfo *root,
 	/* Set mergejoinability/hashjoinability flags */
 	check_mergejoinable(restrictinfo);
 	check_hashjoinable(restrictinfo);
-	check_resultcacheable(restrictinfo);
+	check_memoizable(restrictinfo);
 
 	return restrictinfo;
 }
@@ -2836,17 +2852,18 @@ check_hashjoinable(RestrictInfo *restrictinfo)
 }
 
 /*
- * check_resultcacheable
- *	  If the restrictinfo's clause is suitable to be used for a Result Cache
- *	  node, set the hasheqoperator to the hash equality operator that will be
- *	  needed during caching.
+ * check_memoizable
+ *	  If the restrictinfo's clause is suitable to be used for a Memoize node,
+ *	  set the lefthasheqoperator and righthasheqoperator to the hash equality
+ *	  operator that will be needed during caching.
  */
 static void
-check_resultcacheable(RestrictInfo *restrictinfo)
+check_memoizable(RestrictInfo *restrictinfo)
 {
 	TypeCacheEntry *typentry;
 	Expr	   *clause = restrictinfo->clause;
-	Node	   *leftarg;
+	Oid			lefttype;
+	Oid			righttype;
 
 	if (restrictinfo->pseudoconstant)
 		return;
@@ -2855,13 +2872,24 @@ check_resultcacheable(RestrictInfo *restrictinfo)
 	if (list_length(((OpExpr *) clause)->args) != 2)
 		return;
 
-	leftarg = linitial(((OpExpr *) clause)->args);
+	lefttype = exprType(linitial(((OpExpr *) clause)->args));
 
-	typentry = lookup_type_cache(exprType(leftarg), TYPECACHE_HASH_PROC |
+	typentry = lookup_type_cache(lefttype, TYPECACHE_HASH_PROC |
 								 TYPECACHE_EQ_OPR);
 
-	if (!OidIsValid(typentry->hash_proc) || !OidIsValid(typentry->eq_opr))
-		return;
+	if (OidIsValid(typentry->hash_proc) && OidIsValid(typentry->eq_opr))
+		restrictinfo->left_hasheqoperator = typentry->eq_opr;
 
-	restrictinfo->hasheqoperator = typentry->eq_opr;
+	righttype = exprType(lsecond(((OpExpr *) clause)->args));
+
+	/*
+	 * Lookup the right type, unless it's the same as the left type, in which
+	 * case typentry is already pointing to the required TypeCacheEntry.
+	 */
+	if (lefttype != righttype)
+		typentry = lookup_type_cache(righttype, TYPECACHE_HASH_PROC |
+									 TYPECACHE_EQ_OPR);
+
+	if (OidIsValid(typentry->hash_proc) && OidIsValid(typentry->eq_opr))
+		restrictinfo->right_hasheqoperator = typentry->eq_opr;
 }

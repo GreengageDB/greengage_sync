@@ -4,9 +4,15 @@
  *	  Declarations for operations on built-in types.
  *
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| e1c1c30f635
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/utils/builtins.h
@@ -33,6 +39,10 @@ extern void domain_check(Datum value, bool isnull, Oid domainType,
 extern int	errdatatype(Oid datatypeOid);
 extern int	errdomainconstraint(Oid datatypeOid, const char *conname);
 
+/* encode.c */
+extern uint64 hex_encode(const char *src, size_t len, char *dst);
+extern uint64 hex_decode(const char *src, size_t len, char *dst);
+
 /* int.c */
 extern int2vector *buildint2vector(const int16 *int2s, int n);
 
@@ -41,9 +51,9 @@ extern void namestrcpy(Name name, const char *str);
 extern int	namestrcmp(Name name, const char *str);
 
 /* numutils.c */
-extern int32 pg_atoi(const char *s, int size, int c);
 extern int16 pg_strtoint16(const char *s);
 extern int32 pg_strtoint32(const char *s);
+extern int64 pg_strtoint64(const char *s);
 extern int	pg_itoa(int16 i, char *a);
 extern int	pg_ultoa_n(uint32 l, char *a);
 extern int	pg_ulltoa_n(uint64 l, char *a);
@@ -51,7 +61,6 @@ extern int	pg_ltoa(int32 l, char *a);
 extern int	pg_lltoa(int64 ll, char *a);
 extern char *pg_ultostr_zeropad(char *str, uint32 value, int32 minwidth);
 extern char *pg_ultostr(char *str, uint32 value);
-extern uint64 pg_strtouint64(const char *str, char **endptr, int base);
 
 /* dbsize.c */
 extern int64 get_size_from_segDBs(const char *cmd);
@@ -68,6 +77,7 @@ extern char *regexp_fixed_prefix(text *text_re, bool case_insensitive,
 								 Oid collation, bool *exact);
 
 /* ruleutils.c */
+<<<<<<< HEAD
 extern bool quote_all_identifiers;
 extern char *pg_get_constraintexpr_string(Oid constraintId);
 extern const char *quote_identifier(const char *ident);
@@ -78,6 +88,11 @@ extern void generate_operator_clause(fmStringInfo buf,
 						 Oid opoid,
 						 const char *rightop, Oid rightoptype);
 
+||||||| e1c1c30f635
+extern bool quote_all_identifiers;
+=======
+extern PGDLLIMPORT bool quote_all_identifiers;
+>>>>>>> adadae45816
 extern const char *quote_identifier(const char *ident);
 extern char *quote_qualified_identifier(const char *qualifier,
 										const char *ident);
@@ -100,6 +115,7 @@ extern void text_to_cstring_buffer(const text *src, char *dst, size_t dst_len);
 
 /* xid.c */
 extern int	xidComparator(const void *arg1, const void *arg2);
+extern int	xidLogicalComparator(const void *arg1, const void *arg2);
 
 /* inet_cidr_ntop.c */
 extern char *pg_inet_cidr_ntop(int af, const void *src, int bits,

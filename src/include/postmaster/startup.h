@@ -3,7 +3,7 @@
  * startup.h
  *	  Exports from postmaster/startup.c.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  *
  * src/include/postmaster/startup.h
  *
@@ -12,7 +12,23 @@
 #ifndef _STARTUP_H
 #define _STARTUP_H
 
+<<<<<<< HEAD
 extern bool am_startup;
+||||||| e1c1c30f635
+=======
+/*
+ * Log the startup progress message if a timer has expired.
+ */
+#define ereport_startup_progress(msg, ...) \
+	do { \
+		long    secs; \
+		int     usecs; \
+		if (has_startup_progress_timeout_expired(&secs, &usecs)) \
+			ereport(LOG, errmsg(msg, secs, (usecs / 10000),  __VA_ARGS__ )); \
+	} while(0)
+
+extern PGDLLIMPORT int log_startup_progress_interval;
+>>>>>>> adadae45816
 
 extern void HandleStartupProcInterrupts(void);
 extern void StartupProcessMain(void) pg_attribute_noreturn();
@@ -20,5 +36,9 @@ extern void PreRestoreCommand(void);
 extern void PostRestoreCommand(void);
 extern bool IsPromoteSignaled(void);
 extern void ResetPromoteSignaled(void);
+
+extern void begin_startup_progress_phase(void);
+extern void startup_progress_timeout_handler(void);
+extern bool has_startup_progress_timeout_expired(long *secs, int *usecs);
 
 #endif							/* _STARTUP_H */
