@@ -147,6 +147,10 @@ delete from t;
 -- An initial small group followed by a large group.
 insert into t(a, b) select (case when i < 5 then i else 9 end), i from generate_series(1, 1000) n(i);
 analyze t;
+-- GPDB: with per-segment row counts, the per-column comparison cost of the
+-- GROUP BY key reordering patch makes a full Sort cheaper here; keep the
+-- Incremental Sort this block is about.
+set enable_sort = off;
 explain (costs off) select * from (select * from t order by a) s order by a, b limit 70;
 select * from (select * from t order by a) s order by a, b limit 70;
 -- Checks case where we hit a group boundary at the last tuple of a batch.
@@ -172,6 +176,7 @@ rollback;
 select explain_analyze_without_memory('select * from (select * from t order by a) s order by a, b limit 70');
 select jsonb_pretty(explain_analyze_inc_sort_nodes_without_memory('select * from (select * from t order by a) s order by a, b limit 70'));
 select explain_analyze_inc_sort_nodes_verify_invariants('select * from (select * from t order by a) s order by a, b limit 70');
+reset enable_sort;
 delete from t;
 
 -- Small groups of 10 tuples each tested around each mode transition point.
@@ -222,7 +227,13 @@ set enable_incremental_sort = off;
 explain (costs off) select a,b,sum(c) from t group by 1,2 order by 1,2,3 limit 1;
 
 set enable_incremental_sort = on;
+-- GPDB: per-segment costs favour HashAggregate + Sort; pin the plan this
+-- test expects.
+set enable_hashagg = off;
+set enable_sort = off;
 explain (costs off) select a,b,sum(c) from t group by 1,2 order by 1,2,3 limit 1;
+reset enable_hashagg;
+reset enable_sort;
 
 -- Incremental sort vs. set operations with varno 0
 set enable_hashagg to off;
