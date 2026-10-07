@@ -59,6 +59,16 @@ errdetail_relkind_not_supported(char relkind)
 		case RELKIND_PARTITIONED_INDEX:
 			errdetail("This operation is not supported for partitioned indexes.");
 			break;
+		/* GPDB: append-optimized auxiliary relations */
+		case RELKIND_AOSEGMENTS:
+			errdetail("This operation is not supported for append-optimized segment tables.");
+			break;
+		case RELKIND_AOBLOCKDIR:
+			errdetail("This operation is not supported for append-optimized block directory tables.");
+			break;
+		case RELKIND_AOVISIMAP:
+			errdetail("This operation is not supported for append-optimized visibility map tables.");
+			break;
 		default:
 			elog(ERROR, "unrecognized relkind: '%c'", relkind);
 			break;
