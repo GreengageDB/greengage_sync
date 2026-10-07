@@ -538,6 +538,18 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 	CheckValidResultRel(leaf_part_rri, CMD_INSERT);
 
 	/*
+	 * GPDB: an ORCA plan for UPDATE or DELETE on a partitioned table routes
+	 * every row (forceTupleRouting) instead of listing the leaf partitions as
+	 * result relations, so ExecInitModifyTable() never checked the leaves for
+	 * that operation -- e.g. an UPDATE of a published leaf without a replica
+	 * identity went through.  Check them here, as for the planner's plan.
+	 */
+	if (mtstate &&
+		(mtstate->operation == CMD_UPDATE || mtstate->operation == CMD_DELETE) &&
+		castNode(ModifyTable, mtstate->ps.plan)->forceTupleRouting)
+		CheckValidResultRel(leaf_part_rri, mtstate->operation);
+
+	/*
 	 * Open partition indices.  The user may have asked to check for conflicts
 	 * within this leaf partition and do "nothing" instead of throwing an
 	 * error.  Be prepared in that case by initializing the index information
