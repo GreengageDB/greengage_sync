@@ -547,7 +547,13 @@ generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 	seqstmt = makeNode(CreateSeqStmt);
 	seqstmt->for_identity = for_identity;
 	seqstmt->sequence = makeRangeVar(snamespace, sname, -1);
-	seqstmt->sequence->relpersistence = cxt->relation->relpersistence;
+	/*
+	 * GPDB: unlogged sequences (344d62fb9a9) are not supported yet
+	 * (DefineSequence() still rejects them), so the sequence of an unlogged
+	 * table stays logged, as before PG15.
+	 */
+	if (cxt->relation->relpersistence != RELPERSISTENCE_UNLOGGED)
+		seqstmt->sequence->relpersistence = cxt->relation->relpersistence;
 	seqstmt->options = seqoptions;
 
 	/*
