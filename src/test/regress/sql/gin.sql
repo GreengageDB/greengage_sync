@@ -60,7 +60,7 @@ reset gin_fuzzy_search_limit;
 -- m/Recheck Cond: \(i @> '\{0\}'::integer\[\]\)/
 -- s/Recheck Cond: \(i @> '\{0\}'::integer\[\]\)/Recheck Cond: \('\{0\}'::integer\[\] <@ i\)/
 -- end_matchsubs
-create temp table t_gin_test_tbl(i int4[], j int4[]);
+create unlogged table t_gin_test_tbl(i int4[], j int4[]);
 create index on t_gin_test_tbl using gin (i, j);
 insert into t_gin_test_tbl
 values

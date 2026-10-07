@@ -776,8 +776,7 @@ drop table cchild;
 \a\t
 
 SELECT viewname, definition FROM pg_views
-WHERE schemaname <> 'information_schema' AND viewname <> 'pg_roles' AND viewname <> 'gp_pgdatabase' AND viewname <> 'pg_locks' AND viewname <> 'gp_max_external_files' AND viewname <> 'pg_resqueue_status' AND viewname <> 'pg_stat_resqueues'
-WHERE schemaname = 'pg_catalog'
+WHERE schemaname = 'pg_catalog' AND viewname <> 'pg_roles' AND viewname <> 'gp_pgdatabase' AND viewname <> 'pg_locks' AND viewname <> 'gp_max_external_files' AND viewname <> 'pg_resqueue_status' AND viewname <> 'pg_stat_resqueues'
 ORDER BY viewname;
 
 SELECT tablename, rulename, definition FROM pg_rules
