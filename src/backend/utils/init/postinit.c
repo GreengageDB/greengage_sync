@@ -591,7 +591,6 @@ BaseInit(void)
 	smgrinit();
 	InitBufferPoolAccess();
 
-<<<<<<< HEAD
 	/* 
 	 * Initialize catalog tablespace storage component
 	 * with knowledge of how to perform unlink.
@@ -599,14 +598,12 @@ BaseInit(void)
 	 * Needed for xlog replay and normal operations.
 	 */
 	TablespaceStorageInit(UnlinkTablespaceDirectory);
-||||||| e1c1c30f635
-=======
+
 	/*
 	 * Initialize temporary file access after pgstat, so that the temporary
 	 * file shutdown hook can report temporary file statistics.
 	 */
 	InitTemporaryFileAccess();
->>>>>>> 3b231596ccf
 }
 
 /*
