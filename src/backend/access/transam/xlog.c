@@ -6464,8 +6464,7 @@ UpdateCatalogForStandbyPromotion(void)
 	/*
 	 * NOTE: AuxiliaryProcessMain has already called:
 	 * NOTE:      BaseInit,
-	 * NOTE:      InitAuxiliaryProcess instead of InitProcess, and
-	 * NOTE:      InitBufferPoolBackend.
+	 * NOTE:      InitAuxiliaryProcess instead of InitProcess.
 	 */
 
 	InitXLOGAccess();
@@ -6497,9 +6496,10 @@ UpdateCatalogForStandbyPromotion(void)
 			elog(FATAL, "bad backend id: %d", MyBackendId);
 
 	/*
-	 * bufmgr needs another initialization call too
+	 * No separate bufmgr initialization call is needed here any more:
+	 * BaseInit() calls InitBufferPoolAccess(), which registers the buffer
+	 * cleanup at process exit (upstream b406478b87e).
 	 */
-	InitBufferPoolBackend();
 
 	/* Start transaction locally */
 	old_role = Gp_role;
@@ -7845,7 +7845,7 @@ StartupXLOG(void)
 						(xlogRecInfo == XLOG_CHECKPOINT_SHUTDOWN ||
 						 xlogRecInfo == XLOG_CHECKPOINT_ONLINE))
 					{
-						if (bgwriterLaunched)
+						if (ArchiveRecoveryRequested && IsUnderPostmaster)
 							RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_WAIT);
 						else
 							elog(LOG, "Skipping CreateRestartPoint() as bgwriter is not launched.");

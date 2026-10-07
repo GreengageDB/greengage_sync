@@ -429,11 +429,13 @@ static BackgroundWorker PMAuxProcList[MaxPMAuxProc] =
 
 #ifdef ENABLE_IC_PROXY
 	{"ic proxy process", "ic proxy process",
-#ifdef FAULT_INJECTOR
+	 /*
+	  * GPDB: the ic proxy used to run without shared memory access in
+	  * builds without FAULT_INJECTOR, but background workers that are not
+	  * connected to shared memory are no longer supported (upstream
+	  * 80a8f95b3bc); RegisterBackgroundWorker() would reject it.
+	  */
 	 BGWORKER_SHMEM_ACCESS,
-#else
-	 0,
-#endif
 	 BgWorkerStart_RecoveryFinished,
 	 0, /* restart immediately if ic proxy process exits with non-zero code */
 	 "postgres", "ICProxyMain", 0, {0}, 0,
@@ -5489,15 +5491,9 @@ SubPostmasterMain(int argc, char *argv[])
 	if (strcmp(argv[1], "--forkbackend") == 0   ||
 		strcmp(argv[1], "--forkavlauncher") == 0 ||
 		strcmp(argv[1], "--forkavworker") == 0 ||
-<<<<<<< HEAD
 		strcmp(argv[1], "--forkautovac") == 0   ||
 		strcmp(argv[1], "--forkglobaldeadlockdetector") == 0 ||
-		strcmp(argv[1], "--forkboot") == 0 ||
-||||||| e1c1c30f635
-		strcmp(argv[1], "--forkboot") == 0 ||
-=======
 		strcmp(argv[1], "--forkaux") == 0 ||
->>>>>>> 3b231596ccf
 		strncmp(argv[1], "--forkbgworker=", 15) == 0)
 		PGSharedMemoryReAttach();
 	else
