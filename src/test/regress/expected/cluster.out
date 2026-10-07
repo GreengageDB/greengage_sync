@@ -59,15 +59,28 @@ CLUSTER clstr_tst_c ON clstr_tst;
 SELECT a,b,c,substring(d for 30), length(d) from clstr_tst;
  a  | b  |       c       |           substring            | length 
 ----+----+---------------+--------------------------------+--------
- 10 | 14 | catorce       |                                |       
  18 |  5 | cinco         |                                |       
-  9 |  4 | cuatro        |                                |       
+ 24 | 17 | diecisiete    |                                |       
+  2 | 10 | diez          |                                |       
+ 29 |  7 | siete         |                                |       
+ 22 | 30 | treinta       |                                |       
+  3 | 31 | treinta y uno |                                |       
+  4 | 22 | veintidos     |                                |       
+ 19 | 29 | veintinueve   |                                |       
+ 16 | 28 | veintiocho    |                                |       
+ 27 | 26 | veintiseis    |                                |       
+  7 | 23 | veintitres    |                                |       
+  8 | 21 | veintiuno     |                                |       
  26 | 19 | diecinueve    |                                |       
  12 | 18 | dieciocho     |                                |       
  30 | 16 | dieciseis     |                                |       
- 24 | 17 | diecisiete    |                                |       
-  2 | 10 | diez          |                                |       
  23 | 12 | doce          |                                |       
+ 31 |  8 | ocho          |                                |       
+  1 | 11 | once          |                                |       
+ 15 | 13 | trece         |                                |       
+ 20 |  1 | uno           |                                |       
+ 10 | 14 | catorce       |                                |       
+  9 |  4 | cuatro        |                                |       
  11 |  2 | dos           |                                |       
  25 |  9 | nueve         |                                |       
  31 |  8 | ocho          |                                |       
@@ -209,15 +222,29 @@ INSERT INTO clstr_tst_inh VALUES (0, 100, 'in child table');
 SELECT a,b,c,substring(d for 30), length(d) from clstr_tst;
  a  |  b  |       c        |           substring            | length 
 ----+-----+----------------+--------------------------------+--------
- 10 |  14 | catorce        |                                |       
- 18 |   5 | cinco          |                                |       
-  9 |   4 | cuatro         |                                |       
  26 |  19 | diecinueve     |                                |       
  12 |  18 | dieciocho      |                                |       
  30 |  16 | dieciseis      |                                |       
+ 23 |  12 | doce           |                                |       
+ 31 |   8 | ocho           |                                |       
+  1 |  11 | once           |                                |       
+ 15 |  13 | trece          |                                |       
+ 20 |   1 | uno            |                                |       
+  0 | 100 | in child table |                                |       
+ 18 |   5 | cinco          |                                |       
  24 |  17 | diecisiete     |                                |       
   2 |  10 | diez           |                                |       
- 23 |  12 | doce           |                                |       
+ 29 |   7 | siete          |                                |       
+ 22 |  30 | treinta        |                                |       
+  3 |  31 | treinta y uno  |                                |       
+  4 |  22 | veintidos      |                                |       
+ 19 |  29 | veintinueve    |                                |       
+ 16 |  28 | veintiocho     |                                |       
+ 27 |  26 | veintiseis     |                                |       
+  7 |  23 | veintitres     |                                |       
+  8 |  21 | veintiuno      |                                |       
+ 10 |  14 | catorce        |                                |       
+  9 |   4 | cuatro         |                                |       
  11 |   2 | dos            |                                |       
  25 |   9 | nueve          |                                |       
  31 |   8 | ocho           |                                |       
@@ -333,11 +360,11 @@ SELECT * FROM clstr_1 UNION ALL
  a 
 ---
  1
- 2
+ 1
  1
  2
  2
- 1
+ 2
 (6 rows)
 
 -- revert to the original state
@@ -360,11 +387,12 @@ SELECT * FROM clstr_1 UNION ALL
  a 
 ---
  1
- 2
- 2
  1
  2
  1
+ 2
+ 2
+ 2
 (6 rows)
 
 -- cluster a single table using the indisclustered bit previously set
@@ -427,6 +455,7 @@ SELECT key FROM clustertest;
   30
   35
   80
+  30
  100
 (5 rows)
 
@@ -451,11 +480,17 @@ CLUSTER clustertest;
 -- Check that partitioned tables can be clustered
 CREATE TABLE clstrpart (a int) PARTITION BY RANGE (a);
 CREATE TABLE clstrpart1 PARTITION OF clstrpart FOR VALUES FROM (1) TO (10) PARTITION BY RANGE (a);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE clstrpart11 PARTITION OF clstrpart1 FOR VALUES FROM (1) TO (5);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE clstrpart12 PARTITION OF clstrpart1 FOR VALUES FROM (5) TO (10) PARTITION BY RANGE (a);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE clstrpart2 PARTITION OF clstrpart FOR VALUES FROM (10) TO (20);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE clstrpart3 PARTITION OF clstrpart DEFAULT PARTITION BY RANGE (a);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE clstrpart33 PARTITION OF clstrpart3 DEFAULT;
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE INDEX clstrpart_only_idx ON ONLY clstrpart (a);
 CLUSTER clstrpart USING clstrpart_only_idx; -- fails
 ERROR:  cannot cluster on invalid index "clstrpart_only_idx"
@@ -499,8 +534,11 @@ DROP TABLE clstrpart;
 CREATE TABLE ptnowner(i int unique) PARTITION BY LIST (i);
 CREATE INDEX ptnowner_i_idx ON ptnowner(i);
 CREATE TABLE ptnowner1 PARTITION OF ptnowner FOR VALUES IN (1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE ROLE regress_ptnowner;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE TABLE ptnowner2 PARTITION OF ptnowner FOR VALUES IN (2);
+NOTICE:  table has parent, setting distribution columns to match parent table
 ALTER TABLE ptnowner1 OWNER TO regress_ptnowner;
 ALTER TABLE ptnowner OWNER TO regress_ptnowner;
 CREATE TEMP TABLE ptnowner_oldnodes AS
@@ -515,7 +553,7 @@ SELECT a.relname, a.relfilenode=b.relfilenode FROM pg_class a
 -----------+----------
  ptnowner  | t
  ptnowner1 | f
- ptnowner2 | t
+ ptnowner2 | f
 (3 rows)
 
 DROP TABLE ptnowner;
@@ -590,8 +628,11 @@ SELECT * FROM clstr_expression WHERE -a = -3 ORDER BY -a, b;
 COMMIT;
 -- and after clustering on clstr_expression_minus_a
 CLUSTER clstr_expression USING clstr_expression_minus_a;
+-- GPDB: CLUSTER orders the heap per segment, and ctid is per-segment, so
+-- partition the ordering check by gp_segment_id (a global ctid order would
+-- interleave segments and report spurious out-of-order rows).
 WITH rows AS
-  (SELECT ctid, lag(a) OVER (ORDER BY ctid) AS la, a FROM clstr_expression)
+  (SELECT ctid, lag(a) OVER (PARTITION BY gp_segment_id ORDER BY ctid) AS la, a FROM clstr_expression)
 SELECT * FROM rows WHERE la < a;
  ctid | la | a 
 ------+----+---
@@ -640,8 +681,9 @@ SELECT * FROM clstr_expression WHERE -a = -3 ORDER BY -a, b;
 COMMIT;
 -- and after clustering on clstr_expression_upper_b
 CLUSTER clstr_expression USING clstr_expression_upper_b;
+-- GPDB: per-segment ordering check (see note above).
 WITH rows AS
-  (SELECT ctid, lag(b) OVER (ORDER BY ctid) AS lb, b FROM clstr_expression)
+  (SELECT ctid, lag(b) OVER (PARTITION BY gp_segment_id ORDER BY ctid) AS lb, b FROM clstr_expression)
 SELECT * FROM rows WHERE upper(lb) > upper(b);
  ctid | lb | b 
 ------+----+---

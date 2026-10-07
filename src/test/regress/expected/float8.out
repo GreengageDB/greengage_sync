@@ -1,11 +1,7 @@
 --
 -- FLOAT8
 --
---
--- Build a table for testing
--- (This temporarily hides the table created in test_setup.sql)
---
-CREATE TEMP TABLE FLOAT8_TBL(f1 float8);
+CREATE TEMP TABLE FLOAT8_TBL(i INT DEFAULT 1, f1 float8);
 INSERT INTO FLOAT8_TBL(f1) VALUES ('    0.0   ');
 INSERT INTO FLOAT8_TBL(f1) VALUES ('1004.30  ');
 INSERT INTO FLOAT8_TBL(f1) VALUES ('   -34.84');
@@ -285,12 +281,12 @@ SELECT f.f1, f.f1 + '-10' AS x
 
 SELECT f.f1, f.f1 / '-10' AS x
    FROM FLOAT8_TBL f
-   WHERE f.f1 > '0.0';
-          f1          |           x           
-----------------------+-----------------------
-               1004.3 |   -100.42999999999999
- 1.2345678901234e+200 | -1.2345678901234e+199
- 1.2345678901234e-200 | -1.2345678901234e-201
+   WHERE f.f1 > '0.0' ORDER BY 2;
+ three |          f1          |           x           
+-------+----------------------+-----------------------
+       | 1.2345678901234e-200 | -1.2345678901234e-201
+       |               1004.3 |   -100.42999999999999
+       | 1.2345678901234e+200 | -1.2345678901234e+199
 (3 rows)
 
 SELECT f.f1, f.f1 - '-10' AS x
@@ -313,13 +309,13 @@ SELECT f.f1 ^ '2.0' AS square_f1
 -- absolute value
 SELECT f.f1, @f.f1 AS abs_f1
    FROM FLOAT8_TBL f;
-          f1          |        abs_f1        
-----------------------+----------------------
-                    0 |                    0
-               1004.3 |               1004.3
-               -34.84 |                34.84
- 1.2345678901234e+200 | 1.2345678901234e+200
- 1.2345678901234e-200 | 1.2345678901234e-200
+ five |          f1          |        abs_f1        
+------+----------------------+----------------------
+      |                    0 |                    0
+      |               1004.3 |               1004.3
+      |               -34.84 |                34.84
+      | 1.2345678901234e+200 | 1.2345678901234e+200
+      | 1.2345678901234e-200 | 1.2345678901234e-200
 (5 rows)
 
 -- truncate
@@ -661,32 +657,32 @@ SELECT * FROM FLOAT8_TBL;
 UPDATE FLOAT8_TBL
    SET f1 = FLOAT8_TBL.f1 * '-1'
    WHERE FLOAT8_TBL.f1 > '0.0';
-SELECT f.f1 * '1e200' from FLOAT8_TBL f;
-ERROR:  value out of range: overflow
-SELECT f.f1 ^ '1e200' from FLOAT8_TBL f;
-ERROR:  value out of range: overflow
+SELECT '' AS bad, f.f1 * '1e200' from FLOAT8_TBL f;
+ERROR:  value out of range: overflow  (seg1 slice1 172.17.0.3:7003 pid=540075)
+SELECT '' AS bad, f.f1 ^ '1e200' from FLOAT8_TBL f;
+ERROR:  value out of range: overflow  (seg1 slice1 172.17.0.3:7003 pid=540075)
 SELECT 0 ^ 0 + 0 ^ 1 + 0 ^ 0.0 + 0 ^ 0.5;
  ?column? 
 ----------
         2
 (1 row)
 
-SELECT ln(f.f1) from FLOAT8_TBL f where f.f1 = '0.0' ;
-ERROR:  cannot take logarithm of zero
-SELECT ln(f.f1) from FLOAT8_TBL f where f.f1 < '0.0' ;
-ERROR:  cannot take logarithm of a negative number
-SELECT exp(f.f1) from FLOAT8_TBL f;
-ERROR:  value out of range: underflow
-SELECT f.f1 / '0.0' from FLOAT8_TBL f;
-ERROR:  division by zero
-SELECT * FROM FLOAT8_TBL;
-          f1           
------------------------
-                     0
-                -34.84
-               -1004.3
- -1.2345678901234e+200
- -1.2345678901234e-200
+SELECT '' AS bad, ln(f.f1) from FLOAT8_TBL f where f.f1 = '0.0' ;
+ERROR:  cannot take logarithm of zero  (seg1 slice1 172.17.0.3:7003 pid=540075)
+SELECT '' AS bad, ln(f.f1) from FLOAT8_TBL f where f.f1 < '0.0' ;
+ERROR:  cannot take logarithm of a negative number  (seg1 slice1 172.17.0.3:7003 pid=540075)
+SELECT '' AS bad, exp(f.f1) from FLOAT8_TBL f;
+ERROR:  value out of range: underflow  (seg1 slice1 172.17.0.3:7003 pid=540075)
+SELECT '' AS bad, f.f1 / '0.0' from FLOAT8_TBL f;
+ERROR:  division by zero  (seg1 slice1 172.17.0.3:7003 pid=540075)
+SELECT '' AS five, f1 FROM FLOAT8_TBL ORDER BY 2;
+ five |          f1           
+------+-----------------------
+      | -1.2345678901234e+200
+      |               -1004.3
+      |                -34.84
+      | -1.2345678901234e-200
+      |                     0
 (5 rows)
 
 -- hyperbolic functions
@@ -843,7 +839,6 @@ INSERT INTO FLOAT8_TBL(f1) VALUES ('-10e-400');
 ERROR:  value out of range: underflow
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('-10e-400');
                                            ^
-<<<<<<< HEAD
 INSERT INTO FLOAT8_TBL(f1) VALUES ('1e-324');
 ERROR:  value out of range: underflow
 LINE 1: INSERT INTO FLOAT8_TBL(f1) VALUES ('1e-324');
@@ -913,34 +908,17 @@ DELETE FROM FLOAT8_TBL WHERE f1='+naN'::float8;
 DELETE FROM FLOAT8_TBL WHERE f1='NaN'::float8;
 -- maintain external table consistency across platforms
 -- delete all values and reinsert well-behaved ones
-DELETE FROM FLOAT8_TBL;
-INSERT INTO FLOAT8_TBL(f1) VALUES ('0.0');
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-34.84');
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1004.30');
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1.2345678901234e+200');
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1.2345678901234e-200');
-||||||| e1c1c30f635
--- maintain external table consistency across platforms
--- delete all values and reinsert well-behaved ones
-DELETE FROM FLOAT8_TBL;
-INSERT INTO FLOAT8_TBL(f1) VALUES ('0.0');
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-34.84');
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1004.30');
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1.2345678901234e+200');
-INSERT INTO FLOAT8_TBL(f1) VALUES ('-1.2345678901234e-200');
-=======
-DROP TABLE FLOAT8_TBL;
 -- Check the float8 values exported for use by other tests
->>>>>>> adadae45816
-SELECT * FROM FLOAT8_TBL;
-          f1           
------------------------
-                     0
-                -34.84
-               -1004.3
- -1.2345678901234e+200
- -1.2345678901234e-200
-(5 rows)
+SELECT '' AS five, f1 FROM FLOAT8_TBL ORDER BY 2;
+ five |          f1           
+------+-----------------------
+      | -1.2345678901234e+200
+      |               -1004.3
+      |                -34.84
+      | -1.2345678901234e-200
+      |                1e-323
+      |                1e+308
+(6 rows)
 
 -- test edge-case coercions to integer
 SELECT '32767.4'::float8::int2;

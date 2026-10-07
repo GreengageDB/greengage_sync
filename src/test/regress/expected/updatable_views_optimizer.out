@@ -218,18 +218,20 @@ INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT DO NOTHING; -- succeeds
 SELECT * FROM rw_view15;
  a  |    upper    
 ----+-------------
+  2 | ROW 2
+  3 | UNSPECIFIED
+ -1 | ROW -1
  -2 | ROW -2
  -1 | ROW -1
   0 | ROW 0
   1 | ROW 1
-  2 | ROW 2
-  3 | UNSPECIFIED
 (6 rows)
 
 INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO NOTHING; -- succeeds
 SELECT * FROM rw_view15;
  a  |    upper    
 ----+-------------
+ -1 | ROW -1
  -2 | ROW -2
  -1 | ROW -1
   0 | ROW 0
@@ -246,6 +248,7 @@ SELECT * FROM rw_view15;
  -1 | ROW -1
   0 | ROW 0
   1 | ROW 1
+ -1 | ROW -1
   2 | ROW 2
   3 | UNSPECIFIED
 (6 rows)
@@ -260,6 +263,7 @@ SELECT * FROM rw_view15;
  -1 | ROW -1
   0 | ROW 0
   1 | ROW 1
+ -1 | ROW -1
   2 | ROW 2
   3 | UNSPECIFIED
 (6 rows)
@@ -267,12 +271,13 @@ SELECT * FROM rw_view15;
 SELECT * FROM rw_view15;
  a  |    upper    
 ----+-------------
+ -1 | ROW -1
+  2 | ROW 2
+  3 | UNSPECIFIED
  -2 | ROW -2
  -1 | ROW -1
   0 | ROW 0
   1 | ROW 1
-  2 | ROW 2
-  3 | UNSPECIFIED
 (6 rows)
 
 ALTER VIEW rw_view15 ALTER COLUMN upper SET DEFAULT 'NOT SET';
@@ -308,12 +313,14 @@ UPDATE rw_view16 SET aa=-3 WHERE a=3; -- should be OK
 SELECT * FROM base_tbl;
  a  |   b    
 ----+--------
+  2 | Row 2
  -2 | Row -2
  -1 | Row -1
   0 | Row 0
   1 | Row 1
   2 | Row 2
  -3 | Row 3
+ -1 | Row -1
 (6 rows)
 
 DELETE FROM rw_view16 WHERE a=-3; -- should be OK
@@ -419,6 +426,7 @@ SELECT * FROM base_tbl;
   0 | Row 0
   1 | Row 1
   3 | Row 3
+ -1 | Row -1
   5 | Unspecified
 (6 rows)
 
@@ -962,6 +970,7 @@ UPDATE rw_view1 v SET bb='Updated row 2' WHERE rw_view1_aa(v)=2
 SELECT * FROM base_tbl;
  a  |       b       
 ----+---------------
+ -1 | Row -1
  -2 | Row -2
  -1 | Row -1
   0 | Row 0
@@ -988,6 +997,9 @@ drop cascades to function rw_view1_aa(rw_view1)
 -- permissions checks
 CREATE USER regress_view_user1;
 CREATE USER regress_view_user2;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
+CREATE USER regress_view_user3;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 SET SESSION AUTHORIZATION regress_view_user1;
 CREATE TABLE base_tbl(a int, b text, c float);
 INSERT INTO base_tbl VALUES (1, 'Row 1', 1.0);
@@ -1010,15 +1022,15 @@ SELECT * FROM base_tbl; -- ok
 SELECT * FROM rw_view1; -- ok
   bb   | cc | aa 
 -------+----+----
- Row 1 |  1 |  1
  Row 2 |  2 |  2
+ Row 1 |  1 |  1
 (2 rows)
 
 SELECT * FROM rw_view2; -- ok
   bb   | cc | aa 
 -------+----+----
- Row 1 |  1 |  1
  Row 2 |  2 |  2
+ Row 1 |  1 |  1
 (2 rows)
 
 INSERT INTO base_tbl VALUES (3, 'Row 3', 3.0); -- not allowed
@@ -1081,8 +1093,8 @@ ERROR:  permission denied for table base_tbl
 SELECT * FROM base_tbl;
  a |   b   | c 
 ---+-------+---
- 4 | Row 4 | 4
  5 | Row 5 | 5
+ 4 | Row 4 | 4
 (2 rows)
 
 RESET SESSION AUTHORIZATION;
@@ -1214,8 +1226,244 @@ DROP TABLE base_tbl CASCADE;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to view rw_view1
 drop cascades to view rw_view2
+-- security invoker view permissions
+SET SESSION AUTHORIZATION regress_view_user1;
+CREATE TABLE base_tbl(a int, b text, c float);
+INSERT INTO base_tbl VALUES (1, 'Row 1', 1.0);
+CREATE VIEW rw_view1 AS SELECT b AS bb, c AS cc, a AS aa FROM base_tbl;
+ALTER VIEW rw_view1 SET (security_invoker = true);
+INSERT INTO rw_view1 VALUES ('Row 2', 2.0, 2);
+GRANT SELECT ON rw_view1 TO regress_view_user2;
+GRANT UPDATE (bb,cc) ON rw_view1 TO regress_view_user2;
+SET SESSION AUTHORIZATION regress_view_user2;
+SELECT * FROM base_tbl; -- not allowed
+ERROR:  permission denied for table base_tbl
+SELECT * FROM rw_view1; -- not allowed
+ERROR:  permission denied for table base_tbl
+INSERT INTO base_tbl VALUES (3, 'Row 3', 3.0); -- not allowed
+ERROR:  permission denied for table base_tbl
+INSERT INTO rw_view1 VALUES ('Row 3', 3.0, 3); -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE base_tbl SET a=a; -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view1 SET bb=bb, cc=cc; -- not allowed
+ERROR:  permission denied for table base_tbl
+DELETE FROM base_tbl; -- not allowed
+ERROR:  permission denied for table base_tbl
+DELETE FROM rw_view1; -- not allowed
+ERROR:  permission denied for view rw_view1
+SET SESSION AUTHORIZATION regress_view_user1;
+GRANT SELECT ON base_tbl TO regress_view_user2;
+GRANT UPDATE (a,c) ON base_tbl TO regress_view_user2;
+SET SESSION AUTHORIZATION regress_view_user2;
+SELECT * FROM base_tbl; -- ok
+ a |   b   | c 
+---+-------+---
+ 2 | Row 2 | 2
+ 1 | Row 1 | 1
+(2 rows)
+
+SELECT * FROM rw_view1; -- ok
+  bb   | cc | aa 
+-------+----+----
+ Row 2 |  2 |  2
+ Row 1 |  1 |  1
+(2 rows)
+
+UPDATE base_tbl SET a=a, c=c; -- ok
+UPDATE base_tbl SET b=b; -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view1 SET cc=cc; -- ok
+UPDATE rw_view1 SET aa=aa; -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view1 SET bb=bb; -- not allowed
+ERROR:  permission denied for table base_tbl
+SET SESSION AUTHORIZATION regress_view_user1;
+GRANT INSERT, DELETE ON base_tbl TO regress_view_user2;
+SET SESSION AUTHORIZATION regress_view_user2;
+INSERT INTO base_tbl VALUES (3, 'Row 3', 3.0); -- ok
+INSERT INTO rw_view1 VALUES ('Row 4', 4.0, 4); -- not allowed
+ERROR:  permission denied for view rw_view1
+DELETE FROM base_tbl WHERE a=1; -- ok
+DELETE FROM rw_view1 WHERE aa=2; -- not allowed
+ERROR:  permission denied for view rw_view1
+SET SESSION AUTHORIZATION regress_view_user1;
+REVOKE INSERT, DELETE ON base_tbl FROM regress_view_user2;
+GRANT INSERT, DELETE ON rw_view1 TO regress_view_user2;
+SET SESSION AUTHORIZATION regress_view_user2;
+INSERT INTO rw_view1 VALUES ('Row 4', 4.0, 4); -- not allowed
+ERROR:  permission denied for table base_tbl
+DELETE FROM rw_view1 WHERE aa=2; -- not allowed
+ERROR:  permission denied for table base_tbl
+SET SESSION AUTHORIZATION regress_view_user1;
+GRANT INSERT, DELETE ON base_tbl TO regress_view_user2;
+SET SESSION AUTHORIZATION regress_view_user2;
+INSERT INTO rw_view1 VALUES ('Row 4', 4.0, 4); -- ok
+DELETE FROM rw_view1 WHERE aa=2; -- ok
+SELECT * FROM base_tbl; -- ok
+ a |   b   | c 
+---+-------+---
+ 3 | Row 3 | 3
+ 4 | Row 4 | 4
+(2 rows)
+
+RESET SESSION AUTHORIZATION;
+DROP TABLE base_tbl CASCADE;
+NOTICE:  drop cascades to view rw_view1
+-- ordinary view on top of security invoker view permissions
+CREATE TABLE base_tbl(a int, b text, c float);
+INSERT INTO base_tbl VALUES (1, 'Row 1', 1.0);
+SET SESSION AUTHORIZATION regress_view_user1;
+CREATE VIEW rw_view1 AS SELECT b AS bb, c AS cc, a AS aa FROM base_tbl;
+ALTER VIEW rw_view1 SET (security_invoker = true);
+SELECT * FROM rw_view1;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view1 SET aa=aa;  -- not allowed
+ERROR:  permission denied for table base_tbl
+SET SESSION AUTHORIZATION regress_view_user2;
+CREATE VIEW rw_view2 AS SELECT cc AS ccc, aa AS aaa, bb AS bbb FROM rw_view1;
+GRANT SELECT, UPDATE ON rw_view2 TO regress_view_user3;
+SELECT * FROM rw_view2;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+RESET SESSION AUTHORIZATION;
+GRANT SELECT ON base_tbl TO regress_view_user1;
+GRANT UPDATE (a, b) ON base_tbl TO regress_view_user1;
+SET SESSION AUTHORIZATION regress_view_user1;
+SELECT * FROM rw_view1; -- ok
+  bb   | cc | aa 
+-------+----+----
+ Row 1 |  1 |  1
+(1 row)
+
+UPDATE rw_view1 SET aa=aa, bb=bb;  -- ok
+UPDATE rw_view1 SET cc=cc;  -- not allowed
+ERROR:  permission denied for table base_tbl
+SET SESSION AUTHORIZATION regress_view_user2;
+SELECT * FROM rw_view2;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+SET SESSION AUTHORIZATION regress_view_user3;
+SELECT * FROM rw_view2;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+SET SESSION AUTHORIZATION regress_view_user1;
+GRANT SELECT ON rw_view1 TO regress_view_user2;
+GRANT UPDATE (bb, cc) ON rw_view1 TO regress_view_user2;
+SET SESSION AUTHORIZATION regress_view_user2;
+SELECT * FROM rw_view2;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+SET SESSION AUTHORIZATION regress_view_user3;
+SELECT * FROM rw_view2;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+RESET SESSION AUTHORIZATION;
+GRANT SELECT ON base_tbl TO regress_view_user2;
+GRANT UPDATE (a, c) ON base_tbl TO regress_view_user2;
+SET SESSION AUTHORIZATION regress_view_user2;
+SELECT * FROM rw_view2;  -- ok
+ ccc | aaa |  bbb  
+-----+-----+-------
+   1 |   1 | Row 1
+(1 row)
+
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET ccc=ccc;  -- ok
+SET SESSION AUTHORIZATION regress_view_user3;
+SELECT * FROM rw_view2;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET ccc=ccc;  -- not allowed
+ERROR:  permission denied for table base_tbl
+RESET SESSION AUTHORIZATION;
+GRANT SELECT ON base_tbl TO regress_view_user3;
+GRANT UPDATE (a, c) ON base_tbl TO regress_view_user3;
+SET SESSION AUTHORIZATION regress_view_user3;
+SELECT * FROM rw_view2;  -- ok
+ ccc | aaa |  bbb  
+-----+-----+-------
+   1 |   1 | Row 1
+(1 row)
+
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET ccc=ccc;  -- ok
+RESET SESSION AUTHORIZATION;
+REVOKE SELECT, UPDATE ON base_tbl FROM regress_view_user1;
+SET SESSION AUTHORIZATION regress_view_user1;
+SELECT * FROM rw_view1;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view1 SET aa=aa;  -- not allowed
+ERROR:  permission denied for table base_tbl
+SET SESSION AUTHORIZATION regress_view_user2;
+SELECT * FROM rw_view2;  -- ok
+ ccc | aaa |  bbb  
+-----+-----+-------
+   1 |   1 | Row 1
+(1 row)
+
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET ccc=ccc;  -- ok
+SET SESSION AUTHORIZATION regress_view_user3;
+SELECT * FROM rw_view2;  -- ok
+ ccc | aaa |  bbb  
+-----+-----+-------
+   1 |   1 | Row 1
+(1 row)
+
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET ccc=ccc;  -- ok
+RESET SESSION AUTHORIZATION;
+REVOKE SELECT, UPDATE ON base_tbl FROM regress_view_user2;
+SET SESSION AUTHORIZATION regress_view_user2;
+SELECT * FROM rw_view2;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET ccc=ccc;  -- not allowed
+ERROR:  permission denied for table base_tbl
+SET SESSION AUTHORIZATION regress_view_user3;
+SELECT * FROM rw_view2;  -- ok
+ ccc | aaa |  bbb  
+-----+-----+-------
+   1 |   1 | Row 1
+(1 row)
+
+UPDATE rw_view2 SET aaa=aaa;  -- not allowed
+ERROR:  permission denied for view rw_view1
+UPDATE rw_view2 SET bbb=bbb;  -- not allowed
+ERROR:  permission denied for table base_tbl
+UPDATE rw_view2 SET ccc=ccc;  -- ok
+RESET SESSION AUTHORIZATION;
+DROP TABLE base_tbl CASCADE;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to view rw_view1
+drop cascades to view rw_view2
 DROP USER regress_view_user1;
 DROP USER regress_view_user2;
+DROP USER regress_view_user3;
 -- column defaults
 CREATE TABLE base_tbl (a int PRIMARY KEY, b text DEFAULT 'Unspecified', c serial);
 INSERT INTO base_tbl VALUES (1, 'Row 1');
@@ -1233,6 +1481,7 @@ SELECT * FROM base_tbl;
  3 | Unspecified  | 3
  4 | Row 4        | 4
  5 | View default | 5
+ 1 | Row 1        | 1
 (5 rows)
 
 DROP TABLE base_tbl CASCADE;
@@ -1257,7 +1506,7 @@ CREATE TRIGGER rw_view1_ins_trig AFTER INSERT ON base_tbl
   FOR EACH ROW EXECUTE PROCEDURE rw_view1_trig_fn();
 CREATE VIEW rw_view1 AS SELECT a AS aa, b AS bb FROM base_tbl;
 INSERT INTO rw_view1 VALUES (3, 'Row 3');
-ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg0 172.17.0.3:7002 pid=1073739)
 CONTEXT:  SQL statement "UPDATE base_tbl SET b=NEW.b WHERE a=1"
 PL/pgSQL function rw_view1_trig_fn() line 4 at SQL statement
 select * from base_tbl;
@@ -1335,8 +1584,8 @@ UPDATE rw_view1 SET arr[1] = 42, arr[2] = 77 WHERE a = 3;
 SELECT * FROM rw_view1;
  a |   arr   
 ---+---------
- 1 | {2}
  3 | {42,77}
+ 1 | {2}
 (2 rows)
 
 DROP TABLE base_tbl CASCADE;
@@ -1703,26 +1952,27 @@ SELECT * FROM information_schema.views WHERE table_name = 'rw_view1';
 
 INSERT INTO rw_view1 VALUES(3,4); -- ok
 INSERT INTO rw_view1 VALUES(4,3); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg0 172.17.0.3:7002 pid=1073739)
 DETAIL:  Failing row contains (4, 3).
 INSERT INTO rw_view1 VALUES(5,null); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg2 172.17.0.3:7004 pid=1073737)
 DETAIL:  Failing row contains (5, null).
 UPDATE rw_view1 SET b = 5 WHERE a = 3; -- ok
 UPDATE rw_view1 SET b = -5 WHERE a = 3; -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg0 172.17.0.3:7002 pid=1073739)
 DETAIL:  Failing row contains (3, -5).
 INSERT INTO rw_view1(a) VALUES (9); -- ok
 INSERT INTO rw_view1(a) VALUES (10); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg2 172.17.0.3:7004 pid=1073737)
 DETAIL:  Failing row contains (10, 10).
 SELECT * FROM base_tbl;
  a | b  
 ---+----
- 1 |  2
  2 |  3
  1 | -1
  3 |  5
+ 1 |  2
+ 1 | -1
  9 | 10
 (5 rows)
 
@@ -1753,11 +2003,11 @@ SELECT * FROM information_schema.views WHERE table_name = 'rw_view2';
 (1 row)
 
 INSERT INTO rw_view2 VALUES (-5); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (-5).
 INSERT INTO rw_view2 VALUES (5); -- ok
 INSERT INTO rw_view2 VALUES (15); -- should fail
-ERROR:  new row violates check option for view "rw_view2"
+ERROR:  new row violates check option for view "rw_view2"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (15).
 SELECT * FROM base_tbl;
  a 
@@ -1766,10 +2016,10 @@ SELECT * FROM base_tbl;
 (1 row)
 
 UPDATE rw_view2 SET a = a - 10; -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (-5).
 UPDATE rw_view2 SET a = a + 10; -- should fail
-ERROR:  new row violates check option for view "rw_view2"
+ERROR:  new row violates check option for view "rw_view2"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (15).
 CREATE OR REPLACE VIEW rw_view2 AS SELECT * FROM rw_view1 WHERE a < 10
   WITH LOCAL CHECK OPTION;
@@ -1794,7 +2044,7 @@ SELECT * FROM information_schema.views WHERE table_name = 'rw_view2';
 
 INSERT INTO rw_view2 VALUES (-10); -- ok, but not in view
 INSERT INTO rw_view2 VALUES (20); -- should fail
-ERROR:  new row violates check option for view "rw_view2"
+ERROR:  new row violates check option for view "rw_view2"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (20).
 SELECT * FROM base_tbl;
   a  
@@ -1808,10 +2058,10 @@ ERROR:  invalid value for enum option "check_option": here
 DETAIL:  Valid values are "local" and "cascaded".
 ALTER VIEW rw_view1 SET (check_option=local);
 INSERT INTO rw_view2 VALUES (-20); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (-20).
 INSERT INTO rw_view2 VALUES (30); -- should fail
-ERROR:  new row violates check option for view "rw_view2"
+ERROR:  new row violates check option for view "rw_view2"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (30).
 ALTER VIEW rw_view2 RESET (check_option);
 \d+ rw_view2
@@ -1836,8 +2086,8 @@ INSERT INTO rw_view2 VALUES (30); -- ok, but not in view
 SELECT * FROM base_tbl;
   a  
 -----
-   5
  -10
+   5
   30
 (3 rows)
 
@@ -1867,7 +2117,7 @@ INSERT INTO rw_view1 VALUES (1); -- ok
 INSERT INTO rw_view2 VALUES (-2); -- ok, but not in view
 INSERT INTO rw_view2 VALUES (2); -- ok
 INSERT INTO rw_view3 VALUES (-3); -- should fail
-ERROR:  new row violates check option for view "rw_view2"
+ERROR:  new row violates check option for view "rw_view2"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (-3).
 INSERT INTO rw_view3 VALUES (3); -- ok
 DROP TABLE base_tbl CASCADE;
@@ -1881,16 +2131,16 @@ CREATE VIEW rw_view1 AS SELECT * FROM base_tbl WHERE a = ANY (b)
   WITH CHECK OPTION;
 INSERT INTO rw_view1 VALUES (1, ARRAY[1,2,3]); -- ok
 INSERT INTO rw_view1 VALUES (10, ARRAY[4,5]); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg2 172.17.0.3:7004 pid=1073737)
 DETAIL:  Failing row contains (10, {4,5}).
 UPDATE rw_view1 SET b[2] = -b[2] WHERE a = 1; -- ok
 UPDATE rw_view1 SET b[1] = -b[1] WHERE a = 1; -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (1, {-1,-2,3}).
 PREPARE ins(int, int[]) AS INSERT INTO rw_view1 VALUES($1, $2);
 EXECUTE ins(2, ARRAY[1,2,3]); -- ok
 EXECUTE ins(10, ARRAY[4,5]); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg2 172.17.0.3:7004 pid=1073737)
 DETAIL:  Failing row contains (10, {4,5}).
 DEALLOCATE PREPARE ins;
 DROP TABLE base_tbl CASCADE;
@@ -1906,11 +2156,11 @@ CREATE VIEW rw_view1 AS
   WITH CHECK OPTION;
 INSERT INTO rw_view1 VALUES (5); -- ok
 INSERT INTO rw_view1 VALUES (15); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (15).
 UPDATE rw_view1 SET a = a + 5; -- ok
 UPDATE rw_view1 SET a = a + 5; -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (15).
 EXPLAIN (costs off) INSERT INTO rw_view1 VALUES (5);
                            QUERY PLAN                            
@@ -1964,7 +2214,7 @@ CREATE TRIGGER base_tbl_trig BEFORE INSERT OR UPDATE ON base_tbl
 CREATE VIEW rw_view1 AS SELECT * FROM base_tbl WHERE a < b WITH CHECK OPTION;
 INSERT INTO rw_view1 VALUES (5,0); -- ok
 INSERT INTO rw_view1 VALUES (15, 20); -- should fail
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (15, 10).
 UPDATE rw_view1 SET a = 20, b = 30; -- should fail
 ERROR:  UPDATE on distributed key column not allowed on relation with update triggers
@@ -1998,7 +2248,7 @@ ERROR:  INSTEAD OF triggers are not supported in Greenplum
 CREATE VIEW rw_view2 AS
   SELECT * FROM rw_view1 WHERE a > 0 WITH LOCAL CHECK OPTION;
 INSERT INTO rw_view2 VALUES (-5); -- should fail
-ERROR:  new row violates check option for view "rw_view2"
+ERROR:  new row violates check option for view "rw_view2"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (-5, null).
 INSERT INTO rw_view2 VALUES (5); -- ok
 INSERT INTO rw_view2 VALUES (50); -- ok, but not in view
@@ -2015,14 +2265,14 @@ SELECT * FROM base_tbl;
 -- Check option won't cascade down to base view with INSTEAD OF triggers
 ALTER VIEW rw_view2 SET (check_option=cascaded);
 INSERT INTO rw_view2 VALUES (100); -- ok, but not in view (doesn't fail rw_view1's check)
-ERROR:  new row violates check option for view "rw_view1"
+ERROR:  new row violates check option for view "rw_view1"  (seg2 172.17.0.3:7004 pid=1073737)
 DETAIL:  Failing row contains (100, null).
 UPDATE rw_view2 SET a = 200 WHERE a = 5; -- ok, but not in view (doesn't fail rw_view1's check)
 SELECT * FROM base_tbl;
  a  | b 
 ----+---
-  5 |  
  50 |  
+  5 |  
 (2 rows)
 
 -- Neither local nor cascaded check options work with INSTEAD rules
@@ -2046,13 +2296,13 @@ UPDATE rw_view2 SET a = -5 WHERE a = 5; -- ok, but not in view (doesn't fail rw_
 SELECT * FROM base_tbl;
   a  | b  
 -----+----
-  50 | 10
- 100 | 10
- 200 | 10
  -10 | 10
+  50 | 10
   20 | 10
   30 | 10
   -5 | 10
+ 100 | 10
+ 200 | 10
 (7 rows)
 
 DROP TABLE base_tbl CASCADE;
@@ -2102,8 +2352,8 @@ END;
 $$
 LANGUAGE plpgsql STRICT IMMUTABLE LEAKPROOF;
 SELECT * FROM rw_view1 WHERE snoop(person);
-NOTICE:  snooped value: Tom  (seg0 slice1 127.0.0.1:7002 pid=76060)
-NOTICE:  snooped value: Harry  (seg0 slice1 127.0.0.1:7002 pid=76060)
+NOTICE:  snooped value: Tom  (seg0 slice1 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 slice1 172.17.0.3:7002 pid=1073739)
  person 
 --------
  Tom
@@ -2111,13 +2361,13 @@ NOTICE:  snooped value: Harry  (seg0 slice1 127.0.0.1:7002 pid=76060)
 (2 rows)
 
 UPDATE rw_view1 SET person=person WHERE snoop(person);
-NOTICE:  snooped value: Tom
-NOTICE:  snooped value: Dick
-NOTICE:  snooped value: Harry
+NOTICE:  snooped value: Tom  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Dick  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 172.17.0.3:7002 pid=1073739)
 DELETE FROM rw_view1 WHERE NOT snoop(person);
-NOTICE:  snooped value: Dick
-NOTICE:  snooped value: Tom
-NOTICE:  snooped value: Harry
+NOTICE:  snooped value: Dick  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Tom  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 172.17.0.3:7002 pid=1073739)
 ALTER VIEW rw_view1 SET (security_barrier = true);
 SELECT table_name, is_insertable_into
   FROM information_schema.tables
@@ -2145,8 +2395,8 @@ SELECT table_name, column_name, is_updatable
 (1 row)
 
 SELECT * FROM rw_view1 WHERE snoop(person);
-NOTICE:  snooped value: Tom
-NOTICE:  snooped value: Harry
+NOTICE:  snooped value: Tom  (seg0 slice1 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 slice1 172.17.0.3:7002 pid=1073739)
  person 
 --------
  Tom
@@ -2154,11 +2404,11 @@ NOTICE:  snooped value: Harry
 (2 rows)
 
 UPDATE rw_view1 SET person=person WHERE snoop(person);
-NOTICE:  snooped value: Tom
-NOTICE:  snooped value: Harry
+NOTICE:  snooped value: Tom  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 172.17.0.3:7002 pid=1073739)
 DELETE FROM rw_view1 WHERE NOT snoop(person);
-NOTICE:  snooped value: Tom
-NOTICE:  snooped value: Harry
+NOTICE:  snooped value: Tom  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 172.17.0.3:7002 pid=1073739)
 EXPLAIN (costs off) SELECT * FROM rw_view1 WHERE snoop(person);
                      QUERY PLAN                      
 -----------------------------------------------------
@@ -2217,10 +2467,10 @@ SELECT table_name, column_name, is_updatable
 (1 row)
 
 SELECT * FROM rw_view2 WHERE snoop(person);
-NOTICE:  snooped value: Tom  (seg0 slice1 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Tom  (seg0 slice1 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Harry  (seg0 slice1 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Harry  (seg0 slice1 127.0.0.1:40000 pid=26896)
+NOTICE:  snooped value: Tom  (seg0 slice1 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Tom  (seg0 slice1 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 slice1 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 slice1 172.17.0.3:7002 pid=1073739)
  person 
 --------
  Tom
@@ -2228,15 +2478,15 @@ NOTICE:  snooped value: Harry  (seg0 slice1 127.0.0.1:40000 pid=26896)
 (2 rows)
 
 UPDATE rw_view2 SET person=person WHERE snoop(person);
-NOTICE:  snooped value: Tom  (seg0 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Tom  (seg0 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Harry  (seg0 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Harry  (seg0 127.0.0.1:40000 pid=26896)
+NOTICE:  snooped value: Tom  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Tom  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 172.17.0.3:7002 pid=1073739)
 DELETE FROM rw_view2 WHERE NOT snoop(person);
-NOTICE:  snooped value: Tom  (seg0 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Tom  (seg0 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Harry  (seg0 127.0.0.1:40000 pid=26896)
-NOTICE:  snooped value: Harry  (seg0 127.0.0.1:40000 pid=26896)
+NOTICE:  snooped value: Tom  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Tom  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped value: Harry  (seg0 172.17.0.3:7002 pid=1073739)
 EXPLAIN (costs off) SELECT * FROM rw_view2 WHERE snoop(person);
                         QUERY PLAN                         
 -----------------------------------------------------------
@@ -2305,7 +2555,7 @@ EXPLAIN (costs off) DELETE FROM rw_view1 WHERE id = 1 AND snoop(data);
 (7 rows)
 
 DELETE FROM rw_view1 WHERE id = 1 AND snoop(data);
-NOTICE:  snooped value: Row 1
+NOTICE:  snooped value: Row 1  (seg1 172.17.0.3:7003 pid=1073738)
 reset enable_seqscan;
 EXPLAIN (costs off) INSERT INTO rw_view1 VALUES (2, 'New row 2');
                                                    QUERY PLAN                                                    
@@ -2568,10 +2818,10 @@ UPDATE v1 SET a=a+1 WHERE snoop(a) AND leakproof(a) AND a = 8;
 (74 rows)
 
 UPDATE v1 SET a=a+1 WHERE snoop(a) AND leakproof(a) AND a = 8;
-NOTICE:  snooped value: 8  (seg0 slice4 127.0.0.1:40000 pid=26920)
-NOTICE:  snooped value: 8  (seg0 slice8 127.0.0.1:40000 pid=26956)
-NOTICE:  snooped value: 8  (seg0 slice6 127.0.0.1:40000 pid=26944)
-NOTICE:  snooped value: 8  (seg0 slice2 127.0.0.1:40000 pid=26932)
+NOTICE:  snooped value: 8  (seg0 slice1 172.17.0.3:7002 pid=1073947)
+NOTICE:  snooped value: 8  (seg0 slice1 172.17.0.3:7002 pid=1073947)
+NOTICE:  snooped value: 8  (seg0 slice1 172.17.0.3:7002 pid=1073947)
+NOTICE:  snooped value: 8  (seg0 slice1 172.17.0.3:7002 pid=1073947)
 SELECT * FROM v1 WHERE b=8;
  a | b |  c   |  d   
 ---+---+------+------
@@ -2602,30 +2852,29 @@ END;
 $$
 LANGUAGE plpgsql COST 0.000001;
 DELETE FROM v1 WHERE snoop_five(a) AND leakproof(a); -- should not delete everything, just where a>5
-NOTICE:  snooped a value that's above 5  (seg0 slice4 127.0.0.1:40000 pid=17181)
-NOTICE:  snooped a value that's above 5  (seg0 slice2 127.0.0.1:40000 pid=17193)
-NOTICE:  snooped a value that's above 5  (seg1 slice2 127.0.0.1:40001 pid=17194)
-NOTICE:  snooped a value that's above 5  (seg1 slice6 127.0.0.1:40001 pid=17206)
-NOTICE:  snooped a value that's above 5  (seg1 slice6 127.0.0.1:40001 pid=17206)
-NOTICE:  snooped a value that's above 5  (seg1 slice6 127.0.0.1:40001 pid=17206)
-NOTICE:  snooped a value that's above 5  (seg1 slice6 127.0.0.1:40001 pid=17206)
-NOTICE:  snooped a value that's above 5  (seg0 slice6 127.0.0.1:40000 pid=17205)
-NOTICE:  snooped a value that's above 5  (seg1 slice4 127.0.0.1:40001 pid=17182)
-NOTICE:  snooped a value that's above 5  (seg1 slice8 127.0.0.1:40001 pid=17218)
-NOTICE:  snooped a value that's above 5  (seg1 slice4 127.0.0.1:40001 pid=17182)
-NOTICE:  snooped a value that's above 5  (seg1 slice8 127.0.0.1:40001 pid=17218)
-NOTICE:  snooped a value that's above 5  (seg1 slice2 127.0.0.1:40001 pid=17194)
-NOTICE:  snooped a value that's above 5  (seg1 slice8 127.0.0.1:40001 pid=17218)
-NOTICE:  snooped a value that's above 5  (seg1 slice4 127.0.0.1:40001 pid=17182)
-NOTICE:  snooped a value that's above 5  (seg1 slice8 127.0.0.1:40001 pid=17218)
-NOTICE:  snooped a value that's above 5  (seg1 slice2 127.0.0.1:40001 pid=17194)
-NOTICE:  snooped a value that's above 5  (seg1 slice4 127.0.0.1:40001 pid=17182)
-NOTICE:  snooped a value that's above 5  (seg1 slice2 127.0.0.1:40001 pid=17194)
-NOTICE:  snooped a value that's above 5  (seg0 slice8 127.0.0.1:40000 pid=17217)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg0 172.17.0.3:7002 pid=1073739)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
+NOTICE:  snooped a value that's above 5  (seg2 172.17.0.3:7004 pid=1073737)
 TABLE t1; -- verify all a<=5 are intact
  a | b |  c   
 ---+---+------
- 1 | 1 | t1
  2 | 2 | t1
  3 | 3 | t1
  4 | 4 | t1
@@ -2644,6 +2893,13 @@ TABLE t1; -- verify all a<=5 are intact
  2 | 2 | t111
  3 | 3 | t111
  4 | 4 | t111
+ 1 | 1 | t1
+ 1 | 1 | t11
+ 1 | 1 | t12
+ 1 | 1 | t111
+ 5 | 5 | t1
+ 5 | 5 | t11
+ 5 | 5 | t12
  5 | 5 | t111
 (20 rows)
 
@@ -2734,17 +2990,17 @@ CREATE VIEW v2 WITH (security_barrier = true) AS
   WITH CHECK OPTION;
 INSERT INTO v2 VALUES (2, 'two', 20); -- ok
 INSERT INTO v2 VALUES (-2, 'minus two', 20); -- not allowed
-ERROR:  new row violates check option for view "v1"
+ERROR:  new row violates check option for view "v1"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (-2, minus two, 20).
 INSERT INTO v2 VALUES (3, 'three', 30); -- not allowed
-ERROR:  new row violates check option for view "v2"
+ERROR:  new row violates check option for view "v2"  (seg0 172.17.0.3:7002 pid=1073739)
 DETAIL:  Failing row contains (3, three, 30).
 UPDATE v2 SET b = 'ONE' WHERE a = 1; -- ok
 UPDATE v2 SET a = -1 WHERE a = 1; -- not allowed
-ERROR:  new row violates check option for view "v1"
+ERROR:  new row violates check option for view "v1"  (seg2 172.17.0.3:7004 pid=1073737)
 DETAIL:  Failing row contains (-1, ONE, 10).
 UPDATE v2 SET c = 30 WHERE a = 1; -- not allowed
-ERROR:  new row violates check option for view "v2"
+ERROR:  new row violates check option for view "v2"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (1, ONE, 30).
 DELETE FROM v2 WHERE a = 2; -- ok
 SELECT * FROM v2;
@@ -2766,7 +3022,7 @@ CREATE VIEW v1 AS SELECT null::int AS a;
 CREATE OR REPLACE VIEW v1 AS SELECT * FROM t1 WHERE a > 0 WITH CHECK OPTION;
 INSERT INTO v1 VALUES (1, 'ok'); -- ok
 INSERT INTO v1 VALUES (-1, 'invalid'); -- should fail
-ERROR:  new row violates check option for view "v1"
+ERROR:  new row violates check option for view "v1"  (seg2 172.17.0.3:7004 pid=1073737)
 DETAIL:  Failing row contains (-1, invalid).
 DROP VIEW v1;
 DROP TABLE t1;
@@ -2828,7 +3084,7 @@ select tableoid::regclass, * from uv_pt;
 
 create view uv_ptv_wco as select * from uv_pt where a = 0 with check option;
 insert into uv_ptv_wco values (1, 2);
-ERROR:  new row violates check option for view "uv_ptv_wco"
+ERROR:  new row violates check option for view "uv_ptv_wco"  (seg0 172.17.0.3:7002 pid=1073739)
 DETAIL:  Failing row contains (1, 2, null).
 drop view uv_ptv, uv_ptv_wco;
 drop table uv_pt, uv_pt1, uv_pt11;
@@ -2838,7 +3094,7 @@ create table wcowrtest (a int) partition by list (a);
 create table wcowrtest1 partition of wcowrtest for values in (1);
 create view wcowrtest_v as select * from wcowrtest where wcowrtest = '(2)'::wcowrtest with check option;
 insert into wcowrtest_v values (1);
-ERROR:  new row violates check option for view "wcowrtest_v"
+ERROR:  new row violates check option for view "wcowrtest_v"  (seg1 172.17.0.3:7003 pid=1073738)
 DETAIL:  Failing row contains (1).
 alter table wcowrtest add b text;
 create table wcowrtest2 (b text, c int, a int);
@@ -2856,7 +3112,7 @@ with check option;
 -- WITH CHECK qual will be processed with wcowrtest2's
 -- rowtype after tuple-routing
 insert into wcowrtest_v2 values (2, 'no such row in sometable');
-ERROR:  new row violates check option for view "wcowrtest_v2"
+ERROR:  new row violates check option for view "wcowrtest_v2"  (seg0 172.17.0.3:7002 pid=1073739)
 DETAIL:  Failing row contains (2, no such row in sometable).
 drop view wcowrtest_v, wcowrtest_v2;
 drop table wcowrtest, sometable;

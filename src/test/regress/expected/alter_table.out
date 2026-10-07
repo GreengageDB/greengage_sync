@@ -262,8 +262,10 @@ ORDER BY relation::regclass::text COLLATE "C";
               relation              |           mode           
 ------------------------------------+--------------------------
  alter_idx_rename_test_idx_2        | ShareUpdateExclusiveLock
+ alter_idx_rename_test_idx_2        | AccessExclusiveLock
  alter_idx_rename_test_parted_idx_2 | ShareUpdateExclusiveLock
-(2 rows)
+ alter_idx_rename_test_parted_idx_2 | AccessExclusiveLock
+(4 rows)
 
 COMMIT;
 BEGIN;
@@ -337,7 +339,6 @@ CREATE TABLE constraint_rename_test (a int CONSTRAINT con1 CHECK (a > 0), b int,
  c      | integer |           |          | 
 Check constraints:
     "con1" CHECK (a > 0)
-Distributed by: (a)
 
 CREATE TABLE constraint_rename_test2 (a int CONSTRAINT con1 CHECK (a > 0), d int) INHERITS (constraint_rename_test);
 NOTICE:  merging column "a" with inherited definition
@@ -353,7 +354,6 @@ NOTICE:  merging constraint "con1" with inherited definition
 Check constraints:
     "con1" CHECK (a > 0)
 Inherits: constraint_rename_test
-Distributed by: (a)
 
 ALTER TABLE constraint_rename_test2 RENAME CONSTRAINT con1 TO con1foo; -- fail
 ERROR:  cannot rename inherited constraint "con1"
@@ -370,7 +370,6 @@ ALTER TABLE constraint_rename_test RENAME CONSTRAINT con1 TO con1foo; -- ok
 Check constraints:
     "con1foo" CHECK (a > 0)
 Number of child tables: 1 (Use \d+ to list them.)
-Distributed by: (a)
 
 \d constraint_rename_test2
       Table "public.constraint_rename_test2"
@@ -383,7 +382,6 @@ Distributed by: (a)
 Check constraints:
     "con1foo" CHECK (a > 0)
 Inherits: constraint_rename_test
-Distributed by: (a)
 
 ALTER TABLE constraint_rename_test ADD CONSTRAINT con2 CHECK (b > 0) NO INHERIT;
 ALTER TABLE ONLY constraint_rename_test RENAME CONSTRAINT con2 TO con2foo; -- ok
@@ -399,7 +397,6 @@ Check constraints:
     "con1foo" CHECK (a > 0)
     "con2bar" CHECK (b > 0) NO INHERIT
 Number of child tables: 1 (Use \d+ to list them.)
-Distributed by: (a)
 
 \d constraint_rename_test2
       Table "public.constraint_rename_test2"
@@ -412,7 +409,6 @@ Distributed by: (a)
 Check constraints:
     "con1foo" CHECK (a > 0)
 Inherits: constraint_rename_test
-Distributed by: (a)
 
 ALTER TABLE constraint_rename_test ADD CONSTRAINT con3 PRIMARY KEY (a);
 ALTER TABLE constraint_rename_test RENAME CONSTRAINT con3 TO con3foo; -- ok
@@ -429,7 +425,6 @@ Check constraints:
     "con1foo" CHECK (a > 0)
     "con2bar" CHECK (b > 0) NO INHERIT
 Number of child tables: 1 (Use \d+ to list them.)
-Distributed by: (a)
 
 \d constraint_rename_test2
       Table "public.constraint_rename_test2"
@@ -442,7 +437,6 @@ Distributed by: (a)
 Check constraints:
     "con1foo" CHECK (a > 0)
 Inherits: constraint_rename_test
-Distributed by: (a)
 
 DROP TABLE constraint_rename_test2;
 DROP TABLE constraint_rename_test;
@@ -519,10 +513,10 @@ ALTER TABLE attmp3 validate constraint attmpconstr;
 --end_ignore
 -- Try a non-verified CHECK constraint
 ALTER TABLE attmp3 ADD CONSTRAINT b_greater_than_ten CHECK (b > 10); -- fail
-ERROR:  check constraint "b_greater_than_ten" of relation "attmp3" is violated by some row
+ERROR:  check constraint "b_greater_than_ten" of relation "attmp3" is violated by some row  (seg1 172.17.0.3:7003 pid=561680)
 ALTER TABLE attmp3 ADD CONSTRAINT b_greater_than_ten CHECK (b > 10) NOT VALID; -- succeeds
 ALTER TABLE attmp3 VALIDATE CONSTRAINT b_greater_than_ten; -- fails
-ERROR:  check constraint "b_greater_than_ten" of relation "attmp3" is violated by some row
+ERROR:  check constraint "b_greater_than_ten" of relation "attmp3" is violated by some row  (seg1 172.17.0.3:7003 pid=561680)
 DELETE FROM attmp3 WHERE NOT b > 10;
 ALTER TABLE attmp3 VALIDATE CONSTRAINT b_greater_than_ten; -- succeeds
 ALTER TABLE attmp3 VALIDATE CONSTRAINT b_greater_than_ten; -- succeeds
@@ -538,19 +532,22 @@ CREATE TABLE attmp7 () INHERITS (attmp3);
 INSERT INTO attmp6 VALUES (6, 30), (7, 16);
 ALTER TABLE attmp3 ADD CONSTRAINT b_le_20 CHECK (b <= 20) NOT VALID;
 ALTER TABLE attmp3 VALIDATE CONSTRAINT b_le_20;	-- fails
-ERROR:  check constraint "b_le_20" of relation "attmp6" is violated by some row
+ERROR:  check constraint "b_le_20" of relation "attmp6" is violated by some row  (seg2 172.17.0.3:7004 pid=561713)
 DELETE FROM attmp6 WHERE b > 20;
 ALTER TABLE attmp3 VALIDATE CONSTRAINT b_le_20;	-- succeeds
 -- An already validated constraint must not be revalidated
 CREATE FUNCTION boo(int) RETURNS int IMMUTABLE STRICT LANGUAGE plpgsql AS $$ BEGIN RAISE NOTICE 'boo: %', $1; RETURN $1; END; $$;
 INSERT INTO attmp7 VALUES (8, 18);
 ALTER TABLE attmp7 ADD CONSTRAINT identity CHECK (b = boo(b));
-NOTICE:  boo: 18
+NOTICE:  boo: 18  (seg0 172.17.0.3:7002 pid=561683)
+NOTICE:  boo: 18  (seg0 172.17.0.3:7002 pid=561683)
 ALTER TABLE attmp3 ADD CONSTRAINT IDENTITY check (b = boo(b)) NOT VALID;
 NOTICE:  merging constraint "identity" with inherited definition
 ALTER TABLE attmp3 VALIDATE CONSTRAINT identity;
-NOTICE:  boo: 20
-NOTICE:  boo: 16
+NOTICE:  boo: 16  (seg0 172.17.0.3:7002 pid=561683)
+NOTICE:  boo: 16  (seg0 172.17.0.3:7002 pid=561683)
+NOTICE:  boo: 20  (seg1 172.17.0.3:7003 pid=561680)
+NOTICE:  boo: 20  (seg1 172.17.0.3:7003 pid=561680)
 -- A NO INHERIT constraint should not be looked for in children during VALIDATE CONSTRAINT
 create table parent_noinh_convalid (a int);
 create table child_noinh_convalid () inherits (parent_noinh_convalid);
@@ -559,7 +556,7 @@ insert into child_noinh_convalid values (1);
 alter table parent_noinh_convalid add constraint check_a_is_2 check (a = 2) no inherit not valid;
 -- fail, because of the row in parent
 alter table parent_noinh_convalid validate constraint check_a_is_2;
-ERROR:  check constraint "check_a_is_2" of relation "parent_noinh_convalid" is violated by some row
+ERROR:  check constraint "check_a_is_2" of relation "parent_noinh_convalid" is violated by some row  (seg1 172.17.0.3:7003 pid=561680)
 delete from only parent_noinh_convalid;
 -- ok (parent itself contains no violating rows)
 alter table parent_noinh_convalid validate constraint check_a_is_2;
@@ -670,7 +667,6 @@ Check constraints:
     "nv_child_2009_d_check" CHECK (d >= '01-01-2009'::date AND d <= '12-31-2009'::date)
     "nv_parent_d_check" CHECK (d >= '01-01-2001'::date AND d <= '12-31-2099'::date) NOT VALID
 Inherits: nv_parent
-Distributed by: (d)
 
 -- we leave nv_parent and children around to help test pg_dump logic
 -- Foreign key adding test with mixed types
@@ -813,7 +809,7 @@ create table atacc1 ( test int );
 alter table atacc1 add constraint atacc_test1 check (test>3);
 -- should fail
 insert into atacc1 (test) values (2);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc_test1"
+ERROR:  new row for relation "atacc1" violates check constraint "atacc_test1"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (2).
 -- should succeed
 insert into atacc1 (test) values (4);
@@ -824,7 +820,7 @@ create table atacc1 ( test int );
 insert into atacc1 (test) values (2);
 -- add a check constraint (fails)
 alter table atacc1 add constraint atacc_test1 check (test>3);
-ERROR:  check constraint "atacc_test1" of relation "atacc1" is violated by some row
+ERROR:  check constraint "atacc_test1" of relation "atacc1" is violated by some row  (seg0 172.17.0.3:7002 pid=561683)
 insert into atacc1 (test) values (4);
 drop table atacc1;
 -- let's do one where the check fails because the column doesn't exist
@@ -840,7 +836,7 @@ create table atacc1 ( test int, test2 int, test3 int);
 alter table atacc1 add constraint atacc_test1 check (test+test2<test3*4);
 -- should fail
 insert into atacc1 (test,test2,test3) values (4,4,2);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc_test1"
+ERROR:  new row for relation "atacc1" violates check constraint "atacc_test1"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (4, 4, 2).
 -- should succeed
 insert into atacc1 (test,test2,test3) values (4,4,5);
@@ -850,7 +846,7 @@ create table atacc1 (test int check (test>3), test2 int);
 alter table atacc1 add check (test2>test);
 -- should fail for $2
 insert into atacc1 (test2, test) values (3, 4);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_check"
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_check"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (4, 3).
 drop table atacc1;
 -- inheritance related tests
@@ -861,12 +857,12 @@ NOTICE:  table has parent, setting distribution columns to match parent table
 alter table atacc2 add constraint foo check (test2>0);
 -- fail and then succeed on atacc2
 insert into atacc2 (test2) values (-3);
-ERROR:  new row for relation "atacc2" violates check constraint "foo"
+ERROR:  new row for relation "atacc2" violates check constraint "foo"  (seg1 172.17.0.3:7003 pid=561680)
 DETAIL:  Failing row contains (-3).
 insert into atacc2 (test2) values (3);
 -- fail and then succeed on atacc3
 insert into atacc3 (test2) values (-3);
-ERROR:  new row for relation "atacc3" violates check constraint "foo"
+ERROR:  new row for relation "atacc3" violates check constraint "foo"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null, -3, null).
 insert into atacc3 (test2) values (3);
 drop table atacc3;
@@ -934,12 +930,12 @@ alter table atacc1 add constraint foo check (test>0) no inherit;
 insert into atacc2 (test) values (-3);
 -- check constraint is there on parent
 insert into atacc1 (test) values (-3);
-ERROR:  new row for relation "atacc1" violates check constraint "foo"
+ERROR:  new row for relation "atacc1" violates check constraint "foo"  (seg1 172.17.0.3:7003 pid=561680)
 DETAIL:  Failing row contains (-3).
 insert into atacc1 (test) values (3);
 -- fail, violating row:
 alter table atacc2 add constraint foo check (test>0) no inherit;
-ERROR:  check constraint "foo" of relation "atacc2" is violated by some row
+ERROR:  check constraint "foo" of relation "atacc2" is violated by some row  (seg1 172.17.0.3:7003 pid=561680)
 drop table atacc2;
 drop table atacc1;
 -- test unique constraint adding
@@ -950,7 +946,7 @@ alter table atacc1 add constraint atacc_test1 unique (test);
 insert into atacc1 (test) values (2);
 -- should fail
 insert into atacc1 (test) values (2);
-ERROR:  duplicate key value violates unique constraint "atacc_test1"
+ERROR:  duplicate key value violates unique constraint "atacc_test1"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Key (test)=(2) already exists.
 -- should succeed
 insert into atacc1 (test) values (4);
@@ -966,7 +962,7 @@ insert into atacc1 (test) values (2);
 insert into atacc1 (test) values (2);
 -- add a unique constraint (fails)
 alter table atacc1 add constraint atacc_test1 unique (test);
-ERROR:  could not create unique index "atacc_test1"
+ERROR:  could not create unique index "atacc_test1"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Key (test)=(2) is duplicated.
 insert into atacc1 (test) values (3);
 drop table atacc1;
@@ -985,7 +981,7 @@ alter table atacc1 add constraint atacc_test1 unique (test, test2);
 insert into atacc1 (test,test2) values (4,4);
 -- should fail
 insert into atacc1 (test,test2) values (4,4);
-ERROR:  duplicate key value violates unique constraint "atacc_test1"
+ERROR:  duplicate key value violates unique constraint "atacc_test1"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Key (test, test2)=(4, 4) already exists.
 -- should all succeed
 insert into atacc1 (test,test2) values (4,5);
@@ -1000,7 +996,7 @@ DETAIL:  Distribution key column "test" is not included in the constraint.
 -- should fail for @@ second one @@
 insert into atacc1 (test2, test) values (3, 3);
 insert into atacc1 (test2, test) values (2, 3);
-ERROR:  duplicate key value violates unique constraint "atacc1_test_key"
+ERROR:  duplicate key value violates unique constraint "atacc1_test_key"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Key (test)=(3) already exists.
 drop table atacc1;
 -- test primary key constraint adding
@@ -1011,13 +1007,13 @@ alter table atacc1 add constraint atacc_test1 primary key (test);
 insert into atacc1 (test) values (2);
 -- should fail
 insert into atacc1 (test) values (2);
-ERROR:  duplicate key value violates unique constraint "atacc_test1"
+ERROR:  duplicate key value violates unique constraint "atacc_test1"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Key (test)=(2) already exists.
 -- should succeed
 insert into atacc1 (test) values (4);
 -- inserting NULL should fail
 insert into atacc1 (test) values(NULL);
-ERROR:  null value in column "test" of relation "atacc1" violates not-null constraint
+ERROR:  null value in column "test" of relation "atacc1" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (4, null).
 -- try adding a second primary key (should fail)
 alter table atacc1 add constraint atacc_oid1 primary key(id);
@@ -1038,7 +1034,7 @@ insert into atacc1 (test) values (2);
 insert into atacc1 (test) values (2);
 -- add a primary key (fails)
 alter table atacc1 add constraint atacc_test1 primary key (test);
-ERROR:  could not create unique index "atacc_test1"
+ERROR:  could not create unique index "atacc_test1"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Key (test)=(2) is duplicated.
 insert into atacc1 (test) values (3);
 drop table atacc1;
@@ -1048,7 +1044,7 @@ create table atacc1 ( test int );
 insert into atacc1 (test) values (NULL);
 -- add a primary key (fails)
 alter table atacc1 add constraint atacc_test1 primary key (test);
-ERROR:  column "test" of relation "atacc1" contains null values
+ERROR:  column "test" of relation "atacc1" contains null values  (seg0 172.17.0.3:7002 pid=561683)
 insert into atacc1 (test) values (3);
 drop table atacc1;
 -- let's do one where the primary key constraint fails
@@ -1096,7 +1092,7 @@ create table atacc1 (a bigint, b int);
 insert into atacc1 values(1,2);
 alter table atacc1 add constraint atacc1_chk check(b = 1) not valid;
 alter table atacc1 validate constraint atacc1_chk, alter a type int;
-ERROR:  check constraint "atacc1_chk" of relation "atacc1" is violated by some row
+ERROR:  check constraint "atacc1_chk" of relation "atacc1" is violated by some row  (seg1 172.17.0.3:7003 pid=561680)
 drop table atacc1;
 -- something a little more complicated
 create table atacc1 ( test int, test2 int);
@@ -1109,16 +1105,16 @@ ERROR:  multiple primary keys for table "atacc1" are not allowed
 insert into atacc1 (test,test2) values (4,4);
 -- should fail
 insert into atacc1 (test,test2) values (4,4);
-ERROR:  duplicate key value violates unique constraint "atacc_test1"
+ERROR:  duplicate key value violates unique constraint "atacc_test1"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Key (test, test2)=(4, 4) already exists.
 insert into atacc1 (test,test2) values (NULL,3);
-ERROR:  null value in column "test" of relation "atacc1" violates not-null constraint
+ERROR:  null value in column "test" of relation "atacc1" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null, 3).
 insert into atacc1 (test,test2) values (3, NULL);
-ERROR:  null value in column "test2" of relation "atacc1" violates not-null constraint
+ERROR:  null value in column "test2" of relation "atacc1" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (3, null).
 insert into atacc1 (test,test2) values (NULL,NULL);
-ERROR:  null value in column "test" of relation "atacc1" violates not-null constraint
+ERROR:  null value in column "test" of relation "atacc1" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null, null).
 -- should all succeed
 insert into atacc1 (test,test2) values (4,5);
@@ -1130,10 +1126,10 @@ create table atacc1 (test int, test2 int, primary key(test));
 -- only first should succeed
 insert into atacc1 (test2, test) values (3, 3);
 insert into atacc1 (test2, test) values (2, 3);
-ERROR:  duplicate key value violates unique constraint "atacc1_pkey"
+ERROR:  duplicate key value violates unique constraint "atacc1_pkey"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Key (test)=(3) already exists.
 insert into atacc1 (test2, test) values (1, NULL);
-ERROR:  null value in column "test" of relation "atacc1" violates not-null constraint
+ERROR:  null value in column "test" of relation "atacc1" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null, 1).
 drop table atacc1;
 -- alter table / alter column [set/drop] not null tests
@@ -1157,7 +1153,7 @@ alter table atacc1 drop constraint "atacc1_pkey";
 alter table atacc1 alter column test drop not null;
 insert into atacc1 values (null);
 alter table atacc1 alter test set not null;
-ERROR:  column "test" of relation "atacc1" contains null values
+ERROR:  column "test" of relation "atacc1" contains null values  (seg0 172.17.0.3:7002 pid=561683)
 delete from atacc1;
 alter table atacc1 alter test set not null;
 -- try altering a non-existent column, should fail
@@ -1181,12 +1177,12 @@ insert into atacc1 values (null, 1);
 -- constraint not cover all values, should fail
 alter table atacc1 add constraint atacc1_constr_or check(test_a is not null or test_b < 10);
 alter table atacc1 alter test_a set not null;
-ERROR:  column "test_a" of relation "atacc1" contains null values
+ERROR:  column "test_a" of relation "atacc1" contains null values  (seg0 172.17.0.3:7002 pid=561683)
 alter table atacc1 drop constraint atacc1_constr_or;
 -- not valid constraint, should fail
 alter table atacc1 add constraint atacc1_constr_invalid check(test_a is not null) not valid;
 alter table atacc1 alter test_a set not null;
-ERROR:  column "test_a" of relation "atacc1" contains null values
+ERROR:  column "test_a" of relation "atacc1" contains null values  (seg0 172.17.0.3:7002 pid=561683)
 alter table atacc1 drop constraint atacc1_constr_invalid;
 -- with valid constraint
 update atacc1 set test_a = 1;
@@ -1198,10 +1194,10 @@ alter table atacc1 alter test_a drop not null;
 -- test multiple set not null at same time
 -- test_a checked by atacc1_constr_a_valid, test_b should fail by table scan
 alter table atacc1 alter test_a set not null, alter test_b set not null;
-ERROR:  column "test_b" of relation "atacc1" contains null values
+ERROR:  column "test_b" of relation "atacc1" contains null values  (seg0 172.17.0.3:7002 pid=561683)
 -- commands order has no importance
 alter table atacc1 alter test_b set not null, alter test_a set not null;
-ERROR:  column "test_b" of relation "atacc1" contains null values
+ERROR:  column "test_b" of relation "atacc1" contains null values  (seg0 172.17.0.3:7002 pid=561683)
 -- valid one by table scan, one by check constraints
 update atacc1 set test_b = 1;
 alter table atacc1 alter test_b set not null, alter test_a set not null;
@@ -1216,31 +1212,31 @@ create table child (b varchar(255)) inherits (parent);
 NOTICE:  table has parent, setting distribution columns to match parent table
 alter table parent alter a set not null;
 insert into parent values (NULL);
-ERROR:  null value in column "a" of relation "parent" violates not-null constraint
+ERROR:  null value in column "a" of relation "parent" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null).
 insert into child (a, b) values (NULL, 'foo');
-ERROR:  null value in column "a" of relation "child" violates not-null constraint
+ERROR:  null value in column "a" of relation "child" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null, foo).
 alter table parent alter a drop not null;
 insert into parent values (NULL);
 insert into child (a, b) values (NULL, 'foo');
 alter table only parent alter a set not null;
-ERROR:  column "a" of relation "parent" contains null values
+ERROR:  column "a" of relation "parent" contains null values  (seg0 172.17.0.3:7002 pid=561683)
 alter table child alter a set not null;
-ERROR:  column "a" of relation "child" contains null values
+ERROR:  column "a" of relation "child" contains null values  (seg0 172.17.0.3:7002 pid=561683)
 delete from parent;
 alter table only parent alter a set not null;
 insert into parent values (NULL);
-ERROR:  null value in column "a" of relation "parent" violates not-null constraint
+ERROR:  null value in column "a" of relation "parent" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null).
 alter table child alter a set not null;
 insert into child (a, b) values (NULL, 'foo');
-ERROR:  null value in column "a" of relation "child" violates not-null constraint
+ERROR:  null value in column "a" of relation "child" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null, foo).
 delete from child;
 alter table child alter a set not null;
 insert into child (a, b) values (NULL, 'foo');
-ERROR:  null value in column "a" of relation "child" violates not-null constraint
+ERROR:  null value in column "a" of relation "child" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null, foo).
 drop table child;
 drop table parent;
@@ -1260,9 +1256,9 @@ insert into def_test default values;
 select * from def_test;
  c1 |       c2        
 ----+-----------------
-  5 | initial_default
     | initial_default
     | 
+  5 | initial_default
  10 | new_default
 (4 rows)
 
@@ -1289,6 +1285,7 @@ select * from def_view_test;
  c1 |       c2        
 ----+-----------------
   5 | initial_default
+ 10 | new_default
     | initial_default
     | 
  10 | new_default
@@ -1572,15 +1569,15 @@ drop table atacc1;
 -- test constraint error reporting in presence of dropped columns
 create table atacc1 (id serial primary key, value int check (value < 10));
 insert into atacc1(value) values (100);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_value_check"
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_value_check"  (seg1 172.17.0.3:7003 pid=561680)
 DETAIL:  Failing row contains (1, 100).
 alter table atacc1 drop column value;
 alter table atacc1 add column value int check (value < 10);
 insert into atacc1(value) values (100);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_value_check"
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_value_check"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (2, 100).
 insert into atacc1(id, value) values (null, 0);
-ERROR:  null value in column "id" of relation "atacc1" violates not-null constraint
+ERROR:  null value in column "id" of relation "atacc1" violates not-null constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null, 0).
 drop table atacc1;
 -- test inheritance
@@ -1676,8 +1673,8 @@ copy attest(b,c) from stdin;
 select * from attest;
  b  | c  
 ----+----
-  2 |  3
  21 | 22
+  2 |  3
  31 | 32
 (3 rows)
 
@@ -1891,7 +1888,7 @@ alter table p1 add column f2 text;
 NOTICE:  merging definition of column "f2" for child "c1"
 insert into p1 values (1,2,'abc');
 insert into c1 values(11,'xyz',33,0); -- should fail
-ERROR:  new row for relation "c1" violates check constraint "p1_a1_check"
+ERROR:  new row for relation "c1" violates check constraint "p1_a1_check"  (seg2 172.17.0.3:7004 pid=561713)
 DETAIL:  Failing row contains (11, xyz, 33, 0).
 insert into c1 values(11,'xyz',33,22);
 select * from p1;
@@ -1985,7 +1982,7 @@ select * from anothertab;
 (2 rows)
 
 insert into anothertab (atcol1, atcol2) values (45, null); -- fails
-ERROR:  new row for relation "anothertab" violates check constraint "anothertab_chk"
+ERROR:  new row for relation "anothertab" violates check constraint "anothertab_chk"  (seg2 172.17.0.3:7004 pid=561713)
 DETAIL:  Failing row contains (45, null).
 insert into anothertab (atcol1, atcol2) values (default, null);
 select * from anothertab;
@@ -2110,9 +2107,9 @@ insert into another values(3, 'three', 'tre');
 select * from another;
  f1 |  f2   | f3  
 ----+-------+-----
-  1 | one   | uno
   2 | two   | due
   3 | three | tre
+  1 | one   | uno
 (3 rows)
 
 alter table another
@@ -2147,7 +2144,7 @@ drop table at_tab2;
 create table at_tab2 (x int, y text, check((x,y)::at_tab1 = (1,'42')::at_tab1));
 alter table at_tab1 alter column b type varchar; -- allowed, but ...
 insert into at_tab2 values(1,'42'); -- ... this will fail
-ERROR:  ROW() column has type text instead of type character varying
+ERROR:  ROW() column has type text instead of type character varying  (seg1 172.17.0.3:7003 pid=561680)
 drop table at_tab1, at_tab2;
 -- Check it for a partitioned table, too
 create table at_tab1 (a int, b text) partition by list(a);
@@ -2371,7 +2368,6 @@ CREATE TABLE test_inh_check_child() INHERITS(test_inh_check);
 Check constraints:
     "test_inh_check_a_check" CHECK (a > 10.2::double precision)
 Number of child tables: 1 (Use \d+ to list them.)
-Distributed by: (a)
 
 \d test_inh_check_child
             Table "public.test_inh_check_child"
@@ -2382,7 +2378,6 @@ Distributed by: (a)
 Check constraints:
     "test_inh_check_a_check" CHECK (a > 10.2::double precision)
 Inherits: test_inh_check
-Distributed by: (a)
 
 select relname, conname, coninhcount, conislocal, connoinherit
   from pg_constraint c, pg_class r
@@ -2404,7 +2399,6 @@ ALTER TABLE test_inh_check ALTER COLUMN a TYPE numeric;
 Check constraints:
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
 Number of child tables: 1 (Use \d+ to list them.)
-Distributed by: (a)
 
 \d test_inh_check_child
             Table "public.test_inh_check_child"
@@ -2415,7 +2409,6 @@ Distributed by: (a)
 Check constraints:
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
 Inherits: test_inh_check
-Distributed by: (a)
 
 select relname, conname, coninhcount, conislocal, connoinherit
   from pg_constraint c, pg_class r
@@ -2444,7 +2437,6 @@ Check constraints:
     "bnoinherit" CHECK (b > 100::double precision) NO INHERIT
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
 Number of child tables: 1 (Use \d+ to list them.)
-Distributed by: (a)
 
 \d test_inh_check_child
             Table "public.test_inh_check_child"
@@ -2457,7 +2449,6 @@ Check constraints:
     "bmerged" CHECK (b > 1::double precision)
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
 Inherits: test_inh_check
-Distributed by: (a)
 
 select relname, conname, coninhcount, conislocal, connoinherit
   from pg_constraint c, pg_class r
@@ -2486,7 +2477,6 @@ Check constraints:
     "bnoinherit" CHECK (b::double precision > 100::double precision) NO INHERIT
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
 Number of child tables: 1 (Use \d+ to list them.)
-Distributed by: (a)
 
 \d test_inh_check_child
         Table "public.test_inh_check_child"
@@ -2499,7 +2489,6 @@ Check constraints:
     "bmerged" CHECK (b::double precision > 1::double precision)
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
 Inherits: test_inh_check
-Distributed by: (a)
 
 select relname, conname, coninhcount, conislocal, connoinherit
   from pg_constraint c, pg_class r
@@ -2540,6 +2529,7 @@ DETAIL:  USING expression contains a whole-row table reference.
 -- check for rollback of ANALYZE corrupting table property flags (bug #11638)
 CREATE TABLE check_fk_presence_1 (id int PRIMARY KEY, t text);
 CREATE TABLE check_fk_presence_2 (id int REFERENCES check_fk_presence_1, t text);
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 BEGIN;
 ALTER TABLE check_fk_presence_2 DROP CONSTRAINT check_fk_presence_2_id_fkey;
 ANALYZE check_fk_presence_2;
@@ -2552,7 +2542,6 @@ ROLLBACK;
  t      | text    |           |          | 
 Foreign-key constraints:
     "check_fk_presence_2_id_fkey" FOREIGN KEY (id) REFERENCES check_fk_presence_1(id)
-Distributed by: (id)
 
 DROP TABLE check_fk_presence_1, check_fk_presence_2;
 -- check column addition within a view (bug #14876)
@@ -3172,7 +3161,6 @@ CREATE TABLE test_tbl2_subclass () INHERITS (test_tbl2);
  b      | text    |           |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
-Distributed by: (a)
 
 ALTER TYPE test_type2 ADD ATTRIBUTE c text; -- fails
 ERROR:  cannot alter type "test_type2" because it is the type of a typed table
@@ -3195,7 +3183,6 @@ ALTER TYPE test_type2 ADD ATTRIBUTE c text CASCADE;
  c      | text    |           |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
-Distributed by: (a)
 
 ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar; -- fails
 ERROR:  cannot alter type "test_type2" because it is the type of a typed table
@@ -3218,7 +3205,6 @@ ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar CASCADE;
  c      | text              |           |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
-Distributed by: (a)
 
 ALTER TYPE test_type2 DROP ATTRIBUTE b; -- fails
 ERROR:  cannot alter type "test_type2" because it is the type of a typed table
@@ -3239,7 +3225,6 @@ ALTER TYPE test_type2 DROP ATTRIBUTE b CASCADE;
  c      | text    |           |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
-Distributed by: (a)
 
 ALTER TYPE test_type2 RENAME ATTRIBUTE a TO aa; -- fails
 ERROR:  cannot alter type "test_type2" because it is the type of a typed table
@@ -3260,7 +3245,6 @@ ALTER TYPE test_type2 RENAME ATTRIBUTE a TO aa CASCADE;
  c      | text    |           |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
-Distributed by: (aa)
 
 \d test_tbl2_subclass
          Table "public.test_tbl2_subclass"
@@ -3269,7 +3253,6 @@ Distributed by: (aa)
  aa     | integer |           |          | 
  c      | text    |           |          | 
 Inherits: test_tbl2
-Distributed by: (aa)
 
 DROP TABLE test_tbl2_subclass;
 CREATE TYPE test_typex AS (a int, b text);
@@ -3286,7 +3269,6 @@ NOTICE:  drop cascades to constraint test_tblx_y_check on table test_tblx
 --------+------------+-----------+----------+---------
  x      | integer    |           |          | 
  y      | test_typex |           |          | 
-Distributed by: (x)
 
 DROP TABLE test_tblx;
 DROP TYPE test_typex;
@@ -3335,7 +3317,6 @@ ALTER TABLE tt7 NOT OF;
 --------+--------------+-----------+----------+---------
  x      | integer      |           |          | 
  y      | numeric(8,2) |           |          | 
-Distributed by: (x)
 
 -- make sure we can drop a constraint on the parent but it remains on the child
 CREATE TABLE test_drop_constr_parent (c text CHECK (c IS NOT NULL));
@@ -3343,7 +3324,7 @@ CREATE TABLE test_drop_constr_child () INHERITS (test_drop_constr_parent);
 ALTER TABLE ONLY test_drop_constr_parent DROP CONSTRAINT "test_drop_constr_parent_c_check";
 -- should fail
 INSERT INTO test_drop_constr_child (c) VALUES (NULL);
-ERROR:  new row for relation "test_drop_constr_child" violates check constraint "test_drop_constr_parent_c_check"
+ERROR:  new row for relation "test_drop_constr_child" violates check constraint "test_drop_constr_parent_c_check"  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (null).
 DROP TABLE test_drop_constr_parent CASCADE;
 NOTICE:  drop cascades to table test_drop_constr_child
@@ -3383,7 +3364,6 @@ Indexes:
     "xxx" PRIMARY KEY, btree (f1)
 Check constraints:
     "tt8_f_check" CHECK (f1 >= 0 AND f1 <= 10)
-Distributed by: (f1)
 
 DROP TABLE alter2.tt8;
 DROP SCHEMA alter2;
@@ -3498,6 +3478,7 @@ SELECT conname as constraint, obj_description(oid, 'pg_constraint') as comment F
 -- to an error and would reduce the test scope.
 CREATE TABLE comment_test_child (
   id text CONSTRAINT comment_test_child_fk REFERENCES comment_test);
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 CREATE INDEX comment_test_child_fk ON comment_test_child(id);
 COMMENT ON COLUMN comment_test_child.id IS 'Column ''id'' on comment_test_child';
 COMMENT ON INDEX comment_test_child_fk IS 'Index backing the FOREIGN KEY of comment_test_child';
@@ -3575,6 +3556,7 @@ ALTER TABLE old_system_table DROP COLUMN othercol;
 DROP TABLE old_system_table;
 -- set logged
 CREATE UNLOGGED TABLE unlogged1(f1 SERIAL PRIMARY KEY, f2 TEXT); -- has sequence, toast
+ERROR:  unlogged sequences are not supported
 -- check relpersistence of an unlogged table
 SELECT relname, relkind, relpersistence FROM pg_class WHERE relname ~ '^unlogged1'
 UNION ALL
@@ -3582,21 +3564,20 @@ SELECT r.relname || ' toast table', t.relkind, t.relpersistence FROM pg_class r 
 UNION ALL
 SELECT r.relname || ' toast index', ri.relkind, ri.relpersistence FROM pg_class r join pg_class t ON t.oid = r.reltoastrelid JOIN pg_index i ON i.indrelid = t.oid JOIN pg_class ri ON ri.oid = i.indexrelid WHERE r.relname ~ '^unlogged1'
 ORDER BY relname;
-        relname        | relkind | relpersistence 
------------------------+---------+----------------
- unlogged1             | r       | u
- unlogged1 toast index | i       | u
- unlogged1 toast table | t       | u
- unlogged1_f1_seq      | S       | u
- unlogged1_pkey        | i       | u
-(5 rows)
+ relname | relkind | relpersistence 
+---------+---------+----------------
+(0 rows)
 
 CREATE UNLOGGED TABLE unlogged2(f1 SERIAL PRIMARY KEY, f2 INTEGER REFERENCES unlogged1); -- foreign key
+ERROR:  unlogged sequences are not supported
 CREATE UNLOGGED TABLE unlogged3(f1 SERIAL PRIMARY KEY, f2 INTEGER REFERENCES unlogged3); -- self-referencing foreign key
+ERROR:  unlogged sequences are not supported
 ALTER TABLE unlogged3 SET LOGGED; -- skip self-referencing foreign key
+ERROR:  relation "unlogged3" does not exist
 ALTER TABLE unlogged2 SET LOGGED; -- fails because a foreign key to an unlogged table exists
-ERROR:  could not change table "unlogged2" to logged because it references unlogged table "unlogged1"
+ERROR:  relation "unlogged2" does not exist
 ALTER TABLE unlogged1 SET LOGGED;
+ERROR:  relation "unlogged1" does not exist
 -- check relpersistence of an unlogged table after changing to permanent
 SELECT relname, relkind, relpersistence FROM pg_class WHERE relname ~ '^unlogged1'
 UNION ALL
@@ -3604,19 +3585,18 @@ SELECT r.relname || ' toast table', t.relkind, t.relpersistence FROM pg_class r 
 UNION ALL
 SELECT r.relname || ' toast index', ri.relkind, ri.relpersistence FROM pg_class r join pg_class t ON t.oid = r.reltoastrelid JOIN pg_index i ON i.indrelid = t.oid JOIN pg_class ri ON ri.oid = i.indexrelid WHERE r.relname ~ '^unlogged1'
 ORDER BY relname;
-        relname        | relkind | relpersistence 
------------------------+---------+----------------
- unlogged1             | r       | p
- unlogged1 toast index | i       | p
- unlogged1 toast table | t       | p
- unlogged1_f1_seq      | S       | p
- unlogged1_pkey        | i       | p
-(5 rows)
+ relname | relkind | relpersistence 
+---------+---------+----------------
+(0 rows)
 
 ALTER TABLE unlogged1 SET LOGGED; -- silently do nothing
+ERROR:  relation "unlogged1" does not exist
 DROP TABLE unlogged3;
+ERROR:  table "unlogged3" does not exist
 DROP TABLE unlogged2;
+ERROR:  table "unlogged2" does not exist
 DROP TABLE unlogged1;
+ERROR:  table "unlogged1" does not exist
 -- set unlogged
 CREATE TABLE logged1(f1 SERIAL PRIMARY KEY, f2 TEXT); -- has sequence, toast
 -- check relpersistence of a permanent table
@@ -3677,8 +3657,6 @@ CREATE TABLE test_part (
           PARTITION p2017 START ('2017-01-01'::date) END ('2018-01-01'::date) WITH (appendonly=false ),
           DEFAULT PARTITION p_overflow  WITH (appendonly=false )
           );
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'field_part' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 DROP TABLE IF EXISTS test_ref;
 NOTICE:  table "test_ref" does not exist, skipping
 CREATE TABLE test_ref (
@@ -4088,7 +4066,7 @@ CREATE TABLE list_parted2 (
 CREATE TABLE part_2 (LIKE list_parted2);
 INSERT INTO part_2 VALUES (3, 'a');
 ALTER TABLE list_parted2 ATTACH PARTITION part_2 FOR VALUES IN (2);
-ERROR:  partition constraint of relation "part_2" is violated by some row
+ERROR:  partition constraint of relation "part_2" is violated by some row  (seg0 172.17.0.3:7002 pid=561683)
 -- should be ok after deleting the bad row
 DELETE FROM part_2;
 ALTER TABLE list_parted2 ATTACH PARTITION part_2 FOR VALUES IN (2);
@@ -4097,7 +4075,7 @@ CREATE TABLE list_parted2_def PARTITION OF list_parted2 DEFAULT;
 INSERT INTO list_parted2_def VALUES (11, 'z');
 CREATE TABLE part_3 (LIKE list_parted2);
 ALTER TABLE list_parted2 ATTACH PARTITION part_3 FOR VALUES IN (11);
-ERROR:  updated partition constraint for default partition "list_parted2_def" would be violated by some row
+ERROR:  updated partition constraint for default partition "list_parted2_def" would be violated by some row  (seg2 172.17.0.3:7004 pid=561713)
 -- should be ok after deleting the bad row
 DELETE FROM list_parted2_def WHERE a = 11;
 ALTER TABLE list_parted2 ATTACH PARTITION part_3 FOR VALUES IN (11);
@@ -4131,7 +4109,7 @@ CREATE TABLE part1 (
 INSERT INTO part1 VALUES (1, 10);
 -- Remember the TO bound is exclusive
 ALTER TABLE range_parted ATTACH PARTITION part1 FOR VALUES FROM (1, 1) TO (1, 10);
-ERROR:  partition constraint of relation "part1" is violated by some row
+ERROR:  partition constraint of relation "part1" is violated by some row  (seg1 172.17.0.3:7003 pid=561680)
 -- should be ok after deleting the bad row
 DELETE FROM part1;
 ALTER TABLE range_parted ATTACH PARTITION part1 FOR VALUES FROM (1, 1) TO (1, 10);
@@ -4154,7 +4132,7 @@ LINE 1: ...LTER TABLE range_parted ATTACH PARTITION partr_def2 DEFAULT;
 INSERT INTO partr_def1 VALUES (2, 10);
 CREATE TABLE part3 (LIKE range_parted);
 ALTER TABLE range_parted ATTACH partition part3 FOR VALUES FROM (2, 10) TO (2, 20);
-ERROR:  updated partition constraint for default partition "partr_def1" would be violated by some row
+ERROR:  updated partition constraint for default partition "partr_def1" would be violated by some row  (seg0 172.17.0.3:7002 pid=561683)
 -- Attaching partitions should be successful when there are no overlapping rows
 ALTER TABLE range_parted ATTACH partition part3 FOR VALUES FROM (3, 10) TO (3, 20);
 -- check that leaf partitions are scanned when attaching a partitioned
@@ -4166,7 +4144,7 @@ CREATE TABLE part_5 (
 CREATE TABLE part_5_a PARTITION OF part_5 FOR VALUES IN ('a');
 INSERT INTO part_5_a (a, b) VALUES (6, 'a');
 ALTER TABLE list_parted2 ATTACH PARTITION part_5 FOR VALUES IN (5);
-ERROR:  partition constraint of relation "part_5_a" is violated by some row
+ERROR:  partition constraint of relation "part_5_a" is violated by some row  (seg2 172.17.0.3:7004 pid=561713)
 -- delete the faulting row and also add a constraint to skip the scan
 DELETE FROM part_5_a WHERE a NOT IN (3);
 ALTER TABLE part_5 ADD CONSTRAINT check_a CHECK (a IS NOT NULL AND a = 5);
@@ -4219,7 +4197,7 @@ SELECT tableoid::regclass, a, b FROM part_7 order by a;
 (2 rows)
 
 ALTER TABLE list_parted2 ATTACH PARTITION part_7 FOR VALUES IN (7);
-ERROR:  partition constraint of relation "part_7_a_null" is violated by some row
+ERROR:  partition constraint of relation "part_7_a_null" is violated by some row  (seg0 172.17.0.3:7002 pid=561683)
 -- check that leaf partitions of default partition are scanned when
 -- attaching a partitioned table.
 ALTER TABLE part_5 DROP CONSTRAINT check_a;
@@ -4228,7 +4206,7 @@ CREATE TABLE part5_def_p1 PARTITION OF part5_def FOR VALUES IN (5);
 INSERT INTO part5_def_p1 VALUES (5, 'y');
 CREATE TABLE part5_p1 (LIKE part_5);
 ALTER TABLE part_5 ATTACH PARTITION part5_p1 FOR VALUES IN ('y');
-ERROR:  updated partition constraint for default partition "part5_def_p1" would be violated by some row
+ERROR:  updated partition constraint for default partition "part5_def_p1" would be violated by some row  (seg2 172.17.0.3:7004 pid=561713)
 -- should be ok after deleting the bad row
 DELETE FROM part5_def_p1 WHERE b = 'y';
 ALTER TABLE part_5 ATTACH PARTITION part5_p1 FOR VALUES IN ('y');
@@ -4284,7 +4262,7 @@ DROP TABLE fail_part;
 CREATE TABLE hpart_2 (LIKE hash_parted);
 INSERT INTO hpart_2 VALUES (3, 0);
 ALTER TABLE hash_parted ATTACH PARTITION hpart_2 FOR VALUES WITH (MODULUS 4, REMAINDER 1);
-ERROR:  partition constraint of relation "hpart_2" is violated by some row
+ERROR:  partition constraint of relation "hpart_2" is violated by some row  (seg0 172.17.0.3:7002 pid=561683)
 -- should be ok after deleting the bad row
 DELETE FROM hpart_2;
 ALTER TABLE hash_parted ATTACH PARTITION hpart_2 FOR VALUES WITH (MODULUS 4, REMAINDER 1);
@@ -4297,7 +4275,7 @@ CREATE TABLE hpart_5 (
 CREATE TABLE hpart_5_a PARTITION OF hpart_5 FOR VALUES IN ('1', '2', '3');
 INSERT INTO hpart_5_a (a, b) VALUES (7, 1);
 ALTER TABLE hash_parted ATTACH PARTITION hpart_5 FOR VALUES WITH (MODULUS 4, REMAINDER 2);
-ERROR:  partition constraint of relation "hpart_5_a" is violated by some row
+ERROR:  partition constraint of relation "hpart_5_a" is violated by some row  (seg0 172.17.0.3:7002 pid=561683)
 -- should be ok after deleting the bad row
 DELETE FROM hpart_5_a;
 ALTER TABLE hash_parted ATTACH PARTITION hpart_5 FOR VALUES WITH (MODULUS 4, REMAINDER 2);
@@ -4391,8 +4369,8 @@ HINT:  Use ALTER TABLE ... DETACH PARTITION without CONCURRENTLY.
 DROP TABLE part_rpd;
 -- GGDB: rejected in dispatch mode
 ALTER TABLE range_parted2 DETACH PARTITION part_rp CONCURRENTLY;
-ERROR:  ALTER TABLE ... DETACH PARTITION ... CONCURRENTLY is not supported
-HINT:  Use ALTER TABLE ... DETACH PARTITION without CONCURRENTLY.
+WARNING:  OID assignment not dispatched: catalog 2606, namespace: 0, name: "part_rp_a_check"
+ERROR:  oids were assigned, but not dispatched to QEs (oid_dispatch.c:1508)
 \d+ range_parted2
                          Partitioned table "public.range_parted2"
  Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
@@ -4527,7 +4505,7 @@ alter table p1 attach partition p11 for values from (2) to (5);
 insert into p1 (a, b) values (2, 3);
 -- check that partition validation scan correctly detects violating rows
 alter table p attach partition p1 for values from (1, 2) to (1, 10);
-ERROR:  partition constraint of relation "p11" is violated by some row
+ERROR:  partition constraint of relation "p11" is violated by some row  (seg0 172.17.0.3:7002 pid=561683)
 -- cleanup
 drop table p;
 drop table p1;
@@ -4556,7 +4534,7 @@ insert into defpart_attach_test_d values (1), (2);
 -- error because its constraint as the default partition would be violated
 -- by the row containing 1
 alter table defpart_attach_test attach partition defpart_attach_test_d default;
-ERROR:  partition constraint of relation "defpart_attach_test_d" is violated by some row
+ERROR:  partition constraint of relation "defpart_attach_test_d" is violated by some row  (seg1 172.17.0.3:7003 pid=561680)
 delete from defpart_attach_test_d where a = 1;
 alter table defpart_attach_test_d add check (a > 1);
 -- should be attached successfully and without needing to be scanned
@@ -4566,7 +4544,7 @@ alter table defpart_attach_test attach partition defpart_attach_test_d default;
 -- successfully
 create table defpart_attach_test_2 (like defpart_attach_test_d);
 alter table defpart_attach_test attach partition defpart_attach_test_2 for values in (2);
-ERROR:  updated partition constraint for default partition "defpart_attach_test_d" would be violated by some row
+ERROR:  updated partition constraint for default partition "defpart_attach_test_d" would be violated by some row  (seg0 172.17.0.3:7002 pid=561683)
 drop table defpart_attach_test;
 -- check combinations of temporary and permanent relations when attaching
 -- partitions.
@@ -4595,6 +4573,7 @@ create trigger trig_part_attach before insert on tab_part_attach
   for each statement execute procedure func_part_attach();
 ERROR:  Triggers for statements are not yet supported
 insert into tab_part_attach values (1);
+ERROR:  no partition of relation "tab_part_attach" found for row  (seg1 172.17.0.3:7003 pid=561680)
 DETAIL:  Partition key of the failing row contains (a) = (1).
 ERROR:  no partition of relation "tab_part_attach" found for row
 drop table tab_part_attach;
@@ -4692,15 +4671,23 @@ update bar1 set a = a + 1;
 /* Test case for bug #17409 */
 create table attbl (p1 int constraint pk_attbl primary key);
 create table atref (c1 int references attbl(p1));
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 cluster attbl using pk_attbl;
 alter table attbl alter column p1 set data type bigint;
+ERROR:  cannot alter column with primary key or unique constraint
+HINT:  DROP the constraint first, and recreate it after the ALTER
 alter table atref alter column c1 set data type bigint;
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 drop table attbl, atref;
 create table attbl (p1 int constraint pk_attbl primary key);
 alter table attbl replica identity using index pk_attbl;
 create table atref (c1 int references attbl(p1));
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 alter table attbl alter column p1 set data type bigint;
+ERROR:  cannot alter column with primary key or unique constraint
+HINT:  DROP the constraint first, and recreate it after the ALTER
 alter table atref alter column c1 set data type bigint;
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 drop table attbl, atref;
 /* End test case for bug #17409 */
 -- Test that ALTER TABLE rewrite preserves a clustered index
@@ -4758,6 +4745,7 @@ drop table alttype_cluster;
 create table target_parted (a int, b int) partition by list (a);
 create table attach_parted (a int, b int) partition by list (b);
 create table attach_parted_part1 partition of attach_parted for values in (1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 -- insert a row directly into the leaf partition so that its partition
 -- constraint is built and stored in the relcache
 insert into attach_parted_part1 values (1, 1);
@@ -4766,7 +4754,7 @@ insert into attach_parted_part1 values (1, 1);
 alter table target_parted attach partition attach_parted for values in (1);
 -- ...such that the following insert fails
 insert into attach_parted_part1 values (2, 1);
-ERROR:  new row for relation "attach_parted_part1" violates partition constraint
+ERROR:  new row for relation "attach_parted_part1" violates partition constraint  (seg0 172.17.0.3:7002 pid=561683)
 DETAIL:  Failing row contains (2, 1).
 -- ...and doesn't when the partition is detached along with its own partition
 alter table target_parted detach partition attach_parted;

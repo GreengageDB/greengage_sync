@@ -1,10 +1,7 @@
-<<<<<<< HEAD
 -- start_matchignore
 -- m/NOTICE:  SELECT uses system-defined column "tid_tab.ctid" without the necessary companion column "tid_tab.gp_segment_id"/
 -- m/HINT:  To uniquely identify a row within a distributed table, use the "gp_segment_id" column together with the "ctid" column./
 -- end_matchignore
-||||||| e1c1c30f635
-=======
 -- basic tests for the TID data type
 SELECT
   '(0,0)'::tid as tid00,
@@ -24,18 +21,25 @@ SELECT '(1,65536)'::tid;  -- error
 ERROR:  invalid input syntax for type tid: "(1,65536)"
 LINE 1: SELECT '(1,65536)'::tid;
                ^
->>>>>>> adadae45816
 -- tests for functions related to TID handling
 CREATE TABLE tid_tab (a int, b int default 0) distributed by (b);
 -- min() and max() for TIDs
 INSERT INTO tid_tab VALUES (1), (2);
 SELECT min(ctid) FROM tid_tab;
+NOTICE:  SELECT uses system-defined column "tid_tab.ctid" without the necessary companion column "tid_tab.gp_segment_id"
+HINT:  To uniquely identify a row within a distributed table, use the "gp_segment_id" column together with the "ctid" column.
+NOTICE:  SELECT uses system-defined column "tid_tab.ctid" without the necessary companion column "tid_tab.gp_segment_id"
+HINT:  To uniquely identify a row within a distributed table, use the "gp_segment_id" column together with the "ctid" column.
   min  
 -------
  (0,1)
 (1 row)
 
 SELECT max(ctid) FROM tid_tab;
+NOTICE:  SELECT uses system-defined column "tid_tab.ctid" without the necessary companion column "tid_tab.gp_segment_id"
+HINT:  To uniquely identify a row within a distributed table, use the "gp_segment_id" column together with the "ctid" column.
+NOTICE:  SELECT uses system-defined column "tid_tab.ctid" without the necessary companion column "tid_tab.gp_segment_id"
+HINT:  To uniquely identify a row within a distributed table, use the "gp_segment_id" column together with the "ctid" column.
   max  
 -------
  (0,2)
@@ -46,6 +50,11 @@ TRUNCATE tid_tab;
 -- Not supported in GPDB
 -- Materialized view
 CREATE MATERIALIZED VIEW tid_matview AS SELECT a FROM tid_tab;
+SELECT currtid('tid_matview'::regclass::oid, '(0,1)'::tid); -- fails
+ERROR:  function currtid(oid, tid) does not exist
+LINE 1: SELECT currtid('tid_matview'::regclass::oid, '(0,1)'::tid);
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT currtid2('tid_matview'::text, '(0,1)'::tid); -- fails
 ERROR:  function currtid2 is not supported by GPDB
 INSERT INTO tid_tab VALUES (1);
@@ -66,6 +75,11 @@ ERROR:  function currtid2 is not supported by GPDB
 DROP INDEX tid_ind;
 -- Partitioned table, no storage
 CREATE TABLE tid_part (a int) PARTITION BY RANGE (a);
+SELECT currtid('tid_part'::regclass::oid, '(0,1)'::tid); -- fails
+ERROR:  function currtid(oid, tid) does not exist
+LINE 1: SELECT currtid('tid_part'::regclass::oid, '(0,1)'::tid);
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT currtid2('tid_part'::text, '(0,1)'::tid); -- fails
 ERROR:  function currtid2 is not supported by GPDB
 DROP TABLE tid_part;

@@ -261,7 +261,7 @@ HINT:  likely caused by a function that reads or modifies data in a distributed 
 CONTEXT:  SQL function "rngfunct" statement 1
 -- function in subselect
 select * from rngfunc2 where f2 in (select f2 from rngfunct(1) z where z.rngfuncid = rngfunc2.rngfuncid) ORDER BY 1,2;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.rngfunc2"
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.rngfunc2"  (entry db 172.17.0.3:7000 pid=1080696)
 CONTEXT:  SQL function "rngfunct" during startup
 -- function in subselect
 select * from rngfunc2 where f2 in (select f2 from rngfunct(rngfunc2.rngfuncid) z where z.rngfuncid = 1) ORDER BY 1,2;
@@ -1403,13 +1403,15 @@ HINT:  Use DROP FUNCTION rngfunc(integer) first.
 CREATE OR REPLACE FUNCTION rngfuncr(in f1 int, out f2 int, out text)
 AS $$select $1-1, $1::text || 'z'$$ LANGUAGE sql;
 SELECT f1, rngfuncr(f1) FROM int4_tbl;
+NOTICE:  One or more columns in the following table(s) do not have statistics: int4_tbl
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
      f1      |          rngfuncr          
 -------------+----------------------------
            0 | (-1,0z)
-      123456 | (123455,123456z)
-     -123456 | (-123457,-123456z)
   2147483647 | (2147483646,2147483647z)
  -2147483647 | (-2147483648,-2147483647z)
+      123456 | (123455,123456z)
+     -123456 | (-123457,-123456z)
 (5 rows)
 
 SELECT * FROM rngfuncr(42);
@@ -1427,6 +1429,8 @@ SELECT * FROM rngfuncr(42) AS p(a,b);
 CREATE OR REPLACE FUNCTION rngfuncb(in f1 int, inout f2 int, out text)
 AS $$select $2-1, $1::text || 'z'$$ LANGUAGE sql;
 SELECT f1, rngfuncb(f1, f1/2) FROM int4_tbl;
+NOTICE:  One or more columns in the following table(s) do not have statistics: int4_tbl
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
      f1      |          rngfuncb          
 -------------+----------------------------
            0 | (-1,0z)
@@ -1550,7 +1554,7 @@ DROP FUNCTION dup(f1 anycompatiblerange);
 CREATE FUNCTION bad (f1 anyarray, out f2 anycompatible, out f3 anycompatiblearray)
 AS 'select $1, array[$1,$1]' LANGUAGE sql;
 ERROR:  cannot determine result data type
-DETAIL:  A result of type anycompatible requires at least one input of type anycompatible, anycompatiblearray, anycompatiblenonarray, or anycompatiblerange.
+DETAIL:  A result of type anycompatible requires at least one input of type anycompatible, anycompatiblearray, anycompatiblenonarray, anycompatiblerange, or anycompatiblemultirange.
 --
 -- table functions
 --
@@ -1681,12 +1685,12 @@ select * from tt;
 ----+----------
   1 | foo
   2 | bar
-  3 | fool
-  4 | foolfool
-  5 | foolish
-  6 | barrish
   7 | baz
   8 | quux
+  4 | foolfool
+  5 | foolish
+  3 | fool
+  6 | barrish
 (8 rows)
 
 -- limit doesn't prevent execution to completion
@@ -1720,8 +1724,8 @@ end $$ language plpgsql;
 create trigger tnoticetrigger after insert on tt for each row
 execute procedure noticetrigger();
 select insert_tt2('foolme','barme') limit 1;
-NOTICE:  noticetrigger 11 foolme
-NOTICE:  noticetrigger 12 barme
+NOTICE:  noticetrigger 11 foolme  (seg0 slice1 172.17.0.3:7002 pid=1080638)
+NOTICE:  noticetrigger 12 barme  (seg0 slice1 172.17.0.3:7002 pid=1080638)
  insert_tt2 
 ------------
          11
@@ -1749,8 +1753,8 @@ create temp table tt_log(f1 int, data text);
 create rule insert_tt_rule as on insert to tt do also
   insert into tt_log values(new.*);
 select insert_tt2('foollog','barlog') limit 1;
-NOTICE:  noticetrigger 13 foollog
-NOTICE:  noticetrigger 14 barlog
+NOTICE:  noticetrigger 13 foollog  (seg0 slice1 172.17.0.3:7002 pid=1080638)
+NOTICE:  noticetrigger 14 barlog  (seg0 slice1 172.17.0.3:7002 pid=1080638)
  insert_tt2 
 ------------
          13
@@ -1759,6 +1763,10 @@ NOTICE:  noticetrigger 14 barlog
 select * from tt;
  f1 |   data   
 ----+----------
+  4 | foolfool
+  5 | foolish
+  3 | fool
+  6 | barrish
   1 | foo
   2 | bar
   3 | fool
@@ -2300,11 +2308,11 @@ select x from int8_tbl, extractq2(int8_tbl) f(x);
 select x from int8_tbl, extractq2(int8_tbl) f(x);
          x         
 -------------------
+               456
+  4567890123456789
                123
   4567890123456789
  -4567890123456789
-               456
-  4567890123456789
 (5 rows)
 
 create function extractq2_2(t int8_tbl) returns table(ret1 int8) as $$
@@ -2331,11 +2339,11 @@ select x from int8_tbl, extractq2_2(int8_tbl) f(x);
 select x from int8_tbl, extractq2_2(int8_tbl) f(x);
          x         
 -------------------
+               456
+  4567890123456789
                123
   4567890123456789
  -4567890123456789
-               456
-  4567890123456789
 (5 rows)
 
 -- without the "offset 0", this function gets optimized quite differently
@@ -2468,3 +2476,33 @@ select *, row_to_json(u) from unnest(array[]::rngfunc2[]) u;
 (0 rows)
 
 drop type rngfunc2;
+-- check handling of functions pulled up into function RTEs (bug #17227)
+explain (verbose, costs off)
+select * from
+  (select jsonb_path_query_array(module->'lectures', '$[*]') as lecture
+   from unnest(array['{"lectures": [{"id": "1"}]}'::jsonb])
+        as unnested_modules(module)) as ss,
+  jsonb_to_recordset(ss.lecture) as j (id text);
+                                                                       QUERY PLAN                                                                       
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop
+   Output: jsonb_path_query_array((unnested_modules.module -> 'lectures'::text), '$[*]'::jsonpath, '{}'::jsonb, false), j.id
+   ->  Function Scan on pg_catalog.unnest unnested_modules
+         Output: unnested_modules.module
+         Function Call: unnest('{"{\"lectures\": [{\"id\": \"1\"}]}"}'::jsonb[])
+   ->  Function Scan on pg_catalog.jsonb_to_recordset j
+         Output: j.id
+         Function Call: jsonb_to_recordset(jsonb_path_query_array((unnested_modules.module -> 'lectures'::text), '$[*]'::jsonpath, '{}'::jsonb, false))
+ Optimizer: Postgres query optimizer
+(9 rows)
+
+select * from
+  (select jsonb_path_query_array(module->'lectures', '$[*]') as lecture
+   from unnest(array['{"lectures": [{"id": "1"}]}'::jsonb])
+        as unnested_modules(module)) as ss,
+  jsonb_to_recordset(ss.lecture) as j (id text);
+    lecture    | id 
+---------------+----
+ [{"id": "1"}] | 1
+(1 row)
+
