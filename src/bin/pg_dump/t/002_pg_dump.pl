@@ -661,7 +661,10 @@ my %tests = (
 		create_order => 100,
 		create_sql =>
 		  'ALTER SCHEMA public OWNER TO "regress_quoted  \"" role";',
-		regexp => qr/^(GRANT|REVOKE)/m,
+		# GPDB: every Greengage dump grants SELECT on some gp_* catalog views
+		# (they have no pg_init_privs entries), so only look at the public
+		# schema's own ACL.
+		regexp => qr/^(GRANT|REVOKE) .* ON SCHEMA public /m,
 		unlike => { defaults_public_owner => 1 },
 	},
 
@@ -1005,7 +1008,10 @@ my %tests = (
 	'COMMENT ON SCHEMA public' => {
 		regexp => qr/^COMMENT ON SCHEMA public IS .+;/m,
 		# regress_public_owner emits this, due to create_sql of next test
+		# GPDB: binary upgrade drops and re-creates the public schema to
+		# preserve its OID, so its comment is dumped too.
 		like => {
+			binary_upgrade     => 1,
 			pg_dumpall_dbprivs => 1,
 			pg_dumpall_exclude => 1,
 		},
