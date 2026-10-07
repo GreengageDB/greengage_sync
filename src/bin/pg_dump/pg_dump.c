@@ -10978,6 +10978,18 @@ dumpNamespace(Archive *fout, const NamespaceInfo *nspinfo)
 			binary_upgrade_set_namespace_oid(fout, q, nspinfo->dobj.catId.oid);
 
 		appendPQExpBuffer(q, "CREATE SCHEMA %s;\n", qnspname);
+
+		/*
+		 * GPDB: binary upgrade re-creates the public schema (see
+		 * binary_upgrade_set_namespace_oid()), and CREATE SCHEMA leaves it
+		 * with no ACL.  getNamespaces() assumes that the destination's public
+		 * schema starts with the initdb-default ACL, as it does in a new
+		 * database, so restore that default here.  dumpACL() then applies
+		 * any differences, and the ALTER SCHEMA OWNER that follows carries
+		 * the grants over to the owner.
+		 */
+		if (dopt->binary_upgrade && strcmp(nspinfo->dobj.name, "public") == 0)
+			appendPQExpBufferStr(q, "GRANT ALL ON SCHEMA public TO PUBLIC;\n");
 	}
 	else
 	{
