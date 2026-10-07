@@ -132,6 +132,8 @@ SELECT f1 AS five FROM FLOAT8_TBL
 UNION
 SELECT f1 FROM FLOAT8_TBL
 ORDER BY 1;
+NOTICE:  One or more columns in the following table(s) do not have statistics: float8_tbl
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
          five          
 -----------------------
  -1.2345678901234e+200
@@ -144,10 +146,10 @@ ORDER BY 1;
 SELECT f1 AS ten FROM FLOAT8_TBL
 UNION ALL
 SELECT f1 FROM FLOAT8_TBL;
+NOTICE:  One or more columns in the following table(s) do not have statistics: float8_tbl
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
           ten          
 -----------------------
- -1.2345678901234e+200
- -1.2345678901234e+200
                      0
                 -34.84
                -1004.3
@@ -156,6 +158,8 @@ SELECT f1 FROM FLOAT8_TBL;
                 -34.84
                -1004.3
  -1.2345678901234e-200
+ -1.2345678901234e+200
+ -1.2345678901234e+200
 (10 rows)
 
 SELECT f1 AS nine FROM FLOAT8_TBL
@@ -184,16 +188,14 @@ NOTICE:  One or more columns in the following table(s) do not have statistics: f
 HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
           ten          
 -----------------------
- -1.2345678901234e+200
-                     0
-            2147483647
-           -2147483647
                      0
                 -34.84
                -1004.3
  -1.2345678901234e-200
                 123456
                -123456
+ -1.2345678901234e+200
+                     0
             2147483647
            -2147483647
 (10 rows)
@@ -219,6 +221,8 @@ SELECT CAST(f1 AS char(4)) AS three FROM VARCHAR_TBL
 UNION
 SELECT f1 FROM CHAR_TBL
 ORDER BY 1;
+NOTICE:  One or more columns in the following table(s) do not have statistics: varchar_tbl, char_tbl
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
  three 
 -------
  a   
@@ -230,6 +234,8 @@ SELECT f1 AS three FROM VARCHAR_TBL
 UNION
 SELECT CAST(f1 AS varchar) FROM CHAR_TBL
 ORDER BY 1;
+NOTICE:  One or more columns in the following table(s) do not have statistics: varchar_tbl, char_tbl
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
  three 
 -------
  a
@@ -240,16 +246,18 @@ ORDER BY 1;
 SELECT f1 AS eight FROM VARCHAR_TBL
 UNION ALL
 SELECT f1 FROM CHAR_TBL;
+NOTICE:  One or more columns in the following table(s) do not have statistics: varchar_tbl, char_tbl
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
  eight 
 -------
- a
+ ab
+ abcd
+ abcd
  ab
  abcd
  abcd
  a
- ab
- abcd
- abcd
+ a
 (8 rows)
 
 SELECT f1 AS five FROM TEXT_TBL
@@ -1175,6 +1183,8 @@ SELECT a.f1 FROM (SELECT 'test' AS f1 FROM varchar_tbl) a
 UNION
 SELECT b.f1 FROM (SELECT f1 FROM varchar_tbl) b
 ORDER BY 1;
+NOTICE:  One or more columns in the following table(s) do not have statistics: varchar_tbl
+HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For partitioned tables, run analyze rootpartition <table_name>(<column_list>). See log for columns missing statistics.
   f1  
 ------
  a
@@ -1193,6 +1203,8 @@ LINE 1: SELECT '3.4'::numeric UNION SELECT 'foo';
 -- UNION or UNION ALL
 --
 CREATE TEMP TABLE t1 (a text, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE INDEX t1_ab_idx on t1 ((a || b));
 CREATE TEMP TABLE t2 (ab text primary key);
 INSERT INTO t1 VALUES ('a', 'b'), ('x', 'y');
@@ -1217,7 +1229,7 @@ explain (costs off)
                ->  Seq Scan on t1
          ->  Index Scan using t2_pkey on t2
                Index Cond: (ab = 'ab'::text)
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (8 rows)
 
 explain (costs off)
@@ -1241,7 +1253,7 @@ explain (costs off)
                                  ->  Seq Scan on t1
                      ->  Index Scan using t2_pkey on t2
                            Index Cond: (ab = 'ab'::text)
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (14 rows)
 
 --
@@ -1249,6 +1261,8 @@ explain (costs off)
 -- children.
 --
 CREATE TEMP TABLE t1c (b text, a text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'b' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE t1c INHERIT t1;
 CREATE TEMP TABLE t2c (primary key (ab)) INHERITS (t2);
 INSERT INTO t1c VALUES ('v', 'w'), ('c', 'd'), ('m', 'n'), ('e', 'f');
@@ -1310,6 +1324,7 @@ set enable_seqscan=off;
 create table events (event_id int primary key);
 create table other_events (event_id int primary key);
 create table events_child () inherits (events);
+NOTICE:  table has parent, setting distribution columns to match parent table
 explain (costs off)
 select event_id
  from (select event_id from events
@@ -1405,7 +1420,7 @@ ORDER BY x;
                                  ->  Result
                      ->  Result
                            One-Time Filter: false
- Optimizer: Pivotal Optimizer (GPORCA) version 3.83.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (14 rows)
 
 SELECT * FROM
@@ -1467,8 +1482,8 @@ select distinct q1 from
    union all
    select distinct * from int8_tbl i82) ss
 where q2 = q2;
-                                         QUERY PLAN                                          
----------------------------------------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  GroupAggregate
          Group Key: int8_tbl.q1
@@ -1488,7 +1503,7 @@ where q2 = q2;
                                  ->  Seq Scan on int8_tbl int8_tbl_1
                                        Filter: (q2 = q2)
  Optimizer: Pivotal Optimizer (GPORCA)
-(26 rows)
+(19 rows)
 
 select distinct q1 from
   (select distinct * from int8_tbl i81
@@ -1497,8 +1512,8 @@ select distinct q1 from
 where q2 = q2;
         q1        
 ------------------
-              123
  4567890123456789
+              123
 (2 rows)
 
 explain (costs off)
@@ -1507,8 +1522,8 @@ select distinct q1 from
    union all
    select distinct * from int8_tbl i82) ss
 where -q1 = q2;
-                                         QUERY PLAN                                          
----------------------------------------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  GroupAggregate
          Group Key: int8_tbl.q1
@@ -1528,7 +1543,7 @@ where -q1 = q2;
                                  ->  Seq Scan on int8_tbl int8_tbl_1
                                        Filter: ((- q1) = q2)
  Optimizer: Pivotal Optimizer (GPORCA)
-(26 rows)
+(19 rows)
 
 select distinct q1 from
   (select distinct * from int8_tbl i81
@@ -1546,6 +1561,7 @@ create function expensivefunc(int) returns int
 language plpgsql immutable strict cost 10000
 as $$begin return $1; end$$;
 create temp table t3 as select generate_series(-1000,1000) as x;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
 create index t3i on t3 (expensivefunc(x));
 analyze t3;
 explain (costs off)
@@ -1565,7 +1581,7 @@ HINT:  For non-partitioned tables, run analyze <table_name>(<column_list>). For 
          ->  Hash
                ->  Broadcast Motion 3:3  (slice2; segments: 3)
                      ->  Seq Scan on int4_tbl
- Optimizer: Pivotal Optimizer (GPORCA) version 3.1.0
+ Optimizer: Pivotal Optimizer (GPORCA)
 (10 rows)
 
 select * from
@@ -1608,12 +1624,12 @@ select * from
 where (x = 0) or (q1 >= q2 and q1 <= q2);
         q1        |        q2         | x 
 ------------------+-------------------+---
-              123 |               456 | 0
-              123 |  4567890123456789 | 0
  4567890123456789 |               123 | 0
  4567890123456789 |  4567890123456789 | 0
  4567890123456789 | -4567890123456789 | 0
  4567890123456789 |  4567890123456789 | 1
+              123 |               456 | 0
+              123 |  4567890123456789 | 0
 (6 rows)
 
 reset optimizer_trace_fallback;

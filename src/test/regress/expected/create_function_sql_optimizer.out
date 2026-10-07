@@ -282,6 +282,8 @@ CREATE FUNCTION functest_S_13() RETURNS boolean
     END;
 -- check display of function arguments in sub-SELECT
 CREATE TABLE functest1 (i int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE FUNCTION functest_S_16(a int, b int) RETURNS void
     LANGUAGE SQL
     BEGIN ATOMIC
@@ -441,6 +443,8 @@ DROP TABLE functest1 CASCADE;
 NOTICE:  drop cascades to function functest_s_16(integer,integer)
 -- test with views
 CREATE TABLE functest3 (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO functest3 VALUES (1), (2);
 CREATE VIEW functestv3 AS SELECT * FROM functest3;
 CREATE FUNCTION functest_S_14() RETURNS bigint
@@ -497,6 +501,8 @@ CREATE FUNCTION functest_IS_6()
     LANGUAGE SQL
     RETURN nextval('functest1');
 CREATE TABLE functest2 (a int, b int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE FUNCTION functest_IS_7()
     RETURNS int
     LANGUAGE SQL
@@ -566,6 +572,8 @@ DETAIL:  "functest1" is a function.
 DROP FUNCTION functest1(a int);
 -- inlining of set-returning functions
 CREATE TABLE functest3 (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO functest3 VALUES (1), (2), (3);
 CREATE FUNCTION functest_sri1() RETURNS SETOF int
 LANGUAGE SQL
@@ -642,6 +650,8 @@ EXPLAIN (verbose, costs off) SELECT voidtest2(11,22);
 (3 rows)
 
 CREATE TEMP TABLE sometable(f1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE FUNCTION voidtest3(a int) RETURNS VOID LANGUAGE SQL AS
 $$ INSERT INTO sometable VALUES(a + 1) $$;
 SELECT voidtest3(17);
@@ -672,33 +682,54 @@ SELECT * FROM voidtest5(3);
 -----------
 (0 rows)
 
+-- GPDB: a positional parameter reference ($1) in a SQL-standard function
+-- body produces a ParamRef node that must survive dispatch of CREATE FUNCTION
+-- to the segments (previously failed with "unrecognized node type" in readfast.c).
+CREATE FUNCTION functest_gp_paramref(int) RETURNS int
+    RETURN $1 + 1;
+SELECT functest_gp_paramref(41);
+ functest_gp_paramref 
+----------------------
+                   42
+(1 row)
+
+CREATE FUNCTION functest_gp_paramref_atomic(int) RETURNS int
+    BEGIN ATOMIC
+        SELECT $1 + 1;
+    END;
+SELECT functest_gp_paramref_atomic(41);
+ functest_gp_paramref_atomic 
+-----------------------------
+                          42
+(1 row)
+
 -- Things that shouldn't work:
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'SELECT ''not an integer'';';
 ERROR:  return type mismatch in function declared to return integer
 DETAIL:  Actual return type is text.
 CONTEXT:  SQL function "test1"
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'not even SQL';
 ERROR:  syntax error at or near "not"
 LINE 2:     AS 'not even SQL';
                 ^
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'SELECT 1, 2, 3;';
 ERROR:  return type mismatch in function declared to return integer
 DETAIL:  Final statement must return exactly one column.
 CONTEXT:  SQL function "test1"
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'SELECT $2;';
 ERROR:  there is no parameter $2
 LINE 2:     AS 'SELECT $2;';
                        ^
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'a', 'b';
 ERROR:  only one AS item needed for language "sql"
 -- Cleanup
 DROP SCHEMA temp_func_test CASCADE;
-NOTICE:  drop cascades to 29 other objects
+NOTICE:  drop cascades to 31 other objects
 DETAIL:  drop cascades to function functest_a_1(text,date)
 drop cascades to function functest_a_2(text[])
 drop cascades to function functest_a_3()
@@ -728,5 +759,7 @@ drop cascades to function voidtest2(integer,integer)
 drop cascades to function voidtest3(integer)
 drop cascades to function voidtest4(integer)
 drop cascades to function voidtest5(integer)
+drop cascades to function functest_gp_paramref(integer)
+drop cascades to function functest_gp_paramref_atomic(integer)
 DROP USER regress_unpriv_user;
 RESET search_path;
