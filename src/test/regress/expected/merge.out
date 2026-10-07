@@ -6,13 +6,19 @@
 --set debug_print_parse = true;
 --set debug_print_pretty = true;
 CREATE USER regress_merge_privs;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE USER regress_merge_no_privs;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 DROP TABLE IF EXISTS target;
 NOTICE:  table "target" does not exist, skipping
 DROP TABLE IF EXISTS source;
 NOTICE:  table "source" does not exist, skipping
 CREATE TABLE target (tid integer, balance integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE source (sid integer, delta integer); --no index
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'sid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO target VALUES (1, 10);
 INSERT INTO target VALUES (2, 20);
 INSERT INTO target VALUES (3, 30);
@@ -27,7 +33,11 @@ SELECT t.ctid is not null as matched, t.*, s.* FROM source s FULL OUTER JOIN tar
 ALTER TABLE target OWNER TO regress_merge_privs;
 ALTER TABLE source OWNER TO regress_merge_privs;
 CREATE TABLE target2 (tid integer, balance integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE source2 (sid integer, delta integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'sid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE target2 OWNER TO regress_merge_no_privs;
 ALTER TABLE source2 OWNER TO regress_merge_no_privs;
 GRANT INSERT ON target TO regress_merge_no_privs;
@@ -41,15 +51,13 @@ WHEN MATCHED THEN
                QUERY PLAN               
 ----------------------------------------
  Merge on target t
-   ->  Merge Join
-         Merge Cond: (t.tid = s.sid)
-         ->  Sort
-               Sort Key: t.tid
-               ->  Seq Scan on target t
-         ->  Sort
-               Sort Key: s.sid
+   ->  Hash Join
+         Hash Cond: (t.tid = s.sid)
+         ->  Seq Scan on target t
+         ->  Hash
                ->  Seq Scan on source s
-(9 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 --
 -- Errors
@@ -136,6 +144,8 @@ DETAIL:  This operation is not supported for views.
 DROP VIEW tv;
 -- materialized view
 CREATE MATERIALIZED VIEW mv AS SELECT * FROM target;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 MERGE INTO mv t
 USING source s
 ON t.tid = s.sid
@@ -275,7 +285,8 @@ WHEN MATCHED THEN
          ->  Seq Scan on source s
          ->  Hash
                ->  Seq Scan on target t
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 EXPLAIN (COSTS OFF)
 MERGE INTO target t
@@ -291,7 +302,8 @@ WHEN MATCHED THEN
          ->  Seq Scan on source s
          ->  Hash
                ->  Seq Scan on target t
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 EXPLAIN (COSTS OFF)
 MERGE INTO target t
@@ -307,7 +319,8 @@ WHEN NOT MATCHED THEN
          ->  Seq Scan on source s
          ->  Hash
                ->  Seq Scan on target t
-(6 rows)
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 DELETE FROM target WHERE tid > 100;
 ANALYZE target;
@@ -416,7 +429,7 @@ USING source AS s
 ON t.tid = s.sid
 WHEN MATCHED THEN
 	UPDATE SET balance = 0;
-ERROR:  MERGE command cannot affect row a second time
+ERROR:  MERGE command cannot affect row a second time  (seg0 172.17.0.2:7002 pid=141711)
 HINT:  Ensure that not more than one source row matches any one target row.
 ROLLBACK;
 BEGIN;
@@ -425,7 +438,7 @@ USING source AS s
 ON t.tid = s.sid
 WHEN MATCHED THEN
 	DELETE;
-ERROR:  MERGE command cannot affect row a second time
+ERROR:  MERGE command cannot affect row a second time  (seg0 172.17.0.2:7002 pid=141711)
 HINT:  Ensure that not more than one source row matches any one target row.
 ROLLBACK;
 -- remove duplicate MATCHED data from source data
@@ -455,7 +468,7 @@ USING source AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
   INSERT VALUES (4, NULL);
-ERROR:  duplicate key value violates unique constraint "target_pkey"
+ERROR:  duplicate key value violates unique constraint "target_pkey"  (seg0 172.17.0.2:7002 pid=141711)
 DETAIL:  Key (tid)=(4) already exists.
 SELECT * FROM target ORDER BY tid;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
@@ -651,7 +664,11 @@ ERROR:  unreachable WHEN clause specified after unconditional WHEN clause
 ROLLBACK;
 -- conditional WHEN clause
 CREATE TABLE wq_target (tid integer not null, balance integer DEFAULT -1);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE wq_source (balance integer, sid integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'balance' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO wq_source (sid, balance) VALUES (1, 100);
 BEGIN;
 -- try a simple INSERT with default values first
@@ -841,6 +858,9 @@ MERGE INTO wq_target t
 USING wq_source s ON t.tid = s.sid
 WHEN MATCHED AND (merge_when_and_write()) THEN
 	UPDATE SET balance = t.balance + s.balance;
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg1 172.17.0.2:7003 pid=141712)
+CONTEXT:  SQL statement "INSERT INTO target VALUES (100, 100)"
+PL/pgSQL function merge_when_and_write() line 3 at SQL statement
 ROLLBACK;
 drop function merge_when_and_write();
 DROP TABLE wq_target, wq_source;
@@ -874,11 +894,17 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER merge_bsi BEFORE INSERT ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_bsu BEFORE UPDATE ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_bsd BEFORE DELETE ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_asi AFTER INSERT ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_asu AFTER UPDATE ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_asd AFTER DELETE ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_bri BEFORE INSERT ON target FOR EACH ROW EXECUTE PROCEDURE merge_trigfunc ();
 CREATE TRIGGER merge_bru BEFORE UPDATE ON target FOR EACH ROW EXECUTE PROCEDURE merge_trigfunc ();
 CREATE TRIGGER merge_brd BEFORE DELETE ON target FOR EACH ROW EXECUTE PROCEDURE merge_trigfunc ();
@@ -888,10 +914,8 @@ CREATE TRIGGER merge_ard AFTER DELETE ON target FOR EACH ROW EXECUTE PROCEDURE m
 -- now the classic UPSERT, with a DELETE
 BEGIN;
 UPDATE target SET balance = 0 WHERE tid = 3;
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,0)
-NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,0)
-NOTICE:  AFTER UPDATE STATEMENT trigger
+NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,0)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,0)  (seg0 172.17.0.2:7002 pid=141711)
 --EXPLAIN (ANALYZE ON, COSTS OFF, SUMMARY OFF, TIMING OFF)
 MERGE INTO target t
 USING source AS s
@@ -902,18 +926,12 @@ WHEN MATCHED THEN
 	DELETE
 WHEN NOT MATCHED THEN
 	INSERT VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE DELETE STATEMENT trigger
-NOTICE:  BEFORE DELETE ROW trigger row: (3,0)
-NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,15)
-NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER DELETE ROW trigger row: (3,0)
-NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,15)
-NOTICE:  AFTER INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER DELETE STATEMENT trigger
-NOTICE:  AFTER UPDATE STATEMENT trigger
-NOTICE:  AFTER INSERT STATEMENT trigger
+NOTICE:  BEFORE DELETE ROW trigger row: (3,0)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,15)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  BEFORE INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER DELETE ROW trigger row: (3,0)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,15)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -934,10 +952,10 @@ $$;
 SELECT * FROM target full outer join source on (sid = tid);
  tid | balance | sid | delta 
 -----+---------+-----+-------
+   1 |      10 |     |      
    3 |      30 |   3 |    20
    2 |      20 |   2 |     5
      |         |   4 |    40
-   1 |      10 |     |      
 (4 rows)
 
 create trigger merge_skip BEFORE INSERT OR UPDATE or DELETE
@@ -948,22 +966,16 @@ ON t.tid = s.sid
 WHEN MATCHED AND s.sid = 3 THEN UPDATE SET balance = t.balance + s.delta
 WHEN MATCHED THEN DELETE
 WHEN NOT MATCHED THEN INSERT VALUES (sid, delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE DELETE STATEMENT trigger
-NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,50)
-NOTICE:  BEFORE DELETE ROW trigger row: (2,20)
-NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER DELETE STATEMENT trigger
-NOTICE:  AFTER UPDATE STATEMENT trigger
-NOTICE:  AFTER INSERT STATEMENT trigger
+NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,50)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  BEFORE DELETE ROW trigger row: (2,20)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  BEFORE INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
 SELECT * FROM target FULL OUTER JOIN source ON (sid = tid);
  tid | balance | sid | delta 
 -----+---------+-----+-------
+   1 |      10 |     |      
    3 |      30 |   3 |    20
    2 |      20 |   2 |     5
      |         |   4 |    40
-   1 |      10 |     |      
 (4 rows)
 
 DROP TRIGGER merge_skip ON target;
@@ -980,12 +992,10 @@ WHEN MATCHED AND t.balance > s.delta THEN
 	UPDATE SET balance = t.balance - s.delta;
 END;
 $$;
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,10)
-NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,15)
-NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,10)
-NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,15)
-NOTICE:  AFTER UPDATE STATEMENT trigger
+NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,10)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,15)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,10)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,15)  (seg0 172.17.0.2:7002 pid=141711)
 ROLLBACK;
 --source constants
 BEGIN;
@@ -994,19 +1004,10 @@ USING (SELECT 9 AS sid, 57 AS delta) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE INSERT ROW trigger row: (9,57)
-NOTICE:  AFTER INSERT ROW trigger row: (9,57)
-NOTICE:  AFTER INSERT STATEMENT trigger
+ERROR:  MERGE on a distributed table is not supported when the join requires redistributing the target table
+HINT:  Use a join condition that includes the target table's distribution key column(s), or distribute the source table so that it is co-located with the target.
 SELECT * FROM target ORDER BY tid;
- tid | balance 
------+---------
-   1 |      10
-   2 |      20
-   3 |      30
-   9 |      57
-(4 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 --source query
 BEGIN;
@@ -1015,10 +1016,8 @@ USING (SELECT sid, delta FROM source WHERE delta > 0) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT STATEMENT trigger
+NOTICE:  BEFORE INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1035,10 +1034,8 @@ USING (SELECT sid, delta as newname FROM source WHERE delta > 0) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.newname);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT STATEMENT trigger
+NOTICE:  BEFORE INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1058,16 +1055,12 @@ WHEN MATCHED THEN
 	UPDATE SET balance = t1.balance + t2.balance
 WHEN NOT MATCHED THEN
 	INSERT VALUES (t2.tid, t2.balance);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,20)
-NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,40)
-NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,60)
-NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,20)
-NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,40)
-NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,60)
-NOTICE:  AFTER UPDATE STATEMENT trigger
-NOTICE:  AFTER INSERT STATEMENT trigger
+NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,40)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,60)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,40)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,60)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,20)  (seg1 172.17.0.2:7003 pid=141712)
+NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,20)  (seg1 172.17.0.2:7003 pid=141712)
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1083,8 +1076,6 @@ USING (SELECT tid as sid, balance as delta FROM target WHERE balance > 0) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  AFTER INSERT STATEMENT trigger
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1105,10 +1096,8 @@ USING
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT STATEMENT trigger
+NOTICE:  BEFORE INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER INSERT ROW trigger row: (4,40)  (seg0 172.17.0.2:7002 pid=141711)
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1140,10 +1129,8 @@ RETURN result;
 END;
 $$;
 SELECT merge_func(3, 4);
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,26)
-NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,26)
-NOTICE:  AFTER UPDATE STATEMENT trigger
+NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,26)  (seg0 172.17.0.2:7002 pid=141711)
+NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,26)  (seg0 172.17.0.2:7002 pid=141711)
  merge_func 
 ------------
           1
@@ -1162,10 +1149,8 @@ ROLLBACK;
 BEGIN;
 prepare foom as merge into target t using (select 1 as sid) s on (t.tid = s.sid) when matched then update set balance = 1;
 execute foom;
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,1)
-NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,1)
-NOTICE:  AFTER UPDATE STATEMENT trigger
+NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,1)  (seg1 172.17.0.2:7003 pid=141712)
+NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,1)  (seg1 172.17.0.2:7003 pid=141712)
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1184,10 +1169,8 @@ WHEN MATCHED THEN
 UPDATE SET balance = $2;
 --EXPLAIN (ANALYZE ON, COSTS OFF, SUMMARY OFF, TIMING OFF)
 execute foom2 (1, 1);
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,1)
-NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,1)
-NOTICE:  AFTER UPDATE STATEMENT trigger
+NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,1)  (seg1 172.17.0.2:7003 pid=141712)
+NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,1)  (seg1 172.17.0.2:7003 pid=141712)
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1199,7 +1182,11 @@ SELECT * FROM target ORDER BY tid;
 ROLLBACK;
 -- subqueries in source relation
 CREATE TABLE sq_target (tid integer NOT NULL, balance integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE sq_source (delta integer, sid integer, balance integer DEFAULT 0);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'delta' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO sq_target(tid, balance) VALUES (1,100), (2,200), (3,300);
 INSERT INTO sq_source(sid, delta) VALUES (1,10), (2,20), (4,40);
 BEGIN;
@@ -1211,8 +1198,8 @@ WHEN MATCHED AND t.balance > delta THEN
 SELECT * FROM sq_target;
  tid | balance 
 -----+---------
-   3 |     300
    1 |     110
+   3 |     300
    2 |     220
 (3 rows)
 
@@ -1304,7 +1291,11 @@ LINE 10: RETURNING *;
 ROLLBACK;
 -- EXPLAIN
 CREATE TABLE ex_mtarget (a int, b int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE ex_msource (a int, b int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO ex_mtarget SELECT i, i*10 FROM generate_series(1,100,2) i;
 INSERT INTO ex_msource SELECT i, i*10 FROM generate_series(1,100,1) i;
 CREATE FUNCTION explain_merge(query text) RETURNS SETOF text
@@ -1326,42 +1317,36 @@ SELECT explain_merge('
 MERGE INTO ex_mtarget t USING ex_msource s ON t.a = s.a
 WHEN MATCHED THEN
 	UPDATE SET b = t.b + 1');
-                            explain_merge                             
-----------------------------------------------------------------------
+                                        explain_merge                                        
+---------------------------------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples: updated=50
-   ->  Merge Join (actual rows=50 loops=1)
-         Merge Cond: (t.a = s.a)
-         ->  Sort (actual rows=50 loops=1)
-               Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_mtarget t (actual rows=50 loops=1)
-         ->  Sort (actual rows=100 loops=1)
-               Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
-(12 rows)
+   ->  Hash Join (actual rows=20 loops=1)
+         Hash Cond: (t.a = s.a)
+         Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 38 of 1048576 buckets.
+         ->  Seq Scan on ex_mtarget t (actual rows=20 loops=1)
+         ->  Hash (actual rows=38 loops=1)
+               Buckets: xxx  Batches: xxx  Memory Usage: xxx
+               ->  Seq Scan on ex_msource s (actual rows=38 loops=1)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 -- only updates to selected tuples
 SELECT explain_merge('
 MERGE INTO ex_mtarget t USING ex_msource s ON t.a = s.a
 WHEN MATCHED AND t.a < 10 THEN
 	UPDATE SET b = t.b + 1');
-                            explain_merge                             
-----------------------------------------------------------------------
+                                        explain_merge                                        
+---------------------------------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples: updated=5 skipped=45
-   ->  Merge Join (actual rows=50 loops=1)
-         Merge Cond: (t.a = s.a)
-         ->  Sort (actual rows=50 loops=1)
-               Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_mtarget t (actual rows=50 loops=1)
-         ->  Sort (actual rows=100 loops=1)
-               Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
-(12 rows)
+   ->  Hash Join (actual rows=20 loops=1)
+         Hash Cond: (t.a = s.a)
+         Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 38 of 1048576 buckets.
+         ->  Seq Scan on ex_mtarget t (actual rows=20 loops=1)
+         ->  Hash (actual rows=38 loops=1)
+               Buckets: xxx  Batches: xxx  Memory Usage: xxx
+               ->  Seq Scan on ex_msource s (actual rows=38 loops=1)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 -- updates + deletes
 SELECT explain_merge('
@@ -1370,42 +1355,36 @@ WHEN MATCHED AND t.a < 10 THEN
 	UPDATE SET b = t.b + 1
 WHEN MATCHED AND t.a >= 10 AND t.a <= 20 THEN
 	DELETE');
-                            explain_merge                             
-----------------------------------------------------------------------
+                                        explain_merge                                        
+---------------------------------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples: updated=5 deleted=5 skipped=40
-   ->  Merge Join (actual rows=50 loops=1)
-         Merge Cond: (t.a = s.a)
-         ->  Sort (actual rows=50 loops=1)
-               Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_mtarget t (actual rows=50 loops=1)
-         ->  Sort (actual rows=100 loops=1)
-               Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
-(12 rows)
+   ->  Hash Join (actual rows=20 loops=1)
+         Hash Cond: (t.a = s.a)
+         Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 38 of 1048576 buckets.
+         ->  Seq Scan on ex_mtarget t (actual rows=20 loops=1)
+         ->  Hash (actual rows=38 loops=1)
+               Buckets: xxx  Batches: xxx  Memory Usage: xxx
+               ->  Seq Scan on ex_msource s (actual rows=38 loops=1)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 -- only inserts
 SELECT explain_merge('
 MERGE INTO ex_mtarget t USING ex_msource s ON t.a = s.a
 WHEN NOT MATCHED AND s.a < 10 THEN
 	INSERT VALUES (a, b)');
-                            explain_merge                             
-----------------------------------------------------------------------
+                                        explain_merge                                        
+---------------------------------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples: inserted=4 skipped=96
-   ->  Merge Left Join (actual rows=100 loops=1)
-         Merge Cond: (s.a = t.a)
-         ->  Sort (actual rows=100 loops=1)
-               Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
-         ->  Sort (actual rows=45 loops=1)
-               Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_mtarget t (actual rows=45 loops=1)
-(12 rows)
+   ->  Hash Left Join (actual rows=38 loops=1)
+         Hash Cond: (s.a = t.a)
+         Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 19 of 1048576 buckets.
+         ->  Seq Scan on ex_msource s (actual rows=38 loops=1)
+         ->  Hash (actual rows=19 loops=1)
+               Buckets: xxx  Batches: xxx  Memory Usage: xxx
+               ->  Seq Scan on ex_mtarget t (actual rows=19 loops=1)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 -- all three
 SELECT explain_merge('
@@ -1416,38 +1395,35 @@ WHEN MATCHED AND t.a >= 30 AND t.a <= 40 THEN
 	DELETE
 WHEN NOT MATCHED AND s.a < 20 THEN
 	INSERT VALUES (a, b)');
-                            explain_merge                             
-----------------------------------------------------------------------
+                                        explain_merge                                        
+---------------------------------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples: inserted=10 updated=9 deleted=5 skipped=76
-   ->  Merge Left Join (actual rows=100 loops=1)
-         Merge Cond: (s.a = t.a)
-         ->  Sort (actual rows=100 loops=1)
-               Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
-         ->  Sort (actual rows=49 loops=1)
-               Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
-               ->  Seq Scan on ex_mtarget t (actual rows=49 loops=1)
-(12 rows)
+   ->  Hash Left Join (actual rows=38 loops=1)
+         Hash Cond: (s.a = t.a)
+         Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 22 of 1048576 buckets.
+         ->  Seq Scan on ex_msource s (actual rows=38 loops=1)
+         ->  Hash (actual rows=22 loops=1)
+               Buckets: xxx  Batches: xxx  Memory Usage: xxx
+               ->  Seq Scan on ex_mtarget t (actual rows=22 loops=1)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 -- nothing
 SELECT explain_merge('
 MERGE INTO ex_mtarget t USING ex_msource s ON t.a = s.a AND t.a < -1000
 WHEN MATCHED AND t.a < 10 THEN
 	DO NOTHING');
-                           explain_merge                            
---------------------------------------------------------------------
+                        explain_merge                         
+--------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
    ->  Hash Join (actual rows=0 loops=1)
-         Hash Cond: (s.a = t.a)
-         ->  Seq Scan on ex_msource s (actual rows=1 loops=1)
-         ->  Hash (actual rows=0 loops=1)
-               Buckets: xxx  Batches: xxx  Memory Usage: xxx
-               ->  Seq Scan on ex_mtarget t (actual rows=0 loops=1)
+         Hash Cond: (t.a = s.a)
+         ->  Seq Scan on ex_mtarget t (actual rows=0 loops=1)
+               Filter: (a < '-1000'::integer)
+         ->  Hash (never executed)
+               ->  Seq Scan on ex_msource s (never executed)
                      Filter: (a < '-1000'::integer)
-                     Rows Removed by Filter: 54
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 DROP TABLE ex_msource, ex_mtarget;
@@ -1496,11 +1472,19 @@ DROP TABLE sq_target, sq_source CASCADE;
 NOTICE:  drop cascades to view v
 CREATE TABLE pa_target (tid integer, balance float, val text)
 	PARTITION BY LIST (tid);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE part1 PARTITION OF pa_target FOR VALUES IN (1,4);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part2 PARTITION OF pa_target FOR VALUES IN (2,5,6);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part3 PARTITION OF pa_target FOR VALUES IN (3,8,9);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part4 PARTITION OF pa_target DEFAULT;
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE pa_source (sid integer, delta float);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'sid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- insert many rows to the source table
 INSERT INTO pa_source SELECT id, id * 10  FROM generate_series(1,14) AS id;
 -- insert a few rows in the target table (odd numbered tid)
@@ -1543,31 +1527,10 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
+ERROR:  MERGE on a distributed table is not supported when the join requires redistributing the target table
+HINT:  Use a join condition that includes the target table's distribution key column(s), or distribute the source table so that it is co-located with the target.
 SELECT * FROM pa_target ORDER BY tid;
- tid | balance |           val            
------+---------+--------------------------
-   1 |     110 | initial updated by merge
-   2 |      20 | inserted by merge
-   3 |      30 | inserted by merge
-   3 |     300 | initial
-   4 |      40 | inserted by merge
-   5 |     500 | initial
-   5 |      50 | inserted by merge
-   6 |      60 | inserted by merge
-   7 |     700 | initial
-   7 |      70 | inserted by merge
-   8 |      80 | inserted by merge
-   9 |      90 | inserted by merge
-   9 |     900 | initial
-  10 |     100 | inserted by merge
-  11 |    1100 | initial
-  11 |     110 | inserted by merge
-  12 |     120 | inserted by merge
-  13 |    1300 | initial
-  13 |     130 | inserted by merge
-  14 |     140 | inserted by merge
-(20 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 -- try updating the partition key column
 BEGIN;
@@ -1578,36 +1541,38 @@ MERGE INTO pa_target t
     UPDATE SET tid = tid + 1, balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
+ERROR:  MERGE cannot write a row of "part1" that belongs to another segment  (seg1 172.17.0.2:7003 pid=141712)
+DETAIL:  The new row's distribution key belongs to segment 0, but the MERGE action runs on segment 1.
+HINT:  Do not change distribution key columns in MERGE, and insert the target's distribution key from the source column it is joined on.
 SELECT * FROM pa_target ORDER BY tid;
- tid | balance |           val            
------+---------+--------------------------
-   2 |     110 | initial updated by merge
-   2 |      20 | inserted by merge
-   4 |      40 | inserted by merge
-   4 |     330 | initial updated by merge
-   6 |     550 | initial updated by merge
-   6 |      60 | inserted by merge
-   8 |      80 | inserted by merge
-   8 |     770 | initial updated by merge
-  10 |     990 | initial updated by merge
-  10 |     100 | inserted by merge
-  12 |    1210 | initial updated by merge
-  12 |     120 | inserted by merge
-  14 |    1430 | initial updated by merge
-  14 |     140 | inserted by merge
-(14 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE pa_target CASCADE;
 -- The target table is partitioned in the same way, but this time by attaching
 -- partitions which have columns in different order, dropped columns etc.
 CREATE TABLE pa_target (tid integer, balance float, val text)
 	PARTITION BY LIST (tid);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE part1 (tid integer, balance float, val text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE part2 (balance float, tid integer, val text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'balance' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE part3 (tid integer, balance float, val text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE part4 (extraid text, tid integer, balance float, val text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'extraid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE part4 DROP COLUMN extraid;
+NOTICE:  dropping a column that is part of the distribution policy forces a NULL distribution policy
+-- GPDB: distribution policy must match the parent table.  part2 would be
+-- distributed by its first column (balance), and part4 lost its distribution
+-- key with extraid.
+ALTER TABLE part2 SET DISTRIBUTED BY (tid);
+ALTER TABLE part4 SET DISTRIBUTED BY (tid);
 ALTER TABLE pa_target ATTACH PARTITION part1 FOR VALUES IN (1,4);
 ALTER TABLE pa_target ATTACH PARTITION part2 FOR VALUES IN (2,5,6);
 ALTER TABLE pa_target ATTACH PARTITION part3 FOR VALUES IN (3,8,9);
@@ -1658,8 +1623,8 @@ SELECT * FROM pa_target ORDER BY tid;
 -----+---------+--------------------------
    1 |     110 | initial updated by merge
    2 |      20 | inserted by merge
-   3 |      30 | inserted by merge
    3 |     300 | initial
+   3 |      30 | inserted by merge
    4 |      40 | inserted by merge
    6 |      60 | inserted by merge
    7 |     700 | initial
@@ -1686,46 +1651,42 @@ MERGE INTO pa_target t
     UPDATE SET tid = tid + 1, balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
+ERROR:  MERGE cannot write a row of "part1" that belongs to another segment  (seg1 172.17.0.2:7003 pid=141712)
+DETAIL:  The new row's distribution key belongs to segment 0, but the MERGE action runs on segment 1.
+HINT:  Do not change distribution key columns in MERGE, and insert the target's distribution key from the source column it is joined on.
 SELECT * FROM pa_target ORDER BY tid;
- tid | balance |           val            
------+---------+--------------------------
-   2 |     110 | initial updated by merge
-   2 |      20 | inserted by merge
-   4 |      40 | inserted by merge
-   4 |     330 | initial updated by merge
-   6 |     550 | initial updated by merge
-   6 |      60 | inserted by merge
-   8 |      80 | inserted by merge
-   8 |     770 | initial updated by merge
-  10 |     990 | initial updated by merge
-  10 |     100 | inserted by merge
-  12 |    1210 | initial updated by merge
-  12 |     120 | inserted by merge
-  14 |    1430 | initial updated by merge
-  14 |     140 | inserted by merge
-(14 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
 -- Sub-partitioning
 CREATE TABLE pa_target (logts timestamp, tid integer, balance float, val text)
 	PARTITION BY RANGE (logts);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'logts' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE part_m01 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-01-01') TO ('2017-02-01')
 	PARTITION BY LIST (tid);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part_m01_odd PARTITION OF part_m01
 	FOR VALUES IN (1,3,5,7,9);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part_m01_even PARTITION OF part_m01
 	FOR VALUES IN (2,4,6,8);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part_m02 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-02-01') TO ('2017-03-01')
 	PARTITION BY LIST (tid);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part_m02_odd PARTITION OF part_m02
 	FOR VALUES IN (1,3,5,7,9);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part_m02_even PARTITION OF part_m02
 	FOR VALUES IN (2,4,6,8);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE pa_source (sid integer, delta float);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'sid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- insert many rows to the source table
 INSERT INTO pa_source SELECT id, id * 10  FROM generate_series(1,14) AS id;
 -- insert a few rows in the target table (odd numbered tid)
@@ -1740,27 +1701,23 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (slogts::timestamp, sid, delta, 'inserted by merge');
+ERROR:  MERGE on a distributed table is not supported when the join requires redistributing the target table
+HINT:  Use a join condition that includes the target table's distribution key column(s), or distribute the source table so that it is co-located with the target.
 SELECT * FROM pa_target ORDER BY tid;
-          logts           | tid | balance |           val            
---------------------------+-----+---------+--------------------------
- Tue Jan 31 00:00:00 2017 |   1 |     110 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   2 |     220 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   3 |      30 | inserted by merge
- Tue Jan 31 00:00:00 2017 |   4 |     440 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   5 |     550 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   6 |      60 | inserted by merge
- Tue Jan 31 00:00:00 2017 |   7 |     770 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   8 |     880 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   9 |      90 | inserted by merge
-(9 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
 -- some complex joins on the source side
 CREATE TABLE cj_target (tid integer, balance float, val text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'tid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE cj_source1 (sid1 integer, scat integer, delta integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'sid1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE cj_source2 (sid2 integer, sval text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'sid2' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO cj_source1 VALUES (1, 10, 100);
 INSERT INTO cj_source1 VALUES (1, 20, 200);
 INSERT INTO cj_source1 VALUES (2, 20, 300);
@@ -1802,9 +1759,9 @@ WHEN MATCHED THEN
 SELECT * FROM cj_target;
  tid | balance |               val                
 -----+---------+----------------------------------
-   3 |     400 | initial source2 updated by merge
    1 |     220 | initial source2 200
    1 |     110 | initial source2 200
+   3 |     400 | initial source2 updated by merge
    2 |     320 | initial source2 300
 (4 rows)
 
@@ -1820,6 +1777,8 @@ WHEN NOT MATCHED THEN
 DROP TABLE cj_source2, cj_source1, cj_target;
 -- Function scans
 CREATE TABLE fs_target (a int, b int, c text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 MERGE INTO fs_target t
 USING generate_series(1,100,1) AS id
 ON t.a = id
@@ -1850,12 +1809,16 @@ CREATE TABLE measurement (
     peaktemp        int,
     unitsales       int
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'city_id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE measurement_y2006m02 (
     CHECK ( logdate >= DATE '2006-02-01' AND logdate < DATE '2006-03-01' )
 ) INHERITS (measurement);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE measurement_y2006m03 (
     CHECK ( logdate >= DATE '2006-03-01' AND logdate < DATE '2006-04-01' )
 ) INHERITS (measurement);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE measurement_y2007m01 (
     filler          text,
     peaktemp        int,
@@ -1864,7 +1827,10 @@ CREATE TABLE measurement_y2007m01 (
     unitsales       int
     CHECK ( logdate >= DATE '2007-01-01' AND logdate < DATE '2007-02-01')
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'filler' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE measurement_y2007m01 DROP COLUMN filler;
+NOTICE:  dropping a column that is part of the distribution policy forces a NULL distribution policy
 ALTER TABLE measurement_y2007m01 INHERIT measurement;
 CREATE OR REPLACE FUNCTION measurement_insert_trigger()
 RETURNS TRIGGER AS $$
@@ -1889,23 +1855,38 @@ CREATE TRIGGER insert_measurement_trigger
     BEFORE INSERT ON measurement
     FOR EACH ROW EXECUTE PROCEDURE measurement_insert_trigger();
 INSERT INTO measurement VALUES (1, '2006-02-10', 35, 10);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg1 172.17.0.2:7003 pid=141712)
+CONTEXT:  SQL statement "INSERT INTO measurement_y2006m02 VALUES (NEW.*)"
+PL/pgSQL function measurement_insert_trigger() line 5 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-02-16', 45, 20);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg1 172.17.0.2:7003 pid=141712)
+CONTEXT:  SQL statement "INSERT INTO measurement_y2006m02 VALUES (NEW.*)"
+PL/pgSQL function measurement_insert_trigger() line 5 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-03-17', 25, 10);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg1 172.17.0.2:7003 pid=141712)
+CONTEXT:  SQL statement "INSERT INTO measurement_y2006m03 VALUES (NEW.*)"
+PL/pgSQL function measurement_insert_trigger() line 8 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-03-27', 15, 40);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg1 172.17.0.2:7003 pid=141712)
+CONTEXT:  SQL statement "INSERT INTO measurement_y2006m03 VALUES (NEW.*)"
+PL/pgSQL function measurement_insert_trigger() line 8 at SQL statement
 INSERT INTO measurement VALUES (1, '2007-01-15', 10, 10);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg1 172.17.0.2:7003 pid=141712)
+CONTEXT:  SQL statement "INSERT INTO measurement_y2007m01 (city_id, logdate, peaktemp, unitsales)
+            VALUES (NEW.*)"
+PL/pgSQL function measurement_insert_trigger() line 11 at SQL statement
 INSERT INTO measurement VALUES (1, '2007-01-17', 10, 10);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg1 172.17.0.2:7003 pid=141712)
+CONTEXT:  SQL statement "INSERT INTO measurement_y2007m01 (city_id, logdate, peaktemp, unitsales)
+            VALUES (NEW.*)"
+PL/pgSQL function measurement_insert_trigger() line 11 at SQL statement
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
-       tableoid       | city_id |  logdate   | peaktemp | unitsales 
-----------------------+---------+------------+----------+-----------
- measurement_y2006m02 |       1 | 02-10-2006 |       35 |        10
- measurement_y2006m02 |       1 | 02-16-2006 |       45 |        20
- measurement_y2006m03 |       1 | 03-17-2006 |       25 |        10
- measurement_y2006m03 |       1 | 03-27-2006 |       15 |        40
- measurement_y2007m01 |       1 | 01-15-2007 |       10 |        10
- measurement_y2007m01 |       1 | 01-17-2007 |       10 |        10
-(6 rows)
+ tableoid | city_id | logdate | peaktemp | unitsales 
+----------+---------+---------+----------+-----------
+(0 rows)
 
 CREATE TABLE new_measurement (LIKE measurement);
+NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
 INSERT INTO new_measurement VALUES (1, '2006-03-01', 20, 10);
 INSERT INTO new_measurement VALUES (1, '2006-02-16', 50, 10);
 INSERT INTO new_measurement VALUES (2, '2006-02-10', 20, 20);
@@ -1923,17 +1904,12 @@ WHEN MATCHED THEN UPDATE
 WHEN NOT MATCHED THEN INSERT
      (city_id, logdate, peaktemp, unitsales)
    VALUES (city_id, logdate, peaktemp, unitsales);
+ERROR:  MERGE on a distributed table is not supported when the join requires redistributing the target table
+HINT:  Use a join condition that includes the target table's distribution key column(s), or distribute the source table so that it is co-located with the target.
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
-       tableoid       | city_id |  logdate   | peaktemp | unitsales 
-----------------------+---------+------------+----------+-----------
- measurement_y2006m02 |       1 | 02-10-2006 |       35 |        10
- measurement_y2006m02 |       1 | 02-16-2006 |       50 |        30
- measurement_y2006m03 |       1 | 03-01-2006 |       20 |        10
- measurement_y2006m03 |       1 | 03-17-2006 |       25 |        10
- measurement_y2007m01 |       1 | 01-15-2007 |       10 |        10
- measurement_y2007m01 |       1 | 01-16-2007 |       10 |        10
- measurement_y2006m02 |       2 | 02-10-2006 |       20 |        20
-(7 rows)
+ tableoid | city_id | logdate | peaktemp | unitsales 
+----------+---------+---------+----------+-----------
+(0 rows)
 
 DROP TABLE measurement, new_measurement CASCADE;
 NOTICE:  drop cascades to 3 other objects
