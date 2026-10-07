@@ -16,13 +16,12 @@
  *	oids are the same between old and new clusters.  This is important
  *	because toast oids are stored as toast pointers in user tables.
  *
- *	While pg_class.oid and pg_class.relfilenode are initially the same in a
- *	cluster, they can diverge due to CLUSTER, REINDEX, or VACUUM FULL. We
- *	control assignments of pg_class.relfilenode because we want the filenames
- *	to match between the old and new cluster.
- *
- *	We control assignment of pg_tablespace.oid because we want the oid to match
- *	between the old and new cluster.
+ *	While pg_class.oid and pg_class.relfilenode are initially the same
+ *	in a cluster, they can diverge due to CLUSTER, REINDEX, or VACUUM
+ *	FULL.  In the new cluster, pg_class.oid and pg_class.relfilenode will
+ *	be the same and will match the old pg_class.oid value.  Because of
+ *	this, old/new pg_class.relfilenode values will not match if CLUSTER,
+ *	REINDEX, or VACUUM FULL have been performed in the old cluster.
  *
  *	We control all assignments of pg_type.oid because these oids are stored
  *	in user composite type values.
@@ -1040,37 +1039,4 @@ set_frozenxids(bool minmxid_only)
 	PQfinish(conn_template1);
 
 	check_ok();
-}
-
-static void
-cleanup(void)
-{
-	fclose(log_opts.internal);
-
-	/* Remove dump and log files? */
-	if (!log_opts.retain)
-	{
-		int			dbnum;
-		char	  **filename;
-
-		for (filename = output_files; *filename != NULL; filename++)
-			unlink(*filename);
-
-		/* remove dump files */
-		unlink(GLOBALS_DUMP_FILE);
-
-		if (old_cluster.dbarr.dbs)
-			for (dbnum = 0; dbnum < old_cluster.dbarr.ndbs; dbnum++)
-			{
-				char		sql_file_name[MAXPGPATH],
-							log_file_name[MAXPGPATH];
-				DbInfo	   *old_db = &old_cluster.dbarr.dbs[dbnum];
-
-				snprintf(sql_file_name, sizeof(sql_file_name), DB_DUMP_FILE_MASK, old_db->db_oid);
-				unlink(sql_file_name);
-
-				snprintf(log_file_name, sizeof(log_file_name), DB_DUMP_LOG_FILE_MASK, old_db->db_oid);
-				unlink(log_file_name);
-			}
-	}
 }

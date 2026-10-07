@@ -70,9 +70,6 @@ greenplum/aomd_filehandler.c: $(top_srcdir)/src/backend/access/appendonly/aomd_f
 # src/bin/pg_upgrade, the real test of pg_upgrade will be triggered by
 # "make check" in the end of installcheck-world, see GNUmakefile.in
 
-check:
-	$(prove_check)
-
 check: test_gpdb.sh all
 	bash $< -C -r -s -o $(top_builddir)/gpAux/gpdemo/datadirs/ -b $(DESTDIR)$(bindir)
 
