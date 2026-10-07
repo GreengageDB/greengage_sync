@@ -14,37 +14,19 @@ CREATE TABLE a_star (
 	a 			int4
 );
 
-<<<<<<< HEAD
-INSERT INTO tenk2 SELECT * FROM tenk1;
-ANALYZE tenk2;
-||||||| e1c1c30f635
-INSERT INTO tenk2 SELECT * FROM tenk1;
-=======
 CREATE TABLE b_star (
 	b 			text
 ) INHERITS (a_star);
->>>>>>> adadae45816
 
-<<<<<<< HEAD
-CREATE TABLE onek2 AS SELECT * FROM onek DISTRIBUTED BY (unique1);
-||||||| e1c1c30f635
-CREATE TABLE onek2 AS SELECT * FROM onek;
-=======
 CREATE TABLE c_star (
 	c 			name
 ) INHERITS (a_star);
->>>>>>> adadae45816
 
-<<<<<<< HEAD
-INSERT INTO fast_emp4000 SELECT * FROM slow_emp4000;
-ANALYZE fast_emp4000;
-||||||| e1c1c30f635
-INSERT INTO fast_emp4000 SELECT * FROM slow_emp4000;
-=======
+-- GPDB: fast_emp4000/slow_emp4000 are created and populated in create_index
+-- (which runs after this test); upstream create_misc does not touch them.
 CREATE TABLE d_star (
 	d 			float8
 ) INHERITS (b_star, c_star);
->>>>>>> adadae45816
 
 CREATE TABLE e_star (
 	e 			int2

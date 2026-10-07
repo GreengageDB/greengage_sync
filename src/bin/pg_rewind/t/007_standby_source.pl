@@ -160,19 +160,11 @@ in A, after C was promoted
 $node_a->safe_psql('postgres',
 	"INSERT INTO tbl1 values ('in A, after rewind')");
 
-<<<<<<< HEAD
-$lsn = $node_a->lsn('insert');
 # GPDB's pg_rewind --write-recovery-conf hardcodes application_name to
 # 'gp_walreceiver' in the generated primary_conninfo (see
 # GP_WALRECEIVER_APPNAME in recovery_gen.c), so node_c no longer shows up
 # in pg_stat_replication under its own node name after being rewound.
-$node_b->wait_for_catchup('gp_walreceiver', 'replay', $lsn);
-||||||| e1c1c30f635
-$lsn = $node_a->lsn('insert');
-$node_b->wait_for_catchup('node_c', 'replay', $lsn);
-=======
-$node_b->wait_for_catchup('node_c', 'replay', $node_a->lsn('write'));
->>>>>>> adadae45816
+$node_b->wait_for_catchup('gp_walreceiver', 'replay', $node_a->lsn('write'));
 
 check_query(
 	'SELECT * FROM tbl1',

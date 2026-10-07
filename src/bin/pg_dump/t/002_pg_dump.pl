@@ -682,7 +682,6 @@ my %tests = (
 		unlike => { no_owner => 1, },
 	},
 
-<<<<<<< HEAD
 # Disabled, because GPDB doesn't support large objects
 #	'ALTER LARGE OBJECT ... OWNER TO' => {
 #		regexp => qr/^ALTER LARGE OBJECT \d+ OWNER TO .+;/m,
@@ -690,6 +689,7 @@ my %tests = (
 #			%full_runs,
 #			column_inserts         => 1,
 #			data_only              => 1,
+#			inserts                => 1,
 #			section_pre_data       => 1,
 #			test_schema_plus_blobs => 1,
 #		},
@@ -699,40 +699,6 @@ my %tests = (
 #			schema_only => 1,
 #		},
 #	},
-||||||| e1c1c30f635
-	'ALTER LARGE OBJECT ... OWNER TO' => {
-		regexp => qr/^ALTER LARGE OBJECT \d+ OWNER TO .+;/m,
-		like   => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			section_pre_data       => 1,
-			test_schema_plus_blobs => 1,
-		},
-		unlike => {
-			no_blobs    => 1,
-			no_owner    => 1,
-			schema_only => 1,
-		},
-	},
-=======
-	'ALTER LARGE OBJECT ... OWNER TO' => {
-		regexp => qr/^ALTER LARGE OBJECT \d+ OWNER TO .+;/m,
-		like   => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			inserts                => 1,
-			section_pre_data       => 1,
-			test_schema_plus_blobs => 1,
-		},
-		unlike => {
-			no_blobs    => 1,
-			no_owner    => 1,
-			schema_only => 1,
-		},
-	},
->>>>>>> adadae45816
 
 	'ALTER PROCEDURAL LANGUAGE pltestlang OWNER TO' => {
 		regexp => qr/^ALTER PROCEDURAL LANGUAGE pltestlang OWNER TO .+;/m,
@@ -1062,7 +1028,6 @@ my %tests = (
 		},
 	},
 
-<<<<<<< HEAD
 # Disabled, because GPDB doesn't support large objects
 #	'BLOB create (using lo_from_bytea)' => {
 #		create_order => 50,
@@ -1073,6 +1038,7 @@ my %tests = (
 #			%full_runs,
 #			column_inserts         => 1,
 #			data_only              => 1,
+#			inserts                => 1,
 #			section_pre_data       => 1,
 #			test_schema_plus_blobs => 1,
 #		},
@@ -1081,46 +1047,7 @@ my %tests = (
 #			no_blobs    => 1,
 #		},
 #	},
-||||||| e1c1c30f635
-	'BLOB create (using lo_from_bytea)' => {
-		create_order => 50,
-		create_sql =>
-		  'SELECT pg_catalog.lo_from_bytea(0, \'\\x310a320a330a340a350a360a370a380a390a\');',
-		regexp => qr/^SELECT pg_catalog\.lo_create\('\d+'\);/m,
-		like   => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			section_pre_data       => 1,
-			test_schema_plus_blobs => 1,
-		},
-		unlike => {
-			schema_only => 1,
-			no_blobs    => 1,
-		},
-	},
-=======
-	'BLOB create (using lo_from_bytea)' => {
-		create_order => 50,
-		create_sql =>
-		  'SELECT pg_catalog.lo_from_bytea(0, \'\\x310a320a330a340a350a360a370a380a390a\');',
-		regexp => qr/^SELECT pg_catalog\.lo_create\('\d+'\);/m,
-		like   => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			inserts                => 1,
-			section_pre_data       => 1,
-			test_schema_plus_blobs => 1,
-		},
-		unlike => {
-			schema_only => 1,
-			no_blobs    => 1,
-		},
-	},
->>>>>>> adadae45816
 
-<<<<<<< HEAD
 # Disabled, because GPDB doesn't support large objects
 #	'BLOB load (using lo_from_bytea)' => {
 #		regexp => qr/^
@@ -1133,6 +1060,7 @@ my %tests = (
 #			%full_runs,
 #			column_inserts         => 1,
 #			data_only              => 1,
+#			inserts                => 1,
 #			section_data           => 1,
 #			test_schema_plus_blobs => 1,
 #		},
@@ -1142,50 +1070,6 @@ my %tests = (
 #			schema_only    => 1,
 #		},
 #	},
-||||||| e1c1c30f635
-	'BLOB load (using lo_from_bytea)' => {
-		regexp => qr/^
-			\QSELECT pg_catalog.lo_open\E \('\d+',\ \d+\);\n
-			\QSELECT pg_catalog.lowrite(0, \E
-			\Q'\x310a320a330a340a350a360a370a380a390a');\E\n
-			\QSELECT pg_catalog.lo_close(0);\E
-			/xm,
-		like => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			section_data           => 1,
-			test_schema_plus_blobs => 1,
-		},
-		unlike => {
-			binary_upgrade => 1,
-			no_blobs       => 1,
-			schema_only    => 1,
-		},
-	},
-=======
-	'BLOB load (using lo_from_bytea)' => {
-		regexp => qr/^
-			\QSELECT pg_catalog.lo_open\E \('\d+',\ \d+\);\n
-			\QSELECT pg_catalog.lowrite(0, \E
-			\Q'\x310a320a330a340a350a360a370a380a390a');\E\n
-			\QSELECT pg_catalog.lo_close(0);\E
-			/xm,
-		like => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			inserts                => 1,
-			section_data           => 1,
-			test_schema_plus_blobs => 1,
-		},
-		unlike => {
-			binary_upgrade => 1,
-			no_blobs       => 1,
-			schema_only    => 1,
-		},
-	},
->>>>>>> adadae45816
 
 	'COMMENT ON DATABASE postgres' => {
 		regexp => qr/^COMMENT ON DATABASE postgres IS .+;/m,
@@ -1312,7 +1196,6 @@ my %tests = (
 		like      => { %full_runs, section_pre_data => 1, },
 	},
 
-<<<<<<< HEAD
 # Disabled, because GPDB doesn't support large objects
 #	'COMMENT ON LARGE OBJECT ...' => {
 #		create_order => 65,
@@ -1330,6 +1213,7 @@ my %tests = (
 #			%full_runs,
 #			column_inserts         => 1,
 #			data_only              => 1,
+#			inserts                => 1,
 #			section_pre_data       => 1,
 #			test_schema_plus_blobs => 1,
 #		},
@@ -1338,58 +1222,6 @@ my %tests = (
 #			schema_only => 1,
 #		},
 #	},
-||||||| e1c1c30f635
-	'COMMENT ON LARGE OBJECT ...' => {
-		create_order => 65,
-		create_sql   => 'DO $$
-						 DECLARE myoid oid;
-						 BEGIN
-							SELECT loid FROM pg_largeobject INTO myoid;
-							EXECUTE \'COMMENT ON LARGE OBJECT \' || myoid || \' IS \'\'comment on large object\'\';\';
-						 END;
-						 $$;',
-		regexp => qr/^
-			\QCOMMENT ON LARGE OBJECT \E[0-9]+\Q IS 'comment on large object';\E
-			/xm,
-		like => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			section_pre_data       => 1,
-			test_schema_plus_blobs => 1,
-		},
-		unlike => {
-			no_blobs    => 1,
-			schema_only => 1,
-		},
-	},
-=======
-	'COMMENT ON LARGE OBJECT ...' => {
-		create_order => 65,
-		create_sql   => 'DO $$
-						 DECLARE myoid oid;
-						 BEGIN
-							SELECT loid FROM pg_largeobject INTO myoid;
-							EXECUTE \'COMMENT ON LARGE OBJECT \' || myoid || \' IS \'\'comment on large object\'\';\';
-						 END;
-						 $$;',
-		regexp => qr/^
-			\QCOMMENT ON LARGE OBJECT \E[0-9]+\Q IS 'comment on large object';\E
-			/xm,
-		like => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			inserts                => 1,
-			section_pre_data       => 1,
-			test_schema_plus_blobs => 1,
-		},
-		unlike => {
-			no_blobs    => 1,
-			schema_only => 1,
-		},
-	},
->>>>>>> adadae45816
 
 	'COMMENT ON PUBLICATION pub1' => {
 		create_order => 55,
@@ -3796,7 +3628,6 @@ my %tests = (
 		unlike => { no_privs => 1, },
 	},
 
-<<<<<<< HEAD
 # Disabled, because GPDB doesn't support large objects
 #	'GRANT ALL ON LARGE OBJECT ...' => {
 #		create_order => 60,
@@ -3814,6 +3645,7 @@ my %tests = (
 #			%full_runs,
 #			column_inserts         => 1,
 #			data_only              => 1,
+#			inserts                => 1,
 #			section_pre_data       => 1,
 #			test_schema_plus_blobs => 1,
 #			binary_upgrade         => 1,
@@ -3824,62 +3656,6 @@ my %tests = (
 #			schema_only => 1,
 #		},
 #	},
-||||||| e1c1c30f635
-	'GRANT ALL ON LARGE OBJECT ...' => {
-		create_order => 60,
-		create_sql   => 'DO $$
-						 DECLARE myoid oid;
-						 BEGIN
-							SELECT loid FROM pg_largeobject INTO myoid;
-							EXECUTE \'GRANT ALL ON LARGE OBJECT \' || myoid || \' TO regress_dump_test_role;\';
-						 END;
-						 $$;',
-		regexp => qr/^
-			\QGRANT ALL ON LARGE OBJECT \E[0-9]+\Q TO regress_dump_test_role;\E
-			/xm,
-		like => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			section_pre_data       => 1,
-			test_schema_plus_blobs => 1,
-			binary_upgrade         => 1,
-		},
-		unlike => {
-			no_blobs    => 1,
-			no_privs    => 1,
-			schema_only => 1,
-		},
-	},
-=======
-	'GRANT ALL ON LARGE OBJECT ...' => {
-		create_order => 60,
-		create_sql   => 'DO $$
-						 DECLARE myoid oid;
-						 BEGIN
-							SELECT loid FROM pg_largeobject INTO myoid;
-							EXECUTE \'GRANT ALL ON LARGE OBJECT \' || myoid || \' TO regress_dump_test_role;\';
-						 END;
-						 $$;',
-		regexp => qr/^
-			\QGRANT ALL ON LARGE OBJECT \E[0-9]+\Q TO regress_dump_test_role;\E
-			/xm,
-		like => {
-			%full_runs,
-			column_inserts         => 1,
-			data_only              => 1,
-			inserts                => 1,
-			section_pre_data       => 1,
-			test_schema_plus_blobs => 1,
-			binary_upgrade         => 1,
-		},
-		unlike => {
-			no_blobs    => 1,
-			no_privs    => 1,
-			schema_only => 1,
-		},
-	},
->>>>>>> adadae45816
 
 	'GRANT INSERT(col1) ON TABLE test_second_table' => {
 		create_order => 8,
