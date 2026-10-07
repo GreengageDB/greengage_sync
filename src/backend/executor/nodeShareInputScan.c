@@ -64,6 +64,7 @@
 #include "miscadmin.h"
 #include "pgstat.h"
 #include "storage/condition_variable.h"
+#include "storage/ipc.h"
 #include "storage/lwlock.h"
 #include "storage/shmem.h"
 #include "utils/faultinjector.h"
@@ -136,6 +137,9 @@ static HTAB *shareinput_Xslice_hash = NULL;
  */
 static dsm_handle *shareinput_Xslice_dsm_handle_ptr;
 static SharedFileSet *shareinput_Xslice_fileset;
+static dsm_segment *shareinput_Xslice_seg;
+
+static void shareinput_Xslice_detach(int code, Datum arg);
 
 /*
  * 'shareinput_reference' represents a reference or "lease" to an entry
@@ -768,9 +772,40 @@ get_shareinput_fileset(void)
 			SharedFileSetAttach(shareinput_Xslice_fileset, seg);
 
 		LWLockRelease(ShareInputScanLock);
+
+		/* see shareinput_Xslice_detach() */
+		if (shareinput_Xslice_seg == NULL)
+			before_shmem_exit(shareinput_Xslice_detach, 0);
+		shareinput_Xslice_seg = seg;
 	}
 
 	return shareinput_Xslice_fileset;
+}
+
+/*
+ * Detach from the ShareInputScan DSM segment at backend exit, before pgstat
+ * is shut down.
+ *
+ * The segment's mapping is pinned for the life of the backend, so without
+ * this it would only be detached by dsm_backend_shutdown(), which runs after
+ * all before_shmem_exit callbacks.  If we are the last backend attached, the
+ * SharedFileSet's on-detach callback deletes the remaining tuplestore files,
+ * and reporting their temporary file usage needs pgstat to still be up:
+ * pgstat's shutdown hook is a before_shmem_exit callback since upstream
+ * ee3f8d3d3ae/fb2c5028e63.  We are registered after pgstat_initialize(), so
+ * we run before that hook.
+ */
+static void
+shareinput_Xslice_detach(int code, Datum arg)
+{
+	dsm_segment *seg = shareinput_Xslice_seg;
+
+	if (seg == NULL)
+		return;
+
+	shareinput_Xslice_seg = NULL;
+	shareinput_Xslice_fileset = NULL;
+	dsm_detach(seg);
 }
 
 /*
