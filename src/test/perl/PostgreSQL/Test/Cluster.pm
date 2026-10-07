@@ -160,46 +160,6 @@ INIT
 
 =over
 
-=item PostgreSQL::Test::Cluster::new($class, $name, $pghost, $pgport)
-
-Create a new PostgresNode instance. Does not initdb or start it.
-
-You should generally prefer to use PostgreSQL::Test::Cluster->new() instead since it takes care
-of finding port numbers, registering instances for cleanup, etc.
-
-=cut
-
-sub new
-{
-	my ($class, $name, $pghost, $pgport) = @_;
-	my $testname = basename($0);
-	$testname =~ s/\.[^.]+$//;
-
-	# GPDB needs unique dbid for each node for certain operations
-	$last_dbid = $last_dbid + 1;
-
-	my $self = {
-		_port    => $pgport,
-		_host    => $pghost,
-		_dbid    => $last_dbid,
-		_basedir => "$PostgreSQL::Test::Utils::tmp_check/t_${testname}_${name}_data",
-		_name    => $name,
-		_logfile_generation => 0,
-		_logfile_base       => "$PostgreSQL::Test::Utils::log_path/${testname}_${name}",
-		_logfile            => "$PostgreSQL::Test::Utils::log_path/${testname}_${name}.log"
-	};
-
-	bless $self, $class;
-	mkdir $self->{_basedir}
-	  or
-	  BAIL_OUT("could not create data directory \"$self->{_basedir}\": $!");
-	$self->dump_info;
-
-	return $self;
-}
-
-=pod
-
 =item $node->port()
 
 Get the port number assigned to the host. This won't necessarily be a TCP port
@@ -587,9 +547,11 @@ sub init
 		print $conf "hot_standby = on\n";
 		# conservative settings to ensure we can run multiple postmasters:
 		print $conf "shared_buffers = 1MB\n";
-		print $conf "max_connections = 10\n";
+		print $conf "max_connections = 20\n";
 		# limit disk space consumption, too:
-		print $conf "max_wal_size = 128MB\n";
+		# PG sets this to 128MB but that makes checkpoint too frequent for GPDB. 
+		# 512MB corresponds to the ratio of GPDB seg size (64) over PG seg size (16).
+		print $conf "max_wal_size = 512MB\n";
 	}
 	else
 	{
@@ -730,11 +692,12 @@ sub backup
 
 	print "# Taking pg_basebackup $backup_name from node \"$name\"\n";
 	PostgreSQL::Test::Utils::system_or_bail(
-		'pg_basebackup', '-D',
-		$backup_path,    '-h',
-		$self->host,     '-p',
-		$self->port,     '--checkpoint',
-		'fast',          '--no-sync',
+		'pg_basebackup',    '-D',
+		$backup_path,       '-h',
+		$self->host,        '-p',
+		$self->port,        '--checkpoint',
+		'fast',             '--no-sync',
+		'--target-gp-dbid', 99,
 		@{ $params{backup_options} });
 	print "# Backup finished\n";
 	return;
@@ -917,7 +880,7 @@ sub start
 	# compatibility with older versions.
 	$ret = PostgreSQL::Test::Utils::system_log(
 		'pg_ctl', '-w',           '-D', $self->data_dir,
-		'-l',     $self->logfile, '-o', "--cluster-name=$name",
+		'-l',     $self->logfile, '-o', "--cluster-name=$name -c gp_role=utility --gp_dbid=$self->{_dbid} --gp_contentid=0",
 		'start');
 
 	if ($ret != 0)
@@ -1258,7 +1221,8 @@ sub _update_pid
 		print "# Postmaster PID for node \"$name\" is $self->{_pid}\n";
 
 		# If we found a pidfile when there shouldn't be one, complain.
-		BAIL_OUT("postmaster.pid unexpectedly present") unless $is_running or $fail_ok;
+		BAIL_OUT("postmaster.pid unexpectedly present")
+		  if $is_running == 0 && !$fail_ok;
 		return;
 	}
 
@@ -1266,7 +1230,8 @@ sub _update_pid
 	print "# No postmaster PID for node \"$name\"\n";
 
 	# Complain if we expected to find a pidfile.
-	BAIL_OUT("postmaster.pid unexpectedly not present") if $is_running and !$fail_ok;
+	BAIL_OUT("postmaster.pid unexpectedly not present")
+	  if $is_running == 1 && !$fail_ok;
 	return;
 }
 
@@ -1342,11 +1307,15 @@ sub new
 		}
 	}
 
+	# GPDB needs unique dbid for each node for certain operations
+	$last_dbid = $last_dbid + 1;
+
 	my $testname = basename($0);
 	$testname =~ s/\.[^.]+$//;
 	my $node = {
 		_port => $port,
 		_host => $host,
+		_dbid => $last_dbid,
 		_basedir =>
 		  "$PostgreSQL::Test::Utils::tmp_check/t_${testname}_${name}_data",
 		_name               => $name,
@@ -1829,14 +1798,21 @@ sub psql
 
 	local $ENV{PGOPTIONS} = '-c gp_role=utility';
 
-	my @psql_params       = (
-		'psql',
-		'-XAtq',
-		'-d',
-		$self->connstr($dbname)
-		  . (defined $replication ? " replication=$replication" : ""),
-		'-f',
-		'-');
+	# Build the connection string.
+	my $psql_connstr;
+	if (defined $params{connstr})
+	{
+		$psql_connstr = $params{connstr};
+	}
+	else
+	{
+		$psql_connstr = $self->connstr($dbname);
+	}
+	$psql_connstr .= defined $replication ? " replication=$replication" : "";
+
+	my @psql_params = (
+		$self->installed_command('psql'),
+		'-XAtq', '-d', $psql_connstr, '-f', '-');
 
 	# If the caller wants an array and hasn't passed stdout/stderr
 	# references, allocate temporary ones to capture them so we
