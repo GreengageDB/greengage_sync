@@ -5,7 +5,8 @@ use strict;
 use warnings;
 use TestLib;
 use PostgresNode;
-use Test::More tests => 20;
+# GPDB: 18 instead of 20, see the two-phase part at the end.
+use Test::More tests => 18;
 
 program_help_ok('pg_recvlogical');
 program_version_ok('pg_recvlogical');
@@ -84,6 +85,10 @@ $node->command_ok(
 
 $slot = $node->slot('test');
 isnt($slot->{'restart_lsn'}, '', 'restart lsn is defined for new slot');
+
+# GPDB: the rest needs PREPARE TRANSACTION, which is not supported in
+# utility mode (the TAP nodes run in utility mode), so stop here.
+exit;
 
 $node->safe_psql('postgres',
 	"BEGIN; INSERT INTO test_table values (11); PREPARE TRANSACTION 'test'");
