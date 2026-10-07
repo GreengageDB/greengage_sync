@@ -59,6 +59,14 @@ CLUSTER clstr_tst_c ON clstr_tst;
 SELECT a,b,c,substring(d for 30), length(d) from clstr_tst;
  a  | b  |       c       |           substring            | length 
 ----+----+---------------+--------------------------------+--------
+ 26 | 19 | diecinueve    |                                |       
+ 12 | 18 | dieciocho     |                                |       
+ 30 | 16 | dieciseis     |                                |       
+ 23 | 12 | doce          |                                |       
+ 31 |  8 | ocho          |                                |       
+  1 | 11 | once          |                                |       
+ 15 | 13 | trece         |                                |       
+ 20 |  1 | uno           |                                |       
  18 |  5 | cinco         |                                |       
  24 | 17 | diecisiete    |                                |       
   2 | 10 | diez          |                                |       
@@ -71,39 +79,18 @@ SELECT a,b,c,substring(d for 30), length(d) from clstr_tst;
  27 | 26 | veintiseis    |                                |       
   7 | 23 | veintitres    |                                |       
   8 | 21 | veintiuno     |                                |       
- 26 | 19 | diecinueve    |                                |       
- 12 | 18 | dieciocho     |                                |       
- 30 | 16 | dieciseis     |                                |       
- 23 | 12 | doce          |                                |       
- 31 |  8 | ocho          |                                |       
-  1 | 11 | once          |                                |       
- 15 | 13 | trece         |                                |       
- 20 |  1 | uno           |                                |       
  10 | 14 | catorce       |                                |       
   9 |  4 | cuatro        |                                |       
  11 |  2 | dos           |                                |       
  25 |  9 | nueve         |                                |       
- 31 |  8 | ocho          |                                |       
-  1 | 11 | once          |                                |       
  28 | 15 | quince        |                                |       
  32 |  6 | seis          | xyzzyxyzzyxyzzyxyzzyxyzzyxyzzy | 500000
- 29 |  7 | siete         |                                |       
- 15 | 13 | trece         |                                |       
- 22 | 30 | treinta       |                                |       
  17 | 32 | treinta y dos |                                |       
-  3 | 31 | treinta y uno |                                |       
   5 |  3 | tres          |                                |       
- 20 |  1 | uno           |                                |       
   6 | 20 | veinte        |                                |       
  14 | 25 | veinticinco   |                                |       
  21 | 24 | veinticuatro  |                                |       
-  4 | 22 | veintidos     |                                |       
- 19 | 29 | veintinueve   |                                |       
- 16 | 28 | veintiocho    |                                |       
- 27 | 26 | veintiseis    |                                |       
  13 | 27 | veintisiete   |                                |       
-  7 | 23 | veintitres    |                                |       
-  8 | 21 | veintiuno     |                                |       
 (32 rows)
 
 SELECT a,b,c,substring(d for 30), length(d) from clstr_tst ORDER BY a;
@@ -222,15 +209,6 @@ INSERT INTO clstr_tst_inh VALUES (0, 100, 'in child table');
 SELECT a,b,c,substring(d for 30), length(d) from clstr_tst;
  a  |  b  |       c        |           substring            | length 
 ----+-----+----------------+--------------------------------+--------
- 26 |  19 | diecinueve     |                                |       
- 12 |  18 | dieciocho      |                                |       
- 30 |  16 | dieciseis      |                                |       
- 23 |  12 | doce           |                                |       
- 31 |   8 | ocho           |                                |       
-  1 |  11 | once           |                                |       
- 15 |  13 | trece          |                                |       
- 20 |   1 | uno            |                                |       
-  0 | 100 | in child table |                                |       
  18 |   5 | cinco          |                                |       
  24 |  17 | diecisiete     |                                |       
   2 |  10 | diez           |                                |       
@@ -243,32 +221,27 @@ SELECT a,b,c,substring(d for 30), length(d) from clstr_tst;
  27 |  26 | veintiseis     |                                |       
   7 |  23 | veintitres     |                                |       
   8 |  21 | veintiuno      |                                |       
+ 26 |  19 | diecinueve     |                                |       
+ 12 |  18 | dieciocho      |                                |       
+ 30 |  16 | dieciseis      |                                |       
+ 23 |  12 | doce           |                                |       
+ 31 |   8 | ocho           |                                |       
+  1 |  11 | once           |                                |       
+ 15 |  13 | trece          |                                |       
+ 20 |   1 | uno            |                                |       
+  0 | 100 | in child table |                                |       
  10 |  14 | catorce        |                                |       
   9 |   4 | cuatro         |                                |       
  11 |   2 | dos            |                                |       
  25 |   9 | nueve          |                                |       
- 31 |   8 | ocho           |                                |       
-  1 |  11 | once           |                                |       
  28 |  15 | quince         |                                |       
  32 |   6 | seis           | xyzzyxyzzyxyzzyxyzzyxyzzyxyzzy | 500000
- 29 |   7 | siete          |                                |       
- 15 |  13 | trece          |                                |       
- 22 |  30 | treinta        |                                |       
  17 |  32 | treinta y dos  |                                |       
-  3 |  31 | treinta y uno  |                                |       
   5 |   3 | tres           |                                |       
- 20 |   1 | uno            |                                |       
   6 |  20 | veinte         |                                |       
  14 |  25 | veinticinco    |                                |       
  21 |  24 | veinticuatro   |                                |       
-  4 |  22 | veintidos      |                                |       
- 19 |  29 | veintinueve    |                                |       
- 16 |  28 | veintiocho     |                                |       
- 27 |  26 | veintiseis     |                                |       
  13 |  27 | veintisiete    |                                |       
-  7 |  23 | veintitres     |                                |       
-  8 |  21 | veintiuno      |                                |       
-  0 | 100 | in child table |                                |       
 (33 rows)
 
 -- Verify that foreign key link still works
@@ -337,6 +310,7 @@ WHERE pg_class.oid=indexrelid
 CLUSTER pg_toast.pg_toast_826 USING pg_toast_826_index;
 -- Verify that clustering all tables does in fact cluster the right ones
 CREATE USER regress_clstr_user;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE TABLE clstr_1 (a INT PRIMARY KEY);
 CREATE TABLE clstr_2 (a INT PRIMARY KEY);
 CREATE TABLE clstr_3 (a INT PRIMARY KEY);
@@ -386,13 +360,12 @@ SELECT * FROM clstr_1 UNION ALL
   SELECT * FROM clstr_3;
  a 
 ---
+ 2
+ 2
+ 2
  1
  1
- 2
  1
- 2
- 2
- 2
 (6 rows)
 
 -- cluster a single table using the indisclustered bit previously set
@@ -403,8 +376,8 @@ CLUSTER clstr_1;
 SELECT * FROM clstr_1;
  a 
 ---
- 1
  2
+ 1
 (2 rows)
 
 -- Test MVCC-safety of cluster. There isn't much we can do to verify the
@@ -429,9 +402,9 @@ UPDATE clustertest SET key = 80 WHERE key = 70;
 SELECT key FROM clustertest;
  key 
 -----
-  20
   30
  100
+  20
   35
   80
 (5 rows)
@@ -441,9 +414,9 @@ SELECT key FROM clustertest;
  key 
 -----
   20
-  30
   35
   80
+  30
  100
 (5 rows)
 
@@ -451,12 +424,11 @@ COMMIT;
 SELECT key FROM clustertest;
  key 
 -----
-  20
-  30
-  35
-  80
   30
  100
+  20
+  35
+  80
 (5 rows)
 
 -- check that temp tables can be clustered
@@ -479,6 +451,8 @@ CLUSTER clustertest USING clustertest_pkey;
 CLUSTER clustertest;
 -- Check that partitioned tables can be clustered
 CREATE TABLE clstrpart (a int) PARTITION BY RANGE (a);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE clstrpart1 PARTITION OF clstrpart FOR VALUES FROM (1) TO (10) PARTITION BY RANGE (a);
 NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE clstrpart11 PARTITION OF clstrpart1 FOR VALUES FROM (1) TO (5);
@@ -498,8 +472,12 @@ DROP INDEX clstrpart_only_idx;
 CREATE INDEX clstrpart_idx ON clstrpart (a);
 -- Check that clustering sets new relfilenodes:
 CREATE TEMP TABLE old_cluster_info AS SELECT relname, level, relfilenode, relkind FROM pg_partition_tree('clstrpart'::regclass) AS tree JOIN pg_class c ON c.oid=tree.relid ;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'relname' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CLUSTER clstrpart USING clstrpart_idx;
 CREATE TEMP TABLE new_cluster_info AS SELECT relname, level, relfilenode, relkind FROM pg_partition_tree('clstrpart'::regclass) AS tree JOIN pg_class c ON c.oid=tree.relid ;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'relname' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SELECT relname, old.level, old.relkind, old.relfilenode = new.relfilenode FROM old_cluster_info AS old JOIN new_cluster_info AS new USING (relname) ORDER BY relname COLLATE "C";
    relname   | level | relkind | ?column? 
 -------------+-------+---------+----------
@@ -522,6 +500,7 @@ Partition key: RANGE (a)
 Indexes:
     "clstrpart_idx" btree (a)
 Number of partitions: 3 (Use \d+ to list them.)
+Distributed by: (a)
 
 CLUSTER clstrpart;
 ERROR:  there is no previously clustered index for table "clstrpart"
@@ -544,6 +523,8 @@ ALTER TABLE ptnowner OWNER TO regress_ptnowner;
 CREATE TEMP TABLE ptnowner_oldnodes AS
   SELECT oid, relname, relfilenode FROM pg_partition_tree('ptnowner') AS tree
   JOIN pg_class AS c ON c.oid=tree.relid;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'oid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SET SESSION AUTHORIZATION regress_ptnowner;
 CLUSTER ptnowner USING ptnowner_i_idx;
 RESET SESSION AUTHORIZATION;

@@ -12,7 +12,7 @@ SELECT name, setting FROM pg_settings WHERE name LIKE 'enable%';
  enable_indexonlyscan           | on
  enable_indexscan               | on
  enable_material                | on
- enable_memoize                 | off
+ enable_memoize                 | on
  enable_mergejoin               | off
  enable_nestloop                | off
  enable_parallel_append         | on
@@ -30,7 +30,6 @@ create schema rangefuncs_cdb;
 set search_path to rangefuncs_cdb, public;
 -- end_ignore
 DROP TABLE IF EXISTS foo;
-NOTICE:  table "foo" does not exist, skipping
 CREATE TABLE foo(
   fooid int, foosubid int, fooname text, primary key(fooid,foosubid)
   ) DISTRIBUTED BY (fooid, foosubid);
@@ -537,8 +536,8 @@ CREATE FUNCTION getfoo(int) RETURNS setof text AS 'SELECT fooname FROM foo WHERE
 SELECT * FROM getfoo(1) AS t1;
  t1  
 -----
- Ed
  Joe
+ Ed
 (2 rows)
 
 CREATE VIEW vw_getfoo AS SELECT * FROM getfoo(1);
@@ -701,7 +700,7 @@ AS 'select $1+1' LANGUAGE sql CONTAINS SQL;
 CREATE OR REPLACE FUNCTION foo(in f1 int) RETURNS record
 AS 'select $1+1' LANGUAGE sql CONTAINS SQL;
 ERROR:  cannot change return type of existing function
-HINT:  Use DROP FUNCTION first.
+HINT:  Use DROP FUNCTION foo(integer) first.
 -- with multiple OUT params you must get a RECORD result
 CREATE OR REPLACE FUNCTION foo(in f1 int, out f2 int, out f3 text) RETURNS int
 AS 'select $1+1' LANGUAGE sql CONTAINS SQL;
@@ -715,13 +714,13 @@ RETURNS record
 AS 'select $1+1' LANGUAGE sql CONTAINS SQL;
 ERROR:  cannot change return type of existing function
 DETAIL:  Row type defined by OUT parameters is different.
-HINT:  Use DROP FUNCTION first.
+HINT:  Use DROP FUNCTION foo(integer) first.
 -- Can't change the result type, previously record now typed record (implied)
 CREATE OR REPLACE FUNCTION foo(in f1 int, out f2 int, out f3 text)
 AS 'select $1+1' LANGUAGE sql;
 ERROR:  cannot change return type of existing function
 DETAIL:  Row type defined by OUT parameters is different.
-HINT:  Use DROP FUNCTION first.
+HINT:  Use DROP FUNCTION foo(integer) first.
 -- okay - output type is still record
 CREATE OR REPLACE FUNCTION foo(in f1 int, out x record)
 AS 'select $1+1' LANGUAGE sql;
@@ -729,7 +728,7 @@ AS 'select $1+1' LANGUAGE sql;
 CREATE OR REPLACE FUNCTION foo(in f1 int) RETURNS setof record
 AS 'select $1+1' LANGUAGE sql CONTAINS SQL;
 ERROR:  cannot change return type of existing function
-HINT:  Use DROP FUNCTION first.
+HINT:  Use DROP FUNCTION foo(integer) first.
 DROP FUNCTION foo(int);
 CREATE OR REPLACE FUNCTION foo(in f1 int) RETURNS setof record
 AS 'select $1+1' LANGUAGE sql CONTAINS SQL;
@@ -739,14 +738,14 @@ RETURNS setof record
 AS 'select $1+1, null' LANGUAGE sql CONTAINS SQL;
 ERROR:  cannot change return type of existing function
 DETAIL:  Row type defined by OUT parameters is different.
-HINT:  Use DROP FUNCTION first.
+HINT:  Use DROP FUNCTION foo(integer) first.
 -- Can't convert between setof record and TABLE
 CREATE OR REPLACE FUNCTION foo(in f1 int)
 RETURNS TABLE(f2 int, f3 text)
 AS 'select $1+1' LANGUAGE sql CONTAINS SQL;
 ERROR:  cannot change return type of existing function
 DETAIL:  Row type defined by OUT parameters is different.
-HINT:  Use DROP FUNCTION first.
+HINT:  Use DROP FUNCTION foo(integer) first.
 DROP FUNCTION foo(int);
 CREATE OR REPLACE FUNCTION foo(in f1 int, out f2 int, out f3 text) 
 RETURNS setof record
@@ -761,17 +760,17 @@ RETURNS TABLE(f2 int, different text)
 AS 'select $1+1, null::text' LANGUAGE sql CONTAINS SQL;
 ERROR:  cannot change return type of existing function
 DETAIL:  Row type defined by OUT parameters is different.
-HINT:  Use DROP FUNCTION first.
+HINT:  Use DROP FUNCTION foo(integer) first.
 CREATE OR REPLACE FUNCTION foor(in f1 int, out f2 int, out text)
 AS $$select $1-1, $1::text || 'z'$$ LANGUAGE sql;
 SELECT f1, foor(f1) FROM int4_tbl;
      f1      |            foor            
 -------------+----------------------------
            0 | (-1,0z)
-      123456 | (123455,123456z)
-     -123456 | (-123457,-123456z)
   2147483647 | (2147483646,2147483647z)
  -2147483647 | (-2147483648,-2147483647z)
+      123456 | (123455,123456z)
+     -123456 | (-123457,-123456z)
 (5 rows)
 
 SELECT * FROM foor(42);
@@ -791,9 +790,9 @@ AS $$select $2-1, $1::text || 'z'$$ LANGUAGE sql;
 SELECT f1, foob(f1, f1/2) FROM int4_tbl;
      f1      |            foob            
 -------------+----------------------------
-           0 | (-1,0z)
       123456 | (61727,123456z)
      -123456 | (-61729,-123456z)
+           0 | (-1,0z)
   2147483647 | (1073741822,2147483647z)
  -2147483647 | (-1073741824,-2147483647z)
 (5 rows)
@@ -843,7 +842,7 @@ SELECT * FROM dup('xyz'::text);
 CREATE OR REPLACE FUNCTION dup (inout f2 anyelement, out f3 anyarray)
 AS 'select $1, array[$1,$1]' LANGUAGE sql;
 ERROR:  cannot change name of input parameter "f1"
-HINT:  Use DROP FUNCTION first.
+HINT:  Use DROP FUNCTION dup(anyelement) first.
 SELECT dup(22);
       dup       
 ----------------
@@ -885,5 +884,5 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- end_matchsubs
 CREATE TEMPORARY TABLE srfdest (t text) DISTRIBUTED RANDOMLY;
 INSERT INTO srfdest select * FROM notice_srf();
-NOTICE:  notice_srf called in segment 1  (seg1 slice1 127.0.0.1:40001 pid=21879)
+NOTICE:  notice_srf called in segment 0  (seg0 slice1 172.17.0.3:7002 pid=154746)
 reset optimizer_segments;

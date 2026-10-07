@@ -198,26 +198,23 @@ INSERT INTO numrange_test VALUES(numrange(1.7, 1.7, '[]'));
 SELECT nr, isempty(nr), lower(nr), upper(nr) FROM numrange_test;
     nr     | isempty | lower | upper 
 -----------+---------+-------+-------
- (,)       | f       |       |      
- [3,)      | f       |     3 |      
- (,5)      | f       |       |     5
  [3,)      | f       |     3 |      
  empty     | t       |       |      
  [1.1,2.2) | f       |   1.1 |   2.2
- empty     | t       |       |      
  [1.7,1.7] | f       |   1.7 |   1.7
+ (,)       | f       |       |      
+ (,5)      | f       |       |     5
 (6 rows)
 
 SELECT nr, lower_inc(nr), lower_inf(nr), upper_inc(nr), upper_inf(nr) FROM numrange_test;
     nr     | lower_inc | lower_inf | upper_inc | upper_inf 
 -----------+-----------+-----------+-----------+-----------
- [3,)      | t         | f         | f         | t
- empty     | f         | f         | f         | f
  [1.1,2.2) | t         | f         | f         | f
- empty     | f         | f         | f         | f
  [1.7,1.7] | t         | f         | t         | f
  (,)       | f         | t         | f         | t
  (,5)      | f         | t         | f         | f
+ [3,)      | t         | f         | f         | t
+ empty     | f         | f         | f         | f
 (6 rows)
 
 SELECT * FROM numrange_test WHERE range_contains(nr, numrange(1.9,1.91));
@@ -244,9 +241,9 @@ SELECT * FROM numrange_test WHERE range_contained_by(numrange(-1e7,-10000.1), nr
 SELECT * FROM numrange_test WHERE 1.9 <@ nr;
     nr     
 -----------
+ [1.1,2.2)
  (,)
  (,5)
- [1.1,2.2)
 (3 rows)
 
 select * from numrange_test where nr = 'empty';
@@ -282,16 +279,15 @@ select * from numrange_test where nr < numrange(-1000.0, -1000.0,'[]');
 select * from numrange_test where nr < numrange(0.0, 1.0,'[]');
   nr   
 -------
+ empty
  (,)
  (,5)
- empty
 (3 rows)
 
 select * from numrange_test where nr < numrange(1000.0, 1001.0,'[]');
     nr     
 -----------
  (,)
- [3,)
  (,5)
  [3,)
  empty
@@ -308,32 +304,30 @@ select * from numrange_test where nr <= 'empty';
 select * from numrange_test where nr >= 'empty';
     nr     
 -----------
- (,)
  [3,)
- (,5)
- [1.1,2.2)
  empty
  [1.1,2.2)
  [1.7,1.7]
+ (,)
+ (,5)
 (6 rows)
 
 select * from numrange_test where nr > 'empty';
     nr     
 -----------
- (,)
- (,5)
- [3,)
- (,5)
  [1.1,2.2)
  [1.7,1.7]
+ [3,)
+ (,)
+ (,5)
 (5 rows)
 
 select * from numrange_test where nr > numrange(-1001.0, -1000.0,'[]');
     nr     
 -----------
+ [3,)
  [1.1,2.2)
  [1.7,1.7]
- [3,)
 (3 rows)
 
 select * from numrange_test where nr > numrange(0.0, 1.0,'[]');
@@ -631,10 +625,10 @@ SELECT tr, isempty(tr), lower(tr), upper(tr) FROM textrange_test;
   tr   | isempty | lower | upper 
 -------+---------+-------+-------
  (,)   | f       |       | 
- [a,)  | f       | a     | 
  (,q)  | f       |       | q
- [b,g) | f       | b     | g
  empty | t       |       | 
+ [a,)  | f       | a     | 
+ [b,g) | f       | b     | g
  [d,d] | f       | d     | d
 (6 rows)
 
@@ -642,22 +636,20 @@ SELECT tr, lower_inc(tr), lower_inf(tr), upper_inc(tr), upper_inf(tr) FROM textr
   tr   | lower_inc | lower_inf | upper_inc | upper_inf 
 -------+-----------+-----------+-----------+-----------
  empty | f         | f         | f         | f
- [a,)  | t         | f         | f         | t
- (,q)  | f         | t         | f         | f
- [b,g) | t         | f         | f         | f
- [d,d] | t         | f         | t         | f
  (,)   | f         | t         | f         | t
  (,q)  | f         | t         | f         | f
+ [a,)  | t         | f         | f         | t
+ [b,g) | t         | f         | f         | f
+ [d,d] | t         | f         | t         | f
 (6 rows)
 
 SELECT * FROM textrange_test WHERE range_contains(tr, textrange('f', 'fx'));
   tr   
 -------
- [a,)
- (,q)
- [b,g)
  (,)
  (,q)
+ [a,)
+ [b,g)
 (4 rows)
 
 SELECT * FROM textrange_test WHERE tr @> textrange('a', 'z');
@@ -677,11 +669,10 @@ SELECT * FROM textrange_test WHERE range_contained_by(textrange('0','9'), tr);
 SELECT * FROM textrange_test WHERE 'e'::text <@ tr;
   tr   
 -------
- (,)
- [a,)
- (,q)
  [a,)
  [b,g)
+ (,)
+ (,q)
 (4 rows)
 
 select * from textrange_test where tr = 'empty';
@@ -1487,13 +1478,13 @@ insert into test_range_excl
   values(1, int4range(123, 123, '[]'), int4range(2, 2, '[]'), '[2010-01-02 11:00, 2010-01-02 12:00)');
 insert into test_range_excl
   values(1, int4range(123, 123, '[]'), int4range(3, 3, '[]'), '[2010-01-02 10:10, 2010-01-02 11:00)');
-ERROR:  conflicting key value violates exclusion constraint "test_range_excl_room_during_excl"  (seg1 172.17.0.3:7003 pid=296703)
+ERROR:  conflicting key value violates exclusion constraint "test_range_excl_room_during_excl"  (seg1 172.17.0.3:7003 pid=132499)
 DETAIL:  Key (room, during)=([123,124), ["Sat Jan 02 10:10:00 2010","Sat Jan 02 11:00:00 2010")) conflicts with existing key (room, during)=([123,124), ["Sat Jan 02 10:00:00 2010","Sat Jan 02 11:00:00 2010")).
 insert into test_range_excl
   values(1, int4range(124, 124, '[]'), int4range(3, 3, '[]'), '[2010-01-02 10:10, 2010-01-02 11:10)');
 insert into test_range_excl
   values(1, int4range(125, 125, '[]'), int4range(1, 1, '[]'), '[2010-01-02 10:10, 2010-01-02 11:00)');
-ERROR:  conflicting key value violates exclusion constraint "test_range_excl_speaker_during_excl"  (seg2 172.17.0.3:7004 pid=296705)
+ERROR:  conflicting key value violates exclusion constraint "test_range_excl_speaker_during_excl"  (seg0 172.17.0.3:7002 pid=132500)
 DETAIL:  Key (speaker, during)=([1,2), ["Sat Jan 02 10:10:00 2010","Sat Jan 02 11:00:00 2010")) conflicts with existing key (speaker, during)=([1,2), ["Sat Jan 02 10:00:00 2010","Sat Jan 02 11:00:00 2010")).
 -- test bigint ranges
 select int8range(10000000000::int8, 20000000000::int8,'(]');

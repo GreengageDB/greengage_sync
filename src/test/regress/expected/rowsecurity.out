@@ -17,12 +17,19 @@ DROP SCHEMA IF EXISTS regress_rls_schema CASCADE;
 SET client_min_messages TO 'notice';
 -- initial setup
 CREATE USER regress_rls_alice NOLOGIN;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE USER regress_rls_bob NOLOGIN;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE USER regress_rls_carol NOLOGIN;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE USER regress_rls_dave NOLOGIN;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE USER regress_rls_exempt_user BYPASSRLS NOLOGIN;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE ROLE regress_rls_group1 NOLOGIN;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE ROLE regress_rls_group2 NOLOGIN;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 GRANT regress_rls_group1 TO regress_rls_bob;
 GRANT regress_rls_group2 TO regress_rls_carol;
 CREATE SCHEMA regress_rls_schema;
@@ -64,6 +71,7 @@ CREATE TABLE document (
     dauthor     name,
     dtitle      text
 );
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 GRANT ALL ON document TO public;
 INSERT INTO document VALUES
     ( 1, 11, 1, 'regress_rls_bob', 'my first novel'),
@@ -141,6 +149,7 @@ Policies:
     POLICY "p2r" AS RESTRICTIVE
       TO regress_rls_dave
       USING (((cid <> 44) AND (cid < 50)))
+Distributed by: (did)
 
 SELECT * FROM pg_policies WHERE schemaname = 'regress_rls_schema' AND tablename = 'document' ORDER BY policyname;
      schemaname     | tablename | policyname | permissive  |       roles        | cmd |                    qual                    | with_check 
@@ -156,11 +165,11 @@ SELECT * FROM pg_policies WHERE schemaname = 'regress_rls_schema' AND tablename 
 SET SESSION AUTHORIZATION regress_rls_bob;
 SET row_security TO ON;
 SELECT * FROM document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -171,11 +180,11 @@ NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
 (5 rows)
 
 SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
  cid | did | dlevel |      dauthor      |         dtitle          |      cname      
 -----+-----+--------+-------------------+-------------------------+-----------------
   11 |   1 |      1 | regress_rls_bob   | my first novel          | novel
@@ -188,7 +197,7 @@ NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545
 -- try a sampled version
 SELECT * FROM document TABLESAMPLE BERNOULLI(50) REPEATABLE(0)
   WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
  did | cid | dlevel |      dauthor      |   dtitle    
 -----+-----+--------+-------------------+-------------
    8 |  44 |      1 | regress_rls_carol | great manga
@@ -197,16 +206,16 @@ NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
 -- viewpoint from regress_rls_carol
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -222,16 +231,16 @@ NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545
 (10 rows)
 
 SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
  cid | did | dlevel |      dauthor      |         dtitle          |      cname      
 -----+-----+--------+-------------------+-------------------------+-----------------
   11 |   1 |      1 | regress_rls_bob   | my first novel          | novel
@@ -249,9 +258,9 @@ NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545
 -- try a sampled version
 SELECT * FROM document TABLESAMPLE BERNOULLI(50) REPEATABLE(0)
   WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    7 |  33 |      2 | regress_rls_carol | great technology book
@@ -260,8 +269,8 @@ NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
 (3 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM document WHERE f_leak(dtitle);
-                     QUERY PLAN                      
------------------------------------------------------
+                          QUERY PLAN                          
+--------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    InitPlan 1 (returns $0)  (slice2)
      ->  Gather Motion 1:1  (slice3; segments: 1)
@@ -293,13 +302,13 @@ EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dt
 -- viewpoint from regress_rls_dave
 SET SESSION AUTHORIZATION regress_rls_dave;
 SELECT * FROM document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=138178)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -312,13 +321,13 @@ NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
 (7 rows)
 
 SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
  cid | did | dlevel |      dauthor      |         dtitle          |      cname      
 -----+-----+--------+-------------------+-------------------------+-----------------
   11 |   1 |      1 | regress_rls_bob   | my first novel          | novel
@@ -365,10 +374,10 @@ EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dt
 -- 44 would technically fail for both p2r and p1r, but we should get an error
 -- back from p1r for this because it sorts first
 INSERT INTO document VALUES (100, 44, 1, 'regress_rls_dave', 'testing sorting of policies'); -- fail
-ERROR:  new row violates row-level security policy "p1r" for table "document"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy "p1r" for table "document"  (seg2 172.17.0.3:7004 pid=138178)
 -- Just to see a p2r error
 INSERT INTO document VALUES (100, 55, 1, 'regress_rls_dave', 'testing sorting of policies'); -- fail
-ERROR:  new row violates row-level security policy "p2r" for table "document"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy "p2r" for table "document"  (seg2 172.17.0.3:7004 pid=138178)
 -- only owner can change policies
 ALTER POLICY p1 ON document USING (true);    --fail
 ERROR:  must be owner of table document
@@ -379,11 +388,11 @@ ALTER POLICY p1 ON document USING (dauthor = current_user);
 -- viewpoint from regress_rls_bob again
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
  did | cid | dlevel |     dauthor     |       dtitle       
 -----+-----+--------+-----------------+--------------------
    1 |  11 |      1 | regress_rls_bob | my first novel
@@ -394,11 +403,11 @@ NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
 (5 rows)
 
 SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle) ORDER by did;
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my science fiction  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=138178)
  cid | did | dlevel |     dauthor     |       dtitle       |      cname      
 -----+-----+--------+-----------------+--------------------+-----------------
   11 |   1 |      1 | regress_rls_bob | my first novel     | novel
@@ -411,9 +420,9 @@ NOTICE:  f_leak => my second manga  (seg2 slice1 172.17.0.3:7004 pid=545545)
 -- viewpoint from rls_regres_carol again
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
  did | cid | dlevel |      dauthor      |        dtitle         
 -----+-----+--------+-------------------+-----------------------
    6 |  22 |      1 | regress_rls_carol | great science fiction
@@ -422,9 +431,9 @@ NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=54554
 (3 rows)
 
 SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle) ORDER by did;
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
  cid | did | dlevel |      dauthor      |        dtitle         |      cname      
 -----+-----+--------+-------------------+-----------------------+-----------------
   22 |   6 |      1 | regress_rls_carol | great science fiction | science fiction
@@ -433,8 +442,8 @@ NOTICE:  f_leak => great manga  (seg0 slice1 172.17.0.3:7002 pid=545540)
 (3 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM document WHERE f_leak(dtitle);
-                          QUERY PLAN                           
----------------------------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on document
          Filter: ((dauthor = 'regress_rls_carol'::name) AND f_leak(dtitle))
@@ -442,8 +451,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM document WHERE f_leak(dtitle);
 (4 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle);
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Hash Join
          Hash Cond: (category.cid = document.cid)
@@ -477,9 +486,7 @@ SELECT * FROM document d FULL OUTER JOIN category c on d.cid = c.cid ORDER BY d.
 
 -- GPDB: referential integrity checks are not enforced
 -- start_ignore
-DELETE FROM category WHERE cid = 33;    -- fails with FK violation
-ERROR:  update or delete on table "category" violates foreign key constraint "document_cid_fkey" on table "document"
-DETAIL:  Key is still referenced from table "document".
+-- DELETE FROM category WHERE cid = 33;    -- fails with FK violation
 -- end_ignore
 -- can insert FK referencing invisible PK
 SET SESSION AUTHORIZATION regress_rls_carol;
@@ -495,7 +502,7 @@ INSERT INTO document VALUES (11, 33, 1, current_user, 'hoge');
 -- UNIQUE or PRIMARY KEY constraint violation DOES reveal presence of row
 SET SESSION AUTHORIZATION regress_rls_bob;
 INSERT INTO document VALUES (8, 44, 1, 'regress_rls_bob', 'my third manga'); -- Must fail with unique violation, revealing presence of did we can't see
-ERROR:  duplicate key value violates unique constraint "document_pkey"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  duplicate key value violates unique constraint "document_pkey"  (seg0 172.17.0.3:7002 pid=138173)
 SELECT * FROM document WHERE did = 8; -- and confirm we can't see it
  did | cid | dlevel | dauthor | dtitle 
 -----+-----+--------+---------+--------
@@ -503,11 +510,11 @@ SELECT * FROM document WHERE did = 8; -- and confirm we can't see it
 
 -- RLS policies are checked before constraints
 INSERT INTO document VALUES (8, 44, 1, 'regress_rls_carol', 'my third manga'); -- Should fail with RLS check violation, not duplicate key violation
-ERROR:  new row violates row-level security policy for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 -- GPDB: UPDATE on distributed key column not allowed on relation with update triggers
 -- start_ignore
 UPDATE document SET did = 8, dauthor = 'regress_rls_carol' WHERE did = 5; -- Should fail with RLS check violation, not duplicate key violation
-ERROR:  new row violates row-level security policy for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 -- end_ignore
 -- database superuser does bypass RLS policy when enabled
 RESET SESSION AUTHORIZATION;
@@ -515,26 +522,26 @@ SET row_security TO ON;
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
-   1 |  11 |      1 | regress_rls_bob   | my first novel
-   2 |  11 |      2 | regress_rls_bob   | my second novel
-   3 |  22 |      2 | regress_rls_bob   | my science fiction
-   4 |  44 |      1 | regress_rls_bob   | my first manga
    5 |  44 |      2 | regress_rls_bob   | my second manga
    6 |  22 |      1 | regress_rls_carol | great science fiction
-   7 |  33 |      2 | regress_rls_carol | great technology book
-   8 |  44 |      1 | regress_rls_carol | great manga
    9 |  22 |      1 | regress_rls_dave  | awesome science fiction
   10 |  33 |      2 | regress_rls_dave  | awesome technology book
   11 |  33 |      1 | regress_rls_carol | hoge
+   2 |  11 |      2 | regress_rls_bob   | my second novel
+   3 |  22 |      2 | regress_rls_bob   | my science fiction
+   4 |  44 |      1 | regress_rls_bob   | my first manga
+   7 |  33 |      2 | regress_rls_carol | great technology book
+   8 |  44 |      1 | regress_rls_carol | great manga
+   1 |  11 |      1 | regress_rls_bob   | my first novel
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
-  22 | science fiction
+  44 | manga
   11 | novel
   33 | technology
-  44 | manga
+  22 | science fiction
 (4 rows)
 
 -- database superuser does bypass RLS policy when disabled
@@ -543,29 +550,26 @@ SET row_security TO OFF;
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
-   1 |  11 |      1 | regress_rls_bob   | my first novel
-   5 |  44 |      2 | regress_rls_bob   | my second manga
-   6 |  22 |      1 | regress_rls_carol | great science fiction
-   7 |  33 |      2 | regress_rls_carol | great technology book
-   8 |  44 |      1 | regress_rls_carol | great manga
-   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
-  10 |  33 |      2 | regress_rls_dave  | awesome technology book
-  11 |  33 |      1 | regress_rls_carol | hoge
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
    7 |  33 |      2 | regress_rls_carol | great technology book
    8 |  44 |      1 | regress_rls_carol | great manga
+   1 |  11 |      1 | regress_rls_bob   | my first novel
+   5 |  44 |      2 | regress_rls_bob   | my second manga
+   6 |  22 |      1 | regress_rls_carol | great science fiction
+   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
+  10 |  33 |      2 | regress_rls_dave  | awesome technology book
+  11 |  33 |      1 | regress_rls_carol | hoge
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
-  44 | manga
+  22 | science fiction
   11 | novel
-  22 | science fiction
   33 | technology
-  22 | science fiction
+  44 | manga
 (4 rows)
 
 -- database non-superuser with bypass privilege can bypass RLS policy when disabled
@@ -574,7 +578,6 @@ SET row_security TO OFF;
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
-   1 |  11 |      1 | regress_rls_bob   | my first novel
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
@@ -583,8 +586,6 @@ SELECT * FROM document;
    1 |  11 |      1 | regress_rls_bob   | my first novel
    5 |  44 |      2 | regress_rls_bob   | my second manga
    6 |  22 |      1 | regress_rls_carol | great science fiction
-   7 |  33 |      2 | regress_rls_carol | great technology book
-   8 |  44 |      1 | regress_rls_carol | great manga
    9 |  22 |      1 | regress_rls_dave  | awesome science fiction
   10 |  33 |      2 | regress_rls_dave  | awesome technology book
   11 |  33 |      1 | regress_rls_carol | hoge
@@ -594,7 +595,6 @@ SELECT * FROM category;
  cid |      cname      
 -----+-----------------
   22 | science fiction
-  33 | technology
   44 | manga
   11 | novel
   33 | technology
@@ -606,30 +606,26 @@ SET row_security TO ON;
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
-   1 |  11 |      1 | regress_rls_bob   | my first novel
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
    7 |  33 |      2 | regress_rls_carol | great technology book
    8 |  44 |      1 | regress_rls_carol | great manga
+   1 |  11 |      1 | regress_rls_bob   | my first novel
    5 |  44 |      2 | regress_rls_bob   | my second manga
    6 |  22 |      1 | regress_rls_carol | great science fiction
-   7 |  33 |      2 | regress_rls_carol | great technology book
-   8 |  44 |      1 | regress_rls_carol | great manga
    9 |  22 |      1 | regress_rls_dave  | awesome science fiction
   10 |  33 |      2 | regress_rls_dave  | awesome technology book
   11 |  33 |      1 | regress_rls_carol | hoge
-   1 |  11 |      1 | regress_rls_bob   | my first novel
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
-  22 | science fiction
-  33 | technology
   44 | manga
   11 | novel
   33 | technology
+  22 | science fiction
 (4 rows)
 
 -- RLS policy does not apply to table owner when RLS disabled.
@@ -638,26 +634,26 @@ SET row_security TO OFF;
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
-   5 |  44 |      2 | regress_rls_bob   | my second manga
-   6 |  22 |      1 | regress_rls_carol | great science fiction
-   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
-  10 |  33 |      2 | regress_rls_dave  | awesome technology book
-  11 |  33 |      1 | regress_rls_carol | hoge
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
    7 |  33 |      2 | regress_rls_carol | great technology book
    8 |  44 |      1 | regress_rls_carol | great manga
+   5 |  44 |      2 | regress_rls_bob   | my second manga
+   6 |  22 |      1 | regress_rls_carol | great science fiction
+   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
+  10 |  33 |      2 | regress_rls_dave  | awesome technology book
+  11 |  33 |      1 | regress_rls_carol | hoge
    1 |  11 |      1 | regress_rls_bob   | my first novel
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
-  11 | novel
   22 | science fiction
-  33 | technology
   44 | manga
+  11 | novel
+  33 | technology
 (4 rows)
 
 --
@@ -671,6 +667,7 @@ GRANT ALL ON t1 TO public;
 COPY t1 FROM stdin WITH ;
 ANALYZE t1;
 CREATE TABLE t2 (c float) INHERITS (t1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 GRANT ALL ON t2 TO public;
 COPY t2 FROM stdin;
 ANALYZE t2;
@@ -690,7 +687,6 @@ SELECT * FROM t1;
  102 | 2 | bbb
  104 | 4 | dad
  202 | 2 | bcd
- 204 | 4 | def
  302 | 2 | yyy
  204 | 4 | def
 (5 rows)
@@ -710,20 +706,17 @@ EXPLAIN (COSTS OFF) SELECT * FROM t1;
 (9 rows)
 
 SELECT * FROM t1 WHERE f_leak(b);
-NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=138177)
  id  | a |  b  
 -----+---+-----
- 202 | 2 | bcd
- 302 | 2 | yyy
  204 | 4 | def
  102 | 2 | bbb
  104 | 4 | dad
  202 | 2 | bcd
- 204 | 4 | def
  302 | 2 | yyy
 (5 rows)
 
@@ -763,6 +756,7 @@ EXPLAIN (COSTS OFF) SELECT *, t1 FROM t1;
                Filter: ((a % 2) = 0)
          ->  Seq Scan on t3 t1_3
                Filter: ((a % 2) = 0)
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 -- reference to whole-row reference
@@ -771,8 +765,8 @@ SELECT *, t1 FROM t1;
 -----+---+-----+-------------
  102 | 2 | bbb | (102,2,bbb)
  104 | 4 | dad | (104,4,dad)
- 202 | 2 | bcd | (202,2,bcd)
  204 | 4 | def | (204,4,def)
+ 202 | 2 | bcd | (202,2,bcd)
  302 | 2 | yyy | (302,2,yyy)
 (5 rows)
 
@@ -794,12 +788,11 @@ EXPLAIN (COSTS OFF) SELECT *, t1 FROM t1;
 SELECT * FROM t1 FOR SHARE;
  id  | a |  b  
 -----+---+-----
- 202 | 2 | bcd
  204 | 4 | def
- 302 | 2 | yyy
  102 | 2 | bbb
  104 | 4 | dad
- 204 | 4 | def
+ 202 | 2 | bcd
+ 302 | 2 | yyy
 (5 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1 FOR SHARE;
@@ -817,11 +810,11 @@ EXPLAIN (COSTS OFF) SELECT * FROM t1 FOR SHARE;
 (9 rows)
 
 SELECT * FROM t1 WHERE f_leak(b) FOR SHARE;
-NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  id  | a |  b  
 -----+---+-----
  204 | 4 | def
@@ -829,9 +822,6 @@ NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
  302 | 2 | yyy
  102 | 2 | bbb
  104 | 4 | dad
- 202 | 2 | bcd
- 204 | 4 | def
- 302 | 2 | yyy
 (5 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b) FOR SHARE;
@@ -853,10 +843,10 @@ SELECT a, b, tableoid::regclass FROM t2 UNION ALL SELECT a, b, tableoid::regclas
  a |  b  | tableoid 
 ---+-----+----------
  1 | abc | t2
- 3 | cde | t2
- 1 | xxx | t3
  2 | yyy | t3
  3 | zzz | t3
+ 3 | cde | t2
+ 1 | xxx | t3
 (5 rows)
 
 EXPLAIN (COSTS OFF) SELECT a, b, tableoid::regclass FROM t2 UNION ALL SELECT a, b, tableoid::regclass FROM t3;
@@ -874,33 +864,30 @@ EXPLAIN (COSTS OFF) SELECT a, b, tableoid::regclass FROM t2 UNION ALL SELECT a, 
 RESET SESSION AUTHORIZATION;
 SET row_security TO OFF;
 SELECT * FROM t1 WHERE f_leak(b);
-NOTICE:  f_leak => aba  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => xxx  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => zzz  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => zzz  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => aba  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => xxx  (seg0 slice1 172.17.0.3:7002 pid=138173)
  id  | a |  b  
 -----+---+-----
- 101 | 1 | aba
- 102 | 2 | bbb
- 103 | 3 | ccc
- 104 | 4 | dad
- 201 | 1 | abc
- 202 | 2 | bcd
- 203 | 3 | cde
  204 | 4 | def
- 301 | 1 | xxx
  201 | 1 | abc
  202 | 2 | bcd
  302 | 2 | yyy
  303 | 3 | zzz
- 204 | 4 | def
+ 101 | 1 | aba
+ 102 | 2 | bbb
+ 103 | 3 | ccc
+ 104 | 4 | dad
+ 203 | 3 | cde
+ 301 | 1 | xxx
 (11 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
@@ -921,19 +908,20 @@ EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
 SET SESSION AUTHORIZATION regress_rls_exempt_user;
 SET row_security TO OFF;
 SELECT * FROM t1 WHERE f_leak(b);
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => aba  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => zzz  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => xxx  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => zzz  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => aba  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => xxx  (seg0 slice1 172.17.0.3:7002 pid=138173)
  id  | a |  b  
 -----+---+-----
+ 204 | 4 | def
  201 | 1 | abc
  202 | 2 | bcd
  302 | 2 | yyy
@@ -944,7 +932,6 @@ NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=545545)
  104 | 4 | dad
  203 | 3 | cde
  301 | 1 | xxx
- 204 | 4 | def
 (11 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
@@ -972,11 +959,16 @@ CREATE TABLE part_document (
     dauthor     name,
     dtitle      text
 ) PARTITION BY RANGE (cid);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'did' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 GRANT ALL ON part_document TO public;
 -- Create partitions for document categories
 CREATE TABLE part_document_fiction PARTITION OF part_document FOR VALUES FROM (11) to (12);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part_document_satire PARTITION OF part_document FOR VALUES FROM (55) to (56);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE part_document_nonfiction PARTITION OF part_document FOR VALUES FROM (99) to (100);
+NOTICE:  table has parent, setting distribution columns to match parent table
 GRANT ALL ON part_document_fiction TO public;
 GRANT ALL ON part_document_satire TO public;
 GRANT ALL ON part_document_nonfiction TO public;
@@ -1020,6 +1012,7 @@ Policies:
 Partitions: part_document_fiction FOR VALUES FROM (11) TO (12),
             part_document_nonfiction FOR VALUES FROM (99) TO (100),
             part_document_satire FOR VALUES FROM (55) TO (56)
+Distributed by: (did)
 
 SELECT * FROM pg_policies WHERE schemaname = 'regress_rls_schema' AND tablename like '%part_document%' ORDER BY policyname;
      schemaname     |   tablename   | policyname | permissive  |       roles        | cmd |                    qual                    | with_check 
@@ -1034,10 +1027,10 @@ SELECT * FROM pg_policies WHERE schemaname = 'regress_rls_schema' AND tablename 
 SET SESSION AUTHORIZATION regress_rls_bob;
 SET row_security TO ON;
 SELECT * FROM part_document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -1067,16 +1060,16 @@ EXPLAIN (COSTS OFF) SELECT * FROM part_document WHERE f_leak(dtitle);
 -- viewpoint from regress_rls_carol
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM part_document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my science textbook  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my history book  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => great satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my science textbook  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my history book  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=138178)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -1112,10 +1105,10 @@ EXPLAIN (COSTS OFF) SELECT * FROM part_document WHERE f_leak(dtitle);
 -- viewpoint from regress_rls_dave
 SET SESSION AUTHORIZATION regress_rls_dave;
 SELECT * FROM part_document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -1139,22 +1132,22 @@ EXPLAIN (COSTS OFF) SELECT * FROM part_document WHERE f_leak(dtitle);
 
 -- pp1 ERROR
 INSERT INTO part_document VALUES (100, 11, 5, 'regress_rls_dave', 'testing pp1'); -- fail
-ERROR:  new row violates row-level security policy for table "part_document"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy for table "part_document"  (seg2 172.17.0.3:7004 pid=138178)
 -- pp1r ERROR
 INSERT INTO part_document VALUES (100, 99, 1, 'regress_rls_dave', 'testing pp1r'); -- fail
-ERROR:  new row violates row-level security policy "pp1r" for table "part_document"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy "pp1r" for table "part_document"  (seg2 172.17.0.3:7004 pid=138178)
 -- Show that RLS policy does not apply for direct inserts to children
 -- This should fail with RLS POLICY pp1r violation.
 INSERT INTO part_document VALUES (100, 55, 1, 'regress_rls_dave', 'testing RLS with partitions'); -- fail
-ERROR:  new row violates row-level security policy "pp1r" for table "part_document"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy "pp1r" for table "part_document"  (seg2 172.17.0.3:7004 pid=138178)
 -- But this should succeed.
 INSERT INTO part_document_satire VALUES (100, 55, 1, 'regress_rls_dave', 'testing RLS with partitions'); -- success
 -- We still cannot see the row using the parent
 SELECT * FROM part_document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -1165,9 +1158,9 @@ NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
 
 -- But we can if we look directly
 SELECT * FROM part_document_satire WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => testing RLS with partitions  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => great satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => testing RLS with partitions  (seg2 slice1 172.17.0.3:7004 pid=138178)
  did | cid | dlevel |      dauthor      |           dtitle            
 -----+-----+--------+-------------------+-----------------------------
    4 |  55 |      1 | regress_rls_bob   | my first satire
@@ -1183,7 +1176,7 @@ CREATE POLICY pp3 ON part_document_satire AS RESTRICTIVE
 -- This should fail with RLS violation now.
 SET SESSION AUTHORIZATION regress_rls_dave;
 INSERT INTO part_document_satire VALUES (101, 55, 1, 'regress_rls_dave', 'testing RLS with partitions'); -- fail
-ERROR:  new row violates row-level security policy for table "part_document_satire"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "part_document_satire"  (seg0 172.17.0.3:7002 pid=138173)
 -- And now we cannot see directly into the partition either, due to RLS
 SELECT * FROM part_document_satire WHERE f_leak(dtitle) ORDER BY did;
  did | cid | dlevel | dauthor | dtitle 
@@ -1193,10 +1186,10 @@ SELECT * FROM part_document_satire WHERE f_leak(dtitle) ORDER BY did;
 -- The parent looks same as before
 -- viewpoint from regress_rls_dave
 SELECT * FROM part_document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -1221,17 +1214,17 @@ EXPLAIN (COSTS OFF) SELECT * FROM part_document WHERE f_leak(dtitle);
 -- viewpoint from regress_rls_carol
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM part_document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my science textbook  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => testing RLS with partitions  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my history book  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => awesome science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => testing RLS with partitions  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my history book  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => my science textbook  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => awesome technology book  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
  did | cid | dlevel |      dauthor      |           dtitle            
 -----+-----+--------+-------------------+-----------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
@@ -1275,11 +1268,11 @@ ALTER POLICY pp1 ON part_document USING (dauthor = current_user);
 -- viewpoint from regress_rls_bob again
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM part_document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my science textbook  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => my history book  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => my second novel  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my science textbook  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => my first novel  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => my history book  (seg2 slice1 172.17.0.3:7004 pid=138178)
  did | cid | dlevel |     dauthor     |       dtitle        
 -----+-----+--------+-----------------+---------------------
    1 |  11 |      1 | regress_rls_bob | my first novel
@@ -1292,9 +1285,9 @@ NOTICE:  f_leak => my history book  (seg2 slice1 172.17.0.3:7004 pid=545545)
 -- viewpoint from rls_regres_carol again
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM part_document WHERE f_leak(dtitle) ORDER BY did;
-NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => great satire  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => great satire  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great technology book  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => great science fiction  (seg2 slice1 172.17.0.3:7004 pid=138178)
  did | cid | dlevel |      dauthor      |        dtitle         
 -----+-----+--------+-------------------+-----------------------
    6 |  11 |      1 | regress_rls_carol | great science fiction
@@ -1411,12 +1404,16 @@ CREATE POLICY pp3 ON part_document AS RESTRICTIVE
     USING ((SELECT dlevel <= seclv FROM uaccount WHERE pguser = current_user));
 SET SESSION AUTHORIZATION regress_rls_carol;
 INSERT INTO part_document VALUES (100, 11, 5, 'regress_rls_carol', 'testing pp3'); -- fail
-ERROR:  new row violates row-level security policy "pp3" for table "part_document"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy "pp3" for table "part_document"  (seg2 172.17.0.3:7004 pid=138178)
 ----- Dependencies -----
 SET SESSION AUTHORIZATION regress_rls_alice;
 SET row_security TO ON;
 CREATE TABLE dependee (x integer, y integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE dependent (x integer, y integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY d1 ON dependent FOR ALL
     TO PUBLIC
     USING (x = (SELECT d.x FROM dependee d WHERE d.y = y));
@@ -1440,6 +1437,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM dependent; -- After drop, should be unqualifie
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE rec1 (x integer, y integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY r1 ON rec1 USING (x = (SELECT r.x FROM rec1 r WHERE y = r.y));
 ALTER TABLE rec1 ENABLE ROW LEVEL SECURITY;
 SET SESSION AUTHORIZATION regress_rls_bob;
@@ -1450,6 +1449,8 @@ ERROR:  infinite recursion detected in policy for relation "rec1"
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE rec2 (a integer, b integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER POLICY r1 ON rec1 USING (x = (SELECT a FROM rec2 WHERE b = y));
 CREATE POLICY r2 ON rec2 USING (a = (SELECT x FROM rec1 WHERE y = b));
 ALTER TABLE rec2 ENABLE ROW LEVEL SECURITY;
@@ -1489,8 +1490,12 @@ ERROR:  infinite recursion detected in policy for relation "rec1"
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE s1 (a int, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO s1 (SELECT x, md5(x::text) FROM generate_series(-10,10) x);
 CREATE TABLE s2 (x int, y text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO s2 (SELECT x, md5(x::text) FROM generate_series(-6,6) x);
 GRANT SELECT ON s1, s2 TO regress_rls_bob;
 CREATE POLICY p1 ON s1 USING (a in (select x from s2 where y like '%2f%'));
@@ -1509,8 +1514,8 @@ DROP POLICY p3 on s1;
 ALTER POLICY p2 ON s2 USING (x % 2 = 0);
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM s1 WHERE f_leak(b);	-- OK
-NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |                b                 
 ---+----------------------------------
  2 | c81e728d9d4c2f636f067f89cc14862c
@@ -1534,12 +1539,12 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 ALTER POLICY p1 ON s1 USING (a in (select x from v2)); -- using VIEW in RLS policy
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM s1 WHERE f_leak(b);	-- OK
-NOTICE:  f_leak => 0267aaf632e87a63288a08331f22c7c3  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => 0267aaf632e87a63288a08331f22c7c3  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=138178)
  a  |                b                 
 ----+----------------------------------
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
  -4 | 0267aaf632e87a63288a08331f22c7c3
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM s1 WHERE f_leak(b);
@@ -1558,8 +1563,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM s1 WHERE f_leak(b);
 SELECT (SELECT x FROM s1 LIMIT 1) xx, * FROM s2 WHERE y like '%28%';
  xx | x  |                y                 
 ----+----+----------------------------------
- -6 | -6 | 596a3d04481816330f07e4f97510c28f
  -4 | -4 | 0267aaf632e87a63288a08331f22c7c3
+ -6 | -6 | 596a3d04481816330f07e4f97510c28f
   2 |  2 | c81e728d9d4c2f636f067f89cc14862c
 (3 rows)
 
@@ -1594,9 +1599,9 @@ PREPARE p1(int) AS SELECT * FROM t1 WHERE a <= $1;
 EXECUTE p1(2);
  id  | a |  b  
 -----+---+-----
- 102 | 2 | bbb
  202 | 2 | bcd
  302 | 2 | yyy
+ 102 | 2 | bbb
 (3 rows)
 
 EXPLAIN (COSTS OFF) EXECUTE p1(2);
@@ -1617,30 +1622,30 @@ EXPLAIN (COSTS OFF) EXECUTE p1(2);
 RESET SESSION AUTHORIZATION;
 SET row_security TO OFF;
 SELECT * FROM t1 WHERE f_leak(b);
-NOTICE:  f_leak => aba  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => xxx  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => zzz  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => aba  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => bcd  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => def  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => yyy  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => zzz  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => xxx  (seg0 slice1 172.17.0.3:7002 pid=138173)
  id  | a |  b  
 -----+---+-----
+ 204 | 4 | def
+ 201 | 1 | abc
+ 202 | 2 | bcd
+ 302 | 2 | yyy
+ 303 | 3 | zzz
  101 | 1 | aba
  102 | 2 | bbb
  103 | 3 | ccc
  104 | 4 | dad
- 201 | 1 | abc
- 202 | 2 | bcd
  203 | 3 | cde
- 204 | 4 | def
  301 | 1 | xxx
- 302 | 2 | yyy
- 303 | 3 | zzz
 (11 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
@@ -1663,8 +1668,6 @@ EXECUTE p1(2);
 -----+---+-----
  101 | 1 | aba
  102 | 2 | bbb
- 201 | 1 | abc
- 202 | 2 | bcd
  301 | 1 | xxx
  201 | 1 | abc
  202 | 2 | bcd
@@ -1689,9 +1692,9 @@ PREPARE p2(int) AS SELECT * FROM t1 WHERE a = $1;
 EXECUTE p2(2);
  id  | a |  b  
 -----+---+-----
- 102 | 2 | bbb
  202 | 2 | bcd
  302 | 2 | yyy
+ 102 | 2 | bbb
 (3 rows)
 
 EXPLAIN (COSTS OFF) EXECUTE p2(2);
@@ -1752,29 +1755,31 @@ EXPLAIN (COSTS OFF) UPDATE t1 SET b = b || b WHERE f_leak(b);
                      Filter: (((a % 2) = 0) AND f_leak(b))
                ->  Seq Scan on t3 t1_3
                      Filter: (((a % 2) = 0) AND f_leak(b))
-(12 rows)
+ Optimizer: Postgres query optimizer
+(13 rows)
 
 UPDATE t1 SET b = b || b WHERE f_leak(b);
-NOTICE:  f_leak => bcd  (seg1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bbb  (seg0 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => yyy  (seg1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => dad  (seg0 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => def  (seg2 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => bcd  (seg1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => def  (seg2 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => bbb  (seg0 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => yyy  (seg1 172.17.0.3:7003 pid=138177)
 EXPLAIN (COSTS OFF) UPDATE only t1 SET b = b || '_updt' WHERE f_leak(b);
                   QUERY PLAN                   
 -----------------------------------------------
  Update on t1
    ->  Seq Scan on t1
          Filter: (((a % 2) = 0) AND f_leak(b))
-(3 rows)
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 UPDATE only t1 SET b = b || '_updt' WHERE f_leak(b);
-NOTICE:  f_leak => bbbbbb  (seg0 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => daddad  (seg0 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbbbbb  (seg0 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => daddad  (seg0 172.17.0.3:7002 pid=138173)
 -- returning clause with system column
 UPDATE only t1 SET b = b WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
-NOTICE:  f_leak => bbbbbb_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbbbbb_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
  tableoid | id  | a |      b      |         t1          
 ----------+-----+---+-------------+---------------------
  t1       | 102 | 2 | bbbbbb_updt | (102,2,bbbbbb_updt)
@@ -1782,27 +1787,26 @@ NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
 (2 rows)
 
 UPDATE t1 SET b = b WHERE f_leak(b) RETURNING *;
-NOTICE:  f_leak => bbbbbb_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => defdef  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => bcdbcd  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => yyyyyy  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => bcdbcd  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => yyyyyy  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => bbbbbb_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => defdef  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
  id  | a |      b      
 -----+---+-------------
+ 202 | 2 | bcdbcd
+ 302 | 2 | yyyyyy
+ 204 | 4 | defdef
  102 | 2 | bbbbbb_updt
  104 | 4 | daddad_updt
- 204 | 4 | defdef
- 202 | 2 | bcdbcd
- 204 | 4 | defdef
- 302 | 2 | yyyyyy
 (5 rows)
 
 UPDATE t1 SET b = b WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
-NOTICE:  f_leak => bbbbbb_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => bcdbcd  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => defdef  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => yyyyyy  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => bbbbbb_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => bcdbcd  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => defdef  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => yyyyyy  (seg1 slice1 172.17.0.3:7003 pid=138177)
  tableoid | id  | a |      b      |         t1          
 ----------+-----+---+-------------+---------------------
  t1       | 102 | 2 | bbbbbb_updt | (102,2,bbbbbb_updt)
@@ -1830,8 +1834,8 @@ WHERE t2.a = 3 and t3.a = 2 AND f_leak(t2.b) AND f_leak(t3.b);
 
 UPDATE t2 SET b=t2.b FROM t3
 WHERE t2.a = 3 and t3.a = 2 AND f_leak(t2.b) AND f_leak(t3.b);
-NOTICE:  f_leak => cde  (seg0 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => yyyyyy  (seg1 slice1 172.17.0.3:7003 pid=546326)
+NOTICE:  f_leak => cde  (seg0 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => yyyyyy  (seg1 slice1 172.17.0.3:7003 pid=138260)
 EXPLAIN (COSTS OFF) UPDATE t1 SET b=t1.b FROM t2
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
                               QUERY PLAN                               
@@ -1856,7 +1860,7 @@ WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
 
 UPDATE t1 SET b=t1.b FROM t2
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
-NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=546324)
+NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=138259)
 EXPLAIN (COSTS OFF) UPDATE t2 SET b=t2.b FROM t1
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
                                     QUERY PLAN                                     
@@ -1879,7 +1883,7 @@ WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
 
 UPDATE t2 SET b=t2.b FROM t1
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
-NOTICE:  f_leak => cde  (seg0 slice2 172.17.0.3:7002 pid=546348)
+NOTICE:  f_leak => cde  (seg0 172.17.0.3:7002 pid=138173)
 -- updates with from clause self join
 EXPLAIN (COSTS OFF) UPDATE t2 t2_1 SET b = t2_2.b FROM t2 t2_2
 WHERE t2_1.a = 3 AND t2_2.a = t2_1.a AND t2_2.b = t2_1.b
@@ -1903,8 +1907,8 @@ AND f_leak(t2_1.b) AND f_leak(t2_2.b) RETURNING *, t2_1, t2_2;
 UPDATE t2 t2_1 SET b = t2_2.b FROM t2 t2_2
 WHERE t2_1.a = 3 AND t2_2.a = t2_1.a AND t2_2.b = t2_1.b
 AND f_leak(t2_1.b) AND f_leak(t2_2.b) RETURNING *, t2_1, t2_2;
-NOTICE:  f_leak => cde  (seg0 slice3 172.17.0.3:7002 pid=546348)
-NOTICE:  f_leak => cde  (seg0 slice2 172.17.0.3:7002 pid=546324)
+NOTICE:  f_leak => cde  (seg0 slice2 172.17.0.3:7002 pid=138259)
+NOTICE:  f_leak => cde  (seg0 slice3 172.17.0.3:7002 pid=138265)
  id  | a |  b  |  c  | id  | a |  b  |  c  |      t2_1       |      t2_2       
 -----+---+-----+-----+-----+---+-----+-----+-----------------+-----------------
  203 | 3 | cde | 3.3 | 203 | 3 | cde | 3.3 | (203,3,cde,3.3) | (203,3,cde,3.3)
@@ -1948,10 +1952,10 @@ AND f_leak(t1_1.b) AND f_leak(t1_2.b) RETURNING *, t1_1, t1_2;
 UPDATE t1 t1_1 SET b = t1_2.b FROM t1 t1_2
 WHERE t1_1.a = 4 AND t1_2.a = t1_1.a AND t1_2.b = t1_1.b
 AND f_leak(t1_1.b) AND f_leak(t1_2.b) RETURNING *, t1_1, t1_2;
-NOTICE:  f_leak => daddad_updt  (seg0 slice3 172.17.0.3:7002 pid=546348)
-NOTICE:  f_leak => daddad_updt  (seg0 slice2 172.17.0.3:7002 pid=546324)
-NOTICE:  f_leak => defdef  (seg2 slice3 172.17.0.3:7004 pid=546350)
-NOTICE:  f_leak => defdef  (seg2 slice2 172.17.0.3:7004 pid=546325)
+NOTICE:  f_leak => daddad_updt  (seg0 slice3 172.17.0.3:7002 pid=138265)
+NOTICE:  f_leak => defdef  (seg2 slice3 172.17.0.3:7004 pid=138267)
+NOTICE:  f_leak => daddad_updt  (seg0 slice4 172.17.0.3:7002 pid=138271)
+NOTICE:  f_leak => defdef  (seg2 slice4 172.17.0.3:7004 pid=138273)
  id  | a |      b      | id  | a |      b      |        t1_1         |        t1_2         
 -----+---+-------------+-----+---+-------------+---------------------+---------------------
  104 | 4 | daddad_updt | 104 | 4 | daddad_updt | (104,4,daddad_updt) | (104,4,daddad_updt)
@@ -2001,11 +2005,12 @@ EXPLAIN (COSTS OFF) DELETE FROM t1 WHERE f_leak(b);
                Filter: (((a % 2) = 0) AND f_leak(b))
          ->  Seq Scan on t3 t1_3
                Filter: (((a % 2) = 0) AND f_leak(b))
-(11 rows)
+ Optimizer: Postgres query optimizer
+(12 rows)
 
 DELETE FROM only t1 WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
-NOTICE:  f_leak => bbbbbb_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbbbbb_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
  tableoid | id  | a |      b      |         t1          
 ----------+-----+---+-------------+---------------------
  t1       | 102 | 2 | bbbbbb_updt | (102,2,bbbbbb_updt)
@@ -2013,15 +2018,14 @@ NOTICE:  f_leak => daddad_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
 (2 rows)
 
 DELETE FROM t1 WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
-NOTICE:  f_leak => bcdbcd  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => yyyyyy  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => defdef  (seg2 slice1 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => bcdbcd  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => defdef  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => yyyyyy  (seg1 slice1 172.17.0.3:7003 pid=138177)
  tableoid | id  | a |   b    |       t1       
 ----------+-----+---+--------+----------------
+ t2       | 204 | 4 | defdef | (204,4,defdef)
  t2       | 202 | 2 | bcdbcd | (202,2,bcdbcd)
- t2       | 204 | 4 | defdef | (204,4,defdef)
  t3       | 302 | 2 | yyyyyy | (302,2,yyyyyy)
- t2       | 204 | 4 | defdef | (204,4,defdef)
 (3 rows)
 
 --
@@ -2029,6 +2033,8 @@ NOTICE:  f_leak => defdef  (seg2 slice1 172.17.0.3:7004 pid=545545)
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE b1 (a int, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO b1 (SELECT x, md5(x::text) FROM generate_series(-10,10) x);
 CREATE POLICY p1 ON b1 USING (a % 2 = 0);
 ALTER TABLE b1 ENABLE ROW LEVEL SECURITY;
@@ -2049,24 +2055,24 @@ EXPLAIN (COSTS OFF) SELECT * FROM bv1 WHERE f_leak(b);
 (6 rows)
 
 SELECT * FROM bv1 WHERE f_leak(b);
-NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => d3d9446802a44259755d38e6d163e820  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => d3d9446802a44259755d38e6d163e820  (seg2 slice1 172.17.0.3:7004 pid=138178)
  a  |                b                 
 ----+----------------------------------
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
   8 | c9f0f895fb98ab9159f51fd0297e236d
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
+ 10 | d3d9446802a44259755d38e6d163e820
 (5 rows)
 
 INSERT INTO bv1 VALUES (-1, 'xxx'); -- should fail view WCO
-ERROR:  new row violates row-level security policy for table "b1"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy for table "b1"  (seg2 172.17.0.3:7004 pid=138178)
 INSERT INTO bv1 VALUES (11, 'xxx'); -- should fail RLS check
-ERROR:  new row violates row-level security policy for table "b1"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy for table "b1"  (seg2 172.17.0.3:7004 pid=138178)
 INSERT INTO bv1 VALUES (12, 'xxx'); -- ok
 EXPLAIN (COSTS OFF) UPDATE bv1 SET b = 'yyy' WHERE a = 4 AND f_leak(b);
                               QUERY PLAN                               
@@ -2074,53 +2080,47 @@ EXPLAIN (COSTS OFF) UPDATE bv1 SET b = 'yyy' WHERE a = 4 AND f_leak(b);
  Update on b1
    ->  Seq Scan on b1
          Filter: ((a > 0) AND (a = 4) AND ((a % 2) = 0) AND f_leak(b))
-(3 rows)
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 UPDATE bv1 SET b = 'yyy' WHERE a = 4 AND f_leak(b);
-NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 172.17.0.3:7002 pid=138173)
 EXPLAIN (COSTS OFF) DELETE FROM bv1 WHERE a = 6 AND f_leak(b);
                               QUERY PLAN                               
 -----------------------------------------------------------------------
  Delete on b1
    ->  Seq Scan on b1
          Filter: ((a > 0) AND (a = 6) AND ((a % 2) = 0) AND f_leak(b))
-(3 rows)
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 DELETE FROM bv1 WHERE a = 6 AND f_leak(b);
-NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 172.17.0.3:7004 pid=545545)
+NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 172.17.0.3:7004 pid=138178)
 SET SESSION AUTHORIZATION regress_rls_alice;
 SELECT * FROM b1;
   a  |                b                 
 -----+----------------------------------
+ -10 | 1b0fd9efa5279c4203b7c70233f86dbf
+  -7 | 74687a12d3915d3c4d83f1af7b3683d5
+  -6 | 596a3d04481816330f07e4f97510c28f
+   2 | c81e728d9d4c2f636f067f89cc14862c
+   3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
+   7 | 8f14e45fceea167a5a36dedd4bea2543
+   8 | c9f0f895fb98ab9159f51fd0297e236d
+   4 | yyy
   -8 | a8d2ec85eaf98407310b72eb73dda247
   -1 | 6bb61e3b7bce0931da574d19d1d82c88
    5 | e4da3b7fbbce2345d7772b0674a318d5
    9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
   10 | d3d9446802a44259755d38e6d163e820
   -9 | 252e691406782824eec43d7eadc3d256
-  -8 | a8d2ec85eaf98407310b72eb73dda247
-  -7 | 74687a12d3915d3c4d83f1af7b3683d5
-  -6 | 596a3d04481816330f07e4f97510c28f
   -5 | 47c1b025fa18ea96c33fbb6718688c0f
   -4 | 0267aaf632e87a63288a08331f22c7c3
   -3 | b3149ecea4628efd23d2f86e5a723472
   -2 | 5d7b9adcbe1c629ec722529dd12e5129
-  -1 | 6bb61e3b7bce0931da574d19d1d82c88
    0 | cfcd208495d565ef66e7dff9f98764da
    1 | c4ca4238a0b923820dcc509a6f75849b
   12 | xxx
- -10 | 1b0fd9efa5279c4203b7c70233f86dbf
-  -7 | 74687a12d3915d3c4d83f1af7b3683d5
-  -6 | 596a3d04481816330f07e4f97510c28f
-   2 | c81e728d9d4c2f636f067f89cc14862c
-   3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
-   5 | e4da3b7fbbce2345d7772b0674a318d5
-   7 | 8f14e45fceea167a5a36dedd4bea2543
-   8 | c9f0f895fb98ab9159f51fd0297e236d
-   9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
-  10 | d3d9446802a44259755d38e6d163e820
-  12 | xxx
-   4 | yyy
 (21 rows)
 
 --
@@ -2146,7 +2146,7 @@ SELECT * FROM document WHERE did = 2;
 -- alternative UPDATE path happens to be taken):
 INSERT INTO document VALUES (2, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_carol', 'my first novel')
     ON CONFLICT (did) DO UPDATE SET dtitle = EXCLUDED.dtitle, dauthor = EXCLUDED.dauthor;
-ERROR:  new row violates row-level security policy for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 -- Violates USING qual for UPDATE policy p3.
 --
 -- UPDATE path is taken, but UPDATE fails purely because *existing* row to be
@@ -2155,7 +2155,7 @@ ERROR:  new row violates row-level security policy for table "document"  (seg0 1
 INSERT INTO document VALUES (33, 22, 1, 'regress_rls_bob', 'okay science fiction'); -- preparation for next statement
 INSERT INTO document VALUES (33, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'Some novel, replaces sci-fi') -- takes UPDATE path
     ON CONFLICT (did) DO UPDATE SET dtitle = EXCLUDED.dtitle;
-ERROR:  new row violates row-level security policy (USING expression) for table "document"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy (USING expression) for table "document"  (seg2 172.17.0.3:7004 pid=138178)
 -- Fine (we UPDATE, since INSERT WCOs and UPDATE security barrier quals + WCOs
 -- not violated):
 INSERT INTO document VALUES (2, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'my first novel')
@@ -2186,7 +2186,7 @@ INSERT INTO document VALUES (78, (SELECT cid from category WHERE cname = 'novel'
 -- passing quals:
 INSERT INTO document VALUES (78, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'some technology novel')
     ON CONFLICT (did) DO UPDATE SET dtitle = EXCLUDED.dtitle, cid = 33 RETURNING *;
-ERROR:  new row violates row-level security policy (USING expression) for table "document"  (seg1 slice1 172.17.0.3:7003 pid=545535)
+ERROR:  new row violates row-level security policy (USING expression) for table "document"  (seg1 slice1 172.17.0.3:7003 pid=138177)
 -- Don't fail just because INSERT doesn't satisfy WITH CHECK option that
 -- originated as a barrier/USING() qual from the UPDATE.  Note that the UPDATE
 -- path *isn't* taken, and so UPDATE-related policy does not apply:
@@ -2203,7 +2203,7 @@ INSERT INTO document VALUES (79, (SELECT cid from category WHERE cname = 'techno
 -- irrelevant, in fact.
 INSERT INTO document VALUES (79, (SELECT cid from category WHERE cname = 'technology'), 1, 'regress_rls_bob', 'technology book, can only insert')
     ON CONFLICT (did) DO UPDATE SET dtitle = EXCLUDED.dtitle RETURNING *;
-ERROR:  new row violates row-level security policy (USING expression) for table "document"  (seg1 slice1 172.17.0.3:7003 pid=545535)
+ERROR:  new row violates row-level security policy (USING expression) for table "document"  (seg1 slice1 172.17.0.3:7003 pid=138177)
 -- Test default USING qual enforced as WCO
 SET SESSION AUTHORIZATION regress_rls_alice;
 DROP POLICY p1 ON document;
@@ -2225,14 +2225,14 @@ SET SESSION AUTHORIZATION regress_rls_bob;
 -- UPDATE to make this fail:
 INSERT INTO document VALUES (79, (SELECT cid from category WHERE cname = 'technology'), 1, 'regress_rls_bob', 'technology book, can only insert')
     ON CONFLICT (did) DO UPDATE SET dtitle = EXCLUDED.dtitle RETURNING *;
-ERROR:  new row violates row-level security policy for table "document"  (seg1 slice1 172.17.0.3:7003 pid=545535)
+ERROR:  new row violates row-level security policy for table "document"  (seg1 slice1 172.17.0.3:7003 pid=138177)
 -- UPDATE path is taken here.  Existing tuple passes, since its cid
 -- corresponds to "novel", but default USING qual is enforced against
 -- post-UPDATE tuple too (as always when updating with a policy that lacks an
 -- explicit WCO), and so this fails:
 INSERT INTO document VALUES (2, (SELECT cid from category WHERE cname = 'technology'), 1, 'regress_rls_bob', 'my first novel')
     ON CONFLICT (did) DO UPDATE SET cid = EXCLUDED.cid, dtitle = EXCLUDED.dtitle RETURNING *;
-ERROR:  new row violates row-level security policy for table "document"  (seg0 slice1 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "document"  (seg0 slice1 172.17.0.3:7002 pid=138173)
 SET SESSION AUTHORIZATION regress_rls_alice;
 DROP POLICY p3_with_default ON document;
 --
@@ -2246,16 +2246,16 @@ SET SESSION AUTHORIZATION regress_rls_bob;
 -- Fails, since ALL WCO is enforced in insert path:
 INSERT INTO document VALUES (80, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_carol', 'my first novel')
     ON CONFLICT (did) DO UPDATE SET dtitle = EXCLUDED.dtitle, cid = 33;
-ERROR:  new row violates row-level security policy for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 -- Fails, since ALL policy USING qual is enforced (existing, target tuple is in
 -- violation, since it has the "manga" cid):
 INSERT INTO document VALUES (4, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'my first novel')
     ON CONFLICT (did) DO UPDATE SET dtitle = EXCLUDED.dtitle;
-ERROR:  new row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 -- Fails, since ALL WCO are enforced:
 INSERT INTO document VALUES (1, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'my first novel')
     ON CONFLICT (did) DO UPDATE SET dauthor = 'regress_rls_carol';
-ERROR:  new row violates row-level security policy for table "document"  (seg1 172.17.0.3:7003 pid=545535)
+ERROR:  new row violates row-level security policy for table "document"  (seg1 172.17.0.3:7003 pid=138177)
 --
 -- MERGE
 --
@@ -2276,20 +2276,20 @@ CREATE POLICY p4 ON document FOR DELETE
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |              dtitle              | dnotes 
 -----+-----+--------+-------------------+----------------------------------+--------
+   3 |  22 |      2 | regress_rls_bob   | my science fiction               | 
+   4 |  44 |      1 | regress_rls_bob   | my first manga                   | 
+   7 |  33 |      2 | regress_rls_carol | great technology book            | 
+   8 |  44 |      1 | regress_rls_carol | great manga                      | 
+   2 |  11 |      2 | regress_rls_bob   | my first novel                   | 
+   1 |  11 |      1 | regress_rls_bob   | my first novel                   | 
+  78 |  33 |      1 | regress_rls_bob   | some technology novel            | 
+  79 |  33 |      1 | regress_rls_bob   | technology book, can only insert | 
    5 |  44 |      2 | regress_rls_bob   | my second manga                  | 
    6 |  22 |      1 | regress_rls_carol | great science fiction            | 
    9 |  22 |      1 | regress_rls_dave  | awesome science fiction          | 
   10 |  33 |      2 | regress_rls_dave  | awesome technology book          | 
   11 |  33 |      1 | regress_rls_carol | hoge                             | 
   33 |  22 |      1 | regress_rls_bob   | okay science fiction             | 
-   1 |  11 |      1 | regress_rls_bob   | my first novel                   | 
-  78 |  33 |      1 | regress_rls_bob   | some technology novel            | 
-  79 |  33 |      1 | regress_rls_bob   | technology book, can only insert | 
-   3 |  22 |      2 | regress_rls_bob   | my science fiction               | 
-   4 |  44 |      1 | regress_rls_bob   | my first manga                   | 
-   7 |  33 |      2 | regress_rls_carol | great technology book            | 
-   8 |  44 |      1 | regress_rls_carol | great manga                      | 
-   2 |  11 |      2 | regress_rls_bob   | my first novel                   | 
 (14 rows)
 
 SET SESSION AUTHORIZATION regress_rls_bob;
@@ -2299,7 +2299,7 @@ USING (SELECT 1 as sdid) s
 ON did = s.sdid
 WHEN MATCHED THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge1 ', dauthor = 'regress_rls_alice';
-ERROR:  new row violates row-level security policy for table "document"  (seg1 172.17.0.3:7003 pid=545535)
+ERROR:  new row violates row-level security policy for table "document"  (seg1 172.17.0.3:7003 pid=138177)
 -- Should be OK since USING and WITH CHECK quals pass
 MERGE INTO document d
 USING (SELECT 1 as sdid) s
@@ -2319,7 +2319,7 @@ USING (SELECT 3 as sdid) s
 ON did = s.sdid
 WHEN MATCHED THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge ';
-ERROR:  target row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  target row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 -- The same thing with DELETE action, but fails again because no permissions
 -- to delete items in 'science fiction' category that did 3 belongs to.
 MERGE INTO document d
@@ -2327,7 +2327,7 @@ USING (SELECT 3 as sdid) s
 ON did = s.sdid
 WHEN MATCHED THEN
 	DELETE;
-ERROR:  target row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  target row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 -- Document with did 4 belongs to 'manga' category which is allowed for
 -- deletion. But this fails because the UPDATE action is matched first and
 -- UPDATE policy does not allow updation in the category.
@@ -2338,7 +2338,7 @@ WHEN MATCHED AND dnotes = '' THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge '
 WHEN MATCHED THEN
 	DELETE;
-ERROR:  target row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  target row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 -- UPDATE action is not matched this time because of the WHEN qual.
 -- DELETE still fails because role regress_rls_bob does not have SELECT
 -- privileges on 'manga' category row in the category table.
@@ -2349,7 +2349,7 @@ WHEN MATCHED AND dnotes <> '' THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge '
 WHEN MATCHED THEN
 	DELETE;
-ERROR:  target row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  target row violates row-level security policy (USING expression) for table "document"  (seg0 172.17.0.3:7002 pid=138173)
 SELECT * FROM document WHERE did = 4;
  did | cid | dlevel |     dauthor     |     dtitle     | dnotes 
 -----+-----+--------+-----------------+----------------+--------
@@ -2448,7 +2448,11 @@ SELECT * FROM document;
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE z1 (a int, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE z2 (a int, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 GRANT SELECT ON z1,z2 TO regress_rls_group1, regress_rls_group2,
     regress_rls_bob, regress_rls_carol;
 INSERT INTO z1 VALUES
@@ -2461,8 +2465,8 @@ CREATE POLICY p2 ON z1 TO regress_rls_group2 USING (a % 2 = 1);
 ALTER TABLE z1 ENABLE ROW LEVEL SECURITY;
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM z1 WHERE f_leak(b);
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -2520,8 +2524,8 @@ EXPLAIN (COSTS OFF) EXECUTE plancache_test3;
 
 SET ROLE regress_rls_group1;
 SELECT * FROM z1 WHERE f_leak(b);
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -2576,12 +2580,12 @@ EXPLAIN (COSTS OFF) EXECUTE plancache_test3;
 
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM z1 WHERE f_leak(b);
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
  a |  b  
 ---+-----
- 1 | aba
  3 | ccc
+ 1 | aba
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM z1 WHERE f_leak(b);
@@ -2632,8 +2636,8 @@ EXPLAIN (COSTS OFF) EXECUTE plancache_test3;
 
 SET ROLE regress_rls_group2;
 SELECT * FROM z1 WHERE f_leak(b);
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
  a |  b  
 ---+-----
  3 | ccc
@@ -2696,16 +2700,16 @@ GRANT SELECT ON rls_view TO regress_rls_bob;
 -- Query as role that is not owner of view or table.  Should return all records.
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
  a |  b  
 ---+-----
- 1 | aba
  2 | bbb
  3 | ccc
  4 | dad
+ 1 | aba
 (4 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
@@ -2720,16 +2724,16 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 -- Query as view/table owner.  Should return all records.
 SET SESSION AUTHORIZATION regress_rls_alice;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
  a |  b  
 ---+-----
+ 1 | aba
  2 | bbb
  3 | ccc
  4 | dad
- 1 | aba
 (4 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
@@ -2750,8 +2754,8 @@ GRANT SELECT ON rls_view TO regress_rls_alice;
 -- Should return records based on view owner policies.
 SET SESSION AUTHORIZATION regress_rls_alice;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -2771,8 +2775,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 -- Should return records based on view owner policies.
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -2799,8 +2803,8 @@ SET SESSION AUTHORIZATION regress_rls_bob;
 GRANT SELECT ON rls_view TO regress_rls_carol;
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -2819,6 +2823,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 -- Policy requiring access to another table.
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE z1_blacklist (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO z1_blacklist VALUES (3), (4);
 CREATE POLICY p3 ON z1 AS RESTRICTIVE USING (a NOT IN (SELECT a FROM z1_blacklist));
 -- Query as role that is not owner of table but is owner of view without permissions.
@@ -2838,7 +2844,7 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 GRANT SELECT ON z1_blacklist TO regress_rls_bob;
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -2859,7 +2865,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 -- Query as role that is not the owner of the table or view with permissions.
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -2893,16 +2899,16 @@ GRANT SELECT ON rls_view TO regress_rls_bob;
 GRANT SELECT ON rls_view TO regress_rls_carol;
 -- Query as table owner.  Should return all records.
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
+ 1 | aba
  2 | bbb
  3 | ccc
  4 | dad
- 1 | aba
 (4 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
@@ -2918,8 +2924,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 -- Should return records based on current user's policies.
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -2937,8 +2943,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
  a |  b  
 ---+-----
  3 | ccc
@@ -2965,10 +2971,10 @@ GRANT SELECT ON rls_view TO regress_rls_carol;
 -- Query as table owner.  Should return all records.
 SET SESSION AUTHORIZATION regress_rls_alice;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  1 | aba
@@ -2990,8 +2996,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 -- Should return records based on current user's policies.
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -3009,8 +3015,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
  a |  b  
 ---+-----
  3 | ccc
@@ -3046,7 +3052,7 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 GRANT SELECT ON z1_blacklist TO regress_rls_bob;
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  
 ---+-----
  2 | bbb
@@ -3075,7 +3081,7 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 GRANT SELECT ON z1_blacklist TO regress_rls_carol;
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.3:7003 pid=138177)
  a |  b  
 ---+-----
  1 | aba
@@ -3100,6 +3106,8 @@ DROP VIEW rls_view;
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE x1 (a int, b text, c text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 GRANT ALL ON x1 TO PUBLIC;
 INSERT INTO x1 VALUES
     (1, 'abc', 'regress_rls_bob'),
@@ -3118,12 +3126,12 @@ CREATE POLICY p4 ON x1 FOR DELETE USING (a < 8);
 ALTER TABLE x1 ENABLE ROW LEVEL SECURITY;
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM x1 WHERE f_leak(b) ORDER BY a ASC;
-NOTICE:  f_leak => bcd  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => efg  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => fgh  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => def  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => bcd  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => efg  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => def  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |  b  |         c         
 ---+-----+-------------------
  1 | abc | regress_rls_bob
@@ -3135,30 +3143,30 @@ NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=545540)
 (6 rows)
 
 UPDATE x1 SET b = b || '_updt' WHERE f_leak(b) RETURNING *;
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => bcd  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => efg  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => def  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => fgh  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => efg  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => fgh  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => bcd  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => def  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |    b     |         c         
 ---+----------+-------------------
+ 5 | efg_updt | regress_rls_bob
+ 6 | fgh_updt | regress_rls_bob
  1 | abc_updt | regress_rls_bob
  2 | bcd_updt | regress_rls_bob
  4 | def_updt | regress_rls_carol
- 5 | efg_updt | regress_rls_bob
- 6 | fgh_updt | regress_rls_bob
  8 | fgh_updt | regress_rls_carol
 (6 rows)
 
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM x1 WHERE f_leak(b) ORDER BY a ASC;
-NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => fgh_updt  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => bcd_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => def_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => fgh_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh_updt  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => bcd_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => def_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |    b     |         c         
 ---+----------+-------------------
  2 | bcd_updt | regress_rls_bob
@@ -3170,12 +3178,12 @@ NOTICE:  f_leak => fgh_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
 (6 rows)
 
 UPDATE x1 SET b = b || '_updt' WHERE f_leak(b) RETURNING *;
-NOTICE:  f_leak => fgh_updt  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => bcd_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => def_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => fgh_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => fgh_updt  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => cde  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => bcd_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => def_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |       b       |         c         
 ---+---------------+-------------------
  6 | fgh_updt_updt | regress_rls_bob
@@ -3187,19 +3195,19 @@ NOTICE:  f_leak => fgh_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
 (6 rows)
 
 DELETE FROM x1 WHERE f_leak(b) RETURNING *;
-NOTICE:  f_leak => cde_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => fgh_updt_updt  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => fgh_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => bcd_updt_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => def_updt_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => fgh_updt_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => cde_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh_updt_updt  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => fgh_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => bcd_updt_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => def_updt_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => fgh_updt_updt  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a |       b       |         c         
 ---+---------------+-------------------
+ 6 | fgh_updt_updt | regress_rls_bob
  3 | cde_updt      | regress_rls_carol
  7 | fgh_updt      | regress_rls_carol
  2 | bcd_updt_updt | regress_rls_bob
  4 | def_updt_updt | regress_rls_carol
- 6 | fgh_updt_updt | regress_rls_bob
  8 | fgh_updt_updt | regress_rls_carol
 (6 rows)
 
@@ -3208,7 +3216,11 @@ NOTICE:  f_leak => fgh_updt_updt  (seg0 slice1 172.17.0.3:7002 pid=545540)
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE y1 (a int, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE y2 (a int, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 GRANT ALL ON y1, y2 TO regress_rls_bob;
 CREATE POLICY p1 ON y1 FOR ALL USING (a % 2 = 0);
 CREATE POLICY p2 ON y1 FOR SELECT USING (a > 2);
@@ -3258,20 +3270,20 @@ CREATE POLICY p2 ON y2 USING (a % 3 = 0);
 CREATE POLICY p3 ON y2 USING (a % 4 = 0);
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM y2 WHERE f_leak(b);
-NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => 45c48cce2e2d7fbdea1afc51c7c6ad26  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => d3d9446802a44259755d38e6d163e820  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => aab3238922bcc25a6f606eb525ffdc56  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => cfcd208495d565ef66e7dff9f98764da  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => eccbc87e4b5ce2fe28308fd9f2a7baf3  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => c20ad4d76fe97759aa27a0c99bff6710  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => 9bf31c7ff062936a96d3c8bd1f8f2ff3  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => 98f13708210194c475687be6106a3b84  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => c74d97b01eae257e44aa9d5bade97baf  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => 6f4922f45568161a8cdf4ad2299f6d23  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => 45c48cce2e2d7fbdea1afc51c7c6ad26  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => eccbc87e4b5ce2fe28308fd9f2a7baf3  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => d3d9446802a44259755d38e6d163e820  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => cfcd208495d565ef66e7dff9f98764da  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => c20ad4d76fe97759aa27a0c99bff6710  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => 9bf31c7ff062936a96d3c8bd1f8f2ff3  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => aab3238922bcc25a6f606eb525ffdc56  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => c74d97b01eae257e44aa9d5bade97baf  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => 98f13708210194c475687be6106a3b84  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => 6f4922f45568161a8cdf4ad2299f6d23  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a  |                b                 
 ----+----------------------------------
   6 | 1679091c5a880faf6fb5e6087eb1b2dc
@@ -3279,6 +3291,9 @@ NOTICE:  f_leak => 6f4922f45568161a8cdf4ad2299f6d23  (seg0 slice1 172.17.0.3:700
  10 | d3d9446802a44259755d38e6d163e820
  14 | aab3238922bcc25a6f606eb525ffdc56
   0 | cfcd208495d565ef66e7dff9f98764da
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
+ 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
+ 20 | 98f13708210194c475687be6106a3b84
   2 | c81e728d9d4c2f636f067f89cc14862c
   3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
   4 | a87ff679a2f3e71d9181a67b7542122c
@@ -3300,50 +3315,43 @@ EXPLAIN (COSTS OFF) SELECT * FROM y2 WHERE f_leak(b);
 -- Qual push-down of leaky functions, when not referring to table
 --
 SELECT * FROM y2 WHERE f_leak('abc');
-NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => abc  (seg0 slice1 172.17.0.3:7002 pid=138173)
  a  |                b                 
 ----+----------------------------------
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
-  9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
- 10 | d3d9446802a44259755d38e6d163e820
- 14 | aab3238922bcc25a6f606eb525ffdc56
   0 | cfcd208495d565ef66e7dff9f98764da
  12 | c20ad4d76fe97759aa27a0c99bff6710
  15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
  20 | 98f13708210194c475687be6106a3b84
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
+  9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
+ 10 | d3d9446802a44259755d38e6d163e820
+ 14 | aab3238922bcc25a6f606eb525ffdc56
   2 | c81e728d9d4c2f636f067f89cc14862c
   3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
   4 | a87ff679a2f3e71d9181a67b7542122c
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
-  9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
- 10 | d3d9446802a44259755d38e6d163e820
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 14 | aab3238922bcc25a6f606eb525ffdc56
- 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
- 20 | 98f13708210194c475687be6106a3b84
 (14 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM y2 WHERE f_leak('abc');
@@ -3358,11 +3366,13 @@ EXPLAIN (COSTS OFF) SELECT * FROM y2 WHERE f_leak('abc');
 CREATE TABLE test_qual_pushdown (
     abc text
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'abc' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO test_qual_pushdown VALUES ('abc'),('def');
 ANALYZE test_qual_pushdown;
 SELECT * FROM y2 JOIN test_qual_pushdown ON (b = abc) WHERE f_leak(abc);
-NOTICE:  f_leak => def  (seg2 slice2 172.17.0.3:7004 pid=546684)
-NOTICE:  f_leak => abc  (seg0 slice2 172.17.0.3:7002 pid=546682)
+NOTICE:  f_leak => abc  (seg0 slice2 172.17.0.3:7002 pid=138311)
+NOTICE:  f_leak => def  (seg2 slice2 172.17.0.3:7004 pid=138313)
  a | b | abc 
 ---+---+-----
 (0 rows)
@@ -3383,20 +3393,20 @@ EXPLAIN (COSTS OFF) SELECT * FROM y2 JOIN test_qual_pushdown ON (b = abc) WHERE 
 (10 rows)
 
 SELECT * FROM y2 JOIN test_qual_pushdown ON (b = abc) WHERE f_leak(b);
-NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => eccbc87e4b5ce2fe28308fd9f2a7baf3  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => c74d97b01eae257e44aa9d5bade97baf  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => 6f4922f45568161a8cdf4ad2299f6d23  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => 45c48cce2e2d7fbdea1afc51c7c6ad26  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => d3d9446802a44259755d38e6d163e820  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => aab3238922bcc25a6f606eb525ffdc56  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => cfcd208495d565ef66e7dff9f98764da  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => c20ad4d76fe97759aa27a0c99bff6710  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => 9bf31c7ff062936a96d3c8bd1f8f2ff3  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => 98f13708210194c475687be6106a3b84  (seg1 slice1 172.17.0.3:7003 pid=545535)
+NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => 45c48cce2e2d7fbdea1afc51c7c6ad26  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => d3d9446802a44259755d38e6d163e820  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => aab3238922bcc25a6f606eb525ffdc56  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => eccbc87e4b5ce2fe28308fd9f2a7baf3  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => c74d97b01eae257e44aa9d5bade97baf  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => 6f4922f45568161a8cdf4ad2299f6d23  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => cfcd208495d565ef66e7dff9f98764da  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => c20ad4d76fe97759aa27a0c99bff6710  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => 9bf31c7ff062936a96d3c8bd1f8f2ff3  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => 98f13708210194c475687be6106a3b84  (seg1 slice1 172.17.0.3:7003 pid=138177)
  a | b | abc 
 ---+---+-----
 (0 rows)
@@ -3425,6 +3435,8 @@ NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to table t2
 drop cascades to table t3
 CREATE TABLE t1 (a integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 GRANT SELECT ON t1 TO regress_rls_bob, regress_rls_carol;
 CREATE POLICY p1 ON t1 TO regress_rls_bob USING ((a % 2) = 0);
 CREATE POLICY p2 ON t1 TO regress_rls_carol USING ((a % 4) = 0);
@@ -3472,36 +3484,38 @@ EXPLAIN (COSTS OFF) EXECUTE role_inval;
 RESET SESSION AUTHORIZATION;
 DROP TABLE t1 CASCADE;
 CREATE TABLE t1 (a integer, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY p1 ON t1 USING (a % 2 = 0);
 ALTER TABLE t1 ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON t1 TO regress_rls_bob;
 INSERT INTO t1 (SELECT x, md5(x::text) FROM generate_series(0,20) x);
 SET SESSION AUTHORIZATION regress_rls_bob;
 WITH cte1 AS MATERIALIZED (SELECT * FROM t1 WHERE f_leak(b)) SELECT * FROM cte1;
-NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => cfcd208495d565ef66e7dff9f98764da  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => c20ad4d76fe97759aa27a0c99bff6710  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => 98f13708210194c475687be6106a3b84  (seg1 slice1 172.17.0.3:7003 pid=545535)
-NOTICE:  f_leak => d3d9446802a44259755d38e6d163e820  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => aab3238922bcc25a6f606eb525ffdc56  (seg2 slice1 172.17.0.3:7004 pid=545545)
-NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => c74d97b01eae257e44aa9d5bade97baf  (seg0 slice1 172.17.0.3:7002 pid=545540)
-NOTICE:  f_leak => 6f4922f45568161a8cdf4ad2299f6d23  (seg0 slice1 172.17.0.3:7002 pid=545540)
+NOTICE:  f_leak => c81e728d9d4c2f636f067f89cc14862c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => c74d97b01eae257e44aa9d5bade97baf  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => 6f4922f45568161a8cdf4ad2299f6d23  (seg0 slice1 172.17.0.3:7002 pid=138173)
+NOTICE:  f_leak => cfcd208495d565ef66e7dff9f98764da  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => c20ad4d76fe97759aa27a0c99bff6710  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => 98f13708210194c475687be6106a3b84  (seg1 slice1 172.17.0.3:7003 pid=138177)
+NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => d3d9446802a44259755d38e6d163e820  (seg2 slice1 172.17.0.3:7004 pid=138178)
+NOTICE:  f_leak => aab3238922bcc25a6f606eb525ffdc56  (seg2 slice1 172.17.0.3:7004 pid=138178)
  a  |                b                 
 ----+----------------------------------
-  0 | cfcd208495d565ef66e7dff9f98764da
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
- 10 | d3d9446802a44259755d38e6d163e820
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
+  0 | cfcd208495d565ef66e7dff9f98764da
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
  20 | 98f13708210194c475687be6106a3b84
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
+ 10 | d3d9446802a44259755d38e6d163e820
+ 14 | aab3238922bcc25a6f606eb525ffdc56
 (11 rows)
 
 EXPLAIN (COSTS OFF)
@@ -3516,29 +3530,25 @@ WITH cte1 AS MATERIALIZED (SELECT * FROM t1 WHERE f_leak(b)) SELECT * FROM cte1;
 (5 rows)
 
 WITH cte1 AS (UPDATE t1 SET a = a + 1 RETURNING *) SELECT * FROM cte1; --fail
-ERROR:  new row violates row-level security policy for table "t1"  (seg1 slice1 172.17.0.3:7003 pid=545535)
+ERROR:  new row violates row-level security policy for table "t1"  (seg0 slice1 172.17.0.3:7002 pid=138173)
 WITH cte1 AS (UPDATE t1 SET a = a RETURNING *) SELECT * FROM cte1; --ok
  a  |                b                 
 ----+----------------------------------
+  2 | c81e728d9d4c2f636f067f89cc14862c
+  4 | a87ff679a2f3e71d9181a67b7542122c
+  8 | c9f0f895fb98ab9159f51fd0297e236d
+ 16 | c74d97b01eae257e44aa9d5bade97baf
+ 18 | 6f4922f45568161a8cdf4ad2299f6d23
   0 | cfcd208495d565ef66e7dff9f98764da
  12 | c20ad4d76fe97759aa27a0c99bff6710
  20 | 98f13708210194c475687be6106a3b84
-  2 | c81e728d9d4c2f636f067f89cc14862c
-  4 | a87ff679a2f3e71d9181a67b7542122c
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
-  8 | c9f0f895fb98ab9159f51fd0297e236d
- 10 | d3d9446802a44259755d38e6d163e820
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 14 | aab3238922bcc25a6f606eb525ffdc56
- 16 | c74d97b01eae257e44aa9d5bade97baf
- 18 | 6f4922f45568161a8cdf4ad2299f6d23
   6 | 1679091c5a880faf6fb5e6087eb1b2dc
  10 | d3d9446802a44259755d38e6d163e820
  14 | aab3238922bcc25a6f606eb525ffdc56
 (11 rows)
 
 WITH cte1 AS (INSERT INTO t1 VALUES (21, 'Fail') RETURNING *) SELECT * FROM cte1; --fail
-ERROR:  new row violates row-level security policy for table "t1"  (seg2 slice1 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy for table "t1"  (seg2 slice1 172.17.0.3:7004 pid=138178)
 WITH cte1 AS (INSERT INTO t1 VALUES (20, 'Success') RETURNING *) SELECT * FROM cte1; --ok
  a  |    b    
 ----+---------
@@ -3575,6 +3585,8 @@ SELECT polname, relname
 --
 SET SESSION AUTHORIZATION regress_rls_bob;
 CREATE TABLE t2 (a integer, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO t2 (SELECT * FROM t1);
 EXPLAIN (COSTS OFF) INSERT INTO t2 (SELECT * FROM t1);
              QUERY PLAN              
@@ -3593,13 +3605,11 @@ SELECT * FROM t2;
  14 | aab3238922bcc25a6f606eb525ffdc56
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
- 10 | d3d9446802a44259755d38e6d163e820
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
+  0 | cfcd208495d565ef66e7dff9f98764da
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
  20 | 98f13708210194c475687be6106a3b84
  20 | Success
 (12 rows)
@@ -3613,39 +3623,41 @@ EXPLAIN (COSTS OFF) SELECT * FROM t2;
 (3 rows)
 
 CREATE TABLE t3 AS SELECT * FROM t1;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SELECT * FROM t3;
  a  |                b                 
 ----+----------------------------------
   0 | cfcd208495d565ef66e7dff9f98764da
-  2 | c81e728d9d4c2f636f067f89cc14862c
-  4 | a87ff679a2f3e71d9181a67b7542122c
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
-  8 | c9f0f895fb98ab9159f51fd0297e236d
- 10 | d3d9446802a44259755d38e6d163e820
  12 | c20ad4d76fe97759aa27a0c99bff6710
- 14 | aab3238922bcc25a6f606eb525ffdc56
- 16 | c74d97b01eae257e44aa9d5bade97baf
- 18 | 6f4922f45568161a8cdf4ad2299f6d23
  20 | 98f13708210194c475687be6106a3b84
  20 | Success
+  2 | c81e728d9d4c2f636f067f89cc14862c
+  4 | a87ff679a2f3e71d9181a67b7542122c
+  8 | c9f0f895fb98ab9159f51fd0297e236d
+ 16 | c74d97b01eae257e44aa9d5bade97baf
+ 18 | 6f4922f45568161a8cdf4ad2299f6d23
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
+ 10 | d3d9446802a44259755d38e6d163e820
+ 14 | aab3238922bcc25a6f606eb525ffdc56
 (12 rows)
 
 SELECT * INTO t4 FROM t1;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SELECT * FROM t4;
  a  |                b                 
 ----+----------------------------------
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
- 14 | aab3238922bcc25a6f606eb525ffdc56
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
- 10 | d3d9446802a44259755d38e6d163e820
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
+ 10 | d3d9446802a44259755d38e6d163e820
+ 14 | aab3238922bcc25a6f606eb525ffdc56
+  0 | cfcd208495d565ef66e7dff9f98764da
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
  20 | 98f13708210194c475687be6106a3b84
  20 | Success
 (12 rows)
@@ -3655,7 +3667,11 @@ SELECT * FROM t4;
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE blog (id integer, author text, post text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE comment (blog_id integer, message text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'blog_id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 GRANT ALL ON blog, comment TO regress_rls_bob;
 CREATE POLICY blog_1 ON blog USING (id % 2 = 0);
 ALTER TABLE blog ENABLE ROW LEVEL SECURITY;
@@ -3719,35 +3735,28 @@ RESET SESSION AUTHORIZATION;
 SELECT * FROM t1;
  a  |                b                 
 ----+----------------------------------
-  5 | e4da3b7fbbce2345d7772b0674a318d5
-  9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
- 11 | 6512bd43d9caa6e02c990b0a82652dca
- 13 | c51ce410c124a10e0db5e4b97fc2af39
- 17 | 70efdf2ec9b086079795c442636b55fb
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
- 14 | aab3238922bcc25a6f606eb525ffdc56
   3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
-  5 | e4da3b7fbbce2345d7772b0674a318d5
   7 | 8f14e45fceea167a5a36dedd4bea2543
-  9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
- 11 | 6512bd43d9caa6e02c990b0a82652dca
- 13 | c51ce410c124a10e0db5e4b97fc2af39
- 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
- 17 | 70efdf2ec9b086079795c442636b55fb
  19 | 1f0e3dad99908345f7439f8ffabdffc4
-  0 | cfcd208495d565ef66e7dff9f98764da
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
- 10 | d3d9446802a44259755d38e6d163e820
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
+  1 | c4ca4238a0b923820dcc509a6f75849b
+ 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
+  0 | cfcd208495d565ef66e7dff9f98764da
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
  20 | 98f13708210194c475687be6106a3b84
  20 | Success
+  5 | e4da3b7fbbce2345d7772b0674a318d5
+  9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
+ 11 | 6512bd43d9caa6e02c990b0a82652dca
+ 13 | c51ce410c124a10e0db5e4b97fc2af39
+ 17 | 70efdf2ec9b086079795c442636b55fb
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
+ 10 | d3d9446802a44259755d38e6d163e820
+ 14 | aab3238922bcc25a6f606eb525ffdc56
 (22 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1;
@@ -3763,6 +3772,14 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 SELECT * FROM t1;
  a  |                b                 
 ----+----------------------------------
+  3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
+  7 | 8f14e45fceea167a5a36dedd4bea2543
+ 19 | 1f0e3dad99908345f7439f8ffabdffc4
+  2 | c81e728d9d4c2f636f067f89cc14862c
+  4 | a87ff679a2f3e71d9181a67b7542122c
+  8 | c9f0f895fb98ab9159f51fd0297e236d
+ 16 | c74d97b01eae257e44aa9d5bade97baf
+ 18 | 6f4922f45568161a8cdf4ad2299f6d23
   1 | c4ca4238a0b923820dcc509a6f75849b
  15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
   0 | cfcd208495d565ef66e7dff9f98764da
@@ -3777,14 +3794,6 @@ SELECT * FROM t1;
   6 | 1679091c5a880faf6fb5e6087eb1b2dc
  10 | d3d9446802a44259755d38e6d163e820
  14 | aab3238922bcc25a6f606eb525ffdc56
-  3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
-  7 | 8f14e45fceea167a5a36dedd4bea2543
- 19 | 1f0e3dad99908345f7439f8ffabdffc4
-  2 | c81e728d9d4c2f636f067f89cc14862c
-  4 | a87ff679a2f3e71d9181a67b7542122c
-  8 | c9f0f895fb98ab9159f51fd0297e236d
- 16 | c74d97b01eae257e44aa9d5bade97baf
- 18 | 6f4922f45568161a8cdf4ad2299f6d23
 (22 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1;
@@ -3832,6 +3841,8 @@ RESET SESSION AUTHORIZATION;
 DROP TABLE copy_t CASCADE;
 ERROR:  table "copy_t" does not exist
 CREATE TABLE copy_t (a integer, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY p1 ON copy_t USING (a % 2 = 0);
 ALTER TABLE copy_t ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON copy_t TO regress_rls_bob, regress_rls_exempt_user;
@@ -3917,6 +3928,8 @@ ERROR:  permission denied for table copy_t
 RESET SESSION AUTHORIZATION;
 SET row_security TO ON;
 CREATE TABLE copy_rel_to (a integer, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY p1 ON copy_rel_to USING (a % 2 = 0);
 ALTER TABLE copy_rel_to ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON copy_rel_to TO regress_rls_bob, regress_rls_exempt_user;
@@ -3985,6 +3998,8 @@ DROP TABLE copy_rel_to CASCADE;
 -- Check WHERE CURRENT OF
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE current_check (currentid int, payload text, rlsuser text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'currentid' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 GRANT ALL ON current_check TO PUBLIC;
 INSERT INTO current_check VALUES
     (1, 'abc', 'regress_rls_bob'),
@@ -4054,8 +4069,15 @@ EXPLAIN (COSTS OFF) UPDATE current_check SET payload = payload WHERE CURRENT OF 
    ->  Tid Scan on current_check
          TID Cond: CURRENT OF current_check_cursor
          Filter: ((currentid = 4) AND ((currentid % 2) = 0))
-(4 rows)
+ Optimizer: Postgres query optimizer
+(5 rows)
 
+-- start_ignore
+-- GPDB: does not support backwards scans, commit and restart
+COMMIT;
+BEGIN;
+DECLARE current_check_cursor SCROLL CURSOR FOR SELECT * FROM current_check;
+-- end_ignore
 -- Similarly can only delete row 4
 FETCH ABSOLUTE 1 FROM current_check_cursor;
  currentid | payload |     rlsuser     
@@ -4130,6 +4152,8 @@ SELECT attname, most_common_vals FROM pg_stats
 --
 BEGIN;
 CREATE TABLE coll_t (c) AS VALUES ('bar'::text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'column1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY coll_p ON coll_t USING (c < ('foo'::text COLLATE "C"));
 ALTER TABLE coll_t ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON coll_t TO regress_rls_alice;
@@ -4153,8 +4177,12 @@ ROLLBACK;
 RESET SESSION AUTHORIZATION;
 BEGIN;
 CREATE ROLE regress_rls_eve;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE ROLE regress_rls_frank;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE TABLE tbl1 (c) AS VALUES ('bar'::text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'column1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 GRANT SELECT ON TABLE tbl1 TO regress_rls_eve;
 CREATE POLICY P ON tbl1 TO regress_rls_eve, regress_rls_frank USING (true);
 SELECT refclassid::regclass, deptype
@@ -4207,6 +4235,8 @@ ROLLBACK; -- cleanup
 --
 BEGIN;
 CREATE TABLE t (c int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY p ON t USING (c % 2 = 1);
 ALTER TABLE t ENABLE ROW LEVEL SECURITY;
 SAVEPOINT q;
@@ -4229,6 +4259,8 @@ ROLLBACK;
 --
 BEGIN;
 CREATE TABLE t (c) AS VALUES ('bar'::text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'column1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY p ON t USING (max(c)); -- fails: aggregate functions are not allowed in policy expressions
 ERROR:  aggregate functions are not allowed in policy expressions
 ROLLBACK;
@@ -4237,7 +4269,11 @@ ROLLBACK;
 --
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE r1 (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE r2 (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO r1 VALUES (10), (20);
 INSERT INTO r2 VALUES (10), (20);
 GRANT ALL ON r1, r2 TO regress_rls_bob;
@@ -4252,20 +4288,20 @@ SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM r1;
  a  
 ----
- 20
  10
+ 20
 (2 rows)
 
 SELECT * FROM r2;
  a  
 ----
- 10
  20
+ 10
 (2 rows)
 
 -- r2 is read-only
 INSERT INTO r2 VALUES (2); -- Not allowed
-ERROR:  new row violates row-level security policy for table "r2"  (seg0 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "r2"  (seg0 172.17.0.3:7002 pid=138173)
 UPDATE r2 SET a = 2 RETURNING *; -- Updates nothing
  a 
 ---
@@ -4280,36 +4316,36 @@ DELETE FROM r2 RETURNING *; -- Deletes nothing
 INSERT INTO r1 SELECT a + 1 FROM r2 RETURNING *; -- OK
  a  
 ----
- 11
  21
+ 11
 (2 rows)
 
 UPDATE r1 SET a = r2.a + 2 FROM r2 WHERE r1.a = r2.a RETURNING *; -- OK
  a  | a  
 ----+----
- 12 | 10
  22 | 20
+ 12 | 10
 (2 rows)
 
 DELETE FROM r1 USING r2 WHERE r1.a = r2.a + 2 RETURNING *; -- OK
  a  | a  
 ----+----
- 12 | 10
  22 | 20
+ 12 | 10
 (2 rows)
 
 SELECT * FROM r1;
  a  
 ----
- 11
  21
+ 11
 (2 rows)
 
 SELECT * FROM r2;
  a  
 ----
- 10
  20
+ 10
 (2 rows)
 
 SET SESSION AUTHORIZATION regress_rls_alice;
@@ -4321,6 +4357,8 @@ DROP TABLE r2;
 SET SESSION AUTHORIZATION regress_rls_alice;
 SET row_security = on;
 CREATE TABLE r1 (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO r1 VALUES (10), (20);
 CREATE POLICY p1 ON r1 USING (false);
 ALTER TABLE r1 ENABLE ROW LEVEL SECURITY;
@@ -4333,7 +4371,7 @@ TABLE r1;
 
 -- RLS error
 INSERT INTO r1 VALUES (1);
-ERROR:  new row violates row-level security policy for table "r1"  (seg1 172.17.0.3:7003 pid=545535)
+ERROR:  new row violates row-level security policy for table "r1"  (seg1 172.17.0.3:7003 pid=138177)
 -- No error (unable to see any rows to update)
 UPDATE r1 SET a = 1;
 TABLE r1;
@@ -4367,6 +4405,8 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 SET row_security = on;
 CREATE TABLE r1 (a int PRIMARY KEY);
 CREATE TABLE r2 (a int REFERENCES r1);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 INSERT INTO r1 VALUES (10), (20);
 INSERT INTO r2 VALUES (10), (20);
@@ -4402,6 +4442,8 @@ DROP TABLE r1;
 -- Ensure cascaded DELETE works
 CREATE TABLE r1 (a int PRIMARY KEY);
 CREATE TABLE r2 (a int REFERENCES r1 ON DELETE CASCADE);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 INSERT INTO r1 VALUES (10), (20);
 INSERT INTO r2 VALUES (10), (20);
@@ -4421,8 +4463,8 @@ ALTER TABLE r2 NO FORCE ROW LEVEL SECURITY;
 TABLE r2;
  a  
 ----
- 10
  20
+ 10
 (2 rows)
 
 DROP TABLE r2;
@@ -4430,6 +4472,8 @@ DROP TABLE r1;
 -- Ensure cascaded UPDATE works
 CREATE TABLE r1 (a int PRIMARY KEY);
 CREATE TABLE r2 (a int REFERENCES r1 ON UPDATE CASCADE);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 INSERT INTO r1 VALUES (10), (20);
 INSERT INTO r2 VALUES (10), (20);
@@ -4449,8 +4493,8 @@ ALTER TABLE r2 NO FORCE ROW LEVEL SECURITY;
 TABLE r2;
  a  
 ----
- 20
  10
+ 20
 (2 rows)
 
 DROP TABLE r2;
@@ -4462,6 +4506,8 @@ DROP TABLE r1;
 SET SESSION AUTHORIZATION regress_rls_alice;
 SET row_security = on;
 CREATE TABLE r1 (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY p1 ON r1 FOR SELECT USING (false);
 CREATE POLICY p2 ON r1 FOR INSERT WITH CHECK (true);
 ALTER TABLE r1 ENABLE ROW LEVEL SECURITY;
@@ -4482,7 +4528,7 @@ HINT:  To disable the policy for the table's owner, use ALTER TABLE NO FORCE ROW
 SET row_security = on;
 -- Error
 INSERT INTO r1 VALUES (10), (20) RETURNING *;
-ERROR:  new row violates row-level security policy for table "r1"  (seg2 slice1 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy for table "r1"  (seg1 slice1 172.17.0.3:7003 pid=138177)
 DROP TABLE r1;
 --
 -- Test UPDATE+RETURNING applies SELECT policies as
@@ -4519,24 +4565,28 @@ TABLE r1;
 ALTER TABLE r1 FORCE ROW LEVEL SECURITY;
 -- Error
 UPDATE r1 SET a = 30 RETURNING *;
-ERROR:  new row violates row-level security policy for table "r1"  (seg0 slice1 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "r1"  (seg0 slice1 172.17.0.3:7002 pid=138173)
 -- UPDATE path of INSERT ... ON CONFLICT DO UPDATE should also error out
 INSERT INTO r1 VALUES (10)
     ON CONFLICT (a) DO UPDATE SET a = 30 RETURNING *;
-ERROR:  new row violates row-level security policy for table "r1"  (seg0 slice1 172.17.0.3:7002 pid=545540)
+ERROR:  new row violates row-level security policy for table "r1"  (seg0 slice1 172.17.0.3:7002 pid=138173)
 -- Should still error out without RETURNING (use of arbiter always requires
 -- SELECT permissions)
 INSERT INTO r1 VALUES (10)
     ON CONFLICT (a) DO UPDATE SET a = 30;
-ERROR:  new row violates row-level security policy for table "r1"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy for table "r1"  (seg0 172.17.0.3:7002 pid=138173)
 INSERT INTO r1 VALUES (10)
     ON CONFLICT ON CONSTRAINT r1_pkey DO UPDATE SET a = 30;
-ERROR:  new row violates row-level security policy for table "r1"  (seg2 172.17.0.3:7004 pid=545545)
+ERROR:  new row violates row-level security policy for table "r1"  (seg0 172.17.0.3:7002 pid=138173)
 DROP TABLE r1;
 -- Check dependency handling
 RESET SESSION AUTHORIZATION;
 CREATE TABLE dep1 (c1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE dep2 (c1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY dep_p1 ON dep1 TO regress_rls_bob USING (c1 > (select max(dep2.c1) from dep2));
 ALTER POLICY dep_p1 ON dep1 TO regress_rls_bob,regress_rls_carol;
 -- Should return one
@@ -4579,9 +4629,15 @@ SELECT count(*) = 0 FROM pg_depend
 -- DROP OWNED BY testing
 RESET SESSION AUTHORIZATION;
 CREATE ROLE regress_rls_dob_role1;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE ROLE regress_rls_dob_role2;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE TABLE dob_t1 (c1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE dob_t2 (c1 int) PARTITION BY RANGE (c1);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY p1 ON dob_t1 TO regress_rls_dob_role1 USING (true);
 DROP OWNED BY regress_rls_dob_role1;
 DROP POLICY p1 ON dob_t1; -- should fail, already gone
@@ -4605,8 +4661,12 @@ DROP USER regress_rls_dob_role1;
 DROP USER regress_rls_dob_role2;
 -- Bug #15708: view + table with RLS should check policies as view owner
 CREATE TABLE ref_tbl (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO ref_tbl VALUES (1);
 CREATE TABLE rls_tbl (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO rls_tbl VALUES (10);
 ALTER TABLE rls_tbl ENABLE ROW LEVEL SECURITY;
 CREATE POLICY p1 ON rls_tbl USING (EXISTS (SELECT 1 FROM ref_tbl));
@@ -4632,6 +4692,8 @@ DROP TABLE rls_tbl;
 DROP TABLE ref_tbl;
 -- Leaky operator test
 CREATE TABLE rls_tbl (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO rls_tbl SELECT x/10 FROM generate_series(1, 100) x;
 ANALYZE rls_tbl;
 ALTER TABLE rls_tbl ENABLE ROW LEVEL SECURITY;
@@ -4654,6 +4716,8 @@ DROP TABLE rls_tbl;
 -- Bug #16006: whole-row Vars in a policy don't play nice with sub-selects
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE rls_tbl (a int, b int, c int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE POLICY p1 ON rls_tbl USING (rls_tbl >= ROW(1,1,1));
 ALTER TABLE rls_tbl ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rls_tbl FORCE ROW LEVEL SECURITY;
@@ -4684,8 +4748,8 @@ INSERT INTO rls_tbl
 SELECT * FROM rls_tbl;
  a  | b  | c  
 ----+----+----
- 20 | 30 |   
  10 | 20 | 30
+ 20 | 30 |   
 (2 rows)
 
 DROP TABLE rls_tbl;
@@ -4737,12 +4801,16 @@ DROP ROLE regress_rls_group2;
 -- pg_dump/pg_restore
 CREATE SCHEMA regress_rls_schema;
 CREATE TABLE rls_tbl (c1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE rls_tbl ENABLE ROW LEVEL SECURITY;
 CREATE POLICY p1 ON rls_tbl USING (c1 > 5);
 CREATE POLICY p2 ON rls_tbl FOR SELECT USING (c1 <= 3);
 CREATE POLICY p3 ON rls_tbl FOR UPDATE USING (c1 <= 3) WITH CHECK (c1 > 5);
 CREATE POLICY p4 ON rls_tbl FOR DELETE USING (c1 <= 3);
 CREATE TABLE rls_tbl_force (c1 int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE rls_tbl_force ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rls_tbl_force FORCE ROW LEVEL SECURITY;
 CREATE POLICY p1 ON rls_tbl_force USING (c1 = 5) WITH CHECK (c1 < 5);

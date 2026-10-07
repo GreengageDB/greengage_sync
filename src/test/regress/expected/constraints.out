@@ -18,35 +18,39 @@
 --
 CREATE TABLE DEFAULT_TBL (i int DEFAULT 100,
 	x text DEFAULT 'vadim', f float8 DEFAULT 123.456);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO DEFAULT_TBL VALUES (1, 'thomas', 57.0613);
 INSERT INTO DEFAULT_TBL VALUES (1, 'bruce');
 INSERT INTO DEFAULT_TBL (i, f) VALUES (2, 987.654);
 INSERT INTO DEFAULT_TBL (x) VALUES ('marc');
 INSERT INTO DEFAULT_TBL VALUES (3, null, 1.0);
-SELECT '' AS five, * FROM DEFAULT_TBL;
- five |  i  |   x    |    f    
-------+-----+--------+---------
-      |   2 | vadim  | 987.654
-      |   3 |        |       1
-      |   1 | thomas | 57.0613
-      |   1 | bruce  | 123.456
-      | 100 | marc   | 123.456
+SELECT * FROM DEFAULT_TBL;
+  i  |   x    |    f    
+-----+--------+---------
+   2 | vadim  | 987.654
+   3 |        |       1
+ 100 | marc   | 123.456
+   1 | thomas | 57.0613
+   1 | bruce  | 123.456
 (5 rows)
 
 CREATE SEQUENCE DEFAULT_SEQ CACHE 1;
 CREATE TABLE DEFAULTEXPR_TBL (i1 int DEFAULT 100 + (200-199) * 2,
 	i2 int DEFAULT nextval('default_seq'));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO DEFAULTEXPR_TBL VALUES (-1, -2);
 INSERT INTO DEFAULTEXPR_TBL (i1) VALUES (-3);
 INSERT INTO DEFAULTEXPR_TBL (i2) VALUES (-4);
 INSERT INTO DEFAULTEXPR_TBL (i2) VALUES (NULL);
-SELECT '' AS four, * FROM DEFAULTEXPR_TBL;
- four | i1  | i2 
-------+-----+----
-      | 102 | -4
-      | 102 |   
-      |  -3 |  1
-      |  -1 | -2
+SELECT * FROM DEFAULTEXPR_TBL;
+ i1  | i2 
+-----+----
+  -3 |  1
+  -1 | -2
+ 102 | -4
+ 102 |   
 (4 rows)
 
 -- syntax errors
@@ -64,55 +68,61 @@ LINE 1: CREATE TABLE error_tbl (b1 bool DEFAULT 1 IN (1, 2));
                                                   ^
 --  this should work, however:
 CREATE TABLE error_tbl (b1 bool DEFAULT (1 IN (1, 2)));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'b1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 DROP TABLE error_tbl;
 --
 -- CHECK syntax
 --
 CREATE TABLE CHECK_TBL (x int,
 	CONSTRAINT CHECK_CON CHECK (x > 3));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO CHECK_TBL VALUES (5);
 INSERT INTO CHECK_TBL VALUES (4);
 INSERT INTO CHECK_TBL VALUES (3);
-ERROR:  new row for relation "check_tbl" violates check constraint "check_con"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "check_tbl" violates check constraint "check_con"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (3).
 INSERT INTO CHECK_TBL VALUES (2);
-ERROR:  new row for relation "check_tbl" violates check constraint "check_con"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "check_tbl" violates check constraint "check_con"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (2).
 INSERT INTO CHECK_TBL VALUES (6);
 INSERT INTO CHECK_TBL VALUES (1);
-ERROR:  new row for relation "check_tbl" violates check constraint "check_con"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  new row for relation "check_tbl" violates check constraint "check_con"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Failing row contains (1).
-SELECT '' AS three, * FROM CHECK_TBL;
- three | x 
--------+---
-       | 4
-       | 5
-       | 6
+SELECT * FROM CHECK_TBL;
+ x 
+---
+ 5
+ 6
+ 4
 (3 rows)
 
 CREATE SEQUENCE CHECK_SEQ CACHE 1;
 CREATE TABLE CHECK2_TBL (x int, y text, z int,
 	CONSTRAINT SEQUENCE_CON
 	CHECK (x > 3 and y <> 'check failed' and z < 8));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO CHECK2_TBL VALUES (4, 'check ok', -2);
 INSERT INTO CHECK2_TBL VALUES (1, 'x check failed', -2);
-ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Failing row contains (1, x check failed, -2).
 INSERT INTO CHECK2_TBL VALUES (5, 'z check failed', 10);
-ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (5, z check failed, 10).
 INSERT INTO CHECK2_TBL VALUES (0, 'check failed', -2);
-ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Failing row contains (0, check failed, -2).
 INSERT INTO CHECK2_TBL VALUES (6, 'check failed', 11);
-ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (6, check failed, 11).
 INSERT INTO CHECK2_TBL VALUES (7, 'check ok', 7);
-SELECT '' AS two, * from CHECK2_TBL;
- two | x |    y     | z  
------+---+----------+----
-     | 4 | check ok | -2
-     | 7 | check ok |  7
+SELECT * from CHECK2_TBL;
+ x |    y     | z  
+---+----------+----
+ 4 | check ok | -2
+ 7 | check ok |  7
 (2 rows)
 
 --
@@ -125,11 +135,11 @@ CREATE TABLE INSERT_TBL (x INT DEFAULT nextval('insert_seq'),
 	CONSTRAINT INSERT_TBL_CON CHECK (x >= 3 AND y <> 'check failed' AND x < 8),
 	CHECK (x + z = 0)) DISTRIBUTED BY(y);
 INSERT INTO INSERT_TBL(x,z) VALUES (2, -2);
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (2, -NULL-, -2).
-SELECT '' AS zero, * FROM INSERT_TBL;
- zero | x | y | z 
-------+---+---+---
+SELECT * FROM INSERT_TBL;
+ x | y | z 
+---+---+---
 (0 rows)
 
 SELECT 'one' AS one, nextval('insert_seq');
@@ -139,25 +149,25 @@ SELECT 'one' AS one, nextval('insert_seq');
 (1 row)
 
 INSERT INTO INSERT_TBL(y) VALUES ('Y');
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (2, Y, -2).
 INSERT INTO INSERT_TBL(y) VALUES ('Y');
 INSERT INTO INSERT_TBL(x,z) VALUES (1, -2);
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (1, -NULL-, -2).
 INSERT INTO INSERT_TBL(z,x) VALUES (-7,  7);
 INSERT INTO INSERT_TBL VALUES (5, 'check failed', -5);
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (5, check failed, -5).
 INSERT INTO INSERT_TBL VALUES (7, '!check failed', -7);
 INSERT INTO INSERT_TBL(y) VALUES ('-!NULL-');
-SELECT '' AS four, * FROM INSERT_TBL;
- four | x |       y       | z  
-------+---+---------------+----
-      | 4 | Y             | -4
-      | 7 | -NULL-        | -7
-      | 7 | !check failed | -7
-      | 6 | -!NULL-       | -6
+SELECT * FROM INSERT_TBL;
+ x |       y       | z  
+---+---------------+----
+ 7 | -NULL-        | -7
+ 7 | !check failed | -7
+ 6 | -!NULL-       | -6
+ 4 | Y             | -4
 (4 rows)
 
 -- GPDB: reset the table contents to match upstream.
@@ -168,32 +178,32 @@ insert into insert_tbl values
   (7, '!check failed', -7),
   (4, '-!NULL-', -4);
 INSERT INTO INSERT_TBL(y,z) VALUES ('check failed', 4);
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (8, check failed, 4).
 INSERT INTO INSERT_TBL(x,y) VALUES (5, 'check failed');
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (5, check failed, -8).
 -- these fail on GPDB, because we cannot use currval in the z columns' DEFAULT like in upstream.
 INSERT INTO INSERT_TBL(x,y) VALUES (5, '!check failed');
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (5, !check failed, -9).
 INSERT INTO INSERT_TBL(y) VALUES ('-!NULL-');
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (11, -!NULL-, -11).
 -- GPDB: fix the table contents to match upstream again, so that the subsequent
 -- tests start with the same state as in upstream.
 insert into insert_tbl values
   (5, '!check failed', -5),
   (6, '-!NULL-', -6);
-SELECT '' AS six, * FROM INSERT_TBL;
- six | x |       y       | z  
------+---+---------------+----
-     | 7 | -NULL-        | -7
-     | 7 | !check failed | -7
-     | 4 | -!NULL-       | -4
-     | 5 | !check failed | -5
-     | 6 | -!NULL-       | -6
-     | 3 | Y             | -3
+SELECT * FROM INSERT_TBL;
+ x |       y       | z  
+---+---------------+----
+ 3 | Y             | -3
+ 7 | -NULL-        | -7
+ 7 | !check failed | -7
+ 4 | -!NULL-       | -4
+ 5 | !check failed | -5
+ 6 | -!NULL-       | -6
 (6 rows)
 
 SELECT 'seven' AS one, nextval('insert_seq');
@@ -203,7 +213,7 @@ SELECT 'seven' AS one, nextval('insert_seq');
 (1 row)
 
 INSERT INTO INSERT_TBL(y) VALUES ('Y');
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (14, Y, -14).
 SELECT 'eight' AS one, nextval('insert_seq');
   one  | nextval 
@@ -215,16 +225,16 @@ SELECT 'eight' AS one, nextval('insert_seq');
 -- constraint-condition results.  Postgres used to reject this, but it
 -- was wrong:
 INSERT INTO INSERT_TBL VALUES (null, null, null);
-SELECT '' AS nine, * FROM INSERT_TBL;
- nine | x |       y       | z  
-------+---+---------------+----
-      | 3 | Y             | -3
-      | 7 | -NULL-        | -7
-      | 7 | !check failed | -7
-      | 4 | -!NULL-       | -4
-      | 5 | !check failed | -5
-      | 6 | -!NULL-       | -6
-      |   |               |   
+SELECT * FROM INSERT_TBL;
+ x |       y       | z  
+---+---------------+----
+ 7 | -NULL-        | -7
+ 7 | !check failed | -7
+ 4 | -!NULL-       | -4
+ 5 | !check failed | -5
+ 6 | -!NULL-       | -6
+   |               |   
+ 3 | Y             | -3
 (7 rows)
 
 --
@@ -233,9 +243,11 @@ SELECT '' AS nine, * FROM INSERT_TBL;
 CREATE TABLE SYS_COL_CHECK_TBL (city text, state text, is_capital bool,
                   altitude int,
                   CHECK (NOT (is_capital AND tableoid::regclass::text = 'sys_col_check_tbl')));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'city' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO SYS_COL_CHECK_TBL VALUES ('Seattle', 'Washington', false, 100);
 INSERT INTO SYS_COL_CHECK_TBL VALUES ('Olympia', 'Washington', true, 100);
-ERROR:  new row for relation "sys_col_check_tbl" violates check constraint "sys_col_check_tbl_check"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  new row for relation "sys_col_check_tbl" violates check constraint "sys_col_check_tbl_check"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Failing row contains (Olympia, Washington, t, 100).
 SELECT *, tableoid::regclass::text FROM SYS_COL_CHECK_TBL;
   city   |   state    | is_capital | altitude |     tableoid      
@@ -250,6 +262,8 @@ DROP TABLE SYS_COL_CHECK_TBL;
 CREATE TABLE SYS_COL_CHECK_TBL (city text, state text, is_capital bool,
                   altitude int,
 				  CHECK (NOT (is_capital AND ctid::text = 'sys_col_check_tbl')));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'city' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ERROR:  system column "ctid" reference in check constraint is invalid
 LINE 3:       CHECK (NOT (is_capital AND ctid::text = 'sys_col_check...
                                          ^
@@ -262,13 +276,13 @@ CREATE TABLE INSERT_CHILD (cx INT default 42,
 NOTICE:  table has parent, setting distribution columns to match parent table
 INSERT INTO INSERT_CHILD(x,z,cy) VALUES (7,-7,11);
 INSERT INTO INSERT_CHILD(x,z,cy) VALUES (7,-7,6);
-ERROR:  new row for relation "insert_child" violates check constraint "insert_child_check"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "insert_child" violates check constraint "insert_child_check"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (7, -NULL-, -7, 42, 6).
 INSERT INTO INSERT_CHILD(x,z,cy) VALUES (6,-7,7);
-ERROR:  new row for relation "insert_child" violates check constraint "insert_tbl_check"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "insert_child" violates check constraint "insert_tbl_check"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (6, -NULL-, -7, 42, 7).
 INSERT INTO INSERT_CHILD(x,y,z,cy) VALUES (6,'check failed',-6,7);
-ERROR:  new row for relation "insert_child" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_child" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (6, check failed, -6, 42, 7).
 SELECT * FROM INSERT_CHILD;
  x |   y    | z  | cx | cy 
@@ -282,33 +296,37 @@ DROP TABLE INSERT_CHILD;
 --
 CREATE TABLE ATACC1 (TEST INT
 	CHECK (TEST > 0) NO INHERIT);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'test' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE ATACC2 (TEST2 INT) INHERITS (ATACC1);
 NOTICE:  table has parent, setting distribution columns to match parent table
 -- check constraint is not there on child
 INSERT INTO ATACC2 (TEST) VALUES (-3);
 -- check constraint is there on parent
 INSERT INTO ATACC1 (TEST) VALUES (-3);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test_check"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test_check"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Failing row contains (-3).
 DROP TABLE ATACC1 CASCADE;
 NOTICE:  drop cascades to table atacc2
 CREATE TABLE ATACC1 (TEST INT, TEST2 INT
 	CHECK (TEST > 0), CHECK (TEST2 > 10) NO INHERIT);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'test' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE ATACC2 () INHERITS (ATACC1);
 NOTICE:  table has parent, setting distribution columns to match parent table
 -- check constraint is there on child
 INSERT INTO ATACC2 (TEST) VALUES (-3);
-ERROR:  new row for relation "atacc2" violates check constraint "atacc1_test_check"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  new row for relation "atacc2" violates check constraint "atacc1_test_check"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Failing row contains (-3, null).
 -- check constraint is there on parent
 INSERT INTO ATACC1 (TEST) VALUES (-3);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test_check"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test_check"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Failing row contains (-3, null).
 -- check constraint is not there on child
 INSERT INTO ATACC2 (TEST2) VALUES (3);
 -- check constraint is there on parent
 INSERT INTO ATACC1 (TEST2) VALUES (3);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test2_check"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test2_check"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (null, 3).
 DROP TABLE ATACC1 CASCADE;
 NOTICE:  drop cascades to table atacc2
@@ -318,6 +336,8 @@ NOTICE:  drop cascades to table atacc2
 DELETE FROM INSERT_TBL;
 ALTER SEQUENCE INSERT_SEQ RESTART WITH 4;
 CREATE TEMP TABLE tmp (xd INT, yd TEXT, zd INT);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'xd' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO tmp VALUES (null, 'Y', null);
 INSERT INTO tmp VALUES (5, '!check failed', null);
 INSERT INTO tmp VALUES (null, 'try again', null);
@@ -329,31 +349,31 @@ INSERT INTO INSERT_TBL VALUES
   (4, 'Y', -4),
   (5, '!check failed', -5),
   (6, 'try again', -6);
-SELECT '' AS three, * FROM INSERT_TBL;
- three | x |       y       | z  
--------+---+---------------+----
-       | 5 | !check failed | -5
-       | 4 | Y             | -4
-       | 6 | try again     | -6
+SELECT * FROM INSERT_TBL;
+ x |       y       | z  
+---+---------------+----
+ 5 | !check failed | -5
+ 4 | Y             | -4
+ 6 | try again     | -6
 (3 rows)
 
 INSERT INTO INSERT_TBL SELECT * FROM tmp WHERE yd = 'try again';
 INSERT INTO INSERT_TBL(y,z) SELECT yd, -7 FROM tmp WHERE yd = 'try again';
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (4, try again, -7).
 INSERT INTO INSERT_TBL(y,z) SELECT yd, -8 FROM tmp WHERE yd = 'try again';
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (5, try again, -8).
 -- GPDB: Fixup
 INSERT INTO INSERT_TBL VALUES (7, 'try again', -7);
-SELECT '' AS four, * FROM INSERT_TBL;
- four | x |       y       | z  
-------+---+---------------+----
-      | 5 | !check failed | -5
-      | 4 | Y             | -4
-      | 6 | try again     | -6
-      |   | try again     |   
-      | 7 | try again     | -7
+SELECT * FROM INSERT_TBL;
+ x |       y       | z  
+---+---------------+----
+ 4 | Y             | -4
+ 6 | try again     | -6
+   | try again     |   
+ 7 | try again     | -7
+ 5 | !check failed | -5
 (5 rows)
 
 DROP TABLE tmp;
@@ -364,16 +384,16 @@ UPDATE INSERT_TBL SET x = NULL WHERE x = 5;
 UPDATE INSERT_TBL SET x = 6 WHERE x = 6;
 UPDATE INSERT_TBL SET x = -z, z = -x;
 UPDATE INSERT_TBL SET x = z, z = x;
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Failing row contains (-4, Y, 4).
 SELECT * FROM INSERT_TBL;
  x |       y       | z  
 ---+---------------+----
- 5 | !check failed |   
  4 | Y             | -4
    | try again     |   
  7 | try again     | -7
  6 | try again     | -6
+ 5 | !check failed |   
 (5 rows)
 
 -- DROP TABLE INSERT_TBL;
@@ -383,13 +403,15 @@ SELECT * FROM INSERT_TBL;
 CREATE TABLE COPY_TBL (x INT, y TEXT, z INT,
 	CONSTRAINT COPY_CON
 	CHECK (x > 3 AND y <> 'check failed' AND x < 7 ));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 \set filename :abs_srcdir '/data/constro.data'
 COPY COPY_TBL FROM :'filename';
-SELECT '' AS two, * FROM COPY_TBL;
- two | x |       y       | z 
------+---+---------------+---
-     | 4 | !check failed | 5
-     | 6 | OK            | 4
+SELECT * FROM COPY_TBL;
+ x |       y       | z 
+---+---------------+---
+ 4 | !check failed | 5
+ 6 | OK            | 4
 (2 rows)
 
 \set filename :abs_srcdir '/data/constrf.data'
@@ -411,20 +433,20 @@ CREATE TABLE PRIMARY_TBL (i int PRIMARY KEY, t text);
 INSERT INTO PRIMARY_TBL VALUES (1, 'one');
 INSERT INTO PRIMARY_TBL VALUES (2, 'two');
 INSERT INTO PRIMARY_TBL VALUES (1, 'three');
-ERROR:  duplicate key value violates unique constraint "primary_tbl_pkey"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  duplicate key value violates unique constraint "primary_tbl_pkey"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Key (i)=(1) already exists.
 INSERT INTO PRIMARY_TBL VALUES (4, 'three');
 INSERT INTO PRIMARY_TBL VALUES (5, 'one');
 INSERT INTO PRIMARY_TBL (t) VALUES ('six');
-ERROR:  null value in column "i" of relation "primary_tbl" violates not-null constraint  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  null value in column "i" of relation "primary_tbl" violates not-null constraint  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Failing row contains (null, six).
-SELECT '' AS four, * FROM PRIMARY_TBL;
- four | i |   t   
-------+---+-------
-      | 1 | one
-      | 2 | two
-      | 4 | three
-      | 5 | one
+SELECT * FROM PRIMARY_TBL;
+ i |   t   
+---+-------
+ 2 | two
+ 4 | three
+ 1 | one
+ 5 | one
 (4 rows)
 
 DROP TABLE PRIMARY_TBL;
@@ -436,16 +458,16 @@ INSERT INTO PRIMARY_TBL VALUES (1, 'three');
 INSERT INTO PRIMARY_TBL VALUES (4, 'three');
 INSERT INTO PRIMARY_TBL VALUES (5, 'one');
 INSERT INTO PRIMARY_TBL (t) VALUES ('six');
-ERROR:  null value in column "i" of relation "primary_tbl" violates not-null constraint  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  null value in column "i" of relation "primary_tbl" violates not-null constraint  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Failing row contains (null, six).
-SELECT '' AS three, * FROM PRIMARY_TBL;
- three | i |   t   
--------+---+-------
-       | 1 | three
-       | 1 | one
-       | 5 | one
-       | 2 | two
-       | 4 | three
+SELECT * FROM PRIMARY_TBL;
+ i |   t   
+---+-------
+ 2 | two
+ 4 | three
+ 1 | three
+ 1 | one
+ 5 | one
 (5 rows)
 
 DROP TABLE PRIMARY_TBL;
@@ -456,7 +478,7 @@ CREATE TABLE UNIQUE_TBL (i int UNIQUE, t text);
 INSERT INTO UNIQUE_TBL VALUES (1, 'one');
 INSERT INTO UNIQUE_TBL VALUES (2, 'two');
 INSERT INTO UNIQUE_TBL VALUES (1, 'three');
-ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Key (i)=(1) already exists.
 INSERT INTO UNIQUE_TBL VALUES (4, 'four');
 INSERT INTO UNIQUE_TBL VALUES (5, 'one');
@@ -466,18 +488,18 @@ INSERT INTO UNIQUE_TBL VALUES (5, 'five-upsert-insert') ON CONFLICT (i) DO UPDAT
 INSERT INTO UNIQUE_TBL VALUES (6, 'six-upsert-insert') ON CONFLICT (i) DO UPDATE SET t = 'six-upsert-update';
 -- should fail
 INSERT INTO UNIQUE_TBL VALUES (1, 'a'), (2, 'b'), (2, 'b') ON CONFLICT (i) DO UPDATE SET t = 'fails';
-ERROR:  ON CONFLICT DO UPDATE command cannot affect row a second time  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  ON CONFLICT DO UPDATE command cannot affect row a second time  (seg0 172.17.0.3:7002 pid=134236)
 HINT:  Ensure that no rows proposed for insertion within the same command have duplicate constrained values.
-SELECT '' AS five, * FROM UNIQUE_TBL;
- five | i |         t          
-------+---+--------------------
-      | 1 | one
-      | 2 | two
-      | 4 | four
-      |   | six
-      |   | seven
-      | 5 | five-upsert-update
-      | 6 | six-upsert-insert
+SELECT * FROM UNIQUE_TBL;
+ i |         t          
+---+--------------------
+ 1 | one
+ 2 | two
+ 4 | four
+   | six
+   | seven
+ 5 | five-upsert-update
+ 6 | six-upsert-insert
 (7 rows)
 
 DROP TABLE UNIQUE_TBL;
@@ -485,22 +507,22 @@ CREATE TABLE UNIQUE_TBL (i int UNIQUE NULLS NOT DISTINCT, t text);
 INSERT INTO UNIQUE_TBL VALUES (1, 'one');
 INSERT INTO UNIQUE_TBL VALUES (2, 'two');
 INSERT INTO UNIQUE_TBL VALUES (1, 'three');
-ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Key (i)=(1) already exists.
 INSERT INTO UNIQUE_TBL VALUES (4, 'four');
 INSERT INTO UNIQUE_TBL VALUES (5, 'one');
 INSERT INTO UNIQUE_TBL (t) VALUES ('six');
 INSERT INTO UNIQUE_TBL (t) VALUES ('seven');
-ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Key (i)=(null) already exists.
 SELECT * FROM UNIQUE_TBL;
  i |  t   
 ---+------
+ 5 | one
  2 | two
  4 | four
    | six
  1 | one
- 5 | one
 (5 rows)
 
 DROP TABLE UNIQUE_TBL;
@@ -510,18 +532,18 @@ INSERT INTO UNIQUE_TBL VALUES (1, 'one');
 INSERT INTO UNIQUE_TBL VALUES (2, 'two');
 INSERT INTO UNIQUE_TBL VALUES (1, 'three');
 INSERT INTO UNIQUE_TBL VALUES (1, 'one');
-ERROR:  duplicate key value violates unique constraint "unique_tbl_i_t_key"  (seg2 172.17.0.3:7004 pid=466342)
+ERROR:  duplicate key value violates unique constraint "unique_tbl_i_t_key"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Key (i, t)=(1, one) already exists.
 INSERT INTO UNIQUE_TBL VALUES (5, 'one');
 INSERT INTO UNIQUE_TBL (t) VALUES ('six');
-SELECT '' AS five, * FROM UNIQUE_TBL;
- five | i |   t   
-------+---+-------
-      | 1 | three
-      |   | six
-      | 2 | two
-      | 1 | one
-      | 5 | one
+SELECT * FROM UNIQUE_TBL;
+ i |   t   
+---+-------
+ 1 | three
+   | six
+ 1 | one
+ 5 | one
+ 2 | two
 (5 rows)
 
 DROP TABLE UNIQUE_TBL;
@@ -565,11 +587,11 @@ COMMIT; -- should succeed
 SELECT * FROM unique_tbl;
  i |   t   
 ---+-------
+ 1 | one
  5 | five
  2 | two
  4 | four
  3 | three
- 1 | one
 (5 rows)
 
 -- try adding an initially deferred constraint
@@ -592,10 +614,10 @@ SELECT * FROM unique_tbl;
  i |   t   
 ---+-------
  5 | five
- 1 | one
  2 | two
  4 | four
  3 | three
+ 1 | one
 (5 rows)
 
 -- GPDB: Reset the table to the state the rest of the test expects, again.
@@ -605,13 +627,13 @@ INSERT INTO unique_tbl VALUES (3, 'three'), (1, 'five'), (5, 'one'), (4, 'two'),
 BEGIN;
 INSERT INTO unique_tbl VALUES (3, 'Three'); -- should succeed for now
 COMMIT; -- should fail
-ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Key (i)=(3) already exists.
 -- make constraint check immediate
 BEGIN;
 SET CONSTRAINTS ALL IMMEDIATE;
 INSERT INTO unique_tbl VALUES (3, 'Three'); -- should fail
-ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Key (i)=(3) already exists.
 COMMIT;
 -- forced check when SET CONSTRAINTS is called
@@ -619,7 +641,7 @@ BEGIN;
 SET CONSTRAINTS ALL DEFERRED;
 INSERT INTO unique_tbl VALUES (3, 'Three'); -- should succeed for now
 SET CONSTRAINTS ALL IMMEDIATE; -- should fail
-ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Key (i)=(3) already exists.
 COMMIT;
 -- test deferrable UNIQUE with a partitioned table
@@ -641,13 +663,13 @@ BEGIN;
 INSERT INTO parted_uniq_tbl VALUES (1);
 SAVEPOINT f;
 INSERT INTO parted_uniq_tbl VALUES (1);	-- unique violation
-ERROR:  duplicate key value violates unique constraint "parted_uniq_tbl_1_i_key"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  duplicate key value violates unique constraint "parted_uniq_tbl_1_i_key"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Key (i)=(1) already exists.
 ROLLBACK TO f;
 SET CONSTRAINTS parted_uniq_tbl_i_key DEFERRED;
 INSERT INTO parted_uniq_tbl VALUES (1);	-- OK now, fail at commit
 COMMIT;
-ERROR:  duplicate key value violates unique constraint "parted_uniq_tbl_1_i_key"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  duplicate key value violates unique constraint "parted_uniq_tbl_1_i_key"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Key (i)=(1) already exists.
 DROP TABLE parted_uniq_tbl;
 -- test a HOT update that invalidates the conflicting tuple.
@@ -656,16 +678,16 @@ BEGIN;
 INSERT INTO unique_tbl VALUES (3, 'Three'); -- should succeed for now
 UPDATE unique_tbl SET t = 'THREE' WHERE i = 3 AND t = 'Three';
 COMMIT; -- should fail
-ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  duplicate key value violates unique constraint "unique_tbl_i_key"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Key (i)=(3) already exists.
 SELECT * FROM unique_tbl;
  i |   t   
 ---+-------
- 1 | five
- 5 | one
  3 | three
  4 | two
  2 | four
+ 1 | five
+ 5 | one
 (5 rows)
 
 -- test a HOT update that modifies the newly inserted tuple,
@@ -677,22 +699,22 @@ DELETE FROM unique_tbl WHERE t = 'three';
 SELECT * FROM unique_tbl;
  i |   t    
 ---+--------
- 1 | five
- 5 | one
  4 | two
  2 | four
  3 | threex
+ 1 | five
+ 5 | one
 (5 rows)
 
 COMMIT;
 SELECT * FROM unique_tbl;
  i |   t    
 ---+--------
- 5 | one
- 1 | five
  4 | two
  2 | four
  3 | threex
+ 5 | one
+ 1 | five
 (5 rows)
 
 DROP TABLE unique_tbl;
@@ -713,7 +735,7 @@ INSERT INTO circles VALUES('<(0,0), 5>', '<(0,0), 4>');
 INSERT INTO circles VALUES('<(10,10), 10>', '<(0,0), 5>');
 -- fail, overlaps
 INSERT INTO circles VALUES('<(20,20), 10>', '<(0,0), 4>');
-ERROR:  conflicting key value violates exclusion constraint "circles_c1_c2_excl"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  conflicting key value violates exclusion constraint "circles_c1_c2_excl"  (seg2 172.17.0.3:7004 pid=134238)
 DETAIL:  Key (c1, (c2::circle))=(<(20,20),10>, <(0,0),4>) conflicts with existing key (c1, (c2::circle))=(<(10,10),10>, <(0,0),5>).
 -- succeed, because violation is ignored
 INSERT INTO circles VALUES('<(20,20), 10>', '<(0,0), 4>')
@@ -729,7 +751,7 @@ INSERT INTO circles VALUES('<(20,20), 10>', '<(10,10), 5>');
 -- should fail on existing data without the WHERE clause
 ALTER TABLE circles ADD EXCLUDE USING gist
   (c1 WITH &&, (c2::circle) WITH &&);
-ERROR:  could not create exclusion constraint "circles_c1_c2_excl1"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  could not create exclusion constraint "circles_c1_c2_excl1"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Key (c1, (c2::circle))=(<(0,0),5>, <(0,0),5>) conflicts with key (c1, (c2::circle))=(<(0,0),5>, <(0,0),4>).
 -- try reindexing an existing constraint
 REINDEX INDEX circles_c1_c2_excl;
@@ -740,23 +762,25 @@ CREATE TABLE deferred_excl (
   f2 int,
   CONSTRAINT deferred_excl_con EXCLUDE (f1 WITH =) INITIALLY DEFERRED
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO deferred_excl VALUES(1);
 INSERT INTO deferred_excl VALUES(2);
 INSERT INTO deferred_excl VALUES(1); -- fail
-ERROR:  conflicting key value violates exclusion constraint "deferred_excl_con"  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  conflicting key value violates exclusion constraint "deferred_excl_con"  (seg1 172.17.0.3:7003 pid=134237)
 DETAIL:  Key (f1)=(1) conflicts with existing key (f1)=(1).
 INSERT INTO deferred_excl VALUES(1) ON CONFLICT ON CONSTRAINT deferred_excl_con DO NOTHING; -- fail
-ERROR:  ON CONFLICT does not support deferrable unique constraints/exclusion constraints as arbiters  (seg1 172.17.0.3:7003 pid=466329)
+ERROR:  ON CONFLICT does not support deferrable unique constraints/exclusion constraints as arbiters  (seg1 172.17.0.3:7003 pid=134237)
 BEGIN;
 INSERT INTO deferred_excl VALUES(2); -- no fail here
 COMMIT; -- should fail here
-ERROR:  conflicting key value violates exclusion constraint "deferred_excl_con"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  conflicting key value violates exclusion constraint "deferred_excl_con"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Key (f1)=(2) conflicts with existing key (f1)=(2).
 BEGIN;
 INSERT INTO deferred_excl VALUES(3);
 INSERT INTO deferred_excl VALUES(3); -- no fail here
 COMMIT; -- should fail here
-ERROR:  conflicting key value violates exclusion constraint "deferred_excl_con"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  conflicting key value violates exclusion constraint "deferred_excl_con"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Key (f1)=(3) conflicts with existing key (f1)=(3).
 -- bug #13148: deferred constraint versus HOT update
 BEGIN;
@@ -775,7 +799,7 @@ ALTER TABLE deferred_excl DROP CONSTRAINT deferred_excl_con;
 -- This should fail, but worth testing because of HOT updates
 UPDATE deferred_excl SET f1 = 3;
 ALTER TABLE deferred_excl ADD EXCLUDE (f1 WITH =);
-ERROR:  could not create exclusion constraint "deferred_excl_f1_excl"  (seg0 172.17.0.3:7002 pid=466317)
+ERROR:  could not create exclusion constraint "deferred_excl_f1_excl"  (seg0 172.17.0.3:7002 pid=134236)
 DETAIL:  Key (f1)=(3) conflicts with key (f1)=(3).
 DROP TABLE deferred_excl;
 -- Comments
@@ -784,6 +808,8 @@ CREATE ROLE regress_constraint_comments;
 NOTICE:  resource queue required -- using default resource queue "pg_default"
 SET SESSION AUTHORIZATION regress_constraint_comments;
 CREATE TABLE constraint_comments_tbl (a int CONSTRAINT the_constraint CHECK (a > 0));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE DOMAIN constraint_comments_dom AS int CONSTRAINT the_constraint CHECK (value > 0);
 COMMENT ON CONSTRAINT the_constraint ON constraint_comments_tbl IS 'yes, the comment';
 COMMENT ON CONSTRAINT the_constraint ON DOMAIN constraint_comments_dom IS 'yes, another comment';

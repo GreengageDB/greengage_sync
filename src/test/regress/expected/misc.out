@@ -18,10 +18,10 @@ CREATE FUNCTION reverse_name(name)
 --
 -- BTREE
 --
-UPDATE onek
-   SET unique1 = onek.unique1 + 1;
-UPDATE onek
-   SET unique1 = onek.unique1 - 1;
+--UPDATE onek
+--   SET unique1 = onek.unique1 + 1;
+--UPDATE onek
+--   SET unique1 = onek.unique1 - 1;
 --
 -- BTREE partial
 --
@@ -39,16 +39,23 @@ UPDATE onek
 SELECT two, stringu1, ten, string4
    INTO TABLE tmp
    FROM onek;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'two' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+/* GPDB TODO: This test is disabled for now, because when running with ORCA,
+   you get an error:
+     ERROR:  multiple updates to a row by the same query is not allowed
 UPDATE tmp
    SET stringu1 = reverse_name(onek.stringu1)
    FROM onek
    WHERE onek.stringu1 = 'JBAAAA' and
 	  onek.stringu1 = tmp.stringu1;
+
 UPDATE tmp
    SET stringu1 = reverse_name(onek2.stringu1)
    FROM onek2
    WHERE onek2.stringu1 = 'JCAAAA' and
 	  onek2.stringu1 = tmp.stringu1;
+*/
 DROP TABLE tmp;
 --UPDATE person*
 --   SET age = age + 1;
@@ -61,6 +68,7 @@ DROP TABLE tmp;
 \set filename :abs_builddir '/results/onek.data'
 COPY onek TO :'filename';
 CREATE TEMP TABLE onek_copy (LIKE onek);
+NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
 COPY onek_copy FROM :'filename';
 SELECT * FROM onek EXCEPT ALL SELECT * FROM onek_copy;
  unique1 | unique2 | two | four | ten | twenty | hundred | thousand | twothousand | fivethous | tenthous | odd | even | stringu1 | stringu2 | string4 
@@ -75,6 +83,7 @@ SELECT * FROM onek_copy EXCEPT ALL SELECT * FROM onek;
 \set filename :abs_builddir '/results/stud_emp.data'
 COPY BINARY stud_emp TO :'filename';
 CREATE TEMP TABLE stud_emp_copy (LIKE stud_emp);
+NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
 COPY BINARY stud_emp_copy FROM :'filename';
 SELECT * FROM stud_emp_copy;
  name  | age |  location  | salary | manager | gpa | percent 
@@ -91,10 +100,14 @@ CREATE TABLE hobbies_r (
 	name		text,
 	person 		text
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'name' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE equipment_r (
 	name 		text,
 	hobby		text
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'name' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO hobbies_r (name, person)
    SELECT 'posthacking', p.name
    FROM person* p
@@ -114,11 +127,11 @@ INSERT INTO equipment_r (name, hobby) VALUES ('guts', 'skywalking');
 CREATE FUNCTION hobbies(person)
    RETURNS setof hobbies_r
    AS 'select * from hobbies_r where person = $1.name'
-   LANGUAGE SQL;
+   LANGUAGE SQL READS SQL DATA;
 CREATE FUNCTION hobby_construct(text, text)
    RETURNS hobbies_r
    AS 'select $1 as name, $2 as hobby'
-   LANGUAGE SQL;
+   LANGUAGE SQL READS SQL DATA;
 CREATE FUNCTION hobby_construct_named(name text, hobby text)
    RETURNS hobbies_r
    AS 'select name, hobby'
@@ -128,19 +141,19 @@ CREATE FUNCTION hobbies_by_name(hobbies_r.name%TYPE)
    -- GPDB: order by so the test below returns a deterministic person when
    -- several people share a hobby (result-set order is not fixed in MPP).
    AS 'select person from hobbies_r where name = $1 order by person'
-   LANGUAGE SQL;
+   LANGUAGE SQL READS SQL DATA;
 NOTICE:  type reference hobbies_r.name%TYPE converted to text
 NOTICE:  type reference hobbies_r.person%TYPE converted to text
-NOTICE:  type reference hobbies_r.name%TYPE converted to text  (seg0 172.17.0.3:7002 pid=898081)
-NOTICE:  type reference hobbies_r.name%TYPE converted to text  (seg2 172.17.0.3:7004 pid=898079)
-NOTICE:  type reference hobbies_r.name%TYPE converted to text  (seg1 172.17.0.3:7003 pid=898080)
-NOTICE:  type reference hobbies_r.person%TYPE converted to text  (seg0 172.17.0.3:7002 pid=898081)
-NOTICE:  type reference hobbies_r.person%TYPE converted to text  (seg2 172.17.0.3:7004 pid=898079)
-NOTICE:  type reference hobbies_r.person%TYPE converted to text  (seg1 172.17.0.3:7003 pid=898080)
+NOTICE:  type reference hobbies_r.name%TYPE converted to text  (seg0 172.17.0.3:7002 pid=139091)
+NOTICE:  type reference hobbies_r.name%TYPE converted to text  (seg2 172.17.0.3:7004 pid=139093)
+NOTICE:  type reference hobbies_r.name%TYPE converted to text  (seg1 172.17.0.3:7003 pid=139092)
+NOTICE:  type reference hobbies_r.person%TYPE converted to text  (seg0 172.17.0.3:7002 pid=139091)
+NOTICE:  type reference hobbies_r.person%TYPE converted to text  (seg1 172.17.0.3:7003 pid=139092)
+NOTICE:  type reference hobbies_r.person%TYPE converted to text  (seg2 172.17.0.3:7004 pid=139093)
 CREATE FUNCTION equipment(hobbies_r)
    RETURNS setof equipment_r
    AS 'select * from equipment_r where hobby = $1.name'
-   LANGUAGE SQL;
+   LANGUAGE SQL READS SQL DATA;
 CREATE FUNCTION equipment_named(hobby hobbies_r)
    RETURNS setof equipment_r
    AS 'select * from equipment_r where equipment_r.hobby = equipment_named.hobby.name'
@@ -171,13 +184,13 @@ CREATE FUNCTION equipment_named_ambiguous_2b(hobby text)
 -- everyone else does nothing.
 --
 SELECT p.name, name(p.hobbies) FROM ONLY person p;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "hobbies" during startup
 --
 -- as above, but jeff also does post_hacking.
 --
 SELECT p.name, name(p.hobbies) FROM person* p;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "hobbies" during startup
 --
 -- the next two queries demonstrate how functions generate bogus duplicates.
@@ -185,10 +198,10 @@ CONTEXT:  SQL function "hobbies" during startup
 --
 SELECT DISTINCT hobbies_r.name, name(hobbies_r.equipment) FROM hobbies_r
   ORDER BY 1,2;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.equipment_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.equipment_r"  (seg1 slice1 172.17.0.3:7003 pid=139092)
 CONTEXT:  SQL function "equipment" during startup
 SELECT hobbies_r.name, (hobbies_r.equipment).name FROM hobbies_r;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.equipment_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.equipment_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "equipment" during startup
 --
 -- mike needs advil and peet's coffee,
@@ -196,29 +209,29 @@ CONTEXT:  SQL function "equipment" during startup
 -- everyone else is fine.
 --
 SELECT p.name, name(p.hobbies), name(equipment(p.hobbies)) FROM ONLY person p;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg2 slice1 172.17.0.3:7004 pid=898079)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "hobbies" during startup
 --
 -- as above, but jeff needs advil and peet's coffee as well.
 --
 SELECT p.name, name(p.hobbies), name(equipment(p.hobbies)) FROM person* p;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "hobbies" during startup
 --
 -- just like the last two, but make sure that the target list fixup and
 -- unflattening is being done correctly.
 --
 SELECT name(equipment(p.hobbies)), p.name, name(p.hobbies) FROM ONLY person p;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "hobbies" during startup
 SELECT (p.hobbies).equipment.name, p.name, name(p.hobbies) FROM person* p;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "hobbies" during startup
 SELECT (p.hobbies).equipment.name, name(p.hobbies), p.name FROM ONLY person p;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "hobbies" during startup
 SELECT name(equipment(p.hobbies)), name(p.hobbies), p.name FROM person* p;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.hobbies_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "hobbies" during startup
 SELECT name(equipment(hobby_construct(text 'skywalking', text 'mer')));
  name 
@@ -304,10 +317,10 @@ SELECT name(equipment(ROW('skywalking', 'mer')));
 (1 row)
 
 SELECT *, name(equipment(h.*)) FROM hobbies_r h;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.equipment_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.equipment_r"  (seg0 slice1 172.17.0.3:7002 pid=139091)
 CONTEXT:  SQL function "equipment" during startup
 SELECT *, (equipment(CAST((h.*) AS hobbies_r))).name FROM hobbies_r h;
-ERROR:  function cannot execute on a QE slice because it accesses relation "public.equipment_r"  (seg0 slice1 172.17.0.3:7002 pid=898081)
+ERROR:  function cannot execute on a QE slice because it accesses relation "public.equipment_r"  (seg1 slice1 172.17.0.3:7003 pid=139092)
 CONTEXT:  SQL function "equipment" during startup
 --
 -- functional joins

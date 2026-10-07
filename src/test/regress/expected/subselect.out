@@ -78,6 +78,8 @@ CREATE TABLE SUBSELECT_TBL (
   f2 integer,
   f3 float
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO SUBSELECT_TBL VALUES (1, 2, 3);
 INSERT INTO SUBSELECT_TBL VALUES (2, 3, 4);
 INSERT INTO SUBSELECT_TBL VALUES (3, 4, 5);
@@ -89,15 +91,14 @@ INSERT INTO SUBSELECT_TBL VALUES (8, 9, NULL);
 SELECT * FROM SUBSELECT_TBL;
  f1 | f2 | f3 
 ----+----+----
-  1 |  2 |  3
-  1 |  1 |  1
-  6 |  7 |  8
   2 |  3 |  4
   3 |  4 |  5
-  1 |  1 |  1
   2 |  2 |  2
   3 |  3 |  3
   8 |  9 |   
+  1 |  2 |  3
+  1 |  1 |  1
+  6 |  7 |  8
 (8 rows)
 
 -- Uncorrelated subselects
@@ -115,7 +116,6 @@ SELECT f1 AS "Uncorrelated Field" FROM SUBSELECT_TBL
 --------------------
                   2
                   3
-                  1
                   2
                   3
                   1
@@ -127,12 +127,12 @@ SELECT f1 AS "Uncorrelated Field" FROM SUBSELECT_TBL
     f2 IN (SELECT f1 FROM SUBSELECT_TBL));
  Uncorrelated Field 
 --------------------
-                  1
+                  2
+                  3
                   2
                   3
                   1
-                  2
-                  3
+                  1
 (6 rows)
 
 SELECT f1, f2
@@ -141,9 +141,9 @@ SELECT f1, f2
                          WHERE f3 IS NOT NULL);
  f1 | f2 
 ----+----
-  6 |  7
-  1 |  2
   8 |  9
+  1 |  2
+  6 |  7
 (3 rows)
 
 -- Correlated subselects
@@ -152,12 +152,12 @@ SELECT f1 AS "Correlated Field", f2 AS "Second Field"
   WHERE f1 IN (SELECT f2 FROM SUBSELECT_TBL WHERE f1 = upper.f1);
  Correlated Field | Second Field 
 ------------------+--------------
-                1 |            2
                 2 |            3
                 3 |            4
-                1 |            1
                 2 |            2
                 3 |            3
+                1 |            2
+                1 |            1
 (6 rows)
 
 SELECT f1 AS "Correlated Field", f3 AS "Second Field"
@@ -166,9 +166,9 @@ SELECT f1 AS "Correlated Field", f3 AS "Second Field"
     (SELECT f2 FROM SUBSELECT_TBL WHERE CAST(upper.f2 AS float) = f3);
  Correlated Field | Second Field 
 ------------------+--------------
+                1 |            1
                 2 |            4
                 3 |            5
-                1 |            1
                 2 |            2
                 3 |            3
 (5 rows)
@@ -179,10 +179,10 @@ SELECT f1 AS "Correlated Field", f3 AS "Second Field"
                WHERE f2 = CAST(f3 AS integer));
  Correlated Field | Second Field 
 ------------------+--------------
-                6 |            8
-                1 |            3
                 2 |            4
                 3 |            5
+                6 |            8
+                1 |            3
 (4 rows)
 
 SELECT f1 AS "Correlated Field"
@@ -191,12 +191,11 @@ SELECT f1 AS "Correlated Field"
                      WHERE f3 IS NOT NULL);
  Correlated Field 
 ------------------
-                2
-                3
                 1
                 2
                 3
-                1
+                2
+                3
 (5 rows)
 
 --
@@ -212,8 +211,8 @@ SELECT ss.f1 AS "Correlated Field", ss.f3 AS "Second Field"
                 3 |            5
                 2 |            2
                 3 |            3
-                6 |            8
                 8 |             
+                6 |            8
 (6 rows)
 
 select q1, float8(count(*)) / (select count(*) from int8_tbl)
@@ -367,7 +366,11 @@ select count(distinct ss.ten) from
 -- Luca Pireddu and Michael Fuhr.
 --
 CREATE TEMP TABLE foo (id integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TEMP TABLE bar (id1 integer, id2 integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO foo VALUES (1);
 INSERT INTO bar VALUES (1, 1);
 INSERT INTO bar VALUES (2, 2);
@@ -427,6 +430,8 @@ CREATE TABLE orderstest (
     po_ref integer,
     ordercanceled boolean
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'approver_ref' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO orderstest VALUES (1, 1, false);
 INSERT INTO orderstest VALUES (66, 5, false);
 INSERT INTO orderstest VALUES (66, 6, false);
@@ -477,9 +482,6 @@ FROM orderstest ord;
 SELECT * FROM orders_view;
  approver_ref | po_ref | ordercanceled | Approved |  Status  | Status_OK 
 --------------+--------+---------------+----------+----------+-----------
-            1 |      1 | f             | ---      | ---      | ---
-            1 |      1 | f             | ---      | ---      | ---
-            1 |      1 | f             | ---      | ---      | ---
            66 |      5 | f             | Approved | PO       | PO
            66 |      6 | f             | Approved | PO       | PO
            66 |      7 | f             | Approved | PO       | PO
@@ -488,6 +490,9 @@ SELECT * FROM orders_view;
            66 |      1 | f             | Approved | Approved | Approved
            77 |      1 | f             | Approved | Approved | Approved
            66 |      1 | f             | Approved | Approved | Approved
+            1 |      1 | f             | ---      | ---      | ---
+            1 |      1 | f             | ---      | ---      | ---
+            1 |      1 | f             | ---      | ---      | ---
 (11 rows)
 
 DROP TABLE orderstest cascade;
@@ -500,12 +505,16 @@ create temp table parts (
     partnum     text,
     cost        float8
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'partnum' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create temp table shipped (
     ttype       char(2),
     ordnum      int4,
     partnum     text,
     value       float8
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'ttype' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create temp view shipped_view as
     select * from shipped where ttype = 'wt';
 create rule shipped_view_insert as on insert to shipped_view do instead
@@ -575,15 +584,19 @@ select * from (
 -- pointless.)
 --
 create temp table numeric_table (num_col numeric);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'num_col' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into numeric_table values (1), (1.000000000000000000001), (2), (3);
 create temp table float_table (float_col float8);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'float_col' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into float_table values (1), (2), (3);
 select * from float_table
   where float_col in (select num_col from numeric_table);
  float_col 
 -----------
-         1
          2
+         1
          3
 (3 rows)
 
@@ -591,11 +604,10 @@ select * from numeric_table
   where num_col in (select float_col from float_table);
          num_col         
 -------------------------
- 1.000000000000000000001
-                       2
-                       3
-                       2
                        1
+                       2
+ 1.000000000000000000001
+                       3
 (4 rows)
 
 --
@@ -621,6 +633,8 @@ ERROR:  correlated subquery with skip-level correlations is not supported
 -- Test case for 8.3 "failed to locate grouping columns" bug
 --
 create temp table t1 (f1 numeric(14,0), f2 varchar(30));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 select * from
   (select distinct f1, f2, (select f2 from t1 x where x.f1 = up.f1) as fs
    from t1 up) ss
@@ -633,6 +647,8 @@ group by f1,f2,fs;
 -- Test case for bug #5514 (mishandling of whole-row Vars in subselects)
 --
 create temp table table_a(id integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into table_a values (42);
 create temp view view_a as select * from table_a;
 select view_a from view_a;
@@ -680,10 +696,10 @@ with q as (select max(f1) from int4_tbl group by f1 order by f1)
   select q from q;  -- order none
        q       
 ---------------
- (-2147483647)
  (-123456)
- (0)
  (123456)
+ (-2147483647)
+ (0)
  (2147483647)
 (5 rows)
 
@@ -742,11 +758,15 @@ returning *;
 -- Test case for cross-type partial matching in hashed subplan (bug #7597)
 --
 create temp table outer_7597 (f1 int4, f2 int4);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into outer_7597 values (0, 0);
 insert into outer_7597 values (1, 0);
 insert into outer_7597 values (0, null);
 insert into outer_7597 values (1, null);
 create temp table inner_7597(c1 int8, c2 int8);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into inner_7597 values(0, null);
 select * from outer_7597 where (f1, f2) not in (select * from inner_7597);
  f1 | f2 
@@ -761,11 +781,15 @@ select * from outer_7597 where (f1, f2) not in (select * from inner_7597);
 -- (otherwise it would error in texteq())
 --
 create temp table outer_text (f1 text, f2 text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into outer_text values ('a', 'a');
 insert into outer_text values ('b', 'a');
 insert into outer_text values ('a', null);
 insert into outer_text values ('b', null);
 create temp table inner_text (c1 text, c2 text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into inner_text values ('a', null);
 insert into inner_text values ('123', '456');
 select * from outer_text where (f1, f2) not in (select * from inner_text);
@@ -979,6 +1003,8 @@ where (exists(select 1 from tenk1 k where k.unique1 = t.unique2) or ten < 0)
 
 -- It's possible for the same EXISTS to get resolved both ways
 create temp table exists_tbl (c1 int, c2 int, c3 int) partition by list (c1);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create temp table exists_tbl_null partition of exists_tbl for values in (null);
 NOTICE:  table has parent, setting distribution columns to match parent table
 create temp table exists_tbl_def partition of exists_tbl default;
@@ -993,8 +1019,8 @@ select * from exists_tbl t1
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Append
          ->  Seq Scan on exists_tbl_null t1_1
-               Filter: ((SubPlan 1 (copy 2)) OR (c3 < 0))
-               SubPlan 1 (copy 2)
+               Filter: ((SubPlan 1 (copy 3)) OR (c3 < 0))
+               SubPlan 1 (copy 3)
                  ->  Result
                        Filter: (t1_1.c1 = t2_1.c2)
                        ->  Materialize
@@ -1003,8 +1029,8 @@ select * from exists_tbl t1
                                          ->  Seq Scan on exists_tbl_null t2_1
                                          ->  Seq Scan on exists_tbl_def t2_2
          ->  Seq Scan on exists_tbl_def t1_2
-               Filter: ((SubPlan 1 (copy 3)) OR (c3 < 0))
-               SubPlan 1 (copy 3)
+               Filter: ((SubPlan 1 (copy 5)) OR (c3 < 0))
+               SubPlan 1 (copy 5)
                  ->  Result
                        Filter: (t1_2.c1 = t2_4.c2)
                        ->  Materialize
@@ -1019,12 +1045,12 @@ select * from exists_tbl t1
   where (exists(select 1 from exists_tbl t2 where t1.c1 = t2.c2) or c3 < 0);
  c1 | c2 | c3 
 ----+----+----
-  2 |  1 |  3
-  3 |  1 |  4
-  4 |  2 |  5
   0 |  0 |  1
   1 |  0 |  2
   5 |  2 |  6
+  2 |  1 |  3
+  3 |  1 |  4
+  4 |  2 |  5
 (6 rows)
 
 --
@@ -1207,14 +1233,15 @@ where o.ten = 1;
                      ->  Seq Scan on onek o
                            Filter: (ten = 1)
                      ->  Materialize
-                           ->  Result Cache
+                           ->  Memoize
                                  Cache Key: o.four
+                                 Cache Mode: binary
                                  ->  Recursive Union
                                        ->  Result
                                        ->  WorkTable Scan on x
                                              Filter: (a < 10)
  Optimizer: Postgres query optimizer
-(14 rows)
+(15 rows)
 
 select sum(o.four), sum(ss.a) from
   onek o cross join lateral (
@@ -1235,19 +1262,24 @@ where o.ten = 1;
 -- Check we don't misoptimize a NOT IN where the subquery returns no rows.
 --
 create temp table notinouter (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create temp table notininner (b int not null);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'b' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into notinouter values (null), (1);
 select * from notinouter where a not in (select b from notininner);
  a 
 ---
-  
  1
+  
 (2 rows)
 
 --
 -- Check we behave sanely in corner case of empty SELECT list (bug #8648)
 --
 create temp table nocolumns();
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause, and no column type is suitable for a distribution key. Creating a NULL policy entry.
 select exists(select * from nocolumns);
  exists 
 --------
@@ -1466,9 +1498,9 @@ select * from
 where b and f1 >= 0;
      f1     | b | id 
 ------------+---+----
-          0 | t |  2
      123456 | t |  1
      123456 | t |  2
+          0 | t |  2
  2147483647 | t |  1
  2147483647 | t |  2
 (5 rows)
@@ -1655,7 +1687,7 @@ select * from explain_sq_limit();
                      Executor Memory: xxx  Segments: x  Max: xxkB (segment x)
                      ->  Seq Scan on sq_limit (actual rows=8 loops=1)
  Optimizer: Postgres query optimizer
-(10 rows)
+(9 rows)
 
 -- a subpath is sorted under a subqueryscan. however, the subqueryscan is not.
 -- whether the order of subpath can applied to the subqueryscan is up-to-implement.
@@ -1667,7 +1699,7 @@ select * from (select pk,c2 from sq_limit order by c1,pk) as x limit 3;
 ----+----
   1 |  1
   5 |  1
-  6 |  2
+  2 |  2
 (3 rows)
 
 --end_ignore
@@ -1685,12 +1717,7 @@ declare c1 scroll cursor for
   where i <> all (values (2),(3));
 move forward all in c1;
 fetch backward all in c1;
- i 
----
- 4
- 1
-(2 rows)
-
+ERROR:  backward scan is not supported in this version of Greenplum Database
 commit;
 --end_ignore
 --
@@ -1769,6 +1796,8 @@ select * from x where f1 = 1;
 
 create temporary sequence ts;
 create table vol_test(a int, b int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 explain (verbose, costs off)
 with x as (select * from (select a, nextval('ts') from vol_test) ss)
 select * from x where a = 1;
