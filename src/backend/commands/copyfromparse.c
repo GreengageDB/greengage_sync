@@ -1204,9 +1204,9 @@ NextCopyFromRawFieldsX(CopyFromState cstate, char ***fields, int *nfields,
 			int			fldnum;
 
 			if (cstate->opts.csv_mode)
-				fldct = CopyReadAttributesCSV(cstate);
+				fldct = CopyReadAttributesCSV(cstate, -1);
 			else
-				fldct = CopyReadAttributesText(cstate);
+				fldct = CopyReadAttributesText(cstate, -1);
 
 			if (fldct != list_length(cstate->attnumlist))
 				ereport(ERROR,
