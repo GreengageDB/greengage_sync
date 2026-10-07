@@ -1462,6 +1462,11 @@ FROM bla WHERE s = 'Mum' \;               -- no mum here
 SELECT * FROM bla ORDER BY 1;
 
 -- reset all
+-- GPDB: end the implicit transaction that AUTOCOMMIT off left open.  A
+-- coordinator session that exits inside a transaction that used its writer
+-- gang resets the gangs during exit and leaves its pg_temp_N schema on the
+-- coordinator only (namespace_gp checks that), a pre-existing Greengage issue.
+COMMIT;
 \set AUTOCOMMIT on
 \set ON_ERROR_ROLLBACK off
 \echo '# final ON_ERROR_ROLLBACK:' :ON_ERROR_ROLLBACK
