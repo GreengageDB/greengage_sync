@@ -38,14 +38,8 @@
 #include "access/transam.h"
 #include "access/twophase_rmgr.h"
 #include "access/xact.h"
-<<<<<<< HEAD
 #include "access/xlog.h"
-#include "catalog/partition.h"
-||||||| e1c1c30f635
-#include "catalog/partition.h"
-=======
 #include "catalog/catalog.h"
->>>>>>> 3b231596ccf
 #include "catalog/pg_database.h"
 #include "catalog/pg_proc.h"
 #include "executor/instrument.h"
@@ -325,14 +319,6 @@ static List *pending_write_requests = NIL;
 static instr_time total_func_time;
 
 /*
-<<<<<<< HEAD
- * Total time charged to functions so far in the current backend.
- * We use this to help separate "self" and "other" time charges.
- * (We assume this initializes to zero.)
- */
-static instr_time total_func_time;
-||||||| e1c1c30f635
-=======
  * For assertions that check pgstat is not used before initialization / after
  * shutdown.
  */
@@ -340,7 +326,6 @@ static instr_time total_func_time;
 static bool pgstat_is_initialized = false;
 static bool pgstat_is_shutdown = false;
 #endif
->>>>>>> 3b231596ccf
 
 
 /* ----------
@@ -3117,6 +3102,15 @@ pgstat_send_checkpointer(void)
 	static const PgStat_MsgCheckpointer all_zeroes;
 
 	/*
+	 * GPDB: Non hot standby mirror should not send checkpointer statistics
+	 * to the stat collector either (see pgstat_send_bgwriter()): the stat
+	 * collector is not started when the mirror is not in hot standby mode,
+	 * and the checkpointer does run restartpoints there.
+	 */
+	if (!EnableHotStandby && IsRoleMirror())
+		return;
+
+	/*
 	 * This function can be called even if nothing at all has happened. In
 	 * this case, avoid sending a completely empty message to the stats
 	 * collector.
@@ -3713,14 +3707,12 @@ PgstatCollectorMain(int argc, char *argv[])
 					pgstat_recv_bgwriter(&msg.msg_bgwriter, len);
 					break;
 
-<<<<<<< HEAD
 				case PGSTAT_MTYPE_QUEUESTAT:  /* GPDB */
 					pgstat_recv_queuestat((PgStat_MsgQueuestat *) &msg, len);
-||||||| e1c1c30f635
-=======
+					break;
+
 				case PGSTAT_MTYPE_CHECKPOINTER:
 					pgstat_recv_checkpointer(&msg.msg_checkpointer, len);
->>>>>>> 3b231596ccf
 					break;
 
 				case PGSTAT_MTYPE_WAL:
