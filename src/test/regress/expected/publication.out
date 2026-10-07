@@ -7,6 +7,12 @@ NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE ROLE regress_publication_user_dummy LOGIN NOSUPERUSER;
 NOTICE:  resource queue required -- using default resource queue "pg_default"
 SET SESSION AUTHORIZATION 'regress_publication_user';
+-- GPDB: the UPDATE/DELETE statements below probe the replica-identity checks
+-- the executor makes on each target partition at startup.  ORCA plans an
+-- UPDATE/DELETE of a partitioned table on the root and checks a leaf only
+-- when a row is routed to it, so on these empty tables it reports the root
+-- or nothing.  Run the test with the Postgres planner.
+SET optimizer = off;
 -- suppress warning that depends on wal_level
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub_default;
