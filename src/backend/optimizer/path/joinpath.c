@@ -649,6 +649,18 @@ get_memoize_path(PlannerInfo *root, RelOptInfo *innerrel,
 									&hash_operators,
 									&binary_mode))
 	{
+		double		calls = outer_path->rows;
+
+		/*
+		 * GPDB: path rows are per segment, but cost_memoize_rescan() compares
+		 * the number of calls against a global ndistinct estimate of the
+		 * cache keys, so with per-segment calls every call looks unique and
+		 * a Memoize path never wins.  Count the calls of all segments, as
+		 * next did with outer_path->parent->rows before 1e731ed12aa.
+		 */
+		if (CdbPathLocus_IsPartitioned(outer_path->locus))
+			calls *= CdbPathLocus_NumSegments(outer_path->locus);
+
 		return (Path *) create_memoize_path(root,
 											innerrel,
 											inner_path,
@@ -656,7 +668,7 @@ get_memoize_path(PlannerInfo *root, RelOptInfo *innerrel,
 											hash_operators,
 											extra->inner_unique,
 											binary_mode,
-											outer_path->rows);
+											calls);
 	}
 
 	return NULL;
