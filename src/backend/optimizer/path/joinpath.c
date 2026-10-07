@@ -656,10 +656,16 @@ get_memoize_path(PlannerInfo *root, RelOptInfo *innerrel,
 		 * the number of calls against a global ndistinct estimate of the
 		 * cache keys, so with per-segment calls every call looks unique and
 		 * a Memoize path never wins.  Count the calls of all segments, as
-		 * next did with outer_path->parent->rows before 1e731ed12aa.
+		 * next did with outer_path->parent->rows before 1e731ed12aa.  The
+		 * per-segment estimate is clamped to at least one row, so cap the
+		 * product at the relation's row count: for an unparameterized outer
+		 * path that gives exactly next's value.
 		 */
 		if (CdbPathLocus_IsPartitioned(outer_path->locus))
+		{
 			calls *= CdbPathLocus_NumSegments(outer_path->locus);
+			calls = Min(calls, outer_path->parent->rows);
+		}
 
 		return (Path *) create_memoize_path(root,
 											innerrel,
