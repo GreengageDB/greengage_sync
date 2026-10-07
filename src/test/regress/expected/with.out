@@ -1,6 +1,9 @@
 --
 -- Tests for common table expressions (WITH query, ... SELECT ...)
 --
+--start_ignore
+set gp_cte_sharing to on;
+--end_ignore
 -- Basic WITH
 WITH q1(x,y) AS (SELECT 1,2)
 SELECT * FROM q1, q1 AS q2;
@@ -249,6 +252,7 @@ CREATE TEMP TABLE department (
 	parent_department INTEGER REFERENCES department, -- upper department ID
 	name TEXT -- department name
 );
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 INSERT INTO department VALUES (0, NULL, 'ROOT');
 INSERT INTO department VALUES (1, 0, 'A');
 INSERT INTO department VALUES (2, 1, 'B');
@@ -463,29 +467,29 @@ with recursive q as (
 select id, parent_department, name from q limit 24;
  id | parent_department | name 
 ----+-------------------+------
+  5 |                 0 | E
+  6 |                 4 | F
   0 |                   | ROOT
   1 |                 0 | A
   2 |                 1 | B
   3 |                 2 | C
   4 |                 2 | D
-  5 |                 0 | E
-  6 |                 4 | F
   7 |                 5 | G
+  5 |                 0 | E
+  6 |                 4 | F
   0 |                   | ROOT
   1 |                 0 | A
   2 |                 1 | B
   3 |                 2 | C
   4 |                 2 | D
-  5 |                 0 | E
-  6 |                 4 | F
   7 |                 5 | G
+  5 |                 0 | E
+  6 |                 4 | F
   0 |                   | ROOT
   1 |                 0 | A
   2 |                 1 | B
   3 |                 2 | C
   4 |                 2 | D
-  5 |                 0 | E
-  6 |                 4 | F
   7 |                 5 | G
 (24 rows)
 
@@ -502,37 +506,37 @@ with recursive q as (
 select id, parent_department, name from q limit 32;
  id | parent_department | name 
 ----+-------------------+------
+  5 |                 0 | E
+  6 |                 4 | F
   0 |                   | ROOT
   1 |                 0 | A
   2 |                 1 | B
   3 |                 2 | C
   4 |                 2 | D
-  5 |                 0 | E
-  6 |                 4 | F
   7 |                 5 | G
+  5 |                 0 | E
+  6 |                 4 | F
   0 |                   | ROOT
   1 |                 0 | A
   2 |                 1 | B
   3 |                 2 | C
   4 |                 2 | D
-  5 |                 0 | E
-  6 |                 4 | F
   7 |                 5 | G
+  5 |                 0 | E
+  6 |                 4 | F
   0 |                   | ROOT
   1 |                 0 | A
   2 |                 1 | B
   3 |                 2 | C
   4 |                 2 | D
-  5 |                 0 | E
-  6 |                 4 | F
   7 |                 5 | G
+  5 |                 0 | E
+  6 |                 4 | F
   0 |                   | ROOT
   1 |                 0 | A
   2 |                 1 | B
   3 |                 2 | C
   4 |                 2 | D
-  5 |                 0 | E
-  6 |                 4 | F
   7 |                 5 | G
 (32 rows)
 
@@ -558,6 +562,7 @@ CREATE TEMPORARY TABLE tree(
     id INTEGER PRIMARY KEY,
     parent_id INTEGER REFERENCES tree(id)
 );
+WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 INSERT INTO tree
 VALUES (1, NULL), (2, 1), (3,1), (4,2), (5,2), (6,2), (7,3), (8,3),
        (9,4), (10,4), (11,7), (12,7), (13,7), (14, 9), (15,11), (16,11);
@@ -623,25 +628,27 @@ SELECT t1.id, t2.path, t2 FROM t AS t1 JOIN t AS t2 ON
  id |    path     |         t2         
 ----+-------------+--------------------
   1 | {}          | (1,{})
-  2 | {2}         | (2,{2})
   3 | {3}         | (3,{3})
-  4 | {2,4}       | (4,"{2,4}")
-  5 | {2,5}       | (5,"{2,5}")
-  6 | {2,6}       | (6,"{2,6}")
-  7 | {3,7}       | (7,"{3,7}")
+  2 | {2}         | (2,{2})
   8 | {3,8}       | (8,"{3,8}")
-  9 | {2,4,9}     | (9,"{2,4,9}")
- 10 | {2,4,10}    | (10,"{2,4,10}")
+  7 | {3,7}       | (7,"{3,7}")
+  6 | {2,6}       | (6,"{2,6}")
+  5 | {2,5}       | (5,"{2,5}")
+  4 | {2,4}       | (4,"{2,4}")
+ 13 | {3,7,13}    | (13,"{3,7,13}")
  11 | {3,7,11}    | (11,"{3,7,11}")
  12 | {3,7,12}    | (12,"{3,7,12}")
- 13 | {3,7,13}    | (13,"{3,7,13}")
- 14 | {2,4,9,14}  | (14,"{2,4,9,14}")
+ 10 | {2,4,10}    | (10,"{2,4,10}")
+  9 | {2,4,9}     | (9,"{2,4,9}")
  15 | {3,7,11,15} | (15,"{3,7,11,15}")
  16 | {3,7,11,16} | (16,"{3,7,11,16}")
+ 14 | {2,4,9,14}  | (14,"{2,4,9,14}")
 (16 rows)
 
 -- SEARCH clause
 create temp table graph0( f int, t int, label text );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into graph0 values
 	(1, 2, 'arc 1 -> 2'),
 	(1, 3, 'arc 1 -> 3'),
@@ -815,11 +822,11 @@ select pg_get_viewdef('v_search');
 select * from v_search;
  f | t |   label    
 ---+---+------------
+ 2 | 3 | arc 2 -> 3
+ 4 | 5 | arc 4 -> 5
  1 | 2 | arc 1 -> 2
  1 | 3 | arc 1 -> 3
- 2 | 3 | arc 2 -> 3
  1 | 4 | arc 1 -> 4
- 4 | 5 | arc 4 -> 5
  2 | 3 | arc 2 -> 3
  4 | 5 | arc 4 -> 5
 (7 rows)
@@ -828,6 +835,8 @@ select * from v_search;
 -- test cycle detection
 --
 create temp table graph( f int, t int, label text );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into graph values
 	(1, 2, 'arc 1 -> 2'),
 	(1, 3, 'arc 1 -> 3'),
@@ -845,30 +854,30 @@ with recursive search_graph(f, t, label, is_cycle, path) as (
 select * from search_graph;
  f | t |   label    | is_cycle |                   path                    
 ---+---+------------+----------+-------------------------------------------
+ 2 | 3 | arc 2 -> 3 | f        | {"(2,3)"}
+ 4 | 5 | arc 4 -> 5 | f        | {"(4,5)"}
+ 5 | 1 | arc 5 -> 1 | f        | {"(4,5)","(5,1)"}
+ 1 | 4 | arc 1 -> 4 | f        | {"(4,5)","(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(4,5)","(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | f        | {"(5,1)"}
+ 1 | 4 | arc 1 -> 4 | f        | {"(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | f        | {"(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | f        | {"(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
  1 | 2 | arc 1 -> 2 | f        | {"(1,2)"}
  1 | 3 | arc 1 -> 3 | f        | {"(1,3)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(2,3)"}
  1 | 4 | arc 1 -> 4 | f        | {"(1,4)"}
- 4 | 5 | arc 4 -> 5 | f        | {"(4,5)"}
- 5 | 1 | arc 5 -> 1 | f        | {"(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | f        | {"(5,1)","(1,4)"}
  2 | 3 | arc 2 -> 3 | f        | {"(1,2)","(2,3)"}
  4 | 5 | arc 4 -> 5 | f        | {"(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | f        | {"(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(4,5)","(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | f        | {"(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | f        | {"(5,1)","(1,4)","(4,5)"}
  5 | 1 | arc 5 -> 1 | f        | {"(1,4)","(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
  1 | 4 | arc 1 -> 4 | t        | {"(1,4)","(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
  2 | 3 | arc 2 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)","(2,3)"}
 (25 rows)
 
@@ -885,29 +894,29 @@ select * from search_graph;
 ---+---+------------+----------+-------------------------------------------
  1 | 2 | arc 1 -> 2 | f        | {"(1,2)"}
  1 | 3 | arc 1 -> 3 | f        | {"(1,3)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(2,3)"}
  1 | 4 | arc 1 -> 4 | f        | {"(1,4)"}
- 4 | 5 | arc 4 -> 5 | f        | {"(4,5)"}
- 5 | 1 | arc 5 -> 1 | f        | {"(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | f        | {"(5,1)","(1,4)"}
  2 | 3 | arc 2 -> 3 | f        | {"(1,2)","(2,3)"}
  4 | 5 | arc 4 -> 5 | f        | {"(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | f        | {"(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(4,5)","(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | f        | {"(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | f        | {"(5,1)","(1,4)","(4,5)"}
  5 | 1 | arc 5 -> 1 | f        | {"(1,4)","(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
  1 | 4 | arc 1 -> 4 | t        | {"(1,4)","(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
  2 | 3 | arc 2 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | f        | {"(5,1)"}
+ 1 | 4 | arc 1 -> 4 | f        | {"(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | f        | {"(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | f        | {"(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
+ 2 | 3 | arc 2 -> 3 | f        | {"(2,3)"}
+ 4 | 5 | arc 4 -> 5 | f        | {"(4,5)"}
+ 5 | 1 | arc 5 -> 1 | f        | {"(4,5)","(5,1)"}
+ 1 | 4 | arc 1 -> 4 | f        | {"(4,5)","(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(4,5)","(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
 (25 rows)
 
 -- ordering by the path column has same effect as SEARCH DEPTH FIRST
@@ -959,31 +968,31 @@ with recursive search_graph(f, t, label) as (
 select * from search_graph;
  f | t |   label    | is_cycle |                   path                    
 ---+---+------------+----------+-------------------------------------------
+ 5 | 1 | arc 5 -> 1 | f        | {"(5,1)"}
+ 1 | 4 | arc 1 -> 4 | f        | {"(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | f        | {"(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | f        | {"(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
  1 | 2 | arc 1 -> 2 | f        | {"(1,2)"}
  1 | 3 | arc 1 -> 3 | f        | {"(1,3)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(2,3)"}
  1 | 4 | arc 1 -> 4 | f        | {"(1,4)"}
- 4 | 5 | arc 4 -> 5 | f        | {"(4,5)"}
- 5 | 1 | arc 5 -> 1 | f        | {"(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | f        | {"(5,1)","(1,4)"}
  2 | 3 | arc 2 -> 3 | f        | {"(1,2)","(2,3)"}
  4 | 5 | arc 4 -> 5 | f        | {"(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | f        | {"(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(4,5)","(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | f        | {"(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | f        | {"(5,1)","(1,4)","(4,5)"}
  5 | 1 | arc 5 -> 1 | f        | {"(1,4)","(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
  1 | 4 | arc 1 -> 4 | t        | {"(1,4)","(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
  2 | 3 | arc 2 -> 3 | f        | {"(1,4)","(4,5)","(5,1)","(1,2)","(2,3)"}
+ 2 | 3 | arc 2 -> 3 | f        | {"(2,3)"}
+ 4 | 5 | arc 4 -> 5 | f        | {"(4,5)"}
+ 5 | 1 | arc 5 -> 1 | f        | {"(4,5)","(5,1)"}
+ 1 | 4 | arc 1 -> 4 | f        | {"(4,5)","(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | f        | {"(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | f        | {"(4,5)","(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
 (25 rows)
 
 with recursive search_graph(f, t, label) as (
@@ -998,29 +1007,29 @@ select * from search_graph;
 ---+---+------------+----------+-------------------------------------------
  1 | 2 | arc 1 -> 2 | N        | {"(1,2)"}
  1 | 3 | arc 1 -> 3 | N        | {"(1,3)"}
- 2 | 3 | arc 2 -> 3 | N        | {"(2,3)"}
  1 | 4 | arc 1 -> 4 | N        | {"(1,4)"}
- 4 | 5 | arc 4 -> 5 | N        | {"(4,5)"}
- 5 | 1 | arc 5 -> 1 | N        | {"(5,1)"}
- 1 | 2 | arc 1 -> 2 | N        | {"(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | N        | {"(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | N        | {"(5,1)","(1,4)"}
  2 | 3 | arc 2 -> 3 | N        | {"(1,2)","(2,3)"}
  4 | 5 | arc 4 -> 5 | N        | {"(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | N        | {"(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | N        | {"(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | N        | {"(4,5)","(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | N        | {"(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | N        | {"(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | N        | {"(5,1)","(1,4)","(4,5)"}
  5 | 1 | arc 5 -> 1 | N        | {"(1,4)","(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | N        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | N        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
  1 | 4 | arc 1 -> 4 | Y        | {"(1,4)","(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | N        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | Y        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | Y        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
+ 1 | 3 | arc 1 -> 3 | N        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | N        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
  2 | 3 | arc 2 -> 3 | N        | {"(1,4)","(4,5)","(5,1)","(1,2)","(2,3)"}
+ 2 | 3 | arc 2 -> 3 | N        | {"(2,3)"}
+ 4 | 5 | arc 4 -> 5 | N        | {"(4,5)"}
+ 5 | 1 | arc 5 -> 1 | N        | {"(4,5)","(5,1)"}
+ 1 | 4 | arc 1 -> 4 | N        | {"(4,5)","(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | N        | {"(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | N        | {"(4,5)","(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | Y        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | N        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | N        | {"(5,1)"}
+ 1 | 4 | arc 1 -> 4 | N        | {"(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | N        | {"(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | N        | {"(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | N        | {"(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | N        | {"(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | Y        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
 (25 rows)
 
 -- multiple CTEs
@@ -1097,29 +1106,29 @@ select * from search_graph;
 ---+---+------------+-------------------------------------------+----------+-------------------------------------------
  1 | 2 | arc 1 -> 2 | {"(1,2)"}                                 | f        | {"(1,2)"}
  1 | 3 | arc 1 -> 3 | {"(1,3)"}                                 | f        | {"(1,3)"}
- 2 | 3 | arc 2 -> 3 | {"(2,3)"}                                 | f        | {"(2,3)"}
  1 | 4 | arc 1 -> 4 | {"(1,4)"}                                 | f        | {"(1,4)"}
- 4 | 5 | arc 4 -> 5 | {"(4,5)"}                                 | f        | {"(4,5)"}
- 5 | 1 | arc 5 -> 1 | {"(5,1)"}                                 | f        | {"(5,1)"}
- 1 | 2 | arc 1 -> 2 | {"(5,1)","(1,2)"}                         | f        | {"(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | {"(5,1)","(1,3)"}                         | f        | {"(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | {"(5,1)","(1,4)"}                         | f        | {"(5,1)","(1,4)"}
  2 | 3 | arc 2 -> 3 | {"(1,2)","(2,3)"}                         | f        | {"(1,2)","(2,3)"}
  4 | 5 | arc 4 -> 5 | {"(1,4)","(4,5)"}                         | f        | {"(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | {"(4,5)","(5,1)"}                         | f        | {"(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | {"(4,5)","(5,1)","(1,2)"}                 | f        | {"(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | {"(4,5)","(5,1)","(1,3)"}                 | f        | {"(4,5)","(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | {"(4,5)","(5,1)","(1,4)"}                 | f        | {"(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | {"(5,1)","(1,2)","(2,3)"}                 | f        | {"(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | {"(5,1)","(1,4)","(4,5)"}                 | f        | {"(5,1)","(1,4)","(4,5)"}
  5 | 1 | arc 5 -> 1 | {"(1,4)","(4,5)","(5,1)"}                 | f        | {"(1,4)","(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | {"(1,4)","(4,5)","(5,1)","(1,2)"}         | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | {"(1,4)","(4,5)","(5,1)","(1,3)"}         | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
  1 | 4 | arc 1 -> 4 | {"(1,4)","(4,5)","(5,1)","(1,4)"}         | t        | {"(1,4)","(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | {"(4,5)","(5,1)","(1,2)","(2,3)"}         | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | {"(4,5)","(5,1)","(1,4)","(4,5)"}         | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | {"(5,1)","(1,4)","(4,5)","(5,1)"}         | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
+ 1 | 3 | arc 1 -> 3 | {"(1,4)","(4,5)","(5,1)","(1,3)"}         | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | {"(1,4)","(4,5)","(5,1)","(1,2)"}         | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
  2 | 3 | arc 2 -> 3 | {"(1,4)","(4,5)","(5,1)","(1,2)","(2,3)"} | f        | {"(1,4)","(4,5)","(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | {"(5,1)"}                                 | f        | {"(5,1)"}
+ 1 | 4 | arc 1 -> 4 | {"(5,1)","(1,4)"}                         | f        | {"(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | {"(5,1)","(1,3)"}                         | f        | {"(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | {"(5,1)","(1,2)"}                         | f        | {"(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | {"(5,1)","(1,4)","(4,5)"}                 | f        | {"(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | {"(5,1)","(1,2)","(2,3)"}                 | f        | {"(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | {"(5,1)","(1,4)","(4,5)","(5,1)"}         | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
+ 2 | 3 | arc 2 -> 3 | {"(2,3)"}                                 | f        | {"(2,3)"}
+ 4 | 5 | arc 4 -> 5 | {"(4,5)"}                                 | f        | {"(4,5)"}
+ 5 | 1 | arc 5 -> 1 | {"(4,5)","(5,1)"}                         | f        | {"(4,5)","(5,1)"}
+ 1 | 4 | arc 1 -> 4 | {"(4,5)","(5,1)","(1,4)"}                 | f        | {"(4,5)","(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | {"(4,5)","(5,1)","(1,3)"}                 | f        | {"(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | {"(4,5)","(5,1)","(1,2)"}                 | f        | {"(4,5)","(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | {"(4,5)","(5,1)","(1,4)","(4,5)"}         | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | {"(4,5)","(5,1)","(1,2)","(2,3)"}         | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
 (25 rows)
 
 with recursive search_graph(f, t, label) as (
@@ -1133,31 +1142,31 @@ with recursive search_graph(f, t, label) as (
 select * from search_graph;
  f | t |   label    |   seq   | is_cycle |                   path                    
 ---+---+------------+---------+----------+-------------------------------------------
+ 5 | 1 | arc 5 -> 1 | (0,5,1) | f        | {"(5,1)"}
+ 1 | 4 | arc 1 -> 4 | (1,1,4) | f        | {"(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | (1,1,3) | f        | {"(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | (1,1,2) | f        | {"(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | (2,4,5) | f        | {"(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | (2,2,3) | f        | {"(5,1)","(1,2)","(2,3)"}
+ 5 | 1 | arc 5 -> 1 | (3,5,1) | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
  1 | 2 | arc 1 -> 2 | (0,1,2) | f        | {"(1,2)"}
  1 | 3 | arc 1 -> 3 | (0,1,3) | f        | {"(1,3)"}
- 2 | 3 | arc 2 -> 3 | (0,2,3) | f        | {"(2,3)"}
  1 | 4 | arc 1 -> 4 | (0,1,4) | f        | {"(1,4)"}
- 4 | 5 | arc 4 -> 5 | (0,4,5) | f        | {"(4,5)"}
- 5 | 1 | arc 5 -> 1 | (0,5,1) | f        | {"(5,1)"}
- 1 | 2 | arc 1 -> 2 | (1,1,2) | f        | {"(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | (1,1,3) | f        | {"(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | (1,1,4) | f        | {"(5,1)","(1,4)"}
  2 | 3 | arc 2 -> 3 | (1,2,3) | f        | {"(1,2)","(2,3)"}
  4 | 5 | arc 4 -> 5 | (1,4,5) | f        | {"(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | (1,5,1) | f        | {"(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | (2,1,2) | f        | {"(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | (2,1,3) | f        | {"(4,5)","(5,1)","(1,3)"}
- 1 | 4 | arc 1 -> 4 | (2,1,4) | f        | {"(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | (2,2,3) | f        | {"(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | (2,4,5) | f        | {"(5,1)","(1,4)","(4,5)"}
  5 | 1 | arc 5 -> 1 | (2,5,1) | f        | {"(1,4)","(4,5)","(5,1)"}
- 1 | 2 | arc 1 -> 2 | (3,1,2) | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
- 1 | 3 | arc 1 -> 3 | (3,1,3) | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
  1 | 4 | arc 1 -> 4 | (3,1,4) | t        | {"(1,4)","(4,5)","(5,1)","(1,4)"}
- 2 | 3 | arc 2 -> 3 | (3,2,3) | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
- 4 | 5 | arc 4 -> 5 | (3,4,5) | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
- 5 | 1 | arc 5 -> 1 | (3,5,1) | t        | {"(5,1)","(1,4)","(4,5)","(5,1)"}
+ 1 | 3 | arc 1 -> 3 | (3,1,3) | f        | {"(1,4)","(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | (3,1,2) | f        | {"(1,4)","(4,5)","(5,1)","(1,2)"}
  2 | 3 | arc 2 -> 3 | (4,2,3) | f        | {"(1,4)","(4,5)","(5,1)","(1,2)","(2,3)"}
+ 2 | 3 | arc 2 -> 3 | (0,2,3) | f        | {"(2,3)"}
+ 4 | 5 | arc 4 -> 5 | (0,4,5) | f        | {"(4,5)"}
+ 5 | 1 | arc 5 -> 1 | (1,5,1) | f        | {"(4,5)","(5,1)"}
+ 1 | 4 | arc 1 -> 4 | (2,1,4) | f        | {"(4,5)","(5,1)","(1,4)"}
+ 1 | 3 | arc 1 -> 3 | (2,1,3) | f        | {"(4,5)","(5,1)","(1,3)"}
+ 1 | 2 | arc 1 -> 2 | (2,1,2) | f        | {"(4,5)","(5,1)","(1,2)"}
+ 4 | 5 | arc 4 -> 5 | (3,4,5) | t        | {"(4,5)","(5,1)","(1,4)","(4,5)"}
+ 2 | 3 | arc 2 -> 3 | (3,2,3) | f        | {"(4,5)","(5,1)","(1,2)","(2,3)"}
 (25 rows)
 
 -- various syntax errors
@@ -1328,59 +1337,59 @@ select * from v_cycle1;
 ---+---+------------
  1 | 2 | arc 1 -> 2
  1 | 3 | arc 1 -> 3
- 2 | 3 | arc 2 -> 3
  1 | 4 | arc 1 -> 4
+ 2 | 3 | arc 2 -> 3
  4 | 5 | arc 4 -> 5
  5 | 1 | arc 5 -> 1
- 1 | 2 | arc 1 -> 2
+ 1 | 4 | arc 1 -> 4
  1 | 3 | arc 1 -> 3
- 1 | 4 | arc 1 -> 4
- 2 | 3 | arc 2 -> 3
- 4 | 5 | arc 4 -> 5
- 5 | 1 | arc 5 -> 1
  1 | 2 | arc 1 -> 2
- 1 | 3 | arc 1 -> 3
- 1 | 4 | arc 1 -> 4
  2 | 3 | arc 2 -> 3
- 4 | 5 | arc 4 -> 5
  5 | 1 | arc 5 -> 1
+ 1 | 4 | arc 1 -> 4
+ 1 | 3 | arc 1 -> 3
  1 | 2 | arc 1 -> 2
- 1 | 3 | arc 1 -> 3
- 1 | 4 | arc 1 -> 4
+ 4 | 5 | arc 4 -> 5
+ 2 | 3 | arc 2 -> 3
+ 5 | 1 | arc 5 -> 1
  2 | 3 | arc 2 -> 3
  4 | 5 | arc 4 -> 5
  5 | 1 | arc 5 -> 1
+ 1 | 4 | arc 1 -> 4
+ 1 | 3 | arc 1 -> 3
+ 1 | 2 | arc 1 -> 2
+ 4 | 5 | arc 4 -> 5
  2 | 3 | arc 2 -> 3
 (25 rows)
 
 select * from v_cycle2;
  f | t |   label    
 ---+---+------------
- 1 | 2 | arc 1 -> 2
- 1 | 3 | arc 1 -> 3
- 2 | 3 | arc 2 -> 3
- 1 | 4 | arc 1 -> 4
- 4 | 5 | arc 4 -> 5
- 5 | 1 | arc 5 -> 1
- 1 | 2 | arc 1 -> 2
- 1 | 3 | arc 1 -> 3
- 1 | 4 | arc 1 -> 4
  2 | 3 | arc 2 -> 3
  4 | 5 | arc 4 -> 5
  5 | 1 | arc 5 -> 1
+ 1 | 4 | arc 1 -> 4
+ 1 | 3 | arc 1 -> 3
+ 1 | 2 | arc 1 -> 2
+ 4 | 5 | arc 4 -> 5
+ 2 | 3 | arc 2 -> 3
  1 | 2 | arc 1 -> 2
  1 | 3 | arc 1 -> 3
  1 | 4 | arc 1 -> 4
  2 | 3 | arc 2 -> 3
  4 | 5 | arc 4 -> 5
  5 | 1 | arc 5 -> 1
- 1 | 2 | arc 1 -> 2
- 1 | 3 | arc 1 -> 3
  1 | 4 | arc 1 -> 4
+ 1 | 3 | arc 1 -> 3
+ 1 | 2 | arc 1 -> 2
  2 | 3 | arc 2 -> 3
- 4 | 5 | arc 4 -> 5
  5 | 1 | arc 5 -> 1
+ 1 | 4 | arc 1 -> 4
+ 1 | 3 | arc 1 -> 3
+ 1 | 2 | arc 1 -> 2
+ 4 | 5 | arc 4 -> 5
  2 | 3 | arc 2 -> 3
+ 5 | 1 | arc 5 -> 1
 (25 rows)
 
 --
@@ -1566,41 +1575,41 @@ INSERT INTO y
 SELECT a+20 FROM t RETURNING *;
  a  
 ----
- 21
  22
- 23
  24
- 25
  26
+ 30
+ 21
+ 23
+ 25
  27
  28
  29
- 30
 (10 rows)
 
 SELECT * FROM y;
  a  
 ----
+ 10
+ 30
   1
-  2
   3
-  4
   5
-  6
   7
   8
   9
- 10
  21
- 22
  23
- 24
  25
- 26
  27
  28
  29
- 30
+  2
+  4
+  6
+ 22
+ 24
+ 26
 (20 rows)
 
 WITH t AS (
@@ -1610,40 +1619,40 @@ UPDATE y SET a = y.a-10 FROM t WHERE y.a > 20 AND t.a = y.a RETURNING y.a;
  a  
 ----
  11
- 12
  13
- 14
  15
- 16
  17
  18
  19
  20
+ 12
+ 14
+ 16
 (10 rows)
 
 SELECT * FROM y;
  a  
 ----
-  1
   2
-  3
   4
-  5
   6
+ 12
+ 14
+ 16
+ 10
+ 20
+  1
+  3
+  5
   7
   8
   9
- 10
  11
- 12
  13
- 14
  15
- 16
  17
  18
  19
- 20
 (20 rows)
 
 WITH RECURSIVE t(a) AS (
@@ -1654,31 +1663,31 @@ WITH RECURSIVE t(a) AS (
 DELETE FROM y USING t WHERE t.a = y.a RETURNING y.a;
  a  
 ----
- 11
  12
- 13
  14
- 15
  16
+ 20
+ 11
+ 13
+ 15
  17
  18
  19
- 20
 (10 rows)
 
 SELECT * FROM y;
  a  
 ----
-  1
   2
-  3
   4
-  5
   6
+ 10
+  1
+  3
+  5
   7
   8
   9
- 10
 (10 rows)
 
 DROP TABLE y;
@@ -1915,6 +1924,8 @@ LINE 2:    (SELECT i::numeric(3,0) FROM (VALUES(1),(2)) t(i)
 HINT:  Cast the output of the non-recursive term to the correct type.
 -- disallow OLD/NEW reference in CTE
 CREATE TEMPORARY TABLE x (n integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'n' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE RULE r2 AS ON UPDATE TO x DO INSTEAD
     WITH t AS (SELECT OLD.*) UPDATE y SET a = t.n FROM t;
 ERROR:  cannot refer to OLD within WITH query
@@ -1940,9 +1951,9 @@ select ( with cte(foo) as ( values(f1) )
 from int4_tbl;
      foo     
 -------------
-           0
       123456
      -123456
+           0
   2147483647
  -2147483647
 (5 rows)
@@ -1952,9 +1963,9 @@ select ( with cte(foo) as ( values(f1) )
 from int4_tbl;
    column1   
 -------------
-           0
       123456
      -123456
+           0
   2147483647
  -2147483647
 (5 rows)
@@ -2114,11 +2125,11 @@ C as ( select A.id, array(select B.id from B where B.id = A.id) from A )
 select * from C;
         id         |                array                
 -------------------+-------------------------------------
-               456 | {456}
-  4567890123456789 | {4567890123456789,4567890123456789}
                123 | {123}
   4567890123456789 | {4567890123456789,4567890123456789}
  -4567890123456789 | {-4567890123456789}
+               456 | {456}
+  4567890123456789 | {4567890123456789,4567890123456789}
 (5 rows)
 
 --
@@ -2249,12 +2260,12 @@ SELECT * FROM iter;
  id_key | row_type | link 
 --------+----------+------
       0 | base     |   17
-      1 | true     |   17
-      2 | true     |   17
-      3 | true     |   17
-      4 | true     |   17
       5 | true     |   17
       6 | true     |   17
+      4 | true     |   17
+      3 | true     |   17
+      2 | true     |   17
+      1 | true     |   17
 (7 rows)
 
 --
@@ -2279,41 +2290,41 @@ WITH t AS (
 SELECT * FROM t;
  a  
 ----
- 11
+ 16
+ 18
+ 20
  12
+ 15
+ 11
  13
  14
- 15
- 16
  17
- 18
  19
- 20
 (10 rows)
 
 SELECT * FROM y;
  a  
 ----
-  1
-  2
   3
-  4
-  5
-  6
   7
+ 11
+ 13
+ 14
+ 17
+ 19
+  1
   8
   9
  10
- 11
- 12
- 13
- 14
- 15
  16
- 17
  18
- 19
  20
+  2
+  4
+  5
+  6
+ 12
+ 15
 (20 rows)
 
 -- UPDATE ... RETURNING
@@ -2325,25 +2336,25 @@ WITH t AS (
 SELECT * FROM t;
  a  
 ----
-  2
-  3
   4
+  8
+ 12
+ 14
+ 15
+ 18
+ 20
+  3
   5
   6
   7
-  8
+ 13
+ 16
+  2
   9
  10
  11
- 12
- 13
- 14
- 15
- 16
  17
- 18
  19
- 20
  21
 (20 rows)
 
@@ -2351,25 +2362,25 @@ SELECT * FROM y;
  a  
 ----
   2
-  3
-  4
-  5
-  6
-  7
-  8
   9
  10
  11
+ 17
+ 19
+ 21
+  4
+  8
  12
- 13
  14
  15
- 16
- 17
  18
- 19
  20
- 21
+  3
+  5
+  6
+  7
+ 13
+ 16
 (20 rows)
 
 -- DELETE ... RETURNING
@@ -2381,31 +2392,31 @@ WITH t AS (
 SELECT * FROM t;
  a  
 ----
-  2
-  3
   4
+  8
+  2
+  9
+ 10
+  3
   5
   6
   7
-  8
-  9
- 10
 (9 rows)
 
 SELECT * FROM y;
  a  
 ----
- 11
- 12
  13
+ 16
+ 11
+ 17
+ 19
+ 21
+ 12
  14
  15
- 16
- 17
  18
- 19
  20
- 21
 (11 rows)
 
 -- forward reference
@@ -2425,16 +2436,16 @@ HINT:  Rewrite the query to only include one writable CTE clause.
 SELECT * FROM y;
  a  
 ----
- 11
  12
- 13
  14
  15
- 16
- 17
  18
- 19
  20
+ 13
+ 16
+ 11
+ 17
+ 19
  21
 (11 rows)
 
@@ -2453,17 +2464,17 @@ SELECT * FROM t;
 SELECT * FROM y;
  a  
 ----
- 11
  12
- 13
  14
  15
- 16
- 17
  18
- 19
  20
+ 11
+ 17
+ 19
  21
+ 13
+ 16
  42
 (12 rows)
 
@@ -2471,12 +2482,14 @@ DROP RULE y_rule ON y;
 -- check merging of outer CTE with CTE in a rule action
 CREATE TEMP TABLE bug6051 AS
   select i from generate_series(1,3) as t(i);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SELECT * FROM bug6051;
  i 
 ---
- 1
  2
  3
+ 1
 (3 rows)
 
 WITH t1 AS ( DELETE FROM bug6051 RETURNING * )
@@ -2493,6 +2506,8 @@ SELECT * FROM bug6051;
 (3 rows)
 
 CREATE TEMP TABLE bug6051_2 (i int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE RULE bug6051_ins AS ON INSERT TO bug6051 DO INSTEAD
  INSERT INTO bug6051_2
  VALUES(NEW.i);
@@ -2509,11 +2524,11 @@ SELECT * FROM bug6051;
  3
 (3 rows)
 
-<<<<<<< HEAD
 SELECT * FROM bug6051_2;
  i 
-||||||| e1c1c30f635
-=======
+---
+(0 rows)
+
 -- check INSERT...SELECT rule actions are disallowed on commands
 -- that have modifyingCTEs
 CREATE OR REPLACE RULE bug6051_ins AS ON INSERT TO bug6051 DO INSTEAD
@@ -2521,34 +2536,30 @@ CREATE OR REPLACE RULE bug6051_ins AS ON INSERT TO bug6051 DO INSTEAD
  SELECT NEW.i;
 WITH t1 AS ( DELETE FROM bug6051 RETURNING * )
 INSERT INTO bug6051 SELECT * FROM t1;
-ERROR:  INSERT...SELECT rule actions are not supported for queries having data-modifying statements in WITH
+ERROR:  writable CTE queries cannot be themselves writable
+DETAIL:  Greenplum Database currently only support CTEs with one writable clause, called in a non-writable context.
+HINT:  Rewrite the query to only include one writable clause.
 -- silly example to verify that hasModifyingCTE flag is propagated
 CREATE TEMP TABLE bug6051_3 AS
   SELECT a FROM generate_series(11,13) AS a;
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column(s) named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE RULE bug6051_3_ins AS ON INSERT TO bug6051_3 DO INSTEAD
   SELECT i FROM bug6051_2;
 BEGIN; SET LOCAL force_parallel_mode = on;
 WITH t1 AS ( DELETE FROM bug6051_3 RETURNING * )
   INSERT INTO bug6051_3 SELECT * FROM t1;
- i 
----
- 1
- 2
- 3
- 1
- 2
- 3
- 1
- 2
- 3
-(9 rows)
-
+ERROR:  writable CTE queries cannot be themselves writable
+DETAIL:  Greenplum Database currently only support CTEs with one writable clause, called in a non-writable context.
+HINT:  Rewrite the query to only include one writable clause.
 COMMIT;
 SELECT * FROM bug6051_3;
- a 
->>>>>>> 3b231596ccf
----
-(0 rows)
+ a  
+----
+ 11
+ 13
+ 12
+(3 rows)
 
 -- a truly recursive CTE in the same list
 ANALYZE y; -- There is a bug, the below case will fail for generating plan which execute ModifyTable on reader gang.
@@ -2568,23 +2579,23 @@ SELECT * FROM t2 JOIN y USING (a) ORDER BY a;
 SELECT * FROM y;
  a  
 ----
- 11
  12
- 13
  14
  15
- 16
- 17
  18
- 19
  20
+  2
+  4
+ 11
+ 17
+ 19
  21
+  1
+ 13
+ 16
  42
   0
-  1
-  2
   3
-  4
 (17 rows)
 
 -- data-modifying WITH in a modifying statement
@@ -2600,23 +2611,23 @@ HINT:  Rewrite the query to only include one writable clause.
 SELECT * FROM y;
  a  
 ----
-  0
-  1
-  2
-  3
-  4
- 11
  12
- 13
  14
  15
- 16
- 17
  18
- 19
  20
+  2
+  4
+ 11
+ 17
+ 19
  21
+  1
+ 13
+ 16
  42
+  0
+  3
 (17 rows)
 
 -- check that WITH query is run to completion even if outer query isn't
@@ -2641,23 +2652,23 @@ SELECT a BETWEEN 0 AND 4200 FROM t LIMIT 10;
 SELECT * FROM y;
   a   
 ------
-    0
-  100
-  200
-  300
-  400
  1100
- 1200
+ 1700
+ 1900
+ 2100
+  100
  1300
+ 1600
+ 4200
+    0
+  300
+ 1200
  1400
  1500
- 1600
- 1700
  1800
- 1900
  2000
- 2100
- 4200
+  200
+  400
 (17 rows)
 
 -- data-modifying WITH containing INSERT...ON CONFLICT DO UPDATE
@@ -2746,6 +2757,8 @@ DROP TABLE withz;
 TRUNCATE TABLE y;
 INSERT INTO y SELECT generate_series(1, 3);
 CREATE TEMPORARY TABLE yy (a INTEGER);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 WITH RECURSIVE t1 AS (
   INSERT INTO y SELECT * FROM y RETURNING *
 ), t2 AS (
@@ -2758,8 +2771,8 @@ HINT:  Rewrite the query to only include one writable CTE clause.
 SELECT * FROM y;
  a 
 ---
- 1
  2
+ 1
  3
 (3 rows)
 
@@ -2780,8 +2793,8 @@ HINT:  Rewrite the query to only include one writable CTE clause.
 SELECT * FROM y;
  a 
 ---
- 1
  2
+ 1
  3
 (3 rows)
 
@@ -2813,32 +2826,32 @@ WITH t AS (
     RETURNING *
 )
 SELECT * FROM t;
-NOTICE:  y_trigger: a = 21
-NOTICE:  y_trigger: a = 22
-NOTICE:  y_trigger: a = 23
+NOTICE:  y_trigger: a = 23  (seg0 slice1 172.17.0.2:7002 pid=21812)
+NOTICE:  y_trigger: a = 22  (seg1 slice1 172.17.0.2:7003 pid=21820)
+NOTICE:  y_trigger: a = 21  (seg2 slice1 172.17.0.2:7004 pid=21805)
  a  
 ----
- 21
  22
+ 21
  23
 (3 rows)
 
 SELECT * FROM y;
  a  
 ----
-  1
-  2
-  3
   4
   5
+ 10
+ 23
+  2
+  3
+ 22
+  1
   6
   7
   8
   9
- 10
  21
- 22
- 23
 (13 rows)
 
 DROP TRIGGER y_trig ON y;
@@ -2853,9 +2866,9 @@ WITH t AS (
     RETURNING *
 )
 SELECT * FROM t LIMIT 1;
-NOTICE:  y_trigger: a = 31
-NOTICE:  y_trigger: a = 32
-NOTICE:  y_trigger: a = 33
+NOTICE:  y_trigger: a = 31  (seg1 slice1 172.17.0.2:7003 pid=21820)
+NOTICE:  y_trigger: a = 32  (seg2 slice1 172.17.0.2:7004 pid=21805)
+NOTICE:  y_trigger: a = 33  (seg2 slice1 172.17.0.2:7004 pid=21805)
  a  
 ----
  31
@@ -2864,20 +2877,20 @@ NOTICE:  y_trigger: a = 33
 SELECT * FROM y;
  a  
 ----
-  1
-  2
-  3
   4
   5
+ 10
+ 23
+  2
+  3
+ 22
+ 31
+  1
   6
   7
   8
   9
- 10
  21
- 22
- 23
- 31
  32
  33
 (16 rows)
@@ -2891,6 +2904,7 @@ end;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER y_trig AFTER INSERT ON y FOR EACH STATEMENT
     EXECUTE PROCEDURE y_trigger();
+ERROR:  Triggers for statements are not yet supported
 WITH t AS (
     INSERT INTO y
     VALUES
@@ -2900,7 +2914,6 @@ WITH t AS (
     RETURNING *
 )
 SELECT * FROM t;
-NOTICE:  y_trigger
  a  
 ----
  41
@@ -2911,34 +2924,39 @@ NOTICE:  y_trigger
 SELECT * FROM y;
  a  
 ----
-  1
   2
   3
-  4
-  5
+ 22
+ 31
+ 42
+  1
   6
   7
   8
   9
- 10
  21
- 22
- 23
- 31
  32
  33
- 41
- 42
  43
+  4
+  5
+ 10
+ 23
+ 41
 (19 rows)
 
 DROP TRIGGER y_trig ON y;
+ERROR:  trigger "y_trig" for table "y" does not exist
 DROP FUNCTION y_trigger();
 -- end_ignore
 -- WITH attached to inherited UPDATE or DELETE
 CREATE TEMP TABLE parent ( id int, val text );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TEMP TABLE child1 ( ) INHERITS ( parent );
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TEMP TABLE child2 ( ) INHERITS ( parent );
+NOTICE:  table has parent, setting distribution columns to match parent table
 INSERT INTO parent VALUES ( 1, 'p1' );
 INSERT INTO child1 VALUES ( 11, 'c11' ),( 12, 'c12' );
 INSERT INTO child2 VALUES ( 23, 'c21' ),( 24, 'c22' );
@@ -2948,10 +2966,10 @@ SELECT * FROM parent;
  id | val 
 ----+-----
  72 | p1
- 82 | c11
  83 | c12
- 94 | c21
  95 | c22
+ 82 | c11
+ 94 | c21
 (5 rows)
 
 WITH wcte AS ( INSERT INTO child1 VALUES ( 42, 'new' ) RETURNING id AS newid )
@@ -2962,11 +2980,11 @@ HINT:  Rewrite the query to only include one writable clause.
 SELECT * FROM parent;
  id | val 
 ----+-----
- 72 | p1
- 82 | c11
- 83 | c12
  94 | c21
+ 72 | p1
+ 83 | c12
  95 | c22
+ 82 | c11
 (5 rows)
 
 WITH rcte AS ( SELECT max(id) AS maxid FROM parent )
@@ -2975,9 +2993,9 @@ SELECT * FROM parent;
  id | val 
 ----+-----
  72 | p1
- 82 | c11
  83 | c12
  94 | c21
+ 82 | c11
 (4 rows)
 
 WITH wcte AS ( INSERT INTO child2 VALUES ( 42, 'new2' ) RETURNING id AS newid )
@@ -2988,10 +3006,10 @@ HINT:  Rewrite the query to only include one writable clause.
 SELECT * FROM parent;
  id | val 
 ----+-----
- 72 | p1
- 82 | c11
- 83 | c12
  94 | c21
+ 72 | p1
+ 83 | c12
+ 82 | c11
 (4 rows)
 
 -- check EXPLAIN VERBOSE for a wCTE with RETURNING
@@ -3084,6 +3102,8 @@ LINE 1: WITH test AS (SELECT 42) INSERT INTO test VALUES (1);
 -- surprisingly it works, because CTEs don't hide tables from data-modifying
 -- statements)
 create temp table test (i int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 with test as (select 42) insert into test select * from test;
 select * from test;
  i  
