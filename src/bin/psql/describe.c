@@ -904,9 +904,6 @@ describeTypes(const char *pattern, bool verbose, bool showSystem)
 	{
 		appendPQExpBuffer(&buf,
 						  "  pg_catalog.pg_get_userbyid(t.typowner) AS \"%s\",\n",
-						  gettext_noop("Internal name"),
-						  gettext_noop("Size"),
-						  gettext_noop("Elements"),
 						  gettext_noop("Owner"));
 		printACLColumn(&buf, "t.typacl");
 		appendPQExpBufferStr(&buf, ",\n  ");
