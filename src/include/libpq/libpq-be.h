@@ -78,17 +78,10 @@ typedef enum CAC_state
 	CAC_SHUTDOWN,
 	CAC_RECOVERY,
 	CAC_NOTCONSISTENT,
-<<<<<<< HEAD
 	CAC_TOOMANY,
 	CAC_SUPERUSER,
 	CAC_MIRROR_READY,
 	CAC_RESET
-||||||| e1c1c30f635
-	CAC_TOOMANY,
-	CAC_SUPERUSER
-=======
-	CAC_TOOMANY
->>>>>>> adadae45816
 } CAC_state;
 
 

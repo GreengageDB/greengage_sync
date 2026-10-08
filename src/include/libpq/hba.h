@@ -170,13 +170,9 @@ extern void hba_getauthmethod(hbaPort *port);
 extern int	check_usermap(const char *usermap_name,
 						  const char *pg_role, const char *auth_user,
 						  bool case_sensitive);
-<<<<<<< HEAD
 extern bool check_same_host_or_net(SockAddr *raddr, IPCompareMethod method);
-||||||| e1c1c30f635
-=======
 extern HbaLine *parse_hba_line(TokenizedAuthLine *tok_line, int elevel);
 extern IdentLine *parse_ident_line(TokenizedAuthLine *tok_line, int elevel);
->>>>>>> adadae45816
 extern bool pg_isblank(const char c);
 extern MemoryContext tokenize_auth_file(const char *filename, FILE *file,
 										List **tok_lines, int elevel);
