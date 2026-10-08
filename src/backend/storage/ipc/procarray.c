@@ -763,76 +763,19 @@ ProcArrayEndTransaction(PGPROC *proc, TransactionId latestXid)
 
 	proc->lxid = InvalidLocalTransactionId;
 	proc->xmin = InvalidTransactionId;
-	proc->delayChkpt = false;		/* be sure this is cleared in abort */
+	proc->delayChkptFlags = 0;		/* be sure this is cleared in abort */
 	proc->recoveryConflictPending = false;
 
 	/* must be cleared with xid/xmin: */
 	/* avoid unnecessarily dirtying shared cachelines */
 	if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
 	{
-<<<<<<< HEAD
 		Assert(!LWLockHeldByMe(ProcArrayLock));
 		LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
 		Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
 		proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
 		ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
 		LWLockRelease(ProcArrayLock);
-||||||| e1c1c30f635
-		/*
-		 * If we have no XID, we don't need to lock, since we won't affect
-		 * anyone else's calculation of a snapshot.  We might change their
-		 * estimate of global xmin, but that's OK.
-		 */
-		Assert(!TransactionIdIsValid(proc->xid));
-		Assert(proc->subxidStatus.count == 0);
-		Assert(!proc->subxidStatus.overflowed);
-
-		proc->lxid = InvalidLocalTransactionId;
-		proc->xmin = InvalidTransactionId;
-		proc->delayChkpt = false;	/* be sure this is cleared in abort */
-		proc->recoveryConflictPending = false;
-
-		/* must be cleared with xid/xmin: */
-		/* avoid unnecessarily dirtying shared cachelines */
-		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
-		{
-			Assert(!LWLockHeldByMe(ProcArrayLock));
-			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
-			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
-			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
-			LWLockRelease(ProcArrayLock);
-		}
-=======
-		/*
-		 * If we have no XID, we don't need to lock, since we won't affect
-		 * anyone else's calculation of a snapshot.  We might change their
-		 * estimate of global xmin, but that's OK.
-		 */
-		Assert(!TransactionIdIsValid(proc->xid));
-		Assert(proc->subxidStatus.count == 0);
-		Assert(!proc->subxidStatus.overflowed);
-
-		proc->lxid = InvalidLocalTransactionId;
-		proc->xmin = InvalidTransactionId;
-
-		/* be sure this is cleared in abort */
-		proc->delayChkptFlags = 0;
-
-		proc->recoveryConflictPending = false;
-
-		/* must be cleared with xid/xmin: */
-		/* avoid unnecessarily dirtying shared cachelines */
-		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
-		{
-			Assert(!LWLockHeldByMe(ProcArrayLock));
-			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
-			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
-			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
-			LWLockRelease(ProcArrayLock);
-		}
->>>>>>> adadae45816
 	}
 
 	resetTmGxact();
@@ -976,26 +919,14 @@ ProcArrayGroupClearXid(PGPROC *proc, TransactionId latestXid)
 	/* Walk the list and clear all XIDs. */
 	while (nextidx != INVALID_PGPROCNO)
 	{
-<<<<<<< HEAD
-		PGPROC	   *proc = &allProcs[nextidx];
-		TMGXACT	   *tmGxact = &allTmGxact[nextidx];
-||||||| e1c1c30f635
-		PGPROC	   *proc = &allProcs[nextidx];
-=======
 		PGPROC	   *nextproc = &allProcs[nextidx];
->>>>>>> adadae45816
+		TMGXACT	   *tmGxact = &allTmGxact[nextidx];
 
-<<<<<<< HEAD
-		if (TransactionIdIsValid(proc->procArrayGroupMemberXid))
-			ProcArrayEndTransactionInternal(proc, proc->procArrayGroupMemberXid);
+		if (TransactionIdIsValid(nextproc->procArrayGroupMemberXid))
+			ProcArrayEndTransactionInternal(nextproc, nextproc->procArrayGroupMemberXid);
 
 		if (TransactionIdIsValid(tmGxact->gxid))
 			ProcArrayEndGxact(tmGxact);
-||||||| e1c1c30f635
-		ProcArrayEndTransactionInternal(proc, proc->procArrayGroupMemberXid);
-=======
-		ProcArrayEndTransactionInternal(nextproc, nextproc->procArrayGroupMemberXid);
->>>>>>> adadae45816
 
 		/* Move to next proc in list. */
 		nextidx = pg_atomic_read_u32(&nextproc->procArrayGroupNext);
@@ -2153,7 +2084,10 @@ GlobalVisHorizonKindForRel(Relation rel)
 	Assert(!rel ||
 		   rel->rd_rel->relkind == RELKIND_RELATION ||
 		   rel->rd_rel->relkind == RELKIND_MATVIEW ||
-		   rel->rd_rel->relkind == RELKIND_TOASTVALUE);
+		   rel->rd_rel->relkind == RELKIND_TOASTVALUE ||
+		   rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||
+		   rel->rd_rel->relkind == RELKIND_AOVISIMAP ||
+		   rel->rd_rel->relkind == RELKIND_AOBLOCKDIR);
 
 	if (rel == NULL || rel->rd_rel->relisshared || RecoveryInProgress())
 		return VISHORIZON_SHARED;
@@ -5122,32 +5056,6 @@ GlobalVisTestFor(Relation rel)
 
 	switch (GlobalVisHorizonKindForRel(rel))
 	{
-<<<<<<< HEAD
-		/*
-		 * Other kinds currently don't contain xids, nor always the necessary
-		 * logical decoding markers.
-		 */
-		Assert(rel->rd_rel->relkind == RELKIND_RELATION ||
-			   rel->rd_rel->relkind == RELKIND_MATVIEW ||
-			   rel->rd_rel->relkind == RELKIND_TOASTVALUE ||
-			   rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||
-			   rel->rd_rel->relkind == RELKIND_AOBLOCKDIR ||
-			   rel->rd_rel->relkind == RELKIND_AOVISIMAP);
-
-		need_shared = rel->rd_rel->relisshared || RecoveryInProgress();
-		need_catalog = IsCatalogRelation(rel) || RelationIsAccessibleInLogicalDecoding(rel);
-||||||| e1c1c30f635
-		/*
-		 * Other kinds currently don't contain xids, nor always the necessary
-		 * logical decoding markers.
-		 */
-		Assert(rel->rd_rel->relkind == RELKIND_RELATION ||
-			   rel->rd_rel->relkind == RELKIND_MATVIEW ||
-			   rel->rd_rel->relkind == RELKIND_TOASTVALUE);
-
-		need_shared = rel->rd_rel->relisshared || RecoveryInProgress();
-		need_catalog = IsCatalogRelation(rel) || RelationIsAccessibleInLogicalDecoding(rel);
-=======
 		case VISHORIZON_SHARED:
 			state = &GlobalVisSharedRels;
 			break;
@@ -5160,7 +5068,6 @@ GlobalVisTestFor(Relation rel)
 		case VISHORIZON_TEMP:
 			state = &GlobalVisTempRels;
 			break;
->>>>>>> adadae45816
 	}
 
 	Assert(FullTransactionIdIsValid(state->definitely_needed) &&

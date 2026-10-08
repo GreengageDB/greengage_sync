@@ -25,12 +25,8 @@
 
 #include "access/heapam_xlog.h"
 #include "access/htup_details.h"
-<<<<<<< HEAD
 #include "access/xlog.h"
-||||||| e1c1c30f635
-=======
 #include "access/xloginsert.h"
->>>>>>> adadae45816
 #include "access/xlogutils.h"
 #include "miscadmin.h"
 #include "storage/freespace.h"

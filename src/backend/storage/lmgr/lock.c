@@ -133,16 +133,8 @@ static const char *const lock_mode_names[] =
 static bool Dummy_trace = false;
 #endif
 
-<<<<<<< HEAD
-const LockMethodData default_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-||||||| e1c1c30f635
-static const LockMethodData default_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-=======
 static const LockMethodData default_lockmethod = {
 	MaxLockMode,
->>>>>>> adadae45816
 	LockConflicts,
 	lock_mode_names,
 #ifdef LOCK_DEBUG
@@ -152,16 +144,8 @@ static const LockMethodData default_lockmethod = {
 #endif
 };
 
-<<<<<<< HEAD
-const LockMethodData user_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-||||||| e1c1c30f635
-static const LockMethodData user_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-=======
 static const LockMethodData user_lockmethod = {
 	MaxLockMode,
->>>>>>> adadae45816
 	LockConflicts,
 	lock_mode_names,
 #ifdef LOCK_DEBUG
@@ -3541,7 +3525,6 @@ LockRefindAndRelease(LockMethod lockMethodTable, PGPROC *proc,
 }
 
 /*
-<<<<<<< HEAD
  * Prepare for prepare, while we're still in a transaction.
  *
  * This marks LOCALLOCK objects on temporary tables, so that we can
@@ -3636,8 +3619,9 @@ PrePrepare_Locks(void)
 		locallock->istemptable = LockTagIsTemp(&locallock->tag.lock);
 	}
 
-||||||| e1c1c30f635
-=======
+}
+
+/*
  * CheckForSessionAndXactLocks
  *		Check to see if transaction holds both session-level and xact-level
  *		locks on the same object; if so, throw an error.
@@ -3731,7 +3715,6 @@ CheckForSessionAndXactLocks(void)
 
 	/* Success, so clean up */
 	hash_destroy(lockhtab);
->>>>>>> adadae45816
 }
 
 /*
