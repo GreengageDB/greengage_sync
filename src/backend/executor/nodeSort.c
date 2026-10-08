@@ -3,15 +3,9 @@
  * nodeSort.c
  *	  Routines to handle sorting of relations.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2007-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -106,19 +100,8 @@ ExecSort(PlanState *pstate)
 
 	if (!node->sort_Done)
 	{
-<<<<<<< HEAD
-||||||| e1c1c30f635
-		Sort	   *plannode = (Sort *) node->ss.ps.plan;
-		PlanState  *outerNode;
-		TupleDesc	tupDesc;
-
-=======
-		Sort	   *plannode = (Sort *) node->ss.ps.plan;
-		PlanState  *outerNode;
-		TupleDesc	tupDesc;
 		int			tuplesortopts = TUPLESORT_NONE;
 
->>>>>>> adadae45816
 		SO1_printf("ExecSort: %s\n",
 				   "sorting subplan");
 
@@ -137,29 +120,6 @@ ExecSort(PlanState *pstate)
 		outerNode = outerPlanState(node);
 		tupDesc = ExecGetResultType(outerNode);
 
-<<<<<<< HEAD
-		tuplesortstate = tuplesort_begin_heap(//&node->ss,
-											  tupDesc,
-											  plannode->numCols,
-											  plannode->sortColIdx,
-											  plannode->sortOperators,
-											  plannode->collations,
-											  plannode->nullsFirst,
-											  PlanStateOperatorMemKB((PlanState *) node),
-											  NULL,
-											  node->randomAccess);
-
-||||||| e1c1c30f635
-		tuplesortstate = tuplesort_begin_heap(tupDesc,
-											  plannode->numCols,
-											  plannode->sortColIdx,
-											  plannode->sortOperators,
-											  plannode->collations,
-											  plannode->nullsFirst,
-											  work_mem,
-											  NULL,
-											  node->randomAccess);
-=======
 		if (node->randomAccess)
 			tuplesortopts |= TUPLESORT_RANDOMACCESS;
 		if (node->bounded)
@@ -170,7 +130,7 @@ ExecSort(PlanState *pstate)
 												   plannode->sortOperators[0],
 												   plannode->collations[0],
 												   plannode->nullsFirst[0],
-												   work_mem,
+												   PlanStateOperatorMemKB((PlanState *) node),
 												   NULL,
 												   tuplesortopts);
 		else
@@ -180,10 +140,9 @@ ExecSort(PlanState *pstate)
 												  plannode->sortOperators,
 												  plannode->collations,
 												  plannode->nullsFirst,
-												  work_mem,
+												  PlanStateOperatorMemKB((PlanState *) node),
 												  NULL,
 												  tuplesortopts);
->>>>>>> adadae45816
 		if (node->bounded)
 			tuplesort_set_bound(tuplesortstate, node->bound);
 		node->tuplesortstate = (void *) tuplesortstate;
@@ -271,21 +230,6 @@ ExecSort(PlanState *pstate)
 			   "retrieving tuple from tuplesort");
 
 	slot = node->ss.ps.ps_ResultTupleSlot;
-<<<<<<< HEAD
-	(void) tuplesort_gettupleslot(tuplesortstate,
-								  ScanDirectionIsForward(dir),
-								  false, slot, NULL);
-
-	if (TupIsNull(slot) && !node->delayEagerFree)
-	{
-		ExecEagerFreeSort(node);
-	}
-||||||| e1c1c30f635
-	(void) tuplesort_gettupleslot(tuplesortstate,
-								  ScanDirectionIsForward(dir),
-								  false, slot, NULL);
-=======
-
 	/*
 	 * Fetch the next sorted item from the appropriate tuplesort function. For
 	 * datum sorts we must manage the slot ourselves and leave it clear when
@@ -304,7 +248,11 @@ ExecSort(PlanState *pstate)
 		(void) tuplesort_gettupleslot(tuplesortstate,
 									  ScanDirectionIsForward(dir),
 									  false, slot, NULL);
->>>>>>> adadae45816
+
+	if (TupIsNull(slot) && !node->delayEagerFree)
+	{
+		ExecEagerFreeSort(node);
+	}
 
 	return slot;
 }

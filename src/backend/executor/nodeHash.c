@@ -3,15 +3,9 @@
  * nodeHash.c
  *	  Routines to hash relations for hashjoin
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -749,21 +743,9 @@ ExecChooseHashTableSize(double ntuples, int tupwidth, bool useskew,
 	inner_rel_bytes = ntuples * tupsize;
 
 	/*
-<<<<<<< HEAD
 	 * Target in-memory hashtable size is operatorMemKB kilobytes.
-||||||| e1c1c30f635
-	 * Target in-memory hashtable size is hash_mem kilobytes.
-=======
-	 * Compute in-memory hashtable size limit from GUCs.
->>>>>>> adadae45816
 	 */
-<<<<<<< HEAD
 	hash_table_bytes = operatorMemKB * 1024L;
-||||||| e1c1c30f635
-	hash_table_bytes = hash_mem * 1024L;
-=======
-	hash_table_bytes = get_hash_memory_limit();
->>>>>>> adadae45816
 
 	/*
 	 * Parallel Hash tries to use the combined hash_mem of all workers to
@@ -896,25 +878,11 @@ ExecChooseHashTableSize(double ntuples, int tupwidth, bool useskew,
 		 * gp_hashjoin_tuples_per_bucket tuples, whose projected size already includes
 		 * overhead for the hash code, pointer to the next tuple, etc.
 		 */
-<<<<<<< HEAD
 		bucket_size = (tupsize * gp_hashjoin_tuples_per_bucket + sizeof(HashJoinTuple));
-		lbuckets = 1L << my_log2(hash_table_bytes / bucket_size);
-		lbuckets = Min(lbuckets, max_pointers);
-		nbuckets = (int) lbuckets;
-		nbuckets = 1 << my_log2(nbuckets);
-||||||| e1c1c30f635
-		bucket_size = (tupsize * NTUP_PER_BUCKET + sizeof(HashJoinTuple));
-		lbuckets = 1L << my_log2(hash_table_bytes / bucket_size);
-		lbuckets = Min(lbuckets, max_pointers);
-		nbuckets = (int) lbuckets;
-		nbuckets = 1 << my_log2(nbuckets);
-=======
-		bucket_size = (tupsize * NTUP_PER_BUCKET + sizeof(HashJoinTuple));
 		sbuckets = pg_nextpower2_size_t(hash_table_bytes / bucket_size);
 		sbuckets = Min(sbuckets, max_pointers);
 		nbuckets = (int) sbuckets;
 		nbuckets = pg_nextpower2_32(nbuckets);
->>>>>>> adadae45816
 		bucket_bytes = nbuckets * sizeof(HashJoinTuple);
 
 		/*

@@ -1345,6 +1345,12 @@ begin_partition(WindowAggState *winstate)
 	winstate->framehead_valid = false;
 	winstate->frametail_valid = false;
 	winstate->grouptail_valid = false;
+	/*
+	 * GPDB: the start/end frame offsets may be non-constant; (re-)evaluate
+	 * them for the rows of this partition.
+	 */
+	winstate->start_offset_valid = false;
+	winstate->end_offset_valid = false;
 	winstate->spooled_rows = 0;
 	winstate->currentpos = 0;
 	winstate->frameheadpos = 0;
@@ -2446,31 +2452,48 @@ ExecWindowAgg(PlanState *pstate)
 	/* We need to loop as the runCondition or qual may filter out tuples */
 	for (;;)
 	{
-<<<<<<< HEAD
-		/* Initialize for first partition and set current row = 0 */
-		begin_partition(winstate);
-		/* If there are no input rows, we'll detect that and exit below */
-	}
-	else
-	{
-		/* Advance current row within partition */
-		winstate->currentpos++;
-		/* This might mean that the frame moves, too */
-		winstate->framehead_valid = false;
-		winstate->frametail_valid = false;
-		/* we don't need to invalidate grouptail here; see below */
+		if (winstate->buffer == NULL)
+		{
+			/* Initialize for first partition and set current row = 0 */
+			begin_partition(winstate);
+			/* If there are no input rows, we'll detect that and exit below */
+		}
+		else
+		{
+			/* Advance current row within partition */
+			winstate->currentpos++;
+			/* This might mean that the frame moves, too */
+			winstate->framehead_valid = false;
+			winstate->frametail_valid = false;
+			/* we don't need to invalidate grouptail here; see below */
 
-		if (!winstate->start_offset_var_free)
-			winstate->start_offset_valid = false;
-		if (!winstate->end_offset_var_free)
-			winstate->end_offset_valid = false;
-	}
+			/*
+			 * GPDB: unlike upstream, the start/end frame offsets can be
+			 * non-constant (they may reference the current row), so they must
+			 * be re-evaluated as the current row advances.  For RANGE framing
+			 * the offset is applied relative to the current row's ordering
+			 * value, so re-evaluate unconditionally; for ROWS/GROUPS only
+			 * non-var-free (non-constant) offsets need re-evaluation.
+			 */
+			if (winstate->frameOptions & FRAMEOPTION_RANGE)
+			{
+				winstate->start_offset_valid = false;
+				winstate->end_offset_valid = false;
+			}
+			else
+			{
+				if (!winstate->start_offset_var_free)
+					winstate->start_offset_valid = false;
+				if (!winstate->end_offset_var_free)
+					winstate->end_offset_valid = false;
+			}
+		}
 
-	/*
-	 * Spool all tuples up to and including the current row, if we haven't
-	 * already
-	 */
-	spool_tuples(winstate, winstate->currentpos);
+		/*
+		 * Spool all tuples up to and including the current row, if we haven't
+		 * already
+		 */
+		spool_tuples(winstate, winstate->currentpos);
 
 #ifdef FAULT_INJECTOR
 	/*
@@ -2499,65 +2522,6 @@ ExecWindowAgg(PlanState *pstate)
 			ereport(NOTICE, (errmsg("winagg: no input rows")));
 	}
 #endif
-
-	/* Move to the next partition if we reached the end of this partition */
-	if (winstate->partition_spooled &&
-		winstate->currentpos >= winstate->spooled_rows)
-	{
-		release_partition(winstate);
-
-		if (winstate->more_partitions)
-||||||| e1c1c30f635
-		/* Initialize for first partition and set current row = 0 */
-		begin_partition(winstate);
-		/* If there are no input rows, we'll detect that and exit below */
-	}
-	else
-	{
-		/* Advance current row within partition */
-		winstate->currentpos++;
-		/* This might mean that the frame moves, too */
-		winstate->framehead_valid = false;
-		winstate->frametail_valid = false;
-		/* we don't need to invalidate grouptail here; see below */
-	}
-
-	/*
-	 * Spool all tuples up to and including the current row, if we haven't
-	 * already
-	 */
-	spool_tuples(winstate, winstate->currentpos);
-
-	/* Move to the next partition if we reached the end of this partition */
-	if (winstate->partition_spooled &&
-		winstate->currentpos >= winstate->spooled_rows)
-	{
-		release_partition(winstate);
-
-		if (winstate->more_partitions)
-=======
-		if (winstate->buffer == NULL)
->>>>>>> adadae45816
-		{
-			/* Initialize for first partition and set current row = 0 */
-			begin_partition(winstate);
-			/* If there are no input rows, we'll detect that and exit below */
-		}
-		else
-		{
-			/* Advance current row within partition */
-			winstate->currentpos++;
-			/* This might mean that the frame moves, too */
-			winstate->framehead_valid = false;
-			winstate->frametail_valid = false;
-			/* we don't need to invalidate grouptail here; see below */
-		}
-
-		/*
-		 * Spool all tuples up to and including the current row, if we haven't
-		 * already
-		 */
-		spool_tuples(winstate, winstate->currentpos);
 
 		/* Move to the next partition if we reached the end of this partition */
 		if (winstate->partition_spooled &&
