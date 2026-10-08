@@ -2729,21 +2729,33 @@ pg_get_expr_worker(text *expr, Oid relid, const char *relname, int prettyFlags)
 	/*
 	 * Throw error if the expression contains Vars we won't be able to
 	 * deparse.
+	 *
+	 * GPDB: the gp_partition_template.template catalog column stores a
+	 * serialized GpPartitionDefinition node tree.  That GPDB-specific node is
+	 * not an ordinary expression and contains no Vars, but the upstream
+	 * var-safety check below walks it with expression_tree_walker(), which has
+	 * no case for GPDB partition nodes and would fail with "unrecognized node
+	 * type".  The deparse path (get_rule_expr -> T_GpPartitionDefinition)
+	 * handles the node directly, so skip the Var check for it.  (Pre-PG15 this
+	 * check did not exist; it arrived with upstream commit 6867f963e319.)
 	 */
-	relids = pull_varnos(NULL, node);
-	if (OidIsValid(relid))
+	if (!(tst && IsA(tst, GpPartitionDefinition)))
 	{
-		if (!bms_is_subset(relids, bms_make_singleton(1)))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("expression contains variables of more than one relation")));
-	}
-	else
-	{
-		if (!bms_is_empty(relids))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("expression contains variables")));
+		relids = pull_varnos(NULL, node);
+		if (OidIsValid(relid))
+		{
+			if (!bms_is_subset(relids, bms_make_singleton(1)))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("expression contains variables of more than one relation")));
+		}
+		else
+		{
+			if (!bms_is_empty(relids))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("expression contains variables")));
+		}
 	}
 
 	/* Prepare deparse context if needed */
@@ -5018,7 +5030,6 @@ set_deparse_plan(deparse_namespace *dpns, Plan *plan)
 	else if (IsA(plan, CteScan))
 		dpns->inner_plan = list_nth(dpns->subplans,
 									((CteScan *) plan)->ctePlanId - 1);
-<<<<<<< HEAD
 	else if (IsA(plan, Sequence))
 	{
 		/*
@@ -5029,12 +5040,9 @@ set_deparse_plan(deparse_namespace *dpns, Plan *plan)
 		Assert(list_length(((Sequence *) plan)->subplans) == 2);
 		dpns->inner_plan = linitial(((Sequence *) plan)->subplans);
 	}
-||||||| e1c1c30f635
-=======
 	else if (IsA(plan, WorkTableScan))
 		dpns->inner_plan = find_recursive_union(dpns,
 												(WorkTableScan *) plan);
->>>>>>> adadae45816
 	else if (IsA(plan, ModifyTable))
 		dpns->inner_plan = plan;
 	else if (IsA(plan, ShareInputScan))
@@ -8252,13 +8260,8 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 		case T_NextValueExpr:
 		case T_NullIfExpr:
 		case T_Aggref:
-<<<<<<< HEAD
-||||||| e1c1c30f635
-		case T_WindowFunc:
-=======
 		case T_GroupingFunc:
 		case T_WindowFunc:
->>>>>>> adadae45816
 		case T_FuncExpr:
 		case T_JsonConstructorExpr:
 		case T_JsonExpr:
@@ -9283,6 +9286,7 @@ get_rule_expr(Node *node, deparse_context *context,
 
 				appendStringInfo(buf, "TABLE(");
 				get_query_def(subquery, buf, context->namespaces, NULL,
+							  true,
 							  context->prettyFlags, context->wrapColumn,
 							  context->indentLevel);
 				appendStringInfoChar(buf, ')');
@@ -10514,7 +10518,6 @@ get_json_constructor(JsonConstructorExpr *ctor, deparse_context *context,
 
 
 /*
-<<<<<<< HEAD
  * Deparse an Aggref as a special MEDIAN() construct, if it looks like
  * one.
  *
@@ -10593,12 +10596,7 @@ get_dqa_expr(DQAExpr *dqa_expr,deparse_context *context)
 }
 
 /*
- * get_agg_expr			- Parse back an Aggref node
-||||||| e1c1c30f635
- * get_agg_expr			- Parse back an Aggref node
-=======
  * get_agg_expr_helper			- Parse back an Aggref node
->>>>>>> adadae45816
  */
 static void
 get_agg_expr_helper(Aggref *aggref, deparse_context *context,
@@ -10780,28 +10778,14 @@ get_windowfunc_expr_helper(WindowFunc *wfunc, deparse_context *context,
 		nargs++;
 	}
 
-<<<<<<< HEAD
-	appendStringInfo(buf, "%s(%s",
-					 generate_function_name(wfunc->winfnoid, nargs,
-											argnames, argtypes,
-											false, NULL,
-											context->special_exprkind),
-					 wfunc->windistinct ? "DISTINCT " : "");
-||||||| e1c1c30f635
-	appendStringInfo(buf, "%s(",
-					 generate_function_name(wfunc->winfnoid, nargs,
-											argnames, argtypes,
-											false, NULL,
-											context->special_exprkind));
-=======
 	if (!funcname)
 		funcname = generate_function_name(wfunc->winfnoid, nargs, argnames,
 										  argtypes, false, NULL,
 										  context->special_exprkind);
 
-	appendStringInfo(buf, "%s(", funcname);
+	appendStringInfo(buf, "%s(%s", funcname,
+					 wfunc->windistinct ? "DISTINCT " : "");
 
->>>>>>> adadae45816
 	/* winstar can be set only in zero-argument aggregates */
 	if (wfunc->winstar)
 		appendStringInfoChar(buf, '*');

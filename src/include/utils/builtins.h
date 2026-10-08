@@ -4,15 +4,9 @@
  *	  Declarations for operations on built-in types.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/utils/builtins.h
@@ -54,6 +48,7 @@ extern int	namestrcmp(Name name, const char *str);
 extern int16 pg_strtoint16(const char *s);
 extern int32 pg_strtoint32(const char *s);
 extern int64 pg_strtoint64(const char *s);
+extern bool scanint8(const char *str, bool errorOK, int64 *result);	/* int8.c (GPDB) */
 extern int	pg_itoa(int16 i, char *a);
 extern int	pg_ultoa_n(uint32 l, char *a);
 extern int	pg_ulltoa_n(uint64 l, char *a);
@@ -77,8 +72,7 @@ extern char *regexp_fixed_prefix(text *text_re, bool case_insensitive,
 								 Oid collation, bool *exact);
 
 /* ruleutils.c */
-<<<<<<< HEAD
-extern bool quote_all_identifiers;
+extern PGDLLIMPORT bool quote_all_identifiers;
 extern char *pg_get_constraintexpr_string(Oid constraintId);
 extern const char *quote_identifier(const char *ident);
 extern char *quote_qualified_identifier(const char *qualifier,
@@ -87,12 +81,6 @@ extern void generate_operator_clause(fmStringInfo buf,
 						 const char *leftop, Oid leftoptype,
 						 Oid opoid,
 						 const char *rightop, Oid rightoptype);
-
-||||||| e1c1c30f635
-extern bool quote_all_identifiers;
-=======
-extern PGDLLIMPORT bool quote_all_identifiers;
->>>>>>> adadae45816
 extern const char *quote_identifier(const char *ident);
 extern char *quote_qualified_identifier(const char *qualifier,
 										const char *ident);

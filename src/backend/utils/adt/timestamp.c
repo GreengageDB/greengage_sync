@@ -4189,21 +4189,9 @@ timestamp_age(PG_FUNCTION_ARGS)
 	Timestamp	dt1 = PG_GETARG_TIMESTAMP(0);
 	Timestamp	dt2 = PG_GETARG_TIMESTAMP(1);
 	Interval   *result;
-<<<<<<< HEAD
-	fsec_t		fsec,
-				fsec1 = 0,
-				fsec2 = 0;
-	struct pg_tm tt,
-||||||| e1c1c30f635
-	fsec_t		fsec,
-				fsec1,
-				fsec2;
-	struct pg_tm tt,
-=======
 	fsec_t		fsec1,
 				fsec2;
 	struct pg_itm tt,
->>>>>>> adadae45816
 			   *tm = &tt;
 	struct pg_tm tt1,
 			   *tm1 = &tt1;
