@@ -547,7 +547,13 @@ generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 	seqstmt = makeNode(CreateSeqStmt);
 	seqstmt->for_identity = for_identity;
 	seqstmt->sequence = makeRangeVar(snamespace, sname, -1);
-	seqstmt->sequence->relpersistence = cxt->relation->relpersistence;
+	/*
+	 * GPDB: unlogged sequences (344d62fb9a9) are not supported yet
+	 * (DefineSequence() still rejects them), so the sequence of an unlogged
+	 * table stays logged, as before PG15.
+	 */
+	if (cxt->relation->relpersistence != RELPERSISTENCE_UNLOGGED)
+		seqstmt->sequence->relpersistence = cxt->relation->relpersistence;
 	seqstmt->options = seqoptions;
 
 	/*
@@ -2530,10 +2536,10 @@ transformDistributedBy(ParseState *pstate,
 
 				if (iparam && iparam->name != 0)
 				{
-					IndexElem *distrkey = makeNode(IndexElem);
+					DistributionKeyElem *distrkey = makeNode(DistributionKeyElem);
 
 					distrkey->name = iparam->name;
-					distrkey->opclass = NULL;
+					distrkey->opclass = NIL;
 
 					distrkeys = lappend(distrkeys, distrkey);
 				}
@@ -2559,7 +2565,7 @@ transformDistributedBy(ParseState *pstate,
 				 */
 				foreach(ip, constraint->keys)
 				{
-					Value	   *v = lfirst(ip);
+					String	   *v = lfirst(ip);
 					ListCell   *dkcell;
 
 					foreach(dkcell, distrkeys)
@@ -2589,7 +2595,7 @@ transformDistributedBy(ParseState *pstate,
 				new_distrkeys = NIL;
 				foreach(ip, constraint->keys)
 				{
-					Value	   *v = lfirst(ip);
+					String	   *v = lfirst(ip);
 					DistributionKeyElem  *dk = makeNode(DistributionKeyElem);
 
 					dk->name = strVal(v);
@@ -3047,7 +3053,7 @@ transformDistributedBy(ParseState *pstate,
 
 		foreach(dk, distrkeys)
 		{
-			char	   *distcolname = strVal(lfirst(dk));
+			char	   *distcolname = ((DistributionKeyElem *) lfirst(dk))->name;
 			ListCell   *ip;
 			bool		found = false;
 
@@ -3087,7 +3093,7 @@ transformDistributedBy(ParseState *pstate,
 
 		foreach(dk, distrkeys)
 		{
-			char	   *distcolname = strVal(lfirst(dk));
+			char	   *distcolname = ((DistributionKeyElem *) lfirst(dk))->name;
 			ListCell   *ip;
 			bool		found = false;
 
