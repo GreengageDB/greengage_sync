@@ -133,6 +133,11 @@ check_conflict_stat("bufferpin");
 
 
 ## RECOVERY CONFLICT 2: Snapshot conflict
+# GPDB: these nodes run with a segment identity and no coordinator, so
+# VACUUM cannot remove tuples newer than the oldest distributed snapshot:
+# nothing is pruned and no snapshot conflict happens.  Skip this part.
+if (0)
+{
 $sect = "snapshot conflict";
 $expected_conflicts++;
 
@@ -167,6 +172,7 @@ check_conflict_log(
 	"User query might have needed to see row versions that must be removed");
 reconnect_and_clear();
 check_conflict_stat("snapshot");
+}
 
 
 ## RECOVERY CONFLICT 3: Lock conflict
@@ -223,6 +229,10 @@ check_conflict_stat("tablespace");
 
 
 ## RECOVERY CONFLICT 5: Deadlock
+# GPDB: PREPARE TRANSACTION is not supported in utility mode.  Skip this
+# part.
+if (0)
+{
 $sect = "startup deadlock";
 $expected_conflicts++;
 
@@ -291,6 +301,7 @@ check_conflict_stat("deadlock");
 
 # clean up for next tests
 $node_primary->safe_psql($test_db, qq[ROLLBACK PREPARED 'lock';]);
+}
 $node_standby->adjust_conf('postgresql.conf', 'max_standby_streaming_delay',
 	'50ms');
 $node_standby->restart();

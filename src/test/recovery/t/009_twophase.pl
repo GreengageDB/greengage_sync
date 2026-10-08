@@ -5,9 +5,8 @@
 use strict;
 use warnings;
 
-<<<<<<< HEAD
-use PostgresNode;
-use TestLib;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 
 # GPDB: Effectively disable this TAP test. We cannot run PREPARE
 # TRANSACTION in utility-mode. We need at least 1 test so create a
@@ -16,15 +15,6 @@ use TestLib;
 use Test::More tests => 1;
 is(-1, -1, "Disable this TAP test");
 exit;
-||||||| e1c1c30f635
-use PostgresNode;
-use TestLib;
-use Test::More tests => 24;
-=======
-use PostgreSQL::Test::Cluster;
-use PostgreSQL::Test::Utils;
-use Test::More;
->>>>>>> adadae45816
 
 my $psql_out = '';
 my $psql_rc  = '';

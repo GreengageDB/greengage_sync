@@ -13,6 +13,14 @@ if (PostgreSQL::Test::Utils::has_wal_read_bug)
 	plan skip_all => 'filesystem bug';
 }
 
+# GPDB: Effectively disable this TAP test. The regression suite needs a
+# Greengage cluster (coordinator and segments); it cannot run against these
+# standalone utility-mode nodes. We need at least 1 test so create a dummy
+# one.
+is(-1, -1, "Disable this TAP test");
+done_testing();
+exit;
+
 # Initialize primary node
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init(allows_streaming => 1);
