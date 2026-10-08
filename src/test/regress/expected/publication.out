@@ -3,8 +3,16 @@
 --
 CREATE ROLE regress_publication_user LOGIN SUPERUSER;
 CREATE ROLE regress_publication_user2;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE ROLE regress_publication_user_dummy LOGIN NOSUPERUSER;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 SET SESSION AUTHORIZATION 'regress_publication_user';
+-- GPDB: the UPDATE/DELETE statements below probe the replica-identity checks
+-- the executor makes on each target partition at startup.  ORCA plans an
+-- UPDATE/DELETE of a partitioned table on the root and checks a leaf only
+-- when a row is routed to it, so on these empty tables it reports the root
+-- or nothing.  Run the test with the Postgres planner.
+SET optimizer = off;
 -- suppress warning that depends on wal_level
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub_default;
@@ -50,8 +58,12 @@ ALTER PUBLICATION testpub_default SET (publish = 'insert, update, delete');
 CREATE SCHEMA pub_test;
 CREATE TABLE testpub_tbl1 (id serial primary key, data text);
 CREATE TABLE pub_test.testpub_nopk (foo int, bar int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'foo' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE VIEW testpub_view AS SELECT 1;
 CREATE TABLE testpub_parted (a int) PARTITION BY LIST (a);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub_foralltables FOR ALL TABLES WITH (publish = 'insert');
 RESET client_min_messages;
@@ -157,6 +169,7 @@ Indexes:
     "testpub_tbl2_pkey" PRIMARY KEY, btree (id)
 Publications:
     "testpub_foralltables"
+Distributed by: (id)
 
 \dRp+ testpub_foralltables
                               Publication testpub_foralltables
@@ -168,7 +181,10 @@ Publications:
 DROP TABLE testpub_tbl2;
 DROP PUBLICATION testpub_foralltables, testpub_fortable, testpub_forschema;
 CREATE TABLE testpub_tbl3 (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE testpub_tbl3a (b text) INHERITS (testpub_tbl3);
+NOTICE:  table has parent, setting distribution columns to match parent table
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub3 FOR TABLE testpub_tbl3;
 CREATE PUBLICATION testpub4 FOR TABLE ONLY testpub_tbl3;
@@ -198,7 +214,9 @@ CREATE PUBLICATION testpub_forparted;
 CREATE PUBLICATION testpub_forparted1;
 RESET client_min_messages;
 CREATE TABLE testpub_parted1 (LIKE testpub_parted);
+NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
 CREATE TABLE testpub_parted2 (LIKE testpub_parted);
+NOTICE:  table doesn't have 'DISTRIBUTED BY' clause, defaulting to distribution columns from LIKE table
 ALTER PUBLICATION testpub_forparted1 SET (publish='insert');
 ALTER TABLE testpub_parted ATTACH PARTITION testpub_parted1 FOR VALUES IN (1);
 ALTER TABLE testpub_parted ATTACH PARTITION testpub_parted2 FOR VALUES IN (2);
@@ -241,14 +259,27 @@ DROP TABLE testpub_parted1, testpub_parted2;
 DROP PUBLICATION testpub_forparted, testpub_forparted1;
 -- Tests for row filters
 CREATE TABLE testpub_rf_tbl1 (a integer, b text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE testpub_rf_tbl2 (c text, d integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'c' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE testpub_rf_tbl3 (e integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'e' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE testpub_rf_tbl4 (g text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'g' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE testpub_rf_tbl5 (a xml);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause, and no column type is suitable for a distribution key. Creating a NULL policy entry.
 CREATE SCHEMA testpub_rf_schema1;
 CREATE TABLE testpub_rf_schema1.testpub_rf_tbl5 (h integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'h' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE SCHEMA testpub_rf_schema2;
 CREATE TABLE testpub_rf_schema2.testpub_rf_tbl6 (i integer);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 SET client_min_messages = 'ERROR';
 -- Firstly, test using the option publish='insert' because the row filter
 -- validation of referenced columns is less strict than for delete/update.
@@ -268,6 +299,7 @@ Tables:
  Column |  Type   | Collation | Nullable | Default 
 --------+---------+-----------+----------+---------
  e      | integer |           |          | 
+Distributed by: (e)
 
 ALTER PUBLICATION testpub5 ADD TABLE testpub_rf_tbl3 WHERE (e > 1000 AND e < 2000);
 \dRp+ testpub5
@@ -287,6 +319,7 @@ Tables:
  e      | integer |           |          | 
 Publications:
     "testpub5" WHERE ((e > 1000) AND (e < 2000))
+Distributed by: (e)
 
 ALTER PUBLICATION testpub5 DROP TABLE testpub_rf_tbl2;
 \dRp+ testpub5
@@ -315,6 +348,7 @@ Tables:
  e      | integer |           |          | 
 Publications:
     "testpub5" WHERE ((e > 300) AND (e < 500))
+Distributed by: (e)
 
 -- test \d <tablename> (now it displays filter information)
 SET client_min_messages = 'ERROR';
@@ -330,6 +364,7 @@ RESET client_min_messages;
 Publications:
     "testpub_rf_no"
     "testpub_rf_yes" WHERE (a > 1)
+Distributed by: (a)
 
 DROP PUBLICATION testpub_rf_yes, testpub_rf_no;
 -- some more syntax tests to exercise other parser pathways
@@ -429,6 +464,8 @@ ALTER PUBLICATION testpub5 SET TABLE testpub_rf_tbl4 WHERE (length(g) < 6);
 -- fail - user-defined types are not allowed
 CREATE TYPE rf_bug_status AS ENUM ('new', 'open', 'closed');
 CREATE TABLE rf_bug (id serial, description text, status rf_bug_status);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE PUBLICATION testpub6 FOR TABLE rf_bug WHERE (status = 'open') WITH (publish = 'insert');
 ERROR:  invalid publication WHERE expression
 LINE 1: ...EATE PUBLICATION testpub6 FOR TABLE rf_bug WHERE (status = '...
@@ -486,6 +523,8 @@ DROP COLLATION user_collation;
 -- ======================================================
 -- More row filter tests for validating column references
 CREATE TABLE rf_tbl_abcd_nopk(a int, b int, c int, d int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE rf_tbl_abcd_pk(a int, b int, c int, d int, PRIMARY KEY(a,b));
 CREATE TABLE rf_tbl_abcd_part_pk (a int PRIMARY KEY, b int) PARTITION by RANGE (a);
 CREATE TABLE rf_tbl_abcd_part_pk_1 (b int, a int PRIMARY KEY);
@@ -546,10 +585,16 @@ DETAIL:  Column used in the publication WHERE expression is not part of the repl
 -- Case 4. REPLICA IDENTITY INDEX
 ALTER TABLE rf_tbl_abcd_pk ALTER COLUMN c SET NOT NULL;
 CREATE UNIQUE INDEX idx_abcd_pk_c ON rf_tbl_abcd_pk(c);
+ERROR:  UNIQUE index must contain all columns in the table's distribution key
+DETAIL:  Distribution key column "a" is not included in the constraint.
 ALTER TABLE rf_tbl_abcd_pk REPLICA IDENTITY USING INDEX idx_abcd_pk_c;
+ERROR:  index "idx_abcd_pk_c" for table "rf_tbl_abcd_pk" does not exist
 ALTER TABLE rf_tbl_abcd_nopk ALTER COLUMN c SET NOT NULL;
 CREATE UNIQUE INDEX idx_abcd_nopk_c ON rf_tbl_abcd_nopk(c);
+ERROR:  UNIQUE index must contain all columns in the table's distribution key
+DETAIL:  Distribution key column "a" is not included in the constraint.
 ALTER TABLE rf_tbl_abcd_nopk REPLICA IDENTITY USING INDEX idx_abcd_nopk_c;
+ERROR:  index "idx_abcd_nopk_c" for table "rf_tbl_abcd_nopk" does not exist
 ALTER PUBLICATION testpub6 SET TABLE rf_tbl_abcd_pk WHERE (a > 99);
 -- fail - "a" is in PK but it is not part of REPLICA IDENTITY INDEX
 UPDATE rf_tbl_abcd_pk SET a = 1;
@@ -558,6 +603,8 @@ DETAIL:  Column used in the publication WHERE expression is not part of the repl
 ALTER PUBLICATION testpub6 SET TABLE rf_tbl_abcd_pk WHERE (c > 99);
 -- ok - "c" is not in PK but it is part of REPLICA IDENTITY INDEX
 UPDATE rf_tbl_abcd_pk SET a = 1;
+ERROR:  cannot update table "rf_tbl_abcd_pk"
+DETAIL:  Column used in the publication WHERE expression is not part of the replica identity.
 ALTER PUBLICATION testpub6 SET TABLE rf_tbl_abcd_nopk WHERE (a > 99);
 -- fail - "a" is not in REPLICA IDENTITY INDEX
 UPDATE rf_tbl_abcd_nopk SET a = 1;
@@ -566,6 +613,8 @@ DETAIL:  Column used in the publication WHERE expression is not part of the repl
 ALTER PUBLICATION testpub6 SET TABLE rf_tbl_abcd_nopk WHERE (c > 99);
 -- ok - "c" is part of REPLICA IDENTITY INDEX
 UPDATE rf_tbl_abcd_nopk SET a = 1;
+ERROR:  cannot update table "rf_tbl_abcd_nopk"
+DETAIL:  Column used in the publication WHERE expression is not part of the replica identity.
 -- Tests for partitioned table
 -- set PUBLISH_VIA_PARTITION_ROOT to false and test row filter for partitioned
 -- table
@@ -656,20 +705,20 @@ HINT:  Use DROP ... CASCADE to drop the dependent objects too.
 ALTER PUBLICATION testpub_fortable_insert ADD TABLE testpub_tbl5 (b, c);
 /* not all replica identities are good enough */
 CREATE UNIQUE INDEX testpub_tbl5_b_key ON testpub_tbl5 (b, c);
+ERROR:  UNIQUE index must contain all columns in the table's distribution key
+DETAIL:  Distribution key column "a" is not included in the constraint.
 ALTER TABLE testpub_tbl5 ALTER b SET NOT NULL, ALTER c SET NOT NULL;
 ALTER TABLE testpub_tbl5 REPLICA IDENTITY USING INDEX testpub_tbl5_b_key;
+ERROR:  index "testpub_tbl5_b_key" for table "testpub_tbl5" does not exist
 -- error: replica identity (b,c) is not covered by column list (a, c)
 UPDATE testpub_tbl5 SET a = 1;
-ERROR:  cannot update table "testpub_tbl5"
-DETAIL:  Column list used by the publication does not cover the replica identity.
 ALTER PUBLICATION testpub_fortable DROP TABLE testpub_tbl5;
 -- error: change the replica identity to "b", and column list to (a, c)
 -- then update fails, because (a, c) does not cover replica identity
 ALTER TABLE testpub_tbl5 REPLICA IDENTITY USING INDEX testpub_tbl5_b_key;
+ERROR:  index "testpub_tbl5_b_key" for table "testpub_tbl5" does not exist
 ALTER PUBLICATION testpub_fortable ADD TABLE testpub_tbl5 (a, c);
 UPDATE testpub_tbl5 SET a = 1;
-ERROR:  cannot update table "testpub_tbl5"
-DETAIL:  Column list used by the publication does not cover the replica identity.
 /* But if upd/del are not published, it works OK */
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub_table_ins WITH (publish = 'insert, truncate');
@@ -685,6 +734,8 @@ Tables:
 
 -- tests with REPLICA IDENTITY FULL
 CREATE TABLE testpub_tbl6 (a int, b text, c text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE testpub_tbl6 REPLICA IDENTITY FULL;
 ALTER PUBLICATION testpub_fortable ADD TABLE testpub_tbl6 (a, b, c);
 UPDATE testpub_tbl6 SET a = 1;
@@ -707,6 +758,7 @@ Indexes:
     "testpub_tbl7_pkey" PRIMARY KEY, btree (a)
 Publications:
     "testpub_fortable" (a, b)
+Distributed by: (a)
 
 -- ok: the column list is the same, we should skip this table (or at least not fail)
 ALTER PUBLICATION testpub_fortable SET TABLE testpub_tbl7 (a, b);
@@ -721,6 +773,7 @@ Indexes:
     "testpub_tbl7_pkey" PRIMARY KEY, btree (a)
 Publications:
     "testpub_fortable" (a, b)
+Distributed by: (a)
 
 -- ok: the column list changes, make sure the catalog gets updated
 ALTER PUBLICATION testpub_fortable SET TABLE testpub_tbl7 (a, c);
@@ -735,18 +788,26 @@ Indexes:
     "testpub_tbl7_pkey" PRIMARY KEY, btree (a)
 Publications:
     "testpub_fortable" (a, c)
+Distributed by: (a)
 
 -- column list for partitioned tables has to cover replica identities for
 -- all child relations
 CREATE TABLE testpub_tbl8 (a int, b text, c text) PARTITION BY HASH (a);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- first partition has replica identity "a"
 CREATE TABLE testpub_tbl8_0 PARTITION OF testpub_tbl8 FOR VALUES WITH (modulus 2, remainder 0);
+NOTICE:  table has parent, setting distribution columns to match parent table
 ALTER TABLE testpub_tbl8_0 ADD PRIMARY KEY (a);
 ALTER TABLE testpub_tbl8_0 REPLICA IDENTITY USING INDEX testpub_tbl8_0_pkey;
 -- second partition has replica identity "b"
 CREATE TABLE testpub_tbl8_1 PARTITION OF testpub_tbl8 FOR VALUES WITH (modulus 2, remainder 1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (b);
+ERROR:  PRIMARY KEY definition must contain all columns in the table's distribution key
+DETAIL:  Distribution key column "a" is not included in the constraint.
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY USING INDEX testpub_tbl8_1_pkey;
+ERROR:  index "testpub_tbl8_1_pkey" for table "testpub_tbl8_1" does not exist
 -- ok: column list covers both "a" and "b"
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub_col_list FOR TABLE testpub_tbl8 (a, b) WITH (publish_via_partition_root = 'true');
@@ -755,12 +816,14 @@ RESET client_min_messages;
 ALTER PUBLICATION testpub_col_list DROP TABLE testpub_tbl8;
 ALTER PUBLICATION testpub_col_list ADD TABLE testpub_tbl8 (a, b);
 UPDATE testpub_tbl8 SET a = 1;
+ERROR:  cannot update table "testpub_tbl8_1" because it does not have a replica identity and publishes updates
+HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 -- failure: column list does not cover replica identity for the second partition
 ALTER PUBLICATION testpub_col_list DROP TABLE testpub_tbl8;
 ALTER PUBLICATION testpub_col_list ADD TABLE testpub_tbl8 (a, c);
 UPDATE testpub_tbl8 SET a = 1;
-ERROR:  cannot update table "testpub_tbl8_1"
-DETAIL:  Column list used by the publication does not cover the replica identity.
+ERROR:  cannot update table "testpub_tbl8_1" because it does not have a replica identity and publishes updates
+HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 ALTER PUBLICATION testpub_col_list DROP TABLE testpub_tbl8;
 -- failure: one of the partitions has REPLICA IDENTITY FULL
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY FULL;
@@ -771,6 +834,7 @@ DETAIL:  Column list used by the publication does not cover the replica identity
 ALTER PUBLICATION testpub_col_list DROP TABLE testpub_tbl8;
 -- add table and then try changing replica identity
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY USING INDEX testpub_tbl8_1_pkey;
+ERROR:  index "testpub_tbl8_1_pkey" for table "testpub_tbl8_1" does not exist
 ALTER PUBLICATION testpub_col_list ADD TABLE testpub_tbl8 (a, b);
 -- failure: replica identity full can't be used with a column list
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY FULL;
@@ -779,8 +843,12 @@ ERROR:  cannot update table "testpub_tbl8_1"
 DETAIL:  Column list used by the publication does not cover the replica identity.
 -- failure: replica identity has to be covered by the column list
 ALTER TABLE testpub_tbl8_1 DROP CONSTRAINT testpub_tbl8_1_pkey;
+ERROR:  constraint "testpub_tbl8_1_pkey" of relation "testpub_tbl8_1" does not exist
 ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (c);
+ERROR:  PRIMARY KEY definition must contain all columns in the table's distribution key
+DETAIL:  Distribution key column "a" is not included in the constraint.
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY USING INDEX testpub_tbl8_1_pkey;
+ERROR:  index "testpub_tbl8_1_pkey" for table "testpub_tbl8_1" does not exist
 UPDATE testpub_tbl8 SET a = 1;
 ERROR:  cannot update table "testpub_tbl8_1"
 DETAIL:  Column list used by the publication does not cover the replica identity.
@@ -788,22 +856,31 @@ DROP TABLE testpub_tbl8;
 -- column list for partitioned tables has to cover replica identities for
 -- all child relations
 CREATE TABLE testpub_tbl8 (a int, b text, c text) PARTITION BY HASH (a);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER PUBLICATION testpub_col_list ADD TABLE testpub_tbl8 (a, b);
 -- first partition has replica identity "a"
 CREATE TABLE testpub_tbl8_0 (a int, b text, c text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE testpub_tbl8_0 ADD PRIMARY KEY (a);
 ALTER TABLE testpub_tbl8_0 REPLICA IDENTITY USING INDEX testpub_tbl8_0_pkey;
 -- second partition has replica identity "b"
 CREATE TABLE testpub_tbl8_1 (a int, b text, c text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (c);
+ERROR:  PRIMARY KEY definition must contain all columns in the table's distribution key
+DETAIL:  Distribution key column "a" is not included in the constraint.
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY USING INDEX testpub_tbl8_1_pkey;
+ERROR:  index "testpub_tbl8_1_pkey" for table "testpub_tbl8_1" does not exist
 -- ok: attaching first partition works, because (a) is in column list
 ALTER TABLE testpub_tbl8 ATTACH PARTITION testpub_tbl8_0 FOR VALUES WITH (modulus 2, remainder 0);
 -- failure: second partition has replica identity (c), which si not in column list
 ALTER TABLE testpub_tbl8 ATTACH PARTITION testpub_tbl8_1 FOR VALUES WITH (modulus 2, remainder 1);
 UPDATE testpub_tbl8 SET a = 1;
-ERROR:  cannot update table "testpub_tbl8_1"
-DETAIL:  Column list used by the publication does not cover the replica identity.
+ERROR:  cannot update table "testpub_tbl8_1" because it does not have a replica identity and publishes updates
+HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 -- failure: changing replica identity to FULL for partition fails, because
 -- of the column list on the parent
 ALTER TABLE testpub_tbl8_0 REPLICA IDENTITY FULL;
@@ -839,12 +916,15 @@ Indexes:
     "testpub_tbl_both_filters_pkey" PRIMARY KEY, btree (a, c) REPLICA IDENTITY
 Publications:
     "testpub_both_filters" (a, c) WHERE (c <> 1)
+Distributed by: (a, c)
 
 DROP TABLE testpub_tbl_both_filters;
 DROP PUBLICATION testpub_both_filters;
 -- ======================================================
 -- More column list tests for validating column references
 CREATE TABLE rf_tbl_abcd_nopk(a int, b int, c int, d int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE rf_tbl_abcd_pk(a int, b int, c int, d int, PRIMARY KEY(a,b));
 CREATE TABLE rf_tbl_abcd_part_pk (a int PRIMARY KEY, b int) PARTITION by RANGE (a);
 CREATE TABLE rf_tbl_abcd_part_pk_1 (b int, a int PRIMARY KEY);
@@ -913,26 +993,36 @@ HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 -- Case 4. REPLICA IDENTITY INDEX
 ALTER TABLE rf_tbl_abcd_pk ALTER COLUMN c SET NOT NULL;
 CREATE UNIQUE INDEX idx_abcd_pk_c ON rf_tbl_abcd_pk(c);
+ERROR:  UNIQUE index must contain all columns in the table's distribution key
+DETAIL:  Distribution key column "a" is not included in the constraint.
 ALTER TABLE rf_tbl_abcd_pk REPLICA IDENTITY USING INDEX idx_abcd_pk_c;
+ERROR:  index "idx_abcd_pk_c" for table "rf_tbl_abcd_pk" does not exist
 ALTER TABLE rf_tbl_abcd_nopk ALTER COLUMN c SET NOT NULL;
 CREATE UNIQUE INDEX idx_abcd_nopk_c ON rf_tbl_abcd_nopk(c);
+ERROR:  UNIQUE index must contain all columns in the table's distribution key
+DETAIL:  Distribution key column "a" is not included in the constraint.
 ALTER TABLE rf_tbl_abcd_nopk REPLICA IDENTITY USING INDEX idx_abcd_nopk_c;
+ERROR:  index "idx_abcd_nopk_c" for table "rf_tbl_abcd_nopk" does not exist
 ALTER PUBLICATION testpub6 SET TABLE rf_tbl_abcd_pk (a);
 -- fail - column list "a" does not cover the REPLICA IDENTITY INDEX on "c"
 UPDATE rf_tbl_abcd_pk SET a = 1;
-ERROR:  cannot update table "rf_tbl_abcd_pk"
-DETAIL:  Column list used by the publication does not cover the replica identity.
+ERROR:  cannot update table "rf_tbl_abcd_pk" because it does not have a replica identity and publishes updates
+HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 ALTER PUBLICATION testpub6 SET TABLE rf_tbl_abcd_pk (c);
 -- ok - column list "c" does cover the REPLICA IDENTITY INDEX on "c"
 UPDATE rf_tbl_abcd_pk SET a = 1;
+ERROR:  cannot update table "rf_tbl_abcd_pk" because it does not have a replica identity and publishes updates
+HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 ALTER PUBLICATION testpub6 SET TABLE rf_tbl_abcd_nopk (a);
 -- fail - column list "a" does not cover the REPLICA IDENTITY INDEX on "c"
 UPDATE rf_tbl_abcd_nopk SET a = 1;
-ERROR:  cannot update table "rf_tbl_abcd_nopk"
-DETAIL:  Column list used by the publication does not cover the replica identity.
+ERROR:  cannot update table "rf_tbl_abcd_nopk" because it does not have a replica identity and publishes updates
+HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 ALTER PUBLICATION testpub6 SET TABLE rf_tbl_abcd_nopk (c);
 -- ok - column list "c" does cover the REPLICA IDENTITY INDEX on "c"
 UPDATE rf_tbl_abcd_nopk SET a = 1;
+ERROR:  cannot update table "rf_tbl_abcd_nopk" because it does not have a replica identity and publishes updates
+HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 -- Tests for partitioned table
 -- set PUBLISH_VIA_PARTITION_ROOT to false and test column list for partitioned
 -- table
@@ -1004,12 +1094,16 @@ CREATE PUBLICATION testpub_fortbl FOR TABLE testpub_view;
 ERROR:  cannot add relation "testpub_view" to publication
 DETAIL:  This operation is not supported for views.
 CREATE TEMPORARY TABLE testpub_temptbl(a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- fail - temporary table
 CREATE PUBLICATION testpub_fortemptbl FOR TABLE testpub_temptbl;
 ERROR:  cannot add relation "testpub_temptbl" to publication
 DETAIL:  This operation is not supported for temporary tables.
 DROP TABLE testpub_temptbl;
 CREATE UNLOGGED TABLE testpub_unloggedtbl(a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- fail - unlogged table
 CREATE PUBLICATION testpub_forunloggedtbl FOR TABLE testpub_unloggedtbl;
 ERROR:  cannot add relation "testpub_unloggedtbl" to publication
@@ -1055,6 +1149,7 @@ Publications:
     "testpib_ins_trunct"
     "testpub_default"
     "testpub_fortbl"
+Distributed by: (foo)
 
 \d+ testpub_tbl1
                                                 Table "public.testpub_tbl1"
@@ -1068,6 +1163,7 @@ Publications:
     "testpib_ins_trunct"
     "testpub_default"
     "testpub_fortbl"
+Distributed by: (id)
 
 \dRp+ testpub_default
                                 Publication testpub_default
@@ -1093,10 +1189,13 @@ Indexes:
 Publications:
     "testpib_ins_trunct"
     "testpub_fortbl"
+Distributed by: (id)
 
 -- verify relation cache invalidation when a primary key is added using
 -- an existing index
 CREATE TABLE pub_test.testpub_addpk (id int not null, data int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 ALTER PUBLICATION testpub_default ADD TABLE pub_test.testpub_addpk;
 INSERT INTO pub_test.testpub_addpk VALUES(1, 11);
 CREATE UNIQUE INDEX testpub_addpk_id_idx ON pub_test.testpub_addpk(id);
@@ -1133,6 +1232,7 @@ DROP PUBLICATION testpub2;
 DROP PUBLICATION testpub3;
 SET ROLE regress_publication_user;
 CREATE ROLE regress_publication_user3;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 GRANT regress_publication_user2 TO regress_publication_user3;
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub4 FOR ALL TABLES IN SCHEMA pub_test;
@@ -1186,9 +1286,13 @@ CREATE SCHEMA pub_test2;
 CREATE SCHEMA pub_test3;
 CREATE SCHEMA "CURRENT_SCHEMA";
 CREATE TABLE pub_test1.tbl (id int, data text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE pub_test1.tbl1 (id serial primary key, data text);
 CREATE TABLE pub_test2.tbl1 (id serial primary key, data text);
 CREATE TABLE "CURRENT_SCHEMA"."CURRENT_SCHEMA"(id int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 -- suppress warning that depends on wal_level
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub1_forschema FOR ALL TABLES IN SCHEMA pub_test1;
@@ -1466,7 +1570,10 @@ HINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.
 CREATE SCHEMA pub_testpart1;
 CREATE SCHEMA pub_testpart2;
 CREATE TABLE pub_testpart1.parent1 (a int) partition by list (a);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE pub_testpart2.child_parent1 partition of pub_testpart1.parent1 for values in (1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 INSERT INTO pub_testpart2.child_parent1 values(1);
 UPDATE pub_testpart2.child_parent1 set a = 1;
 SET client_min_messages = 'ERROR';
@@ -1483,7 +1590,10 @@ DROP PUBLICATION testpubpart_forschema;
 -- verify invalidation of partition tables for schema publication that has
 -- parent and child tables of different partition hierarchies
 CREATE TABLE pub_testpart2.parent2 (a int) partition by list (a);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE pub_testpart1.child_parent2 partition of pub_testpart2.parent2 for values in (1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 INSERT INTO pub_testpart1.child_parent2 values(1);
 UPDATE pub_testpart1.child_parent2 set a = 1;
 SET client_min_messages = 'ERROR';

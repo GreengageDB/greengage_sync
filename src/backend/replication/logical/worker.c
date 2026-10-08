@@ -992,7 +992,7 @@ apply_handle_commit_prepared(StringInfo s)
 	replorigin_session_origin_lsn = prepare_data.end_lsn;
 	replorigin_session_origin_timestamp = prepare_data.commit_time;
 
-	FinishPreparedTransaction(gid, true);
+	FinishPreparedTransaction(gid, true, true);
 	end_replication_step();
 	CommitTransactionCommand();
 	pgstat_report_stat(false);
@@ -1043,7 +1043,7 @@ apply_handle_rollback_prepared(StringInfo s)
 
 		/* There is no transaction when ABORT/ROLLBACK PREPARED is called */
 		begin_replication_step();
-		FinishPreparedTransaction(gid, false);
+		FinishPreparedTransaction(gid, false, true);
 		end_replication_step();
 		CommitTransactionCommand();
 
@@ -3155,50 +3155,15 @@ subxact_info_write(Oid subid, TransactionId xid)
 	 * Create the subxact file if it not already created, otherwise open the
 	 * existing file.
 	 */
-<<<<<<< HEAD
-	if (ent->subxact_fileset == NULL)
-	{
-		MemoryContext oldctx;
-		workfile_set	*work_set;
-
-		/*
-		 * We need to maintain shared fileset across multiple stream
-		 * start/stop calls.  So, need to allocate it in a persistent context.
-		 */
-		oldctx = MemoryContextSwitchTo(ApplyContext);
-		ent->subxact_fileset = palloc(sizeof(SharedFileSet));
-		SharedFileSetInit(ent->subxact_fileset, NULL);
-		MemoryContextSwitchTo(oldctx);
-
-		work_set = workfile_mgr_create_set("SubxactInfo", path, false /* hold pin */);
-		fd = BufFileCreateShared(ent->subxact_fileset, path, work_set);
-	}
-	else
-		fd = BufFileOpenShared(ent->subxact_fileset, path, O_RDWR);
-||||||| e1c1c30f635
-	if (ent->subxact_fileset == NULL)
-	{
-		MemoryContext oldctx;
-
-		/*
-		 * We need to maintain shared fileset across multiple stream
-		 * start/stop calls.  So, need to allocate it in a persistent context.
-		 */
-		oldctx = MemoryContextSwitchTo(ApplyContext);
-		ent->subxact_fileset = palloc(sizeof(SharedFileSet));
-		SharedFileSetInit(ent->subxact_fileset, NULL);
-		MemoryContextSwitchTo(oldctx);
-
-		fd = BufFileCreateShared(ent->subxact_fileset, path);
-	}
-	else
-		fd = BufFileOpenShared(ent->subxact_fileset, path, O_RDWR);
-=======
 	fd = BufFileOpenFileSet(MyLogicalRepWorker->stream_fileset, path, O_RDWR,
 							true);
 	if (fd == NULL)
-		fd = BufFileCreateFileSet(MyLogicalRepWorker->stream_fileset, path);
->>>>>>> adadae45816
+	{
+		workfile_set	*work_set;
+
+		work_set = workfile_mgr_create_set("SubxactInfo", path, false /* hold pin */);
+		fd = BufFileCreateFileSet(MyLogicalRepWorker->stream_fileset, path, work_set);
+	}
 
 	len = sizeof(SubXactInfo) * subxact_data.nsubxacts;
 
@@ -3431,66 +3396,13 @@ stream_open_file(Oid subid, TransactionId xid, bool first_segment)
 	 * Otherwise, just open the file for writing, in append mode.
 	 */
 	if (first_segment)
-<<<<<<< HEAD
 	{
-		MemoryContext savectx;
-		SharedFileSet *fileset;
 		workfile_set	*work_set;
 
-		if (found)
-			ereport(ERROR,
-					(errcode(ERRCODE_PROTOCOL_VIOLATION),
-					 errmsg_internal("incorrect first-segment flag for streamed replication transaction")));
-
-		/*
-		 * We need to maintain shared fileset across multiple stream
-		 * start/stop calls. So, need to allocate it in a persistent context.
-		 */
-		savectx = MemoryContextSwitchTo(ApplyContext);
-		fileset = palloc(sizeof(SharedFileSet));
-
-		SharedFileSetInit(fileset, NULL);
-		MemoryContextSwitchTo(savectx);
-
 		work_set = workfile_mgr_create_set("ChangeInfo", path, false /* hold pin */);
-		stream_fd = BufFileCreateShared(fileset, path, work_set);
-
-		/* Remember the fileset for the next stream of the same transaction */
-		ent->xid = xid;
-		ent->stream_fileset = fileset;
-		ent->subxact_fileset = NULL;
-	}
-||||||| e1c1c30f635
-	{
-		MemoryContext savectx;
-		SharedFileSet *fileset;
-
-		if (found)
-			ereport(ERROR,
-					(errcode(ERRCODE_PROTOCOL_VIOLATION),
-					 errmsg_internal("incorrect first-segment flag for streamed replication transaction")));
-
-		/*
-		 * We need to maintain shared fileset across multiple stream
-		 * start/stop calls. So, need to allocate it in a persistent context.
-		 */
-		savectx = MemoryContextSwitchTo(ApplyContext);
-		fileset = palloc(sizeof(SharedFileSet));
-
-		SharedFileSetInit(fileset, NULL);
-		MemoryContextSwitchTo(savectx);
-
-		stream_fd = BufFileCreateShared(fileset, path);
-
-		/* Remember the fileset for the next stream of the same transaction */
-		ent->xid = xid;
-		ent->stream_fileset = fileset;
-		ent->subxact_fileset = NULL;
-	}
-=======
 		stream_fd = BufFileCreateFileSet(MyLogicalRepWorker->stream_fileset,
-										 path);
->>>>>>> adadae45816
+										 path, work_set);
+	}
 	else
 	{
 		/*
