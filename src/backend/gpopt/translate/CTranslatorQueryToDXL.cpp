@@ -724,9 +724,23 @@ CTranslatorQueryToDXL::TranslateQueryToDXL()
 		case CMD_UPDATE:
 			return TranslateUpdateQueryToDXL();
 
+		case CMD_MERGE:
+			// ORCA does not implement MERGE.  Raise an unsupported-feature
+			// error so the optimizer falls back to the Postgres planner.
+			// Without this the statement hits the default case below, whose
+			// GPOS_ASSERT is compiled out of a production (non-cassert) build,
+			// so TranslateQueryToDXL() returns a NULL DXL tree that is then
+			// dereferenced in CTranslatorDXLToExpr::Pexpr and crashes the
+			// backend with SIGSEGV.
+			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+					   GPOS_WSZ_LIT("MERGE"));
+
 		default:
-			GPOS_ASSERT(!"Statement type not supported");
-			return nullptr;
+			// Raise rather than assert-and-return-nullptr: a NULL DXL tree
+			// crashes CTranslatorDXLToExpr::Pexpr in production builds (see
+			// the CMD_MERGE case above).
+			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+					   GPOS_WSZ_LIT("unrecognized statement type"));
 	}
 }
 
@@ -1078,7 +1092,7 @@ CTranslatorQueryToDXL::GetDXLCtasOptionArray(
 			}
 		}
 
-		NodeTag arg_type = T_Null;
+		NodeTag arg_type = T_Invalid;
 		if (!is_null_arg)
 		{
 			arg_type = def_elem->arg->type;
@@ -3279,8 +3293,14 @@ CTranslatorQueryToDXL::UnsupportedRTEKind(RTEKind rtekind)
 	{
 		default:
 		{
-			GPOS_ASSERT(!"Unrecognized RTE kind");
-			__builtin_unreachable();
+			// Unlike the cases below, this arm used to be GPOS_ASSERT +
+			// __builtin_unreachable().  GPOS_ASSERT is compiled out of a
+			// production (non-cassert) build, so any RTE kind reaching here
+			// executed __builtin_unreachable() -- undefined behavior -- while
+			// a cassert build silently fell back via the assert exception.
+			// Raise like every other arm so both builds fall back cleanly.
+			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+					   GPOS_WSZ_LIT("RangeTableEntry of unrecognized type"));
 		}
 		case RTE_JOIN:
 		{
@@ -3296,6 +3316,24 @@ CTranslatorQueryToDXL::UnsupportedRTEKind(RTEKind rtekind)
 		{
 			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
 					   GPOS_WSZ_LIT("RangeTableEntry of type Table Function"));
+		}
+		case RTE_TABLEFUNC:
+		{
+			// JSON_TABLE or XMLTABLE in FROM
+			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+					   GPOS_WSZ_LIT("JSON_TABLE or XMLTABLE"));
+		}
+		case RTE_NAMEDTUPLESTORE:
+		{
+			// trigger transition tables
+			GPOS_RAISE(
+				gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+				GPOS_WSZ_LIT("RangeTableEntry of type Named Tuplestore"));
+		}
+		case RTE_RESULT:
+		{
+			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+					   GPOS_WSZ_LIT("RangeTableEntry of type Result"));
 		}
 	}
 }
@@ -4073,7 +4111,7 @@ CTranslatorQueryToDXL::TranslateJoinExprInFromToDXL(JoinExpr *join_expr)
 		}
 		GPOS_ASSERT(IsA(join_alias_node, Var) ||
 					IsA(join_alias_node, CoalesceExpr));
-		Value *value = (Value *) lfirst(lc_col_name);
+		String *value = (String *) lfirst(lc_col_name);
 		CHAR *col_name_char_array = strVal(value);
 
 		// create the DXL node holding the target list entry and add it to proj list

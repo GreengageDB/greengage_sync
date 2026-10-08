@@ -114,3 +114,8 @@ explain select * from ext_part;
 -- Keep this table around once this is fixed
 drop table ext_part;
 -- end_ignore
+
+-- JSON_TABLE in FROM is an RTE_TABLEFUNC, which ORCA does not translate.  It
+-- must fall back cleanly; in a non-cassert build this used to reach
+-- __builtin_unreachable() in CTranslatorQueryToDXL::UnsupportedRTEKind.
+select * from json_table('[{"a":1},{"a":2}]'::jsonb, '$[*]' columns (a int path '$.a')) jt;
