@@ -161,7 +161,6 @@ sub write_tuple
 	my ($fh, $offset, $tup) = @_;
 	my $buffer = pack(
 		HEAPTUPLE_PACK_CODE,
-<<<<<<< HEAD
 		$tup->{t_xmin},        $tup->{t_xmax},
 		$tup->{t_field3},      $tup->{bi_hi},
 		$tup->{bi_lo},         $tup->{ip_posid},
@@ -176,41 +175,8 @@ sub write_tuple
 		$tup->{c_va_padding1}, $tup->{c_va_padding2},
 		$tup->{c_va_rawsize},  $tup->{c_va_extinfo},
 		$tup->{c_va_valueid},  $tup->{c_va_toastrelid});
-	seek($fh, $offset, SEEK_SET)
-	  or BAIL_OUT("seek failed: $!");
-||||||| e1c1c30f635
-		$tup->{t_xmin},       $tup->{t_xmax},
-		$tup->{t_field3},     $tup->{bi_hi},
-		$tup->{bi_lo},        $tup->{ip_posid},
-		$tup->{t_infomask2},  $tup->{t_infomask},
-		$tup->{t_hoff},       $tup->{t_bits},
-		$tup->{a_1},          $tup->{a_2},
-		$tup->{b_header},     $tup->{b_body1},
-		$tup->{b_body2},      $tup->{b_body3},
-		$tup->{b_body4},      $tup->{b_body5},
-		$tup->{b_body6},      $tup->{b_body7},
-		$tup->{c_va_header},  $tup->{c_va_vartag},
-		$tup->{c_va_rawsize}, $tup->{c_va_extinfo},
-		$tup->{c_va_valueid}, $tup->{c_va_toastrelid});
-	seek($fh, $offset, SEEK_SET)
-	  or BAIL_OUT("seek failed: $!");
-=======
-		$tup->{t_xmin},       $tup->{t_xmax},
-		$tup->{t_field3},     $tup->{bi_hi},
-		$tup->{bi_lo},        $tup->{ip_posid},
-		$tup->{t_infomask2},  $tup->{t_infomask},
-		$tup->{t_hoff},       $tup->{t_bits},
-		$tup->{a_1},          $tup->{a_2},
-		$tup->{b_header},     $tup->{b_body1},
-		$tup->{b_body2},      $tup->{b_body3},
-		$tup->{b_body4},      $tup->{b_body5},
-		$tup->{b_body6},      $tup->{b_body7},
-		$tup->{c_va_header},  $tup->{c_va_vartag},
-		$tup->{c_va_rawsize}, $tup->{c_va_extinfo},
-		$tup->{c_va_valueid}, $tup->{c_va_toastrelid});
 	sysseek($fh, $offset, 0)
 	  or BAIL_OUT("sysseek failed: $!");
->>>>>>> adadae45816
 	defined(syswrite($fh, $buffer, HEAPTUPLE_PACK_LENGTH))
 	  or BAIL_OUT("syswrite failed: $!");
 	return;
