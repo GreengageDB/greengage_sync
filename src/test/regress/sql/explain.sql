@@ -55,6 +55,15 @@ begin
 end;
 $$;
 
+-- GGDB: the JIT regression jobs run with jit enabled and lowered jit cost
+-- thresholds, so EXPLAIN (VERBOSE) emits a "Settings: jit = ..." line. That line
+-- is ignored by init_file, but its width still perturbs the explain_filter output
+-- column and breaks the otherwise-identical non-jit jobs. Pin the jit GUCs to
+-- their boot defaults so EXPLAIN output is the same under both job types (the JSON
+-- cases below already strip jit for the same "varies in test environment" reason).
+set jit = off;
+set jit_above_cost = 100000;
+set optimizer_jit_above_cost = 7500;
 -- Disable JIT, or we'll get different output on machines where that's been
 -- forced on
 set jit = off;
@@ -121,6 +130,17 @@ select jsonb_pretty(
   #- '{0,Settings,jit}'
   #- '{0,Settings,jit_above_cost}'
   #- '{0,Settings,optimizer_jit_above_cost}'
+  -- GGDB: the work_mem-derived per-node and per-slice memory accounting
+  -- (work_mem / Executor Memory* / Work Maximum Memory) is emitted by the
+  -- planner/ORCA jobs but NOT by the JIT regression jobs (segment-side
+  -- JIT-compiled nodes bypass that accounting), so strip it for output that is
+  -- identical across all four (jit x optimizer) jobs.
+  #- '{0,Plan,Plans,0,work_mem}'
+  #- '{0,Plan,Plans,0,Executor Memory}'
+  #- '{0,Plan,Plans,0,Executor Memory Segments}'
+  #- '{0,Plan,Plans,0,Executor Max Memory}'
+  #- '{0,Plan,Plans,0,Executor Max Memory Segment}'
+  #- '{0,Slice statistics,1,Work Maximum Memory}'
 );
 
 rollback;

@@ -247,7 +247,6 @@ INSERT INTO FLOAT8_TBL(f1) VALUES ('10e-400');
 
 INSERT INTO FLOAT8_TBL(f1) VALUES ('-10e-400');
 
-<<<<<<< HEAD
 INSERT INTO FLOAT8_TBL(f1) VALUES ('1e-324');
 
 INSERT INTO FLOAT8_TBL(f1) VALUES ('1e308');
@@ -326,14 +325,7 @@ DELETE FROM FLOAT8_TBL WHERE f1='+naN'::float8;
 
 DELETE FROM FLOAT8_TBL WHERE f1='NaN'::float8;
 
--- maintain external table consistency across platforms
--- delete all values and reinsert well-behaved ones
-||||||| e1c1c30f635
--- maintain external table consistency across platforms
--- delete all values and reinsert well-behaved ones
-=======
 DROP TABLE FLOAT8_TBL;
->>>>>>> adadae45816
 
 -- Check the float8 values exported for use by other tests
 

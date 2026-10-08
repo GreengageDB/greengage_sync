@@ -153,12 +153,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 0;
 set local work_mem = '128kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) from simple r join simple s using (id);
 select count(*) from simple r join simple s using (id);
@@ -173,12 +169,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '128kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = off;
 explain (costs off)
   select count(*) from simple r join simple s using (id);
@@ -194,12 +186,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '192kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = on;
 explain (costs off)
   select count(*) from simple r join simple s using (id);
@@ -220,12 +208,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 0;
 set local work_mem = '128kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) FROM simple r JOIN bigger_than_it_looks s USING (id);
 select count(*) FROM simple r JOIN bigger_than_it_looks s USING (id);
@@ -240,12 +224,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '128kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = off;
 explain (costs off)
   select count(*) from simple r join bigger_than_it_looks s using (id);
@@ -261,12 +241,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 1;
 set local work_mem = '192kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = on;
 explain (costs off)
   select count(*) from simple r join bigger_than_it_looks s using (id);
@@ -288,12 +264,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 0;
 set local work_mem = '128kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) from simple r join extremely_skewed s using (id);
 select count(*) from simple r join extremely_skewed s using (id);
@@ -307,12 +279,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '128kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = off;
 explain (costs off)
   select count(*) from simple r join extremely_skewed s using (id);
@@ -327,12 +295,8 @@ rollback to settings;
 savepoint settings;
 set local max_parallel_workers_per_gather = 1;
 set local work_mem = '128kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set local hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = on;
 explain (costs off)
   select count(*) from simple r join extremely_skewed s using (id);
@@ -378,12 +342,8 @@ set max_parallel_workers_per_gather = 2;
 set enable_material = off;
 set enable_mergejoin = off;
 set work_mem = '64kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) from join_foo
     left join (select b1.id, b1.t from join_bar b1 join join_bar b2 using (id)) ss
@@ -439,12 +399,8 @@ set max_parallel_workers_per_gather = 2;
 set enable_material = off;
 set enable_mergejoin = off;
 set work_mem = '64kB';
-<<<<<<< HEAD
-set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
-||||||| e1c1c30f635
-=======
 set hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) from join_foo
     left join (select b1.id, b1.t from join_bar b1 join join_bar b2 using (id)) ss
@@ -544,12 +500,8 @@ savepoint settings;
 set max_parallel_workers_per_gather = 2;
 set enable_parallel_hash = on;
 set work_mem = '128kB';
-<<<<<<< HEAD
-insert into wide select generate_series(3, 100) as id, rpad('', 320000, 'x') as t;
-||||||| e1c1c30f635
-=======
 set hash_mem_multiplier = 1.0;
->>>>>>> adadae45816
+insert into wide select generate_series(3, 100) as id, rpad('', 320000, 'x') as t;
 explain (costs off)
   select length(max(s.t))
   from wide left join (select id, coalesce(t, '') || '' as t from wide) s using (id);

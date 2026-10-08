@@ -132,15 +132,6 @@ SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* WHERE a = 0 AND b = 0');
 CREATE STATISTICS stxdinh ON a, b FROM stxdinh;
 VACUUM ANALYZE stxdinh, stxdinh1, stxdinh2;
-<<<<<<< HEAD
--- Since the stats object does not include inherited stats, it should not
--- affect the estimates
-SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
--- Dependencies are applied at individual relations (within append), so
--- this estimate changes a bit because we improve estimates for the parent
-SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* WHERE a = 0 AND b = 0');
-||||||| e1c1c30f635
-=======
 -- See if the extended stats affect the estimates
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
 -- Dependencies are applied at individual relations (within append), so
@@ -149,7 +140,6 @@ SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* WHERE a = 0 AND b 
 -- Ensure correct (non-inherited) stats are applied to inherited query
 SELECT * FROM check_estimated_rows('SELECT a, b FROM ONLY stxdinh GROUP BY 1, 2');
 SELECT * FROM check_estimated_rows('SELECT a, b FROM ONLY stxdinh WHERE a = 0 AND b = 0');
->>>>>>> adadae45816
 DROP TABLE stxdinh, stxdinh1, stxdinh2;
 
 -- Ensure inherited stats ARE applied to inherited query in partitioned table

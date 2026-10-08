@@ -1,5 +1,16 @@
 create or replace language plpython3u;
 
+--
+-- Postgres (PG15) revoked the default CREATE privilege on the public schema
+-- from PUBLIC.  Several isolation2 tests create objects in public as
+-- non-superuser roles and still expect the pre-PG15 read/write default
+-- (mirrors src/test/regress/sql/test_setup.sql).  Without this, e.g.
+-- resource_queue_deadlock's "CREATE TABLE ... " as a non-superuser role
+-- fails with "permission denied for schema public", which cascades into a
+-- gp_wait_until_triggered_fault() hang.
+--
+GRANT ALL ON SCHEMA public TO public;
+
 -- Helper function, to call either __gp_aoseg, or gp_aocsseg, depending
 -- on whether the table is row- or column-oriented. This allows us to
 -- run the same test queries on both.
@@ -260,6 +271,38 @@ begin
 end; /* in func */
 $$ language plpgsql;
 
+-- Wait until the current primary for the given content actually accepts
+-- connections.  After gp_request_fts_probe_scan() promotes a mirror, the
+-- catalog flips to role='p'/status='u' before the promoted segment has finished
+-- recovery, so a direct "NU: select 1" promotion-wait races it and fails with
+-- "FATAL: the database system is not accepting connections".  That raw
+-- connection rejection is NOT covered by gp_gang_creation_retry (which only
+-- retries gang creation hitting "reset/recovery mode"), so a dispatched probe
+-- can't ride it out.  Instead poll pg_isready (a plain subprocess, no SQL gang)
+-- against the content's current primary -- nudging FTS each round -- until the
+-- segment reports ready; a subsequent direct utility connection then succeeds.
+--
+-- IMPORTANT: call this on a session that has NOT run a dispatched query, i.e. a
+-- fresh numbered session in the fault-injection tests.  If the calling session
+-- has a cached gang whose segment is now in reset/recovery, even these
+-- coordinator-only plpy.execute()s error "reset/recovery mode" and the error
+-- cannot be caught (the subtransaction rollback re-dispatches to the broken
+-- gang), so we keep the body simple and rely on the caller's clean session.
+-- NB: keep this body comment-free and free of any trailing ';' -- the isolation2
+-- harness splits commands on a ';' at end of line and a '#' comment collapses
+-- the echoed one-liner, either of which corrupts the function definition.
+create or replace function wait_until_segment_accepts_connections(content_id int) returns text as $$
+    import subprocess, time
+    q = "select port from gp_segment_configuration where content = %d and role = 'p' and status = 'u'" % content_id
+    for i in range(600):
+        rv = plpy.execute(q)
+        if rv and subprocess.call(["pg_isready", "-p", str(rv[0]["port"]), "-q"]) == 0:
+            return "OK"
+        plpy.execute("select gp_request_fts_probe_scan()")
+        time.sleep(0.2)
+    return "Fail"
+$$ language plpython3u;
+
 CREATE OR REPLACE FUNCTION is_query_waiting_for_syncrep(iterations int, check_query text) RETURNS bool AS $$
     for i in range(iterations):
         results = plpy.execute("SELECT gp_execution_segment() AS content, query, wait_event\
@@ -360,7 +403,11 @@ create or replace function pg_basebackup(host text, dbid int, port int, create_s
             os.environ.pop('PGAPPNAME')
         results = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).replace(b'.', b'').decode()
     except subprocess.CalledProcessError as e:
-        results = str(e) + "\ncommand output: " + e.output
+        # e.output is bytes under Python 3; decode it before concatenating
+        # (otherwise this error handler itself raises TypeError and masks the
+        # real pg_basebackup failure).
+        output = e.output.decode() if e.output is not None else ''
+        results = str(e) + "\ncommand output: " + output
 
     return results
 $$ language plpython3u;

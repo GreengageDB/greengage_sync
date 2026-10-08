@@ -7,6 +7,7 @@
 -- start_matchignore
 -- m/^LOG: .*Feature not supported: Queries on master-only tables./
 -- m/^LOG:.*ERROR,"PG exception raised"/
+-- m/^LOG:  An exception was encountered during the execution of statement:/
 -- end_matchignore
 set gp_autostats_mode=on_change;
 set gp_autostats_on_change_threshold=9;
@@ -42,8 +43,8 @@ set role=autostats_nonowner;
 LOG:  statement: set role=autostats_nonowner;
 insert into autostats_test select generate_series(1, 10);
 LOG:  statement: insert into autostats_test select generate_series(1, 10);
-LOG:  An exception was encountered during the execution of statement: insert into autostats_test select generate_series(1, 10);
 ERROR:  permission denied for table autostats_test
+LOG:  An exception was encountered during the execution of statement: insert into autostats_test select generate_series(1, 10);
 select relname, reltuples from pg_class where relname='autostats_test';
 LOG:  statement: select relname, reltuples from pg_class where relname='autostats_test';
     relname     | reltuples 
@@ -60,7 +61,7 @@ set role=autostats_nonowner;
 LOG:  statement: set role=autostats_nonowner;
 insert into autostats_test select generate_series(11, 20);
 LOG:  statement: insert into autostats_test select generate_series(11, 20);
-LOG:  In mode on_change, command INSERT on (dboid,tableoid)=(72126,72259) modifying 10 tuples caused Auto-ANALYZE.
+LOG:  In mode on_change, command INSERT on (dboid,tableoid)=(539537,539538) modifying 10 tuples caused Auto-ANALYZE.
 select relname, reltuples from pg_class where relname='autostats_test';
 LOG:  statement: select relname, reltuples from pg_class where relname='autostats_test';
     relname     | reltuples 
@@ -96,7 +97,7 @@ LOG:  statement: show gp_autostats_allow_nonowner;
 -- GUC should still be enabled, stats should update to 20
 insert into autostats_test select generate_series(21, 30);
 LOG:  statement: insert into autostats_test select generate_series(21, 30);
-LOG:  In mode on_change, command INSERT on (dboid,tableoid)=(XXXXX,XXXXX) modifying 10 tuples caused Auto-ANALYZE.
+LOG:  In mode on_change, command INSERT on (dboid,tableoid)=(539537,539538) modifying 10 tuples caused Auto-ANALYZE.
 select relname, reltuples from pg_class where relname='autostats_test';
 LOG:  statement: select relname, reltuples from pg_class where relname='autostats_test';
     relname     | reltuples 
@@ -121,8 +122,8 @@ set role=autostats_nonowner;
 LOG:  statement: set role=autostats_nonowner;
 insert into autostats_test select generate_series(31, 40);
 LOG:  statement: insert into autostats_test select generate_series(31, 40);
-LOG:  In mode on_change, command INSERT on (dboid,tableoid)=(XXXXX,XXXXX) modifying 10 tuples caused Auto-ANALYZE.
-LOG:  Auto-stats did not issue ANALYZE on tableoid XXXXX since the user does not have table-owner level permissions.
+LOG:  In mode on_change, command INSERT on (dboid,tableoid)=(539537,539538) modifying 10 tuples caused Auto-ANALYZE.
+LOG:  Auto-stats did not issue ANALYZE on tableoid 539538 since the user does not have table-owner level permissions.
 select relname, reltuples from pg_class where relname='autostats_test';
 LOG:  statement: select relname, reltuples from pg_class where relname='autostats_test';
     relname     | reltuples 
@@ -136,7 +137,7 @@ LOG:  statement: reset role;
 -- GUC should still be disabled, stats should update from 20 to 40
 insert into autostats_test select generate_series(21, 30);
 LOG:  statement: insert into autostats_test select generate_series(21, 30);
-LOG:  In mode on_change, command INSERT on (dboid,tableoid)=(XXXXX,XXXXX) modifying 10 tuples caused Auto-ANALYZE.
+LOG:  In mode on_change, command INSERT on (dboid,tableoid)=(539537,539538) modifying 10 tuples caused Auto-ANALYZE.
 reset client_min_messages;
 LOG:  statement: reset client_min_messages;
 select relname, reltuples from pg_class where relname='autostats_test';

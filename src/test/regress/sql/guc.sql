@@ -319,7 +319,6 @@ set default_with_oids to f;
 -- Should not allow to set it to true.
 set default_with_oids to t;
 
-<<<<<<< HEAD
 -- GUC name needs quoting when dispatched to segments (see DispatchSetPGVariable);
 -- "table" is a reserved word, so an unquoted dispatch would be a syntax error there.
 SET "table.foo" = 'curl/7.29.0';
@@ -351,8 +350,6 @@ drop table public.t1;
 drop type public.ty1;
 drop function n1.drop_table(v_schema character varying, v_table character varying);
 drop schema n1;
-||||||| e1c1c30f635
-=======
 -- Test GUC categories and flag patterns
 SELECT pg_settings_get_flags(NULL);
 SELECT pg_settings_get_flags('does_not_exist');
@@ -395,4 +392,3 @@ SELECT name FROM tab_settings_flags
   WHERE no_show_all AND NOT not_in_sample
   ORDER BY 1;
 DROP TABLE tab_settings_flags;
->>>>>>> adadae45816

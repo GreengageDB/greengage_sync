@@ -12,24 +12,24 @@
 CREATE FUNCTION widget_in(cstring)
    RETURNS widget
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 NOTICE:  type "widget" is not yet defined
 DETAIL:  Creating a shell type definition.
 CREATE FUNCTION widget_out(widget)
    RETURNS cstring
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 NOTICE:  argument type widget is only a shell
 CREATE FUNCTION int44in(cstring)
    RETURNS city_budget
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 NOTICE:  type "city_budget" is not yet defined
 DETAIL:  Creating a shell type definition.
 CREATE FUNCTION int44out(city_budget)
    RETURNS cstring
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 NOTICE:  argument type city_budget is only a shell
 CREATE TYPE widget (
    internallength = 24,
@@ -214,6 +214,7 @@ ERROR:  invalid NUMERIC type modifier
 LINE 1: CREATE TEMP TABLE mytab (foo widget(42,13,7));
                                      ^
 CREATE TEMP TABLE mytab (foo widget(42,13));
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause, and no column type is suitable for a distribution key. Creating a NULL policy entry.
 SELECT format_type(atttypid,atttypmod) FROM pg_attribute
 WHERE attrelid = 'mytab'::regclass AND attnum > 0;
   format_type  
@@ -250,7 +251,6 @@ select format_type('bpchar'::regtype, -1);
  bpchar
 (1 row)
 
-<<<<<<< HEAD
 -- Create & Drop type as non-superuser
 CREATE USER user_bob;
 NOTICE:  resource queue required -- using default resource queue "pg_default"
@@ -261,8 +261,6 @@ CREATE TYPE compfoo as (f1 int, f2 text);
 DROP TYPE compfoo;
 RESET SESSION AUTHORIZATION;
 DROP USER user_bob;
-||||||| e1c1c30f635
-=======
 -- Test creation of an operator over a user-defined type
 CREATE FUNCTION pt_in_widget(point, widget)
    RETURNS bool
@@ -288,6 +286,8 @@ CREATE TABLE city (
 	location 	box,
 	budget 		city_budget
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'name' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO city VALUES
 ('Podunk', '(1,2),(3,4)', '100,127,1000'),
 ('Gotham', '(1000,34),(1100,334)', '123456,127,-1000,6789');
@@ -298,7 +298,6 @@ TABLE city;
  Gotham | (1100,334),(1000,34) | 123456,127,-1000,6789
 (2 rows)
 
->>>>>>> adadae45816
 --
 -- Test CREATE/ALTER TYPE using a type that's compatible with varchar,
 -- so we can re-use those support functions

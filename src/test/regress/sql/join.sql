@@ -469,6 +469,11 @@ reset enable_hashjoin;
 --
 set enable_mergejoin = true;
 set enable_hashjoin = false;
+-- GPDB: force seqscan+sort for the order-by-unique2 inner.  tenk1.unique2's
+-- correlation varies run-to-run (the per-segment heap order from test_setup's
+-- COPY isn't fixed), which otherwise flips this plan between an index scan and
+-- a sort.  The merge-join redundant-sort-key behavior under test is unaffected.
+set enable_indexscan = false;
 explain (costs off)
 select count(*) from
   (select * from tenk1 x order by x.thousand, x.twothousand, x.fivethous) x
@@ -483,6 +488,7 @@ select count(*) from
   on x.thousand = y.unique2 and x.twothousand = y.hundred and x.fivethous = y.unique2;
 reset enable_mergejoin;
 reset enable_hashjoin;
+reset enable_indexscan;
 
 
 --
@@ -1772,10 +1778,8 @@ select i8.*, ss.v, t.unique2
     left join tenk1 t on t.unique2 = ss.v
 where q2 = 456;
 
-<<<<<<< HEAD
 reset enable_hashjoin;
-||||||| e1c1c30f635
-=======
+
 -- and check a related issue where we miscompute required relids for
 -- a PHV that's been translated to a child rel
 create temp table parttbl (a integer primary key) partition by range (a);
@@ -1791,7 +1795,6 @@ select * from
   (select *, 12 as phv from parttbl) as ss
   right join int4_tbl on true
 where ss.a = ss.phv and f1 = 0;
->>>>>>> adadae45816
 
 -- bug #8444: we've historically allowed duplicate aliases within aliased JOINs
 

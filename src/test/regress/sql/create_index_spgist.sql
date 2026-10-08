@@ -432,15 +432,11 @@ EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t ^@	 'Worth';
 SELECT count(*) FROM radix_text_tbl WHERE t ^@	 'Worth';
 
-<<<<<<< HEAD
-RESET optimizer_enable_tablescan;
-||||||| e1c1c30f635
-=======
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE starts_with(t, 'Worth');
 SELECT count(*) FROM radix_text_tbl WHERE starts_with(t, 'Worth');
 
->>>>>>> adadae45816
+RESET optimizer_enable_tablescan;
 RESET enable_seqscan;
 RESET enable_indexscan;
 RESET enable_bitmapscan;

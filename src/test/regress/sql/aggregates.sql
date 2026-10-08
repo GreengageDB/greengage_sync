@@ -2,15 +2,11 @@
 -- AGGREGATES
 --
 
-<<<<<<< HEAD
 -- start_ignore
 SET optimizer_trace_fallback to on;
 -- end_ignore
-||||||| e1c1c30f635
-=======
 -- directory paths are passed to us in environment variables
 \getenv abs_srcdir PG_ABS_SRCDIR
->>>>>>> adadae45816
 
 -- avoid bit-exact output here because operations may not be bit-exact.
 SET extra_float_digits = 0;
@@ -1003,6 +999,14 @@ select cleast_agg(variadic array[4.5,f1]) from int4_tbl;
 select pg_typeof(cleast_agg(variadic array[4.5,f1])) from int4_tbl;
 
 -- test aggregates with common transition functions share the same states
+-- GPDB: with optimizer=on, every plan of the plpgsql transition functions'
+-- statements is an ORCA fallback (Query Parameter), and how often they are
+-- re-planned depends on plan cache invalidations from the tests running in
+-- parallel.  The NOTICEs show the state sharing, so don't trace fallbacks in
+-- this and the next block.
+-- start_ignore
+SET optimizer_trace_fallback = off;
+-- end_ignore
 begin work;
 
 create type avg_state as (total bigint, count bigint);
@@ -1189,6 +1193,9 @@ create aggregate my_half_sum(int4)
 select my_sum(one),my_half_sum(one) from (values(1),(2),(3),(4)) t(one);
 
 rollback;
+-- start_ignore
+SET optimizer_trace_fallback = on;
+-- end_ignore
 
 
 -- test that the aggregate transition logic correctly handles
@@ -1561,4 +1568,11 @@ drop table agg_hash_3;
 drop table agg_hash_4;
 
 -- fix github issue #12061 numsegments of general locus is not -1 on create_minmaxagg_path
+-- GPDB: force a seqscan so the pg_class scan method (and thus the normalized
+-- plan) doesn't flip between Seq Scan and Index Only Scan as pg_class's size
+-- and stats change from run to run; the locus behavior under test is unaffected.
+set enable_indexscan = off;
+set enable_indexonlyscan = off;
 explain analyze select count(*) from pg_class,  (select count(*) >0 from  (select count(*) from pg_class where relname like 't%')x)y;
+reset enable_indexscan;
+reset enable_indexonlyscan;

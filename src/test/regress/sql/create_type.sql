@@ -15,22 +15,22 @@
 CREATE FUNCTION widget_in(cstring)
    RETURNS widget
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE FUNCTION widget_out(widget)
    RETURNS cstring
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE FUNCTION int44in(cstring)
    RETURNS city_budget
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE FUNCTION int44out(city_budget)
    RETURNS cstring
    AS :'regresslib'
-   LANGUAGE C STRICT IMMUTABLE;
+   LANGUAGE C IMMUTABLE STRICT NO SQL;
 
 CREATE TYPE widget (
    internallength = 24,
@@ -192,7 +192,6 @@ select format_type('bpchar'::regtype, null);
 -- this behavior difference is intentional
 select format_type('bpchar'::regtype, -1);
 
-<<<<<<< HEAD
 -- Create & Drop type as non-superuser
 CREATE USER user_bob;
 SET SESSION AUTHORIZATION user_bob;
@@ -201,8 +200,6 @@ CREATE TYPE compfoo as (f1 int, f2 text);
 DROP TYPE compfoo;
 RESET SESSION AUTHORIZATION;
 DROP USER user_bob;
-||||||| e1c1c30f635
-=======
 -- Test creation of an operator over a user-defined type
 
 CREATE FUNCTION pt_in_widget(point, widget)
@@ -233,7 +230,6 @@ INSERT INTO city VALUES
 ('Gotham', '(1000,34),(1100,334)', '123456,127,-1000,6789');
 
 TABLE city;
->>>>>>> adadae45816
 
 --
 -- Test CREATE/ALTER TYPE using a type that's compatible with varchar,

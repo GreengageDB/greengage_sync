@@ -456,9 +456,11 @@ UPDATE brintest SET int8col = int8col * int4col;
 UPDATE brintest SET textcol = '' WHERE textcol IS NOT NULL;
 -- Tests for brin_summarize_new_values
 SELECT brin_summarize_new_values('brintest'); -- error, not an index
-ERROR:  "brintest" is not an index
+ERROR:  "brintest" is not an index  (seg0 slice1 172.17.0.3:7002 pid=1076661)
+CONTEXT:  SQL function "brin_summarize_new_values" statement 1
 SELECT brin_summarize_new_values('tenk1_unique1'); -- error, not a BRIN index
-ERROR:  "tenk1_unique1" is not a BRIN index
+ERROR:  "tenk1_unique1" is not a BRIN index  (seg0 slice1 172.17.0.3:7002 pid=1076661)
+CONTEXT:  SQL function "brin_summarize_new_values" statement 1
 SELECT brin_summarize_new_values('brinidx'); -- ok, no change expected
  brin_summarize_new_values 
 ---------------------------
@@ -503,13 +505,16 @@ END;
 $$;
 -- summarize one range
 SELECT brin_summarize_range('brin_summarize_idx', 0);
-ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 127.0.0.1:7002 pid=11998)
+ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.17.0.3:7002 pid=1076661)
+CONTEXT:  SQL function "brin_summarize_range" statement 1
 -- nothing: already summarized
 SELECT brin_summarize_range('brin_summarize_idx', 1);
-ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 127.0.0.1:7002 pid=11998)
+ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.17.0.3:7002 pid=1076661)
+CONTEXT:  SQL function "brin_summarize_range" statement 1
 -- summarize one range
 SELECT brin_summarize_range('brin_summarize_idx', 2);
-ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 127.0.0.1:7002 pid=11998)
+ERROR:  Greenplum could not summarize indicated page range  (seg0 slice1 172.17.0.3:7002 pid=1076661)
+CONTEXT:  SQL function "brin_summarize_range" statement 1
 -- summarize all pages
 SELECT brin_summarize_range('brin_summarize_idx', 4294967295);
  brin_summarize_range 
@@ -526,11 +531,13 @@ SELECT brin_summarize_range('brin_summarize_idx', 4294967295);
 
 -- invalid block number values
 SELECT brin_summarize_range('brin_summarize_idx', -1);
-ERROR:  block number out of range: -1  (seg0 slice1 127.0.0.1:7002 pid=11998)
+ERROR:  block number out of range: -1  (seg0 slice1 172.17.0.3:7002 pid=1076661)
+CONTEXT:  SQL function "brin_summarize_range" statement 1
 SELECT brin_summarize_range('brin_summarize_idx', 4294967296);
-ERROR:  block number out of range: 4294967296  (seg0 slice1 127.0.0.1:7002 pid=11998)
+ERROR:  block number out of range: 4294967296  (seg0 slice1 172.17.0.3:7002 pid=1076661)
+CONTEXT:  SQL function "brin_summarize_range" statement 1
 -- test value merging in add_value
-CREATE TABLE brintest_2 (n numrange);
+CREATE UNLOGGED TABLE brintest_2 (n numrange);
 CREATE INDEX brinidx_2 ON brintest_2 USING brin (n);
 INSERT INTO brintest_2 VALUES ('empty');
 INSERT INTO brintest_2 VALUES (numrange(0, 2^1000::numeric));
@@ -542,7 +549,8 @@ SELECT brin_desummarize_range('brinidx', 0);
 (1 row)
 
 SELECT brin_summarize_range('brinidx', 0);
-ERROR:  Greenplum could not summarize indicated page range
+ERROR:  Greenplum could not summarize indicated page range  (seg2 slice1 172.17.0.3:7004 pid=1076662)
+CONTEXT:  SQL function "brin_summarize_range" statement 1
 DROP TABLE brintest_2;
 -- test brin cost estimates behave sanely based on correlation of values
 -- GPDB: use more rows, and a larger statistics sample, to get the same plan
