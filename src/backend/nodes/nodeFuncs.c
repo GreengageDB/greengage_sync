@@ -259,7 +259,6 @@ exprType(const Node *expr)
 		case T_PlaceHolderVar:
 			type = exprType((Node *) ((const PlaceHolderVar *) expr)->phexpr);
 			break;
-<<<<<<< HEAD
 		case T_DMLActionExpr:
 			type = INT4OID;
 			break;
@@ -270,8 +269,6 @@ exprType(const Node *expr)
 			type = INT8OID;
 			break;
 
-||||||| e1c1c30f635
-=======
 		case T_JsonValueExpr:
 			{
 				const JsonValueExpr *jve = (const JsonValueExpr *) expr;
@@ -291,7 +288,6 @@ exprType(const Node *expr)
 		case T_JsonCoercion:
 			type = exprType(((const JsonCoercion *) expr)->expr);
 			break;
->>>>>>> adadae45816
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			type = InvalidOid;	/* keep compiler quiet */
@@ -1017,14 +1013,12 @@ exprCollation(const Node *expr)
 		case T_PlaceHolderVar:
 			coll = exprCollation((Node *) ((const PlaceHolderVar *) expr)->phexpr);
 			break;
-<<<<<<< HEAD
 
 		case T_DMLActionExpr:
 		case T_AggExprId:
 		case T_RowIdExpr:
 			coll = InvalidOid;
-||||||| e1c1c30f635
-=======
+			break;
 		case T_JsonValueExpr:
 			coll = exprCollation((Node *) ((const JsonValueExpr *) expr)->formatted_expr);
 			break;
@@ -1055,7 +1049,6 @@ exprCollation(const Node *expr)
 				else
 					coll = InvalidOid;
 			}
->>>>>>> adadae45816
 			break;
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
@@ -1278,10 +1271,6 @@ exprSetCollation(Node *expr, Oid collation)
 			/* NextValueExpr's result is an integer type ... */
 			Assert(!OidIsValid(collation)); /* ... so never set a collation */
 			break;
-<<<<<<< HEAD
-
-||||||| e1c1c30f635
-=======
 		case T_JsonValueExpr:
 			exprSetCollation((Node *) ((JsonValueExpr *) expr)->formatted_expr,
 							 collation);
@@ -1315,7 +1304,6 @@ exprSetCollation(Node *expr, Oid collation)
 					Assert(!OidIsValid(collation));
 			}
 			break;
->>>>>>> adadae45816
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			break;
@@ -3040,8 +3028,11 @@ expression_tree_mutator(Node *node,
 		case T_CurrentOfExpr:
 		case T_NextValueExpr:
 		case T_RangeTblRef:
+		case T_Integer:
+		case T_Float:
+		case T_Boolean:
 		case T_String:
-		case T_Null:
+		case T_BitString:
 		case T_CTESearchClause:
 		case T_JsonFormat:
 			return (Node *) copyObject(node);

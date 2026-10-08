@@ -447,33 +447,48 @@ static A_Const *
 _readAConst(void)
 {
 	READ_LOCALS(A_Const);
+	bool isnull;
 
-	READ_ENUM_FIELD(val.type, NodeTag);
-
-	switch (local_node->val.type)
+	memcpy(&isnull, read_str_ptr, sizeof(bool)); read_str_ptr+=sizeof(bool);
+	local_node->isnull = isnull;
+	if (!isnull)
 	{
-		case T_Integer:
-			memcpy(&local_node->val.val.ival, read_str_ptr, sizeof(long)); read_str_ptr+=sizeof(long);
-			break;
-		case T_Float:
-		case T_String:
-		case T_BitString:
+		int16 vt;
+		memcpy(&vt, read_str_ptr, sizeof(int16)); read_str_ptr+=sizeof(int16);
+		local_node->val.node.type = (NodeTag) vt;
+		switch ((NodeTag) vt)
 		{
-			int slen; char * nn;
-			memcpy(&slen, read_str_ptr, sizeof(int));
-			read_str_ptr+=sizeof(int);
-			nn = palloc(slen+1);
-			memcpy(nn,read_str_ptr,slen);
-			nn[slen] = '\0';
-			local_node->val.val.str = nn; read_str_ptr+=slen;
+			case T_Integer:
+			{
+				long ival;
+				memcpy(&ival, read_str_ptr, sizeof(long)); read_str_ptr+=sizeof(long);
+				local_node->val.ival.ival = (int) ival;
+				break;
+			}
+			case T_Float:
+			case T_String:
+			case T_BitString:
+			{
+				int slen; char *nn;
+				memcpy(&slen, read_str_ptr, sizeof(int)); read_str_ptr+=sizeof(int);
+				nn = palloc(slen+1);
+				if (slen > 0) memcpy(nn, read_str_ptr, slen);
+				read_str_ptr+=slen; nn[slen]='\0';
+				local_node->val.sval.sval = nn;
+				break;
+			}
+			case T_Boolean:
+			{
+				bool bval;
+				memcpy(&bval, read_str_ptr, sizeof(bool)); read_str_ptr+=sizeof(bool);
+				local_node->val.boolval.boolval = bval;
+				break;
+			}
+			default:
+				break;
 		}
-			break;
-	 	case T_Null:
-	 	default:
-	 		break;
 	}
-
-    READ_LOCATION_FIELD(location);   /*CDB*/
+	READ_LOCATION_FIELD(location);   /*CDB*/
 	READ_DONE();
 }
 
@@ -950,7 +965,7 @@ _readDynamicSeqScan(void)
 {
 	READ_LOCALS(DynamicSeqScan);
 
-	ReadCommonScan(&local_node->seqscan);
+	ReadCommonScan(&local_node->seqscan.scan);
 	READ_NODE_FIELD(partOids);
 	READ_NODE_FIELD(part_prune_info);
 	READ_NODE_FIELD(join_prune_paramids);
@@ -1566,6 +1581,7 @@ _readLockingClause(void)
 
 	READ_NODE_FIELD(lockedRels);
 	READ_ENUM_FIELD(strength, LockClauseStrength);
+	READ_ENUM_FIELD(waitPolicy, LockWaitPolicy);
 
 	READ_DONE();
 }
@@ -1638,13 +1654,13 @@ _readValue(NodeTag nt)
 	{
 		long ival;
 		memcpy(&ival, read_str_ptr, sizeof(long)); read_str_ptr+=sizeof(long);
-		result = (Node *) makeInteger(ival);
+		result = (Node *) makeInteger((int) ival);
 	}
-	else if (nt == T_Null)
+	else if (nt == T_Boolean)
 	{
-		Value *val = makeNode(Value);
-		val->type = T_Null;
-		result = (Node *)val;
+		bool bval;
+		memcpy(&bval, read_str_ptr, sizeof(bool)); read_str_ptr+=sizeof(bool);
+		result = (Node *) makeBoolean(bval);
 	}
 	else
 	{
@@ -1652,23 +1668,14 @@ _readValue(NodeTag nt)
 		char * nn = NULL;
 		memcpy(&slen, read_str_ptr, sizeof(int));
 		read_str_ptr+=sizeof(int);
-
-		/*
-		 * For the String case we want to create an empty string if slen is
-		 * equal to zero, since otherwise we'll set the string to NULL, which
-		 * has a different meaning and the NULL case is handed above.
-		 */
 		if (slen > 0 || nt == T_String)
 		{
 		    nn = palloc(slen + 1);
-
 			if (slen > 0)
 			    memcpy(nn, read_str_ptr, slen);
-
 		    read_str_ptr += (slen);
 			nn[slen] = '\0';
 		}
-
 		if (nt == T_Float)
 			result = (Node *) makeFloat(nn);
 		else if (nt == T_String)
@@ -1678,9 +1685,7 @@ _readValue(NodeTag nt)
 		else
 			elog(ERROR, "unknown Value node type %i", nt);
 	}
-
 	return result;
-
 }
 
 /*
@@ -1760,7 +1765,7 @@ readNodeBinary(void)
 	}
 
 	if (nt == T_Integer || nt == T_Float || nt == T_String ||
-	   	nt == T_BitString || nt == T_Null)
+	   	nt == T_BitString || nt == T_Boolean)
 	{
 		return _readValue(nt);
 	}
@@ -2176,6 +2181,63 @@ readNodeBinary(void)
 			case T_AppendRelInfo:
 				return_value = _readAppendRelInfo();
 				break;
+			case T_MergeAction:
+				return_value = _readMergeAction();
+				break;
+
+			/* GPDB: PG15 SQL/JSON nodes (bodies from readfuncs.c) */
+			case T_JsonFormat:
+				return_value = _readJsonFormat();
+				break;
+			case T_JsonReturning:
+				return_value = _readJsonReturning();
+				break;
+			case T_JsonValueExpr:
+				return_value = _readJsonValueExpr();
+				break;
+			case T_JsonConstructorExpr:
+				return_value = _readJsonConstructorExpr();
+				break;
+			case T_JsonBehavior:
+				return_value = _readJsonBehavior();
+				break;
+			case T_JsonExpr:
+				return_value = _readJsonExpr();
+				break;
+			case T_JsonCoercion:
+				return_value = _readJsonCoercion();
+				break;
+			case T_JsonItemCoercions:
+				return_value = _readJsonItemCoercions();
+				break;
+			case T_JsonTableParent:
+				return_value = _readJsonTableParent();
+				break;
+			case T_JsonTableSibling:
+				return_value = _readJsonTableSibling();
+				break;
+			case T_JsonIsPredicate:
+				return_value = _readJsonIsPredicate();
+				break;
+			case T_JsonFuncExpr:
+				return_value = _readJsonFuncExpr();
+				break;
+			case T_JsonCommon:
+				return_value = _readJsonCommon();
+				break;
+			case T_JsonOutput:
+				return_value = _readJsonOutput();
+				break;
+			case T_JsonArgument:
+				return_value = _readJsonArgument();
+				break;
+			case T_PublicationObjSpec:
+				return_value = _readPublicationObjSpec();
+				break;
+			case T_PublicationTable:
+				return_value = _readPublicationTable();
+				break;
+
 			case T_ExtensibleNode:
 				return_value = _readExtensibleNode();
 				break;
@@ -2395,6 +2457,9 @@ readNodeBinary(void)
 				break;
 			case T_SortBy:
 				return_value = _readSortBy();
+				break;
+			case T_WindowDef:
+				return_value = _readWindowDef();
 				break;
 			case T_TypeCast:
 				return_value = _readTypeCast();
@@ -2669,8 +2734,8 @@ readNodeBinary(void)
 			case T_RowIdentityVarInfo:
 				return_value = _readRowIdentityVarInfo();
 				break;
-			case T_ResultCache:
-				return_value = _readResultCache();
+			case T_Memoize:
+				return_value = _readMemoize();
 				break;
 			case T_ReturnStmt:
 				return_value = _readReturnStmt();

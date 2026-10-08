@@ -11,15 +11,9 @@
  * be handled easily in a simple depth-first traversal.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -365,13 +359,9 @@ _copyModifyTable(const ModifyTable *from)
 	COPY_NODE_FIELD(onConflictWhere);
 	COPY_SCALAR_FIELD(exclRelRTI);
 	COPY_NODE_FIELD(exclRelTlist);
-<<<<<<< HEAD
 	COPY_SCALAR_FIELD(isSplitUpdate);
 	COPY_SCALAR_FIELD(forceTupleRouting);
-||||||| e1c1c30f635
-=======
 	COPY_NODE_FIELD(mergeActionLists);
->>>>>>> adadae45816
 
 	return newnode;
 }
@@ -729,12 +719,8 @@ _copyIndexOnlyScan(const IndexOnlyScan *from)
 	 */
 	COPY_SCALAR_FIELD(indexid);
 	COPY_NODE_FIELD(indexqual);
-<<<<<<< HEAD
 	COPY_NODE_FIELD(indexqualorig);
-||||||| e1c1c30f635
-=======
 	COPY_NODE_FIELD(recheckqual);
->>>>>>> adadae45816
 	COPY_NODE_FIELD(indexorderby);
 	COPY_NODE_FIELD(indextlist);
 	COPY_SCALAR_FIELD(indexorderdir);
@@ -1175,7 +1161,6 @@ _copyMergeJoin(const MergeJoin *from)
 	COPY_SCALAR_FIELD(skip_mark_restore);
 	COPY_NODE_FIELD(mergeclauses);
 	numCols = list_length(from->mergeclauses);
-<<<<<<< HEAD
 	if (numCols > 0)
 	{
 		COPY_POINTER_FIELD(mergeFamilies, numCols * sizeof(Oid));
@@ -1184,20 +1169,6 @@ _copyMergeJoin(const MergeJoin *from)
 		COPY_POINTER_FIELD(mergeNullsFirst, numCols * sizeof(bool));
 	}
 	COPY_SCALAR_FIELD(unique_outer);
-||||||| e1c1c30f635
-	if (numCols > 0)
-	{
-		COPY_POINTER_FIELD(mergeFamilies, numCols * sizeof(Oid));
-		COPY_POINTER_FIELD(mergeCollations, numCols * sizeof(Oid));
-		COPY_POINTER_FIELD(mergeStrategies, numCols * sizeof(int));
-		COPY_POINTER_FIELD(mergeNullsFirst, numCols * sizeof(bool));
-	}
-=======
-	COPY_POINTER_FIELD(mergeFamilies, numCols * sizeof(Oid));
-	COPY_POINTER_FIELD(mergeCollations, numCols * sizeof(Oid));
-	COPY_POINTER_FIELD(mergeStrategies, numCols * sizeof(int));
-	COPY_POINTER_FIELD(mergeNullsFirst, numCols * sizeof(bool));
->>>>>>> adadae45816
 
 	return newnode;
 }
@@ -1427,7 +1398,6 @@ _copyWindowAgg(const WindowAgg *from)
 	COPY_POINTER_FIELD(partOperators, from->partNumCols * sizeof(Oid));
 	COPY_POINTER_FIELD(partCollations, from->partNumCols * sizeof(Oid));
 	COPY_SCALAR_FIELD(ordNumCols);
-<<<<<<< HEAD
 	if (from->ordNumCols > 0)
 	{
 		COPY_POINTER_FIELD(ordColIdx, from->ordNumCols * sizeof(AttrNumber));
@@ -1437,18 +1407,6 @@ _copyWindowAgg(const WindowAgg *from)
 	COPY_SCALAR_FIELD(firstOrderCol);
 	COPY_SCALAR_FIELD(firstOrderCmpOperator);
 	COPY_SCALAR_FIELD(firstOrderNullsFirst);
-||||||| e1c1c30f635
-	if (from->ordNumCols > 0)
-	{
-		COPY_POINTER_FIELD(ordColIdx, from->ordNumCols * sizeof(AttrNumber));
-		COPY_POINTER_FIELD(ordOperators, from->ordNumCols * sizeof(Oid));
-		COPY_POINTER_FIELD(ordCollations, from->ordNumCols * sizeof(Oid));
-	}
-=======
-	COPY_POINTER_FIELD(ordColIdx, from->ordNumCols * sizeof(AttrNumber));
-	COPY_POINTER_FIELD(ordOperators, from->ordNumCols * sizeof(Oid));
-	COPY_POINTER_FIELD(ordCollations, from->ordNumCols * sizeof(Oid));
->>>>>>> adadae45816
 	COPY_SCALAR_FIELD(frameOptions);
 	COPY_NODE_FIELD(startOffset);
 	COPY_NODE_FIELD(endOffset);
@@ -6292,7 +6250,6 @@ _copyPartitionCmd(const PartitionCmd *from)
 	return newnode;
 }
 
-<<<<<<< HEAD
 static GpAlterPartitionId *
 _copyGpAlterPartitionId(const GpAlterPartitionId *from)
 {
@@ -6326,6 +6283,19 @@ _copyGpSplitPartitionCmd(const GpSplitPartitionCmd *from)
 	COPY_NODE_FIELD(end);
 	COPY_NODE_FIELD(at);
 	COPY_NODE_FIELD(arg2);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+static PublicationObjSpec *
+_copyPublicationObject(const PublicationObjSpec *from)
+{
+	PublicationObjSpec *newnode = makeNode(PublicationObjSpec);
+
+	COPY_SCALAR_FIELD(pubobjtype);
+	COPY_STRING_FIELD(name);
+	COPY_NODE_FIELD(pubtable);
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -6407,17 +6377,6 @@ _copyGpPartitionListSpec(const GpPartitionListSpec *from)
 
 	COPY_NODE_FIELD(partValues);
 	COPY_LOCATION_FIELD(location);
-||||||| e1c1c30f635
-=======
-static PublicationObjSpec *
-_copyPublicationObject(const PublicationObjSpec *from)
-{
-	PublicationObjSpec *newnode = makeNode(PublicationObjSpec);
-
-	COPY_SCALAR_FIELD(pubobjtype);
-	COPY_STRING_FIELD(name);
-	COPY_NODE_FIELD(pubtable);
-	COPY_LOCATION_FIELD(location);
 
 	return newnode;
 }
@@ -6430,7 +6389,6 @@ _copyPublicationTable(const PublicationTable *from)
 	COPY_NODE_FIELD(relation);
 	COPY_NODE_FIELD(whereClause);
 	COPY_NODE_FIELD(columns);
->>>>>>> adadae45816
 
 	return newnode;
 }
@@ -6593,7 +6551,6 @@ _copyForeignKeyCacheInfo(const ForeignKeyCacheInfo *from)
 	return newnode;
 }
 
-<<<<<<< HEAD
 static AggExprId*
 _copyAggExprId(const AggExprId *from)
 {
@@ -6610,10 +6567,6 @@ _copyRowIdExpr(const RowIdExpr *from)
 	return newnode;
 }
 
-||||||| e1c1c30f635
-
-=======
->>>>>>> adadae45816
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
  *
@@ -7748,7 +7701,6 @@ copyObjectImpl(const void *from)
 		case T_PartitionCmd:
 			retval = _copyPartitionCmd(from);
 			break;
-<<<<<<< HEAD
 		case T_GpAlterPartitionId:
 			retval = _copyGpAlterPartitionId(from);
 			break;
@@ -7808,14 +7760,12 @@ copyObjectImpl(const void *from)
 
 		case T_DistributedBy:
 			retval = _copyDistributedBy(from);
-||||||| e1c1c30f635
-=======
+			break;
 		case T_PublicationObjSpec:
 			retval = _copyPublicationObject(from);
 			break;
 		case T_PublicationTable:
 			retval = _copyPublicationTable(from);
->>>>>>> adadae45816
 			break;
 
 			/*

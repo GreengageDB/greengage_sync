@@ -4,15 +4,9 @@
  *	  Definitions for tagged nodes.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/nodes/nodes.h
@@ -263,7 +257,6 @@ typedef enum NodeTag
 	T_FromExpr,
 	T_OnConflictExpr,
 	T_IntoClause,
-<<<<<<< HEAD
 	T_CopyIntoClause,
 	T_RefreshClause,
 	T_Flow,
@@ -273,8 +266,6 @@ typedef enum NodeTag
 	T_RowIdExpr,
 	T_DistributedBy,
 	T_DMLActionExpr,
-||||||| e1c1c30f635
-=======
 	T_JsonFormat,
 	T_JsonReturning,
 	T_JsonValueExpr,
@@ -287,7 +278,6 @@ typedef enum NodeTag
 	T_JsonItemCoercions,
 	T_JsonTableParent,
 	T_JsonTableSibling,
->>>>>>> adadae45816
 
 	/*
 	 * TAGS FOR EXPRESSION STATE NODES (execnodes.h)
@@ -621,13 +611,9 @@ typedef enum NodeTag
 	T_CTESearchClause,
 	T_CTECycleClause,
 	T_CommonTableExpr,
-<<<<<<< HEAD
 	T_ColumnReferenceStorageDirective,
 	T_DistributionKeyElem,
-||||||| e1c1c30f635
-=======
 	T_MergeWhenClause,
->>>>>>> adadae45816
 	T_RoleSpec,
 	T_TriggerTransition,
 	T_PartitionElem,
@@ -690,10 +676,9 @@ typedef enum NodeTag
 	T_SupportRequestSelectivity,	/* in nodes/supportnodes.h */
 	T_SupportRequestCost,		/* in nodes/supportnodes.h */
 	T_SupportRequestRows,		/* in nodes/supportnodes.h */
-<<<<<<< HEAD
-	T_SupportRequestIndexCondition	/* in nodes/supportnodes.h */
+	T_SupportRequestIndexCondition, /* in nodes/supportnodes.h */
+	T_SupportRequestWFuncMonotonic,	/* in nodes/supportnodes.h */
 
-	,
     T_StreamBitmap,             /* in nodes/tidbitmap.h */
 	T_FormatterData,            /* in access/formatter.h */
 	T_ExtProtocolData,          /* in access/extprotocol.h */
@@ -706,12 +691,6 @@ typedef enum NodeTag
 	T_GpPolicy,					/* in catalog/gp_distribution_policy.h */
 	T_RetrieveStmt,
 
-||||||| e1c1c30f635
-	T_SupportRequestIndexCondition	/* in nodes/supportnodes.h */
-=======
-	T_SupportRequestIndexCondition, /* in nodes/supportnodes.h */
-	T_SupportRequestWFuncMonotonic	/* in nodes/supportnodes.h */
->>>>>>> adadae45816
 } NodeTag;
 
 /*
