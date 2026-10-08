@@ -27,39 +27,17 @@ typedef enum
 } CRSSnapshotAction;
 
 /* global state */
-<<<<<<< HEAD
-extern bool am_walsender;
-extern bool am_cascading_walsender;
-extern bool am_db_walsender;
-extern bool wake_wal_senders;
-extern volatile sig_atomic_t walsender_ready_to_stop;
-||||||| e1c1c30f635
-extern bool am_walsender;
-extern bool am_cascading_walsender;
-extern bool am_db_walsender;
-extern bool wake_wal_senders;
-=======
 extern PGDLLIMPORT bool am_walsender;
 extern PGDLLIMPORT bool am_cascading_walsender;
 extern PGDLLIMPORT bool am_db_walsender;
 extern PGDLLIMPORT bool wake_wal_senders;
->>>>>>> adadae45816
 
 /* user-settable parameters */
-<<<<<<< HEAD
-extern int	max_wal_senders;
-extern int	wal_sender_timeout;
-extern bool log_replication_commands;
-extern int	repl_catchup_within_range;
-||||||| e1c1c30f635
-extern int	max_wal_senders;
-extern int	wal_sender_timeout;
-extern bool log_replication_commands;
-=======
 extern PGDLLIMPORT int max_wal_senders;
 extern PGDLLIMPORT int wal_sender_timeout;
 extern PGDLLIMPORT bool log_replication_commands;
->>>>>>> adadae45816
+/* GPDB: catchup-range GUC, defined in walsender.c */
+extern int	repl_catchup_within_range;
 
 extern void InitWalSender(void);
 extern bool exec_replication_command(const char *query_string);

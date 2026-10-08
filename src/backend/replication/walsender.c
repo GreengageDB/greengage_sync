@@ -252,15 +252,9 @@ static void ProcessStandbyMessage(void);
 static void ProcessStandbyReplyMessage(void);
 static void ProcessStandbyHSFeedbackMessage(void);
 static void ProcessRepliesIfAny(void);
-<<<<<<< HEAD
 static const char *WalSndGetStateString(WalSndState state);
-static void WalSndKeepalive(bool requestReply);
-||||||| e1c1c30f635
-static void WalSndKeepalive(bool requestReply);
-=======
 static void ProcessPendingWrites(void);
 static void WalSndKeepalive(bool requestReply, XLogRecPtr writePtr);
->>>>>>> adadae45816
 static void WalSndKeepaliveIfNecessary(void);
 static void WalSndCheckTimeOut(void);
 static long WalSndComputeSleeptime(TimestampTz now);
@@ -449,7 +443,7 @@ IdentifySystem(void)
 			"SysId = %s, "
 			"ThisTimelineID = %u, "
 			"XLog InsertRecPtr = %s will be sent.",
-			sysid, ThisTimeLineID, xloc);
+			sysid, currTLI, xloc);
 
 	if (MyDatabaseId != InvalidOid)
 	{
