@@ -19,14 +19,8 @@
 #include <linux/fs.h>
 #endif
 
-<<<<<<< HEAD
 #include "greenplum/pg_upgrade_greenplum.h"
-#include "access/visibilitymap.h"
-||||||| e1c1c30f635
-#include "access/visibilitymap.h"
-=======
 #include "access/visibilitymapdefs.h"
->>>>>>> adadae45816
 #include "common/file_perm.h"
 #include "pg_upgrade.h"
 #include "storage/bufpage.h"

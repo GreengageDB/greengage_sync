@@ -126,6 +126,8 @@ transfer_all_new_dbs(DbInfoArr *old_db_arr, DbInfoArr *new_db_arr,
 									new_pgdata);
 		if (n_maps)
 		{
+			print_maps(mappings, n_maps, new_db->db_name);
+
 			transfer_single_new_db(mappings, n_maps, old_tablespace);
 		}
 		/* We allocate something even for n_maps == 0 */
@@ -158,7 +160,6 @@ transfer_single_new_db(FileNameMap *maps, int size, char *old_tablespace)
 		{
 			RelType type = maps[mapnum].type;
 
-<<<<<<< HEAD
 			if (type == AO || type == AOCS)
 			{
 				transfer_ao(&maps[mapnum]);
@@ -172,23 +173,8 @@ transfer_single_new_db(FileNameMap *maps, int size, char *old_tablespace)
 				 * Copy/link any fsm and vm files, if they exist
 				 */
 				transfer_relfile(&maps[mapnum], "_fsm", vm_must_add_frozenbit);
-				if (vm_crashsafe_match)
-					transfer_relfile(&maps[mapnum], "_vm", vm_must_add_frozenbit);
-			}
-||||||| e1c1c30f635
-			/*
-			 * Copy/link any fsm and vm files, if they exist
-			 */
-			transfer_relfile(&maps[mapnum], "_fsm", vm_must_add_frozenbit);
-			if (vm_crashsafe_match)
 				transfer_relfile(&maps[mapnum], "_vm", vm_must_add_frozenbit);
-=======
-			/*
-			 * Copy/link any fsm and vm files, if they exist
-			 */
-			transfer_relfile(&maps[mapnum], "_fsm", vm_must_add_frozenbit);
-			transfer_relfile(&maps[mapnum], "_vm", vm_must_add_frozenbit);
->>>>>>> adadae45816
+			}
 		}
 	}
 }
@@ -212,152 +198,8 @@ transfer_relfile(FileNameMap *map, const char *type_suffix, bool vm_must_add_fro
 	 */
 	for (segno = 0;; segno++)
 	{
-<<<<<<< HEAD
 		if (!transfer_relfile_segment(segno, map, type_suffix, vm_must_add_frozenbit))
 			break;
-||||||| e1c1c30f635
-		if (segno == 0)
-			extent_suffix[0] = '\0';
-		else
-			snprintf(extent_suffix, sizeof(extent_suffix), ".%d", segno);
-
-		snprintf(old_file, sizeof(old_file), "%s%s/%u/%u%s%s",
-				 map->old_tablespace,
-				 map->old_tablespace_suffix,
-				 map->old_db_oid,
-				 map->old_relfilenode,
-				 type_suffix,
-				 extent_suffix);
-		snprintf(new_file, sizeof(new_file), "%s%s/%u/%u%s%s",
-				 map->new_tablespace,
-				 map->new_tablespace_suffix,
-				 map->new_db_oid,
-				 map->new_relfilenode,
-				 type_suffix,
-				 extent_suffix);
-
-		/* Is it an extent, fsm, or vm file? */
-		if (type_suffix[0] != '\0' || segno != 0)
-		{
-			/* Did file open fail? */
-			if (stat(old_file, &statbuf) != 0)
-			{
-				/* File does not exist?  That's OK, just return */
-				if (errno == ENOENT)
-					return;
-				else
-					pg_fatal("error while checking for file existence \"%s.%s\" (\"%s\" to \"%s\"): %s\n",
-							 map->nspname, map->relname, old_file, new_file,
-							 strerror(errno));
-			}
-
-			/* If file is empty, just return */
-			if (statbuf.st_size == 0)
-				return;
-		}
-
-		unlink(new_file);
-
-		/* Copying files might take some time, so give feedback. */
-		pg_log(PG_STATUS, "%s", old_file);
-
-		if (vm_must_add_frozenbit && strcmp(type_suffix, "_vm") == 0)
-		{
-			/* Need to rewrite visibility map format */
-			pg_log(PG_VERBOSE, "rewriting \"%s\" to \"%s\"\n",
-				   old_file, new_file);
-			rewriteVisibilityMap(old_file, new_file, map->nspname, map->relname);
-		}
-		else
-			switch (user_opts.transfer_mode)
-			{
-				case TRANSFER_MODE_CLONE:
-					pg_log(PG_VERBOSE, "cloning \"%s\" to \"%s\"\n",
-						   old_file, new_file);
-					cloneFile(old_file, new_file, map->nspname, map->relname);
-					break;
-				case TRANSFER_MODE_COPY:
-					pg_log(PG_VERBOSE, "copying \"%s\" to \"%s\"\n",
-						   old_file, new_file);
-					copyFile(old_file, new_file, map->nspname, map->relname);
-					break;
-				case TRANSFER_MODE_LINK:
-					pg_log(PG_VERBOSE, "linking \"%s\" to \"%s\"\n",
-						   old_file, new_file);
-					linkFile(old_file, new_file, map->nspname, map->relname);
-			}
-=======
-		if (segno == 0)
-			extent_suffix[0] = '\0';
-		else
-			snprintf(extent_suffix, sizeof(extent_suffix), ".%d", segno);
-
-		snprintf(old_file, sizeof(old_file), "%s%s/%u/%u%s%s",
-				 map->old_tablespace,
-				 map->old_tablespace_suffix,
-				 map->db_oid,
-				 map->relfilenode,
-				 type_suffix,
-				 extent_suffix);
-		snprintf(new_file, sizeof(new_file), "%s%s/%u/%u%s%s",
-				 map->new_tablespace,
-				 map->new_tablespace_suffix,
-				 map->db_oid,
-				 map->relfilenode,
-				 type_suffix,
-				 extent_suffix);
-
-		/* Is it an extent, fsm, or vm file? */
-		if (type_suffix[0] != '\0' || segno != 0)
-		{
-			/* Did file open fail? */
-			if (stat(old_file, &statbuf) != 0)
-			{
-				/* File does not exist?  That's OK, just return */
-				if (errno == ENOENT)
-					return;
-				else
-					pg_fatal("error while checking for file existence \"%s.%s\" (\"%s\" to \"%s\"): %s\n",
-							 map->nspname, map->relname, old_file, new_file,
-							 strerror(errno));
-			}
-
-			/* If file is empty, just return */
-			if (statbuf.st_size == 0)
-				return;
-		}
-
-		unlink(new_file);
-
-		/* Copying files might take some time, so give feedback. */
-		pg_log(PG_STATUS, "%s", old_file);
-
-		if (vm_must_add_frozenbit && strcmp(type_suffix, "_vm") == 0)
-		{
-			/* Need to rewrite visibility map format */
-			pg_log(PG_VERBOSE, "rewriting \"%s\" to \"%s\"\n",
-				   old_file, new_file);
-			rewriteVisibilityMap(old_file, new_file, map->nspname, map->relname);
-		}
-		else
-			switch (user_opts.transfer_mode)
-			{
-				case TRANSFER_MODE_CLONE:
-					pg_log(PG_VERBOSE, "cloning \"%s\" to \"%s\"\n",
-						   old_file, new_file);
-					cloneFile(old_file, new_file, map->nspname, map->relname);
-					break;
-				case TRANSFER_MODE_COPY:
-					pg_log(PG_VERBOSE, "copying \"%s\" to \"%s\"\n",
-						   old_file, new_file);
-					copyFile(old_file, new_file, map->nspname, map->relname);
-					break;
-				case TRANSFER_MODE_LINK:
-					pg_log(PG_VERBOSE, "linking \"%s\" to \"%s\"\n",
-						   old_file, new_file);
-					linkFile(old_file, new_file, map->nspname, map->relname);
-			}
->>>>>>> adadae45816
 	}
 }
 

@@ -85,45 +85,13 @@ check_for_data_types_usage(ClusterInfo *cluster,
 						  "				  t.oid = c.reltype AND "
 						  "				  c.oid = a.attrelid AND "
 						  "				  NOT a.attisdropped AND "
-<<<<<<< HEAD
-						  "				  a.atttypid = x.oid ",
-						  base_query);
-
-		/* Ranges were introduced in 9.2 */
-		if (GET_MAJOR_VERSION(cluster->major_version) >= 902)
-			appendPQExpBufferStr(&querybuf,
-								 "			UNION ALL "
-			/* ranges containing any type selected so far */
-								 "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
-								 "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid");
-
-		appendPQExpBufferStr(&querybuf,
-							 "	) "
-							 ") "
-||||||| e1c1c30f635
-						  "				  a.atttypid = x.oid ",
-						  base_query);
-
-		/* Ranges were introduced in 9.2 */
-		if (GET_MAJOR_VERSION(cluster->major_version) >= 902)
-			appendPQExpBufferStr(&querybuf,
-								 "			UNION ALL "
-			/* ranges containing any type selected so far */
-								 "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
-								 "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid");
-
-		appendPQExpBufferStr(&querybuf,
-							 "	) foo "
-							 ") "
-=======
 						  "				  a.atttypid = x.oid "
 						  "			UNION ALL "
 		/* ranges containing any type selected so far */
 						  "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
 						  "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid"
-						  "	) foo "
+						  "	) "
 						  ") "
->>>>>>> adadae45816
 		/* now look for stored columns of any such type */
 						  "SELECT n.nspname, c.relname, a.attname "
 						  "FROM	pg_catalog.pg_class c, "
@@ -495,6 +463,83 @@ report_extension_updates(ClusterInfo *cluster)
 			   "when executed by psql by the database superuser will update\n"
 			   "these extensions.\n\n",
 			   output_path);
+	}
+	else
+		check_ok();
+}
+
+void
+new_9_0_populate_pg_largeobject_metadata(ClusterInfo *cluster, bool check_mode)
+{
+	int			dbnum;
+	FILE	   *script = NULL;
+	bool		found = false;
+	char		output_path[MAXPGPATH];
+
+	prep_status("Checking for large objects");
+
+	snprintf(output_path, sizeof(output_path), "pg_largeobject.sql");
+
+	for (dbnum = 0; dbnum < cluster->dbarr.ndbs; dbnum++)
+	{
+		PGresult   *res;
+		int			i_count;
+		DbInfo	   *active_db = &cluster->dbarr.dbs[dbnum];
+		PGconn	   *conn = connectToServer(cluster, active_db->db_name);
+
+		/* find if there are any large objects */
+		res = executeQueryOrDie(conn,
+								"SELECT count(*) "
+								"FROM	pg_catalog.pg_largeobject ");
+
+		i_count = PQfnumber(res, "count");
+		if (atoi(PQgetvalue(res, 0, i_count)) != 0)
+		{
+			found = true;
+			if (!check_mode)
+			{
+				PQExpBufferData connectbuf;
+
+				if (script == NULL && (script = fopen_priv(output_path, "w")) == NULL)
+					pg_fatal("could not open file \"%s\": %s\n", output_path,
+							 strerror(errno));
+
+				initPQExpBuffer(&connectbuf);
+				appendPsqlMetaConnect(&connectbuf, active_db->db_name);
+				fputs(connectbuf.data, script);
+				termPQExpBuffer(&connectbuf);
+
+				fprintf(script,
+						"SELECT pg_catalog.lo_create(t.loid)\n"
+						"FROM (SELECT DISTINCT loid FROM pg_catalog.pg_largeobject) AS t;\n");
+			}
+		}
+
+		PQclear(res);
+		PQfinish(conn);
+	}
+
+	if (script)
+		fclose(script);
+
+	if (found)
+	{
+		report_status(PG_WARNING, "warning");
+		if (check_mode)
+			pg_log(PG_WARNING, "\n"
+				   "Your installation contains large objects.  The new database has an\n"
+				   "additional large object permission table.  After upgrading, you will be\n"
+				   "given a command to populate the pg_largeobject_metadata table with\n"
+				   "default permissions.\n\n");
+		else
+			pg_log(PG_WARNING, "\n"
+				   "Your installation contains large objects.  The new database has an\n"
+				   "additional large object permission table, so default permissions must be\n"
+				   "defined for all large objects.  The file\n"
+				   "    %s\n"
+				   "when executed by psql by the database superuser will set the default\n"
+				   "permissions.\n\n",
+				   output_path);
 	}
 	else
 		check_ok();
