@@ -45,6 +45,7 @@ typedef enum PgStat_Kind
 	PGSTAT_KIND_FUNCTION,		/* per-function statistics */
 	PGSTAT_KIND_REPLSLOT,		/* per-slot statistics */
 	PGSTAT_KIND_SUBSCRIPTION,	/* per-subscription statistics */
+	PGSTAT_KIND_RESQUEUE,		/* GPDB: per-resource-queue statistics */
 
 	/* stats for fixed-numbered objects */
 	PGSTAT_KIND_ARCHIVER,
@@ -84,79 +85,6 @@ typedef enum SessionEndType
 } SessionEndType;
 
 /* ----------
-<<<<<<< HEAD
- * The types of backend -> collector messages
- * ----------
- */
-typedef enum StatMsgType
-{
-	PGSTAT_MTYPE_DUMMY,
-	PGSTAT_MTYPE_INQUIRY,
-	PGSTAT_MTYPE_TABSTAT,
-	PGSTAT_MTYPE_TABPURGE,
-	PGSTAT_MTYPE_DROPDB,
-	PGSTAT_MTYPE_RESETCOUNTER,
-	PGSTAT_MTYPE_RESETSHAREDCOUNTER,
-	PGSTAT_MTYPE_RESETSINGLECOUNTER,
-	PGSTAT_MTYPE_RESETSLRUCOUNTER,
-	PGSTAT_MTYPE_RESETREPLSLOTCOUNTER,
-	PGSTAT_MTYPE_AUTOVAC_START,
-	PGSTAT_MTYPE_VACUUM,
-	PGSTAT_MTYPE_ANALYZE,
-	PGSTAT_MTYPE_ANL_ANCESTORS,
-	PGSTAT_MTYPE_ARCHIVER,
-	PGSTAT_MTYPE_QUEUESTAT, /* GPDB */
-	PGSTAT_MTYPE_BGWRITER,
-	PGSTAT_MTYPE_WAL,
-	PGSTAT_MTYPE_SLRU,
-	PGSTAT_MTYPE_FUNCSTAT,
-	PGSTAT_MTYPE_FUNCPURGE,
-	PGSTAT_MTYPE_RECOVERYCONFLICT,
-	PGSTAT_MTYPE_TEMPFILE,
-	PGSTAT_MTYPE_DEADLOCK,
-	PGSTAT_MTYPE_CHECKSUMFAILURE,
-	PGSTAT_MTYPE_REPLSLOT,
-	PGSTAT_MTYPE_CONNECTION,
-} StatMsgType;
-
-/* ----------
-||||||| e1c1c30f635
- * The types of backend -> collector messages
- * ----------
- */
-typedef enum StatMsgType
-{
-	PGSTAT_MTYPE_DUMMY,
-	PGSTAT_MTYPE_INQUIRY,
-	PGSTAT_MTYPE_TABSTAT,
-	PGSTAT_MTYPE_TABPURGE,
-	PGSTAT_MTYPE_DROPDB,
-	PGSTAT_MTYPE_RESETCOUNTER,
-	PGSTAT_MTYPE_RESETSHAREDCOUNTER,
-	PGSTAT_MTYPE_RESETSINGLECOUNTER,
-	PGSTAT_MTYPE_RESETSLRUCOUNTER,
-	PGSTAT_MTYPE_RESETREPLSLOTCOUNTER,
-	PGSTAT_MTYPE_AUTOVAC_START,
-	PGSTAT_MTYPE_VACUUM,
-	PGSTAT_MTYPE_ANALYZE,
-	PGSTAT_MTYPE_ANL_ANCESTORS,
-	PGSTAT_MTYPE_ARCHIVER,
-	PGSTAT_MTYPE_BGWRITER,
-	PGSTAT_MTYPE_WAL,
-	PGSTAT_MTYPE_SLRU,
-	PGSTAT_MTYPE_FUNCSTAT,
-	PGSTAT_MTYPE_FUNCPURGE,
-	PGSTAT_MTYPE_RECOVERYCONFLICT,
-	PGSTAT_MTYPE_TEMPFILE,
-	PGSTAT_MTYPE_DEADLOCK,
-	PGSTAT_MTYPE_CHECKSUMFAILURE,
-	PGSTAT_MTYPE_REPLSLOT,
-	PGSTAT_MTYPE_CONNECTION,
-} StatMsgType;
-
-/* ----------
-=======
->>>>>>> adadae45816
  * The data type used for counters.
  * ----------
  */
@@ -310,1066 +238,14 @@ typedef struct PgStat_TableXactStatus
 
 
 /* ------------------------------------------------------------
-<<<<<<< HEAD
- * Message formats follow
- * ------------------------------------------------------------
- */
-
-
-/* ----------
- * PgStat_MsgHdr				The common message header
- * ----------
- */
-typedef struct PgStat_MsgHdr
-{
-	StatMsgType m_type;
-	int			m_size;
-} PgStat_MsgHdr;
-
-/* ----------
- * Space available in a message.  This will keep the UDP packets below 1K,
- * which should fit unfragmented into the MTU of the loopback interface.
- * (Larger values of PGSTAT_MAX_MSG_SIZE would work for that on most
- * platforms, but we're being conservative here.)
- * ----------
- */
-#define PGSTAT_MAX_MSG_SIZE 1000
-#define PGSTAT_MSG_PAYLOAD	(PGSTAT_MAX_MSG_SIZE - sizeof(PgStat_MsgHdr))
-
-
-/* ----------
- * PgStat_MsgDummy				A dummy message, ignored by the collector
- * ----------
- */
-typedef struct PgStat_MsgDummy
-{
-	PgStat_MsgHdr m_hdr;
-} PgStat_MsgDummy;
-
-
-/* ----------
- * PgStat_MsgInquiry			Sent by a backend to ask the collector
- *								to write the stats file(s).
- *
- * Ordinarily, an inquiry message prompts writing of the global stats file,
- * the stats file for shared catalogs, and the stats file for the specified
- * database.  If databaseid is InvalidOid, only the first two are written.
- *
- * New file(s) will be written only if the existing file has a timestamp
- * older than the specified cutoff_time; this prevents duplicated effort
- * when multiple requests arrive at nearly the same time, assuming that
- * backends send requests with cutoff_times a little bit in the past.
- *
- * clock_time should be the requestor's current local time; the collector
- * uses this to check for the system clock going backward, but it has no
- * effect unless that occurs.  We assume clock_time >= cutoff_time, though.
- * ----------
- */
-
-typedef struct PgStat_MsgInquiry
-{
-	PgStat_MsgHdr m_hdr;
-	TimestampTz clock_time;		/* observed local clock time */
-	TimestampTz cutoff_time;	/* minimum acceptable file timestamp */
-	Oid			databaseid;		/* requested DB (InvalidOid => shared only) */
-} PgStat_MsgInquiry;
-
-
-/* ----------
- * PgStat_TableEntry			Per-table info in a MsgTabstat
- * ----------
- */
-typedef struct PgStat_TableEntry
-{
-	Oid			t_id;
-	PgStat_TableCounts t_counts;
-} PgStat_TableEntry;
-
-/* ----------
- * PgStat_MsgTabstat			Sent by the backend to report table
- *								and buffer access statistics.
- * ----------
- */
-#define PGSTAT_NUM_TABENTRIES  \
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - 3 * sizeof(int) - 2 * sizeof(PgStat_Counter))	\
-	 / sizeof(PgStat_TableEntry))
-
-typedef struct PgStat_MsgTabstat
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_nentries;
-	int			m_xact_commit;
-	int			m_xact_rollback;
-	PgStat_Counter m_block_read_time;	/* times in microseconds */
-	PgStat_Counter m_block_write_time;
-	PgStat_TableEntry m_entry[PGSTAT_NUM_TABENTRIES];
-} PgStat_MsgTabstat;
-
-
-/* ----------
- * PgStat_MsgTabpurge			Sent by the backend to tell the collector
- *								about dead tables.
- * ----------
- */
-#define PGSTAT_NUM_TABPURGE  \
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(int))  \
-	 / sizeof(Oid))
-
-typedef struct PgStat_MsgTabpurge
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_nentries;
-	Oid			m_tableid[PGSTAT_NUM_TABPURGE];
-} PgStat_MsgTabpurge;
-
-
-/* ----------
- * PgStat_MsgDropdb				Sent by the backend to tell the collector
- *								about a dropped database
- * ----------
- */
-typedef struct PgStat_MsgDropdb
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-} PgStat_MsgDropdb;
-
-
-/* ----------
- * PgStat_MsgResetcounter		Sent by the backend to tell the collector
- *								to reset counters
- * ----------
- */
-typedef struct PgStat_MsgResetcounter
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-} PgStat_MsgResetcounter;
-
-/* ----------
- * PgStat_MsgResetsharedcounter Sent by the backend to tell the collector
- *								to reset a shared counter
- * ----------
- */
-typedef struct PgStat_MsgResetsharedcounter
-{
-	PgStat_MsgHdr m_hdr;
-	PgStat_Shared_Reset_Target m_resettarget;
-} PgStat_MsgResetsharedcounter;
-
-/* ----------
- * PgStat_MsgResetsinglecounter Sent by the backend to tell the collector
- *								to reset a single counter
- * ----------
- */
-typedef struct PgStat_MsgResetsinglecounter
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	PgStat_Single_Reset_Type m_resettype;
-	Oid			m_objectid;
-} PgStat_MsgResetsinglecounter;
-
-/* ----------
- * PgStat_MsgResetslrucounter Sent by the backend to tell the collector
- *								to reset a SLRU counter
- * ----------
- */
-typedef struct PgStat_MsgResetslrucounter
-{
-	PgStat_MsgHdr m_hdr;
-	int			m_index;
-} PgStat_MsgResetslrucounter;
-
-/* ----------
- * PgStat_MsgResetreplslotcounter Sent by the backend to tell the collector
- *								to reset replication slot counter(s)
- * ----------
- */
-typedef struct PgStat_MsgResetreplslotcounter
-{
-	PgStat_MsgHdr m_hdr;
-	NameData	m_slotname;
-	bool		clearall;
-} PgStat_MsgResetreplslotcounter;
-
-/* ----------
- * PgStat_MsgAutovacStart		Sent by the autovacuum daemon to signal
- *								that a database is going to be processed
- * ----------
- */
-typedef struct PgStat_MsgAutovacStart
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	TimestampTz m_start_time;
-} PgStat_MsgAutovacStart;
-
-
-/* ----------
- * PgStat_MsgVacuum				Sent by the backend or autovacuum daemon
- *								after VACUUM
- * ----------
- */
-typedef struct PgStat_MsgVacuum
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	Oid			m_tableoid;
-	bool		m_autovacuum;
-	TimestampTz m_vacuumtime;
-	PgStat_Counter m_live_tuples;
-	PgStat_Counter m_dead_tuples;
-} PgStat_MsgVacuum;
-
-
-/* ----------
- * PgStat_MsgAnalyze			Sent by the backend or autovacuum daemon
- *								after ANALYZE
- * ----------
- */
-typedef struct PgStat_MsgAnalyze
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	Oid			m_tableoid;
-	bool		m_autovacuum;
-	bool		m_resetcounter;
-	TimestampTz m_analyzetime;
-	PgStat_Counter m_live_tuples;
-	PgStat_Counter m_dead_tuples;
-} PgStat_MsgAnalyze;
-
-/* ----------
- * PgStat_MsgAnlAncestors		Sent by the backend or autovacuum daemon
- *								to inform partitioned tables that are
- *								ancestors of a partition, to propagate
- *								analyze counters
- * ----------
- */
-#define PGSTAT_NUM_ANCESTORENTRIES    \
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(Oid) - sizeof(int))	\
-	 / sizeof(Oid))
-
-typedef struct PgStat_MsgAnlAncestors
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	Oid			m_tableoid;
-	int			m_nancestors;
-	Oid			m_ancestors[PGSTAT_NUM_ANCESTORENTRIES];
-} PgStat_MsgAnlAncestors;
-
-/* ----------
- * PgStat_MsgArchiver			Sent by the archiver to update statistics.
- * ----------
- */
-typedef struct PgStat_MsgArchiver
-{
-	PgStat_MsgHdr m_hdr;
-	bool		m_failed;		/* Failed attempt */
-	char		m_xlog[MAX_XFN_CHARS + 1];
-	TimestampTz m_timestamp;
-} PgStat_MsgArchiver;
-
-/* ----------
- * PgStat_MsgQueuestat			Sent by the backend to report resource queue
- *								activity statistics.
- * ----------  GPDB 
- */
-typedef struct PgStat_MsgQueuestat
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_queueid;
-	PgStat_Counter	m_queries_exec;
-	PgStat_Counter	m_queries_wait;
-	PgStat_Counter	m_elapsed_exec;
-	PgStat_Counter	m_elapsed_wait;
-} PgStat_MsgQueuestat;
-
-/* ----------
- * PgStat_MsgBgWriter			Sent by the bgwriter to update statistics.
- * ----------
- */
-typedef struct PgStat_MsgBgWriter
-{
-	PgStat_MsgHdr m_hdr;
-
-	PgStat_Counter m_timed_checkpoints;
-	PgStat_Counter m_requested_checkpoints;
-	PgStat_Counter m_buf_written_checkpoints;
-	PgStat_Counter m_buf_written_clean;
-	PgStat_Counter m_maxwritten_clean;
-	PgStat_Counter m_buf_written_backend;
-	PgStat_Counter m_buf_fsync_backend;
-	PgStat_Counter m_buf_alloc;
-	PgStat_Counter m_checkpoint_write_time; /* times in milliseconds */
-	PgStat_Counter m_checkpoint_sync_time;
-} PgStat_MsgBgWriter;
-
-/* ----------
- * PgStat_MsgWal			Sent by backends and background processes to update WAL statistics.
- * ----------
- */
-typedef struct PgStat_MsgWal
-{
-	PgStat_MsgHdr m_hdr;
-	PgStat_Counter m_wal_records;
-	PgStat_Counter m_wal_fpi;
-	uint64		m_wal_bytes;
-	PgStat_Counter m_wal_buffers_full;
-	PgStat_Counter m_wal_write;
-	PgStat_Counter m_wal_sync;
-	PgStat_Counter m_wal_write_time;	/* time spent writing wal records in
-										 * microseconds */
-	PgStat_Counter m_wal_sync_time; /* time spent syncing wal records in
-									 * microseconds */
-} PgStat_MsgWal;
-
-/* ----------
- * PgStat_MsgSLRU			Sent by a backend to update SLRU statistics.
- * ----------
- */
-typedef struct PgStat_MsgSLRU
-{
-	PgStat_MsgHdr m_hdr;
-	PgStat_Counter m_index;
-	PgStat_Counter m_blocks_zeroed;
-	PgStat_Counter m_blocks_hit;
-	PgStat_Counter m_blocks_read;
-	PgStat_Counter m_blocks_written;
-	PgStat_Counter m_blocks_exists;
-	PgStat_Counter m_flush;
-	PgStat_Counter m_truncate;
-} PgStat_MsgSLRU;
-
-/* ----------
- * PgStat_MsgReplSlot	Sent by a backend or a wal sender to update replication
- *						slot statistics.
- * ----------
- */
-typedef struct PgStat_MsgReplSlot
-{
-	PgStat_MsgHdr m_hdr;
-	NameData	m_slotname;
-	bool		m_create;
-	bool		m_drop;
-	PgStat_Counter m_spill_txns;
-	PgStat_Counter m_spill_count;
-	PgStat_Counter m_spill_bytes;
-	PgStat_Counter m_stream_txns;
-	PgStat_Counter m_stream_count;
-	PgStat_Counter m_stream_bytes;
-	PgStat_Counter m_total_txns;
-	PgStat_Counter m_total_bytes;
-} PgStat_MsgReplSlot;
-
-
-/* ----------
- * PgStat_MsgRecoveryConflict	Sent by the backend upon recovery conflict
- * ----------
- */
-typedef struct PgStat_MsgRecoveryConflict
-{
-	PgStat_MsgHdr m_hdr;
-
-	Oid			m_databaseid;
-	int			m_reason;
-} PgStat_MsgRecoveryConflict;
-
-/* ----------
- * PgStat_MsgTempFile	Sent by the backend upon creating a temp file
- * ----------
- */
-typedef struct PgStat_MsgTempFile
-{
-	PgStat_MsgHdr m_hdr;
-
-	Oid			m_databaseid;
-	size_t		m_filesize;
-} PgStat_MsgTempFile;
-
-/* ----------
- * PgStat_FunctionCounts	The actual per-function counts kept by a backend
- *
- * This struct should contain only actual event counters, because we memcmp
- * it against zeroes to detect whether there are any counts to transmit.
- *
- * Note that the time counters are in instr_time format here.  We convert to
- * microseconds in PgStat_Counter format when transmitting to the collector.
- * ----------
- */
-typedef struct PgStat_FunctionCounts
-{
-	PgStat_Counter f_numcalls;
-	instr_time	f_total_time;
-	instr_time	f_self_time;
-} PgStat_FunctionCounts;
-
-/* ----------
- * PgStat_BackendFunctionEntry	Entry in backend's per-function hash table
- * ----------
- */
-typedef struct PgStat_BackendFunctionEntry
-{
-	Oid			f_id;
-	PgStat_FunctionCounts f_counts;
-} PgStat_BackendFunctionEntry;
-
-/* ----------
- * PgStat_FunctionEntry			Per-function info in a MsgFuncstat
- * ----------
- */
-typedef struct PgStat_FunctionEntry
-{
-	Oid			f_id;
-	PgStat_Counter f_numcalls;
-	PgStat_Counter f_total_time;	/* times in microseconds */
-	PgStat_Counter f_self_time;
-} PgStat_FunctionEntry;
-
-/* ----------
- * PgStat_MsgFuncstat			Sent by the backend to report function
- *								usage statistics.
- * ----------
- */
-#define PGSTAT_NUM_FUNCENTRIES	\
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(int))  \
-	 / sizeof(PgStat_FunctionEntry))
-
-typedef struct PgStat_MsgFuncstat
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_nentries;
-	PgStat_FunctionEntry m_entry[PGSTAT_NUM_FUNCENTRIES];
-} PgStat_MsgFuncstat;
-
-/* ----------
- * PgStat_MsgFuncpurge			Sent by the backend to tell the collector
- *								about dead functions.
- * ----------
- */
-#define PGSTAT_NUM_FUNCPURGE  \
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(int))  \
-	 / sizeof(Oid))
-
-typedef struct PgStat_MsgFuncpurge
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_nentries;
-	Oid			m_functionid[PGSTAT_NUM_FUNCPURGE];
-} PgStat_MsgFuncpurge;
-
-/* ----------
- * PgStat_MsgDeadlock			Sent by the backend to tell the collector
- *								about a deadlock that occurred.
- * ----------
- */
-typedef struct PgStat_MsgDeadlock
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-} PgStat_MsgDeadlock;
-
-/* ----------
- * PgStat_MsgChecksumFailure	Sent by the backend to tell the collector
- *								about checksum failures noticed.
- * ----------
- */
-typedef struct PgStat_MsgChecksumFailure
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_failurecount;
-	TimestampTz m_failure_time;
-} PgStat_MsgChecksumFailure;
-
-/* ----------
- * PgStat_MsgConn			Sent by the backend to update connection statistics.
- * ----------
- */
-typedef struct PgStat_MsgConn
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	PgStat_Counter m_count;
-	PgStat_Counter m_session_time;
-	PgStat_Counter m_active_time;
-	PgStat_Counter m_idle_in_xact_time;
-	SessionEndType m_disconnect;
-} PgStat_MsgConn;
-
-
-/* ----------
- * PgStat_Msg					Union over all possible messages.
- * ----------
- */
-typedef union PgStat_Msg
-{
-	PgStat_MsgHdr msg_hdr;
-	PgStat_MsgDummy msg_dummy;
-	PgStat_MsgInquiry msg_inquiry;
-	PgStat_MsgTabstat msg_tabstat;
-	PgStat_MsgTabpurge msg_tabpurge;
-	PgStat_MsgDropdb msg_dropdb;
-	PgStat_MsgResetcounter msg_resetcounter;
-	PgStat_MsgResetsharedcounter msg_resetsharedcounter;
-	PgStat_MsgResetsinglecounter msg_resetsinglecounter;
-	PgStat_MsgResetslrucounter msg_resetslrucounter;
-	PgStat_MsgResetreplslotcounter msg_resetreplslotcounter;
-	PgStat_MsgAutovacStart msg_autovacuum_start;
-	PgStat_MsgVacuum msg_vacuum;
-	PgStat_MsgAnalyze msg_analyze;
-	PgStat_MsgAnlAncestors msg_anl_ancestors;
-	PgStat_MsgArchiver msg_archiver;
-	PgStat_MsgQueuestat msg_queuestat;  /* GPDB */
-	PgStat_MsgBgWriter msg_bgwriter;
-	PgStat_MsgWal msg_wal;
-	PgStat_MsgSLRU msg_slru;
-	PgStat_MsgFuncstat msg_funcstat;
-	PgStat_MsgFuncpurge msg_funcpurge;
-	PgStat_MsgRecoveryConflict msg_recoveryconflict;
-	PgStat_MsgDeadlock msg_deadlock;
-	PgStat_MsgTempFile msg_tempfile;
-	PgStat_MsgChecksumFailure msg_checksumfailure;
-	PgStat_MsgReplSlot msg_replslot;
-	PgStat_MsgConn msg_conn;
-} PgStat_Msg;
-
-
-/* ------------------------------------------------------------
- * Statistic collector data structures follow
-||||||| e1c1c30f635
- * Message formats follow
- * ------------------------------------------------------------
- */
-
-
-/* ----------
- * PgStat_MsgHdr				The common message header
- * ----------
- */
-typedef struct PgStat_MsgHdr
-{
-	StatMsgType m_type;
-	int			m_size;
-} PgStat_MsgHdr;
-
-/* ----------
- * Space available in a message.  This will keep the UDP packets below 1K,
- * which should fit unfragmented into the MTU of the loopback interface.
- * (Larger values of PGSTAT_MAX_MSG_SIZE would work for that on most
- * platforms, but we're being conservative here.)
- * ----------
- */
-#define PGSTAT_MAX_MSG_SIZE 1000
-#define PGSTAT_MSG_PAYLOAD	(PGSTAT_MAX_MSG_SIZE - sizeof(PgStat_MsgHdr))
-
-
-/* ----------
- * PgStat_MsgDummy				A dummy message, ignored by the collector
- * ----------
- */
-typedef struct PgStat_MsgDummy
-{
-	PgStat_MsgHdr m_hdr;
-} PgStat_MsgDummy;
-
-
-/* ----------
- * PgStat_MsgInquiry			Sent by a backend to ask the collector
- *								to write the stats file(s).
- *
- * Ordinarily, an inquiry message prompts writing of the global stats file,
- * the stats file for shared catalogs, and the stats file for the specified
- * database.  If databaseid is InvalidOid, only the first two are written.
- *
- * New file(s) will be written only if the existing file has a timestamp
- * older than the specified cutoff_time; this prevents duplicated effort
- * when multiple requests arrive at nearly the same time, assuming that
- * backends send requests with cutoff_times a little bit in the past.
- *
- * clock_time should be the requestor's current local time; the collector
- * uses this to check for the system clock going backward, but it has no
- * effect unless that occurs.  We assume clock_time >= cutoff_time, though.
- * ----------
- */
-
-typedef struct PgStat_MsgInquiry
-{
-	PgStat_MsgHdr m_hdr;
-	TimestampTz clock_time;		/* observed local clock time */
-	TimestampTz cutoff_time;	/* minimum acceptable file timestamp */
-	Oid			databaseid;		/* requested DB (InvalidOid => shared only) */
-} PgStat_MsgInquiry;
-
-
-/* ----------
- * PgStat_TableEntry			Per-table info in a MsgTabstat
- * ----------
- */
-typedef struct PgStat_TableEntry
-{
-	Oid			t_id;
-	PgStat_TableCounts t_counts;
-} PgStat_TableEntry;
-
-/* ----------
- * PgStat_MsgTabstat			Sent by the backend to report table
- *								and buffer access statistics.
- * ----------
- */
-#define PGSTAT_NUM_TABENTRIES  \
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - 3 * sizeof(int) - 2 * sizeof(PgStat_Counter))	\
-	 / sizeof(PgStat_TableEntry))
-
-typedef struct PgStat_MsgTabstat
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_nentries;
-	int			m_xact_commit;
-	int			m_xact_rollback;
-	PgStat_Counter m_block_read_time;	/* times in microseconds */
-	PgStat_Counter m_block_write_time;
-	PgStat_TableEntry m_entry[PGSTAT_NUM_TABENTRIES];
-} PgStat_MsgTabstat;
-
-
-/* ----------
- * PgStat_MsgTabpurge			Sent by the backend to tell the collector
- *								about dead tables.
- * ----------
- */
-#define PGSTAT_NUM_TABPURGE  \
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(int))  \
-	 / sizeof(Oid))
-
-typedef struct PgStat_MsgTabpurge
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_nentries;
-	Oid			m_tableid[PGSTAT_NUM_TABPURGE];
-} PgStat_MsgTabpurge;
-
-
-/* ----------
- * PgStat_MsgDropdb				Sent by the backend to tell the collector
- *								about a dropped database
- * ----------
- */
-typedef struct PgStat_MsgDropdb
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-} PgStat_MsgDropdb;
-
-
-/* ----------
- * PgStat_MsgResetcounter		Sent by the backend to tell the collector
- *								to reset counters
- * ----------
- */
-typedef struct PgStat_MsgResetcounter
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-} PgStat_MsgResetcounter;
-
-/* ----------
- * PgStat_MsgResetsharedcounter Sent by the backend to tell the collector
- *								to reset a shared counter
- * ----------
- */
-typedef struct PgStat_MsgResetsharedcounter
-{
-	PgStat_MsgHdr m_hdr;
-	PgStat_Shared_Reset_Target m_resettarget;
-} PgStat_MsgResetsharedcounter;
-
-/* ----------
- * PgStat_MsgResetsinglecounter Sent by the backend to tell the collector
- *								to reset a single counter
- * ----------
- */
-typedef struct PgStat_MsgResetsinglecounter
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	PgStat_Single_Reset_Type m_resettype;
-	Oid			m_objectid;
-} PgStat_MsgResetsinglecounter;
-
-/* ----------
- * PgStat_MsgResetslrucounter Sent by the backend to tell the collector
- *								to reset a SLRU counter
- * ----------
- */
-typedef struct PgStat_MsgResetslrucounter
-{
-	PgStat_MsgHdr m_hdr;
-	int			m_index;
-} PgStat_MsgResetslrucounter;
-
-/* ----------
- * PgStat_MsgResetreplslotcounter Sent by the backend to tell the collector
- *								to reset replication slot counter(s)
- * ----------
- */
-typedef struct PgStat_MsgResetreplslotcounter
-{
-	PgStat_MsgHdr m_hdr;
-	NameData	m_slotname;
-	bool		clearall;
-} PgStat_MsgResetreplslotcounter;
-
-/* ----------
- * PgStat_MsgAutovacStart		Sent by the autovacuum daemon to signal
- *								that a database is going to be processed
- * ----------
- */
-typedef struct PgStat_MsgAutovacStart
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	TimestampTz m_start_time;
-} PgStat_MsgAutovacStart;
-
-
-/* ----------
- * PgStat_MsgVacuum				Sent by the backend or autovacuum daemon
- *								after VACUUM
- * ----------
- */
-typedef struct PgStat_MsgVacuum
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	Oid			m_tableoid;
-	bool		m_autovacuum;
-	TimestampTz m_vacuumtime;
-	PgStat_Counter m_live_tuples;
-	PgStat_Counter m_dead_tuples;
-} PgStat_MsgVacuum;
-
-
-/* ----------
- * PgStat_MsgAnalyze			Sent by the backend or autovacuum daemon
- *								after ANALYZE
- * ----------
- */
-typedef struct PgStat_MsgAnalyze
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	Oid			m_tableoid;
-	bool		m_autovacuum;
-	bool		m_resetcounter;
-	TimestampTz m_analyzetime;
-	PgStat_Counter m_live_tuples;
-	PgStat_Counter m_dead_tuples;
-} PgStat_MsgAnalyze;
-
-/* ----------
- * PgStat_MsgAnlAncestors		Sent by the backend or autovacuum daemon
- *								to inform partitioned tables that are
- *								ancestors of a partition, to propagate
- *								analyze counters
- * ----------
- */
-#define PGSTAT_NUM_ANCESTORENTRIES    \
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(Oid) - sizeof(int))	\
-	 / sizeof(Oid))
-
-typedef struct PgStat_MsgAnlAncestors
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	Oid			m_tableoid;
-	int			m_nancestors;
-	Oid			m_ancestors[PGSTAT_NUM_ANCESTORENTRIES];
-} PgStat_MsgAnlAncestors;
-
-/* ----------
- * PgStat_MsgArchiver			Sent by the archiver to update statistics.
- * ----------
- */
-typedef struct PgStat_MsgArchiver
-{
-	PgStat_MsgHdr m_hdr;
-	bool		m_failed;		/* Failed attempt */
-	char		m_xlog[MAX_XFN_CHARS + 1];
-	TimestampTz m_timestamp;
-} PgStat_MsgArchiver;
-
-/* ----------
- * PgStat_MsgBgWriter			Sent by the bgwriter to update statistics.
- * ----------
- */
-typedef struct PgStat_MsgBgWriter
-{
-	PgStat_MsgHdr m_hdr;
-
-	PgStat_Counter m_timed_checkpoints;
-	PgStat_Counter m_requested_checkpoints;
-	PgStat_Counter m_buf_written_checkpoints;
-	PgStat_Counter m_buf_written_clean;
-	PgStat_Counter m_maxwritten_clean;
-	PgStat_Counter m_buf_written_backend;
-	PgStat_Counter m_buf_fsync_backend;
-	PgStat_Counter m_buf_alloc;
-	PgStat_Counter m_checkpoint_write_time; /* times in milliseconds */
-	PgStat_Counter m_checkpoint_sync_time;
-} PgStat_MsgBgWriter;
-
-/* ----------
- * PgStat_MsgWal			Sent by backends and background processes to update WAL statistics.
- * ----------
- */
-typedef struct PgStat_MsgWal
-{
-	PgStat_MsgHdr m_hdr;
-	PgStat_Counter m_wal_records;
-	PgStat_Counter m_wal_fpi;
-	uint64		m_wal_bytes;
-	PgStat_Counter m_wal_buffers_full;
-	PgStat_Counter m_wal_write;
-	PgStat_Counter m_wal_sync;
-	PgStat_Counter m_wal_write_time;	/* time spent writing wal records in
-										 * microseconds */
-	PgStat_Counter m_wal_sync_time; /* time spent syncing wal records in
-									 * microseconds */
-} PgStat_MsgWal;
-
-/* ----------
- * PgStat_MsgSLRU			Sent by a backend to update SLRU statistics.
- * ----------
- */
-typedef struct PgStat_MsgSLRU
-{
-	PgStat_MsgHdr m_hdr;
-	PgStat_Counter m_index;
-	PgStat_Counter m_blocks_zeroed;
-	PgStat_Counter m_blocks_hit;
-	PgStat_Counter m_blocks_read;
-	PgStat_Counter m_blocks_written;
-	PgStat_Counter m_blocks_exists;
-	PgStat_Counter m_flush;
-	PgStat_Counter m_truncate;
-} PgStat_MsgSLRU;
-
-/* ----------
- * PgStat_MsgReplSlot	Sent by a backend or a wal sender to update replication
- *						slot statistics.
- * ----------
- */
-typedef struct PgStat_MsgReplSlot
-{
-	PgStat_MsgHdr m_hdr;
-	NameData	m_slotname;
-	bool		m_create;
-	bool		m_drop;
-	PgStat_Counter m_spill_txns;
-	PgStat_Counter m_spill_count;
-	PgStat_Counter m_spill_bytes;
-	PgStat_Counter m_stream_txns;
-	PgStat_Counter m_stream_count;
-	PgStat_Counter m_stream_bytes;
-	PgStat_Counter m_total_txns;
-	PgStat_Counter m_total_bytes;
-} PgStat_MsgReplSlot;
-
-
-/* ----------
- * PgStat_MsgRecoveryConflict	Sent by the backend upon recovery conflict
- * ----------
- */
-typedef struct PgStat_MsgRecoveryConflict
-{
-	PgStat_MsgHdr m_hdr;
-
-	Oid			m_databaseid;
-	int			m_reason;
-} PgStat_MsgRecoveryConflict;
-
-/* ----------
- * PgStat_MsgTempFile	Sent by the backend upon creating a temp file
- * ----------
- */
-typedef struct PgStat_MsgTempFile
-{
-	PgStat_MsgHdr m_hdr;
-
-	Oid			m_databaseid;
-	size_t		m_filesize;
-} PgStat_MsgTempFile;
-
-/* ----------
- * PgStat_FunctionCounts	The actual per-function counts kept by a backend
- *
- * This struct should contain only actual event counters, because we memcmp
- * it against zeroes to detect whether there are any counts to transmit.
- *
- * Note that the time counters are in instr_time format here.  We convert to
- * microseconds in PgStat_Counter format when transmitting to the collector.
- * ----------
- */
-typedef struct PgStat_FunctionCounts
-{
-	PgStat_Counter f_numcalls;
-	instr_time	f_total_time;
-	instr_time	f_self_time;
-} PgStat_FunctionCounts;
-
-/* ----------
- * PgStat_BackendFunctionEntry	Entry in backend's per-function hash table
- * ----------
- */
-typedef struct PgStat_BackendFunctionEntry
-{
-	Oid			f_id;
-	PgStat_FunctionCounts f_counts;
-} PgStat_BackendFunctionEntry;
-
-/* ----------
- * PgStat_FunctionEntry			Per-function info in a MsgFuncstat
- * ----------
- */
-typedef struct PgStat_FunctionEntry
-{
-	Oid			f_id;
-	PgStat_Counter f_numcalls;
-	PgStat_Counter f_total_time;	/* times in microseconds */
-	PgStat_Counter f_self_time;
-} PgStat_FunctionEntry;
-
-/* ----------
- * PgStat_MsgFuncstat			Sent by the backend to report function
- *								usage statistics.
- * ----------
- */
-#define PGSTAT_NUM_FUNCENTRIES	\
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(int))  \
-	 / sizeof(PgStat_FunctionEntry))
-
-typedef struct PgStat_MsgFuncstat
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_nentries;
-	PgStat_FunctionEntry m_entry[PGSTAT_NUM_FUNCENTRIES];
-} PgStat_MsgFuncstat;
-
-/* ----------
- * PgStat_MsgFuncpurge			Sent by the backend to tell the collector
- *								about dead functions.
- * ----------
- */
-#define PGSTAT_NUM_FUNCPURGE  \
-	((PGSTAT_MSG_PAYLOAD - sizeof(Oid) - sizeof(int))  \
-	 / sizeof(Oid))
-
-typedef struct PgStat_MsgFuncpurge
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_nentries;
-	Oid			m_functionid[PGSTAT_NUM_FUNCPURGE];
-} PgStat_MsgFuncpurge;
-
-/* ----------
- * PgStat_MsgDeadlock			Sent by the backend to tell the collector
- *								about a deadlock that occurred.
- * ----------
- */
-typedef struct PgStat_MsgDeadlock
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-} PgStat_MsgDeadlock;
-
-/* ----------
- * PgStat_MsgChecksumFailure	Sent by the backend to tell the collector
- *								about checksum failures noticed.
- * ----------
- */
-typedef struct PgStat_MsgChecksumFailure
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	int			m_failurecount;
-	TimestampTz m_failure_time;
-} PgStat_MsgChecksumFailure;
-
-/* ----------
- * PgStat_MsgConn			Sent by the backend to update connection statistics.
- * ----------
- */
-typedef struct PgStat_MsgConn
-{
-	PgStat_MsgHdr m_hdr;
-	Oid			m_databaseid;
-	PgStat_Counter m_count;
-	PgStat_Counter m_session_time;
-	PgStat_Counter m_active_time;
-	PgStat_Counter m_idle_in_xact_time;
-	SessionEndType m_disconnect;
-} PgStat_MsgConn;
-
-
-/* ----------
- * PgStat_Msg					Union over all possible messages.
- * ----------
- */
-typedef union PgStat_Msg
-{
-	PgStat_MsgHdr msg_hdr;
-	PgStat_MsgDummy msg_dummy;
-	PgStat_MsgInquiry msg_inquiry;
-	PgStat_MsgTabstat msg_tabstat;
-	PgStat_MsgTabpurge msg_tabpurge;
-	PgStat_MsgDropdb msg_dropdb;
-	PgStat_MsgResetcounter msg_resetcounter;
-	PgStat_MsgResetsharedcounter msg_resetsharedcounter;
-	PgStat_MsgResetsinglecounter msg_resetsinglecounter;
-	PgStat_MsgResetslrucounter msg_resetslrucounter;
-	PgStat_MsgResetreplslotcounter msg_resetreplslotcounter;
-	PgStat_MsgAutovacStart msg_autovacuum_start;
-	PgStat_MsgVacuum msg_vacuum;
-	PgStat_MsgAnalyze msg_analyze;
-	PgStat_MsgAnlAncestors msg_anl_ancestors;
-	PgStat_MsgArchiver msg_archiver;
-	PgStat_MsgBgWriter msg_bgwriter;
-	PgStat_MsgWal msg_wal;
-	PgStat_MsgSLRU msg_slru;
-	PgStat_MsgFuncstat msg_funcstat;
-	PgStat_MsgFuncpurge msg_funcpurge;
-	PgStat_MsgRecoveryConflict msg_recoveryconflict;
-	PgStat_MsgDeadlock msg_deadlock;
-	PgStat_MsgTempFile msg_tempfile;
-	PgStat_MsgChecksumFailure msg_checksumfailure;
-	PgStat_MsgReplSlot msg_replslot;
-	PgStat_MsgConn msg_conn;
-} PgStat_Msg;
-
-
-/* ------------------------------------------------------------
- * Statistic collector data structures follow
-=======
  * Data structures on disk and in shared memory follow
->>>>>>> adadae45816
  *
  * PGSTAT_FILE_FORMAT_ID should be changed whenever any of these
  * data structures change.
  * ------------------------------------------------------------
  */
 
-#define PGSTAT_FILE_FORMAT_ID	0x01A5BCA7
+#define PGSTAT_FILE_FORMAT_ID	0x01A5BCA8
 
 typedef struct PgStat_ArchiverStats
 {
@@ -1509,160 +385,6 @@ typedef struct PgStat_StatTabEntry
 	PgStat_Counter autovac_analyze_count;
 } PgStat_StatTabEntry;
 
-<<<<<<< HEAD
-
-/* ----------
- * PgStat_StatQueueEntry		The collector's data per resource queue
- * ----------
- *  --- cdb extension ---
- */
-typedef struct PgStat_StatQueueEntry
-{
-	Oid			queueid;
-	PgStat_Counter n_queries_exec;
-	PgStat_Counter n_queries_wait;
-	PgStat_Counter elapsed_exec;
-	PgStat_Counter elapsed_wait;
-} PgStat_StatQueueEntry;
-
-/* ----------
- * PgStat_StatFuncEntry			The collector's data per function
- * ----------
- */
-typedef struct PgStat_StatFuncEntry
-{
-	Oid			functionid;
-
-	PgStat_Counter f_numcalls;
-
-	PgStat_Counter f_total_time;	/* times in microseconds */
-	PgStat_Counter f_self_time;
-} PgStat_StatFuncEntry;
-
-
-
-/* ----------
- * PgStat_StatPortalEntry
- *
- * Each backend maintains a hash that contains a PgStat_StatPortalEntry for
- * each portal. This is so we can easily track elapsed times for execute and
- * wait, as well as counts for each of these. 
- *
- * In order to (hopefully) not cause a performance degradation when queue
- * statistics are enabled, we only store and caclulate elapsed time to the 
- * nearest second (via the time() call). This may mean that large numbers of 
- * sub-second queries get ignored due to roundoff. 
- *
- * Note that the collector never sees these structs, the PgStat_StatQueueEntry
- * is what is sent at report time.
- * ----------
- */
-typedef struct PgStat_StatPortalEntry
-{
-	uint32					portalid;
-	time_t					t_exec_start;
-	time_t					t_exec_end;
-	time_t					t_wait_start;
-	time_t					t_wait_end;
-	PgStat_StatQueueEntry	queueentry;
-} PgStat_StatPortalEntry;
-
-
-/*
- * Archiver statistics kept in the stats collector
- */
-typedef struct PgStat_ArchiverStats
-{
-	PgStat_Counter archived_count;	/* archival successes */
-	char		last_archived_wal[MAX_XFN_CHARS + 1];	/* last WAL file
-														 * archived */
-	TimestampTz last_archived_timestamp;	/* last archival success time */
-	PgStat_Counter failed_count;	/* failed archival attempts */
-	char		last_failed_wal[MAX_XFN_CHARS + 1]; /* WAL file involved in
-													 * last failure */
-	TimestampTz last_failed_timestamp;	/* last archival failure time */
-	TimestampTz stat_reset_timestamp;
-} PgStat_ArchiverStats;
-
-/*
- * Global statistics kept in the stats collector
- */
-typedef struct PgStat_GlobalStats
-{
-	TimestampTz stats_timestamp;	/* time of stats file update */
-	PgStat_Counter timed_checkpoints;
-	PgStat_Counter requested_checkpoints;
-	PgStat_Counter checkpoint_write_time;	/* times in milliseconds */
-	PgStat_Counter checkpoint_sync_time;
-	PgStat_Counter buf_written_checkpoints;
-	PgStat_Counter buf_written_clean;
-	PgStat_Counter maxwritten_clean;
-	PgStat_Counter buf_written_backend;
-	PgStat_Counter buf_fsync_backend;
-	PgStat_Counter buf_alloc;
-	TimestampTz stat_reset_timestamp;
-} PgStat_GlobalStats;
-
-/*
- * WAL statistics kept in the stats collector
- */
-||||||| e1c1c30f635
-
-/* ----------
- * PgStat_StatFuncEntry			The collector's data per function
- * ----------
- */
-typedef struct PgStat_StatFuncEntry
-{
-	Oid			functionid;
-
-	PgStat_Counter f_numcalls;
-
-	PgStat_Counter f_total_time;	/* times in microseconds */
-	PgStat_Counter f_self_time;
-} PgStat_StatFuncEntry;
-
-
-/*
- * Archiver statistics kept in the stats collector
- */
-typedef struct PgStat_ArchiverStats
-{
-	PgStat_Counter archived_count;	/* archival successes */
-	char		last_archived_wal[MAX_XFN_CHARS + 1];	/* last WAL file
-														 * archived */
-	TimestampTz last_archived_timestamp;	/* last archival success time */
-	PgStat_Counter failed_count;	/* failed archival attempts */
-	char		last_failed_wal[MAX_XFN_CHARS + 1]; /* WAL file involved in
-													 * last failure */
-	TimestampTz last_failed_timestamp;	/* last archival failure time */
-	TimestampTz stat_reset_timestamp;
-} PgStat_ArchiverStats;
-
-/*
- * Global statistics kept in the stats collector
- */
-typedef struct PgStat_GlobalStats
-{
-	TimestampTz stats_timestamp;	/* time of stats file update */
-	PgStat_Counter timed_checkpoints;
-	PgStat_Counter requested_checkpoints;
-	PgStat_Counter checkpoint_write_time;	/* times in milliseconds */
-	PgStat_Counter checkpoint_sync_time;
-	PgStat_Counter buf_written_checkpoints;
-	PgStat_Counter buf_written_clean;
-	PgStat_Counter maxwritten_clean;
-	PgStat_Counter buf_written_backend;
-	PgStat_Counter buf_fsync_backend;
-	PgStat_Counter buf_alloc;
-	TimestampTz stat_reset_timestamp;
-} PgStat_GlobalStats;
-
-/*
- * WAL statistics kept in the stats collector
- */
-=======
->>>>>>> adadae45816
 typedef struct PgStat_WalStats
 {
 	PgStat_Counter wal_records;
@@ -1697,123 +419,6 @@ extern void pgstat_initialize(void);
 extern long pgstat_report_stat(bool force);
 extern void pgstat_force_next_flush(void);
 
-<<<<<<< HEAD
-extern bool pgstat_collect_queuelevel;
-
-
-/*
- * BgWriter statistics counters are updated directly by bgwriter and bufmgr
- */
-extern PgStat_MsgBgWriter BgWriterStats;
-
-/*
- * WAL statistics counter is updated by backends and background processes
- */
-extern PgStat_MsgWal WalStats;
-
-/*
- * Updated by pgstat_count_buffer_*_time macros
- */
-extern PgStat_Counter pgStatBlockReadTime;
-extern PgStat_Counter pgStatBlockWriteTime;
-
-/*
- * Updated by pgstat_count_conn_*_time macros, called by
- * pgstat_report_activity().
- */
-extern PgStat_Counter pgStatActiveTime;
-extern PgStat_Counter pgStatTransactionIdleTime;
-
-
-/*
- * Updated by the traffic cop and in errfinish()
- */
-extern SessionEndType pgStatSessionEndCause;
-
-/* ----------
- * Functions called from postmaster
- * ----------
- */
-extern void pgstat_init(void);
-extern int	pgstat_start(void);
-extern void pgstat_reset_all(void);
-extern void allow_immediate_pgstat_restart(void);
-
-#ifdef EXEC_BACKEND
-extern void PgstatCollectorMain(int argc, char *argv[]) pg_attribute_noreturn();
-#endif
-
-
-/* ----------
- * Functions called from backends
- * ----------
- */
-extern void pgstat_ping(void);
-
-extern void pgstat_report_stat(bool force);
-extern void pgstat_vacuum_stat(void);
-extern void pgstat_report_queuestat(void); /* GPDB */
-
-extern void pgstat_drop_database(Oid databaseid);
-
-extern void pgstat_clear_snapshot(void);
-||||||| e1c1c30f635
-/*
- * BgWriter statistics counters are updated directly by bgwriter and bufmgr
- */
-extern PgStat_MsgBgWriter BgWriterStats;
-
-/*
- * WAL statistics counter is updated by backends and background processes
- */
-extern PgStat_MsgWal WalStats;
-
-/*
- * Updated by pgstat_count_buffer_*_time macros
- */
-extern PgStat_Counter pgStatBlockReadTime;
-extern PgStat_Counter pgStatBlockWriteTime;
-
-/*
- * Updated by pgstat_count_conn_*_time macros, called by
- * pgstat_report_activity().
- */
-extern PgStat_Counter pgStatActiveTime;
-extern PgStat_Counter pgStatTransactionIdleTime;
-
-
-/*
- * Updated by the traffic cop and in errfinish()
- */
-extern SessionEndType pgStatSessionEndCause;
-
-/* ----------
- * Functions called from postmaster
- * ----------
- */
-extern void pgstat_init(void);
-extern int	pgstat_start(void);
-extern void pgstat_reset_all(void);
-extern void allow_immediate_pgstat_restart(void);
-
-#ifdef EXEC_BACKEND
-extern void PgstatCollectorMain(int argc, char *argv[]) pg_attribute_noreturn();
-#endif
-
-
-/* ----------
- * Functions called from backends
- * ----------
- */
-extern void pgstat_ping(void);
-
-extern void pgstat_report_stat(bool force);
-extern void pgstat_vacuum_stat(void);
-extern void pgstat_drop_database(Oid databaseid);
-
-extern void pgstat_clear_snapshot(void);
-=======
->>>>>>> adadae45816
 extern void pgstat_reset_counters(void);
 extern void pgstat_reset(PgStat_Kind kind, Oid dboid, Oid objectid);
 extern void pgstat_reset_of_kind(PgStat_Kind kind);
@@ -1863,122 +468,6 @@ extern void pgstat_report_checksum_failures_in_db(Oid dboid, int failurecount);
 extern void pgstat_report_checksum_failure(void);
 extern void pgstat_report_connect(Oid dboid);
 
-<<<<<<< HEAD
-extern void pgstat_initialize(void);
-
-
-extern PgStat_TableStatus *find_tabstat_entry(Oid rel_id);
-extern PgStat_BackendFunctionEntry *find_funcstat_entry(Oid func_id);
-
-extern void pgstat_initstats(Relation rel);
-
-extern void pgstat_init_localportalhash(void);
-extern PgStat_StatPortalEntry *pgstat_getportalentry(uint32 portalid,
-													 Oid queueid);
-/* nontransactional event counts are simple enough to inline */
-
-#define pgstat_count_heap_scan(rel)									\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_numscans++;				\
-	} while (0)
-#define pgstat_count_heap_getnext(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_tuples_returned++;		\
-	} while (0)
-#define pgstat_count_heap_fetch(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_tuples_fetched++;		\
-	} while (0)
-
-/*
-#define pgstat_count_heap_insert(s)										\
-	do {																\
-		if (pgstat_track_counts)			\
-			(s)->pgstat_info->t_counts.t_tuples_inserted++; \
-	} while (0)
-#define pgstat_count_heap_update(s,h)										\
-	do {																\
-		if (pgstat_track_counts)			\
-			(s)->pgstat_info->t_counts.t_tuples_updated++; \
-	} while (0)
-#define pgstat_count_heap_delete(s)										\
-	do {																\
-		if (pgstat_track_counts)			\
-			(s)->pgstat_info->t_counts.t_tuples_deleted++; \
-	} while (0)
-	*/
-
-#define pgstat_count_index_scan(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_numscans++;				\
-	} while (0)
-#define pgstat_count_index_tuples(rel, n)							\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_tuples_returned += (n);	\
-	} while (0)
-#define pgstat_count_buffer_read(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_blocks_fetched++;		\
-	} while (0)
-#define pgstat_count_buffer_hit(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_blocks_hit++;			\
-	} while (0)
-||||||| e1c1c30f635
-extern void pgstat_initialize(void);
-
-
-extern PgStat_TableStatus *find_tabstat_entry(Oid rel_id);
-extern PgStat_BackendFunctionEntry *find_funcstat_entry(Oid func_id);
-
-extern void pgstat_initstats(Relation rel);
-
-/* nontransactional event counts are simple enough to inline */
-
-#define pgstat_count_heap_scan(rel)									\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_numscans++;				\
-	} while (0)
-#define pgstat_count_heap_getnext(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_tuples_returned++;		\
-	} while (0)
-#define pgstat_count_heap_fetch(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_tuples_fetched++;		\
-	} while (0)
-#define pgstat_count_index_scan(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_numscans++;				\
-	} while (0)
-#define pgstat_count_index_tuples(rel, n)							\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_tuples_returned += (n);	\
-	} while (0)
-#define pgstat_count_buffer_read(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_blocks_fetched++;		\
-	} while (0)
-#define pgstat_count_buffer_hit(rel)								\
-	do {															\
-		if ((rel)->pgstat_info != NULL)								\
-			(rel)->pgstat_info->t_counts.t_blocks_hit++;			\
-	} while (0)
-=======
->>>>>>> adadae45816
 #define pgstat_count_buffer_read_time(n)							\
 	(pgStatBlockReadTime += (n))
 #define pgstat_count_buffer_write_time(n)							\
@@ -1988,85 +477,6 @@ extern void pgstat_initstats(Relation rel);
 #define pgstat_count_conn_txn_idle_time(n)							\
 	(pgStatTransactionIdleTime += (n))
 
-<<<<<<< HEAD
-/* Resource queue statistics: */
-#define pgstat_count_queue_exec(p, q) 									\
-	do {																\
-		if (pgstat_collect_queuelevel) 									\
-		{																\
-			PgStat_StatPortalEntry  *pentry;							\
-																		\
-			pentry = pgstat_getportalentry(p, q);						\
-			((pentry)->queueentry).n_queries_exec++;					\
-		}																\
-	} while (0)
-#define pgstat_record_start_queue_exec(p, q) 							\
-	do {																\
-		if (pgstat_collect_queuelevel) 									\
-		{																\
-			PgStat_StatPortalEntry  *pentry;							\
-																		\
-			pentry = pgstat_getportalentry(p, q);						\
-			(pentry)->t_exec_start = time(NULL);						\
-		}																\
-	} while (0)
-#define pgstat_record_end_queue_exec(p, q) 								\
-	do {																\
-		if (pgstat_collect_queuelevel) 									\
-		{																\
-			PgStat_StatPortalEntry  *pentry;							\
-																		\
-			pentry = pgstat_getportalentry(p, q);						\
-			(pentry)->t_exec_end = time(NULL);							\
-			((pentry)->queueentry).elapsed_exec += 						\
-				(PgStat_Counter)((pentry)->t_exec_end - (pentry)->t_exec_start);			\
-		}																\
-	} while (0)
-#define pgstat_count_queue_wait(p, q) 									\
-	do {																\
-		if (pgstat_collect_queuelevel) 									\
-		{																\
-			PgStat_StatPortalEntry  *pentry;							\
-																		\
-			pentry = pgstat_getportalentry(p, q);						\
-			((pentry)->queueentry).n_queries_wait++;					\
-		}																\
-	} while (0)
-#define pgstat_record_start_queue_wait(p, q) 							\
-	do {																\
-		if (pgstat_collect_queuelevel) 									\
-		{																\
-			PgStat_StatPortalEntry  *pentry;							\
-																		\
-			pentry = pgstat_getportalentry(p, q);						\
-			(pentry)->t_wait_start = time(NULL);						\
-		}																\
-	} while (0)
-#define pgstat_record_end_queue_wait(p, q) 								\
-	do {																\
-		if (pgstat_collect_queuelevel) 									\
-		{																\
-			PgStat_StatPortalEntry  *pentry;							\
-																		\
-			pentry = pgstat_getportalentry(p, q);						\
-			(pentry)->t_wait_end = time(NULL);							\
-			((pentry)->queueentry).elapsed_wait += 						\
-				(PgStat_Counter)((pentry)->t_wait_end - (pentry)->t_wait_start);			\
-		}																\
-	} while (0)
-	
-extern void pgstat_count_heap_insert(Relation rel, PgStat_Counter n);
-extern void pgstat_count_heap_update(Relation rel, bool hot);
-extern void pgstat_count_heap_delete(Relation rel);
-extern void pgstat_count_truncate(Relation rel);
-extern void pgstat_update_heap_dead_tuples(Relation rel, int delta);
-||||||| e1c1c30f635
-extern void pgstat_count_heap_insert(Relation rel, PgStat_Counter n);
-extern void pgstat_count_heap_update(Relation rel, bool hot);
-extern void pgstat_count_heap_delete(Relation rel);
-extern void pgstat_count_truncate(Relation rel);
-extern void pgstat_update_heap_dead_tuples(Relation rel, int delta);
-=======
 extern PgStat_StatDBEntry *pgstat_fetch_stat_dbentry(Oid dbid);
 
 /*
@@ -2075,7 +485,6 @@ extern PgStat_StatDBEntry *pgstat_fetch_stat_dbentry(Oid dbid);
 
 extern void pgstat_create_function(Oid proid);
 extern void pgstat_drop_function(Oid proid);
->>>>>>> adadae45816
 
 struct FunctionCallInfoBaseData;
 extern void pgstat_init_function_usage(struct FunctionCallInfoBaseData *fcinfo,
@@ -2131,6 +540,25 @@ extern void pgstat_report_analyze(Relation rel,
 		if (pgstat_should_count_relation(rel))						\
 			(rel)->pgstat_info->t_counts.t_tuples_fetched++;		\
 	} while (0)
+
+/*
+#define pgstat_count_heap_insert(s)										\
+	do {																\
+		if (pgstat_track_counts)			\
+			(s)->pgstat_info->t_counts.t_tuples_inserted++; \
+	} while (0)
+#define pgstat_count_heap_update(s,h)										\
+	do {																\
+		if (pgstat_track_counts)			\
+			(s)->pgstat_info->t_counts.t_tuples_updated++; \
+	} while (0)
+#define pgstat_count_heap_delete(s)										\
+	do {																\
+		if (pgstat_track_counts)			\
+			(s)->pgstat_info->t_counts.t_tuples_deleted++; \
+	} while (0)
+	*/
+
 #define pgstat_count_index_scan(rel)								\
 	do {															\
 		if (pgstat_should_count_relation(rel))						\
@@ -2163,55 +591,7 @@ extern void pgstat_twophase_postcommit(TransactionId xid, uint16 info,
 extern void pgstat_twophase_postabort(TransactionId xid, uint16 info,
 									  void *recdata, uint32 len);
 
-<<<<<<< HEAD
-extern void pgstat_send_archiver(const char *xlog, bool failed);
-extern void pgstat_send_bgwriter(void);
-extern void pgstat_send_wal(bool force);
-
-struct CdbDispatchResults;
-struct pg_result;
-extern void pgstat_send_qd_tabstats(void);								/* GPDB */
-extern void pgstat_combine_one_qe_result(List **oidList,           /* GPDB */
-										 struct pg_result *pgresult,
-										 int nest_level,
-										 int32 segindex);
-extern void pgstat_combine_from_qe(struct CdbDispatchResults *results,	/* GPDB */
-								   int writerSliceIndex);
-
-/* ----------
- * Support functions for the SQL-callable functions to
- * generate the pgstat* views.
- * ----------
- */
-extern PgStat_StatDBEntry *pgstat_fetch_stat_dbentry(Oid dbid);
-||||||| e1c1c30f635
-extern void pgstat_send_archiver(const char *xlog, bool failed);
-extern void pgstat_send_bgwriter(void);
-extern void pgstat_send_wal(bool force);
-
-/* ----------
- * Support functions for the SQL-callable functions to
- * generate the pgstat* views.
- * ----------
- */
-extern PgStat_StatDBEntry *pgstat_fetch_stat_dbentry(Oid dbid);
-=======
->>>>>>> adadae45816
 extern PgStat_StatTabEntry *pgstat_fetch_stat_tabentry(Oid relid);
-<<<<<<< HEAD
-extern PgStat_StatQueueEntry *pgstat_fetch_stat_queueentry(Oid queueid);  /* GPDB */
-extern PgStat_StatFuncEntry *pgstat_fetch_stat_funcentry(Oid funcid);
-extern PgStat_ArchiverStats *pgstat_fetch_stat_archiver(void);
-extern PgStat_GlobalStats *pgstat_fetch_global(void);
-extern PgStat_WalStats *pgstat_fetch_stat_wal(void);
-extern PgStat_SLRUStats *pgstat_fetch_slru(void);
-||||||| e1c1c30f635
-extern PgStat_StatFuncEntry *pgstat_fetch_stat_funcentry(Oid funcid);
-extern PgStat_ArchiverStats *pgstat_fetch_stat_archiver(void);
-extern PgStat_GlobalStats *pgstat_fetch_global(void);
-extern PgStat_WalStats *pgstat_fetch_stat_wal(void);
-extern PgStat_SLRUStats *pgstat_fetch_slru(void);
-=======
 extern PgStat_StatTabEntry *pgstat_fetch_stat_tabentry_ext(bool shared,
 														   Oid relid);
 extern PgStat_TableStatus *find_tabstat_entry(Oid rel_id);
@@ -2227,7 +607,6 @@ extern void pgstat_report_replslot(struct ReplicationSlot *slot, const PgStat_St
 extern void pgstat_create_replslot(struct ReplicationSlot *slot);
 extern void pgstat_acquire_replslot(struct ReplicationSlot *slot);
 extern void pgstat_drop_replslot(struct ReplicationSlot *slot);
->>>>>>> adadae45816
 extern PgStat_StatReplSlotEntry *pgstat_fetch_replslot(NameData slotname);
 
 
@@ -2334,5 +713,142 @@ extern PGDLLIMPORT SessionEndType pgStatSessionEndCause;
 /* updated directly by backends and background processes */
 extern PGDLLIMPORT PgStat_WalStats PendingWalStats;
 
+
+
+/* ----------
+ * GPDB-specific statistics
+ *
+ * Greengage adds resource-queue statistics and a mechanism for the QD to
+ * combine per-table statistics reported back by the QEs.  These are not part
+ * of upstream's shared-memory stats subsystem; their backing definitions live
+ * in the GPDB stats code.
+ * ----------
+ */
+
+/* ----------
+ * PgStat_StatQueueEntry		The collector's data per resource queue
+ * ----------
+ *  --- cdb extension ---
+ */
+typedef struct PgStat_StatQueueEntry
+{
+	Oid			queueid;
+	PgStat_Counter n_queries_exec;
+	PgStat_Counter n_queries_wait;
+	PgStat_Counter elapsed_exec;
+	PgStat_Counter elapsed_wait;
+} PgStat_StatQueueEntry;
+
+/* ----------
+ * PgStat_StatPortalEntry
+ *
+ * Each backend maintains a hash that contains a PgStat_StatPortalEntry for
+ * each portal. This is so we can easily track elapsed times for execute and
+ * wait, as well as counts for each of these. 
+ *
+ * In order to (hopefully) not cause a performance degradation when queue
+ * statistics are enabled, we only store and caclulate elapsed time to the 
+ * nearest second (via the time() call). This may mean that large numbers of 
+ * sub-second queries get ignored due to roundoff. 
+ *
+ * Note that the collector never sees these structs, the PgStat_StatQueueEntry
+ * is what is sent at report time.
+ * ----------
+ */
+typedef struct PgStat_StatPortalEntry
+{
+	uint32					portalid;
+	time_t					t_exec_start;
+	time_t					t_exec_end;
+	time_t					t_wait_start;
+	time_t					t_wait_end;
+	PgStat_StatQueueEntry	queueentry;
+} PgStat_StatPortalEntry;
+
+extern bool pgstat_collect_queuelevel;
+
+extern void pgstat_report_queuestat(void); /* GPDB */
+
+extern void pgstat_init_localportalhash(void);
+extern PgStat_StatPortalEntry *pgstat_getportalentry(uint32 portalid,
+													 Oid queueid);
+
+/* Resource queue statistics: */
+#define pgstat_count_queue_exec(p, q) 									\
+	do {																\
+		if (pgstat_collect_queuelevel) 									\
+		{																\
+			PgStat_StatPortalEntry  *pentry;							\
+																		\
+			pentry = pgstat_getportalentry(p, q);						\
+			((pentry)->queueentry).n_queries_exec++;					\
+		}																\
+	} while (0)
+#define pgstat_record_start_queue_exec(p, q) 							\
+	do {																\
+		if (pgstat_collect_queuelevel) 									\
+		{																\
+			PgStat_StatPortalEntry  *pentry;							\
+																		\
+			pentry = pgstat_getportalentry(p, q);						\
+			(pentry)->t_exec_start = time(NULL);						\
+		}																\
+	} while (0)
+#define pgstat_record_end_queue_exec(p, q) 								\
+	do {																\
+		if (pgstat_collect_queuelevel) 									\
+		{																\
+			PgStat_StatPortalEntry  *pentry;							\
+																		\
+			pentry = pgstat_getportalentry(p, q);						\
+			(pentry)->t_exec_end = time(NULL);							\
+			((pentry)->queueentry).elapsed_exec += 						\
+				(PgStat_Counter)((pentry)->t_exec_end - (pentry)->t_exec_start);			\
+		}																\
+	} while (0)
+#define pgstat_count_queue_wait(p, q) 									\
+	do {																\
+		if (pgstat_collect_queuelevel) 									\
+		{																\
+			PgStat_StatPortalEntry  *pentry;							\
+																		\
+			pentry = pgstat_getportalentry(p, q);						\
+			((pentry)->queueentry).n_queries_wait++;					\
+		}																\
+	} while (0)
+#define pgstat_record_start_queue_wait(p, q) 							\
+	do {																\
+		if (pgstat_collect_queuelevel) 									\
+		{																\
+			PgStat_StatPortalEntry  *pentry;							\
+																		\
+			pentry = pgstat_getportalentry(p, q);						\
+			(pentry)->t_wait_start = time(NULL);						\
+		}																\
+	} while (0)
+#define pgstat_record_end_queue_wait(p, q) 								\
+	do {																\
+		if (pgstat_collect_queuelevel) 									\
+		{																\
+			PgStat_StatPortalEntry  *pentry;							\
+																		\
+			pentry = pgstat_getportalentry(p, q);						\
+			(pentry)->t_wait_end = time(NULL);							\
+			((pentry)->queueentry).elapsed_wait += 						\
+				(PgStat_Counter)((pentry)->t_wait_end - (pentry)->t_wait_start);			\
+		}																\
+	} while (0)
+
+struct CdbDispatchResults;
+struct pg_result;
+extern void pgstat_send_qd_tabstats(void);								/* GPDB */
+extern void pgstat_combine_one_qe_result(List **oidList,           /* GPDB */
+										 struct pg_result *pgresult,
+										 int nest_level,
+										 int32 segindex);
+extern void pgstat_combine_from_qe(struct CdbDispatchResults *results,	/* GPDB */
+								   int writerSliceIndex);
+
+extern PgStat_StatQueueEntry *pgstat_fetch_stat_queueentry(Oid queueid);  /* GPDB */
 
 #endif							/* PGSTAT_H */

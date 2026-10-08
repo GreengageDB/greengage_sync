@@ -2129,7 +2129,6 @@ pg_stat_clear_snapshot(PG_FUNCTION_ARGS)
 }
 
 
-<<<<<<< HEAD
 Datum
 pg_stat_get_queue_num_exec(PG_FUNCTION_ARGS)
 {
@@ -2217,8 +2216,7 @@ pg_renice_session(PG_FUNCTION_ARGS)
 	elog(NOTICE, "Renicing a session is not longer supported. Please use the Query Prioritization feature.");
 	PG_RETURN_INT32(prio_out);
 }
-||||||| e1c1c30f635
-=======
+
 /* Force statistics to be reported at the next occasion */
 Datum
 pg_stat_force_next_flush(PG_FUNCTION_ARGS)
@@ -2228,7 +2226,6 @@ pg_stat_force_next_flush(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
->>>>>>> adadae45816
 
 /* Reset all counters for the current database */
 Datum

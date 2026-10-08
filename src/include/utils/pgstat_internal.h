@@ -383,6 +383,13 @@ typedef struct PgStatShared_ReplSlot
 	PgStat_StatReplSlotEntry stats;
 } PgStatShared_ReplSlot;
 
+/* GPDB: shared per-resource-queue statistics (keyed by queue OID) */
+typedef struct PgStatShared_Resqueue
+{
+	PgStatShared_Common header;
+	PgStat_StatQueueEntry stats;
+} PgStatShared_Resqueue;
+
 
 /*
  * Central shared memory entry for the cumulative stats system.
@@ -630,6 +637,8 @@ extern void pgstat_subscription_reset_timestamp_cb(PgStatShared_Common *header, 
  */
 
 extern PgStat_SubXactStatus *pgstat_get_xact_stack_level(int nest_level);
+/* GPDB: needed by the QD/QE tabstat combine code in pgstat_relation.c */
+extern PgStat_SubXactStatus *pgStatXactStack;
 extern void pgstat_drop_transactional(PgStat_Kind kind, Oid dboid, Oid objoid);
 extern void pgstat_create_transactional(PgStat_Kind kind, Oid dboid, Oid objoid);
 
