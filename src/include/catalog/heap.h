@@ -4,15 +4,9 @@
  *	  prototypes for functions in backend/catalog/heap.c
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/catalog/heap.h
@@ -145,22 +139,6 @@ extern List *AddRelationConstraints(Relation rel,
 extern void RelationClearMissing(Relation rel);
 extern void SetAttrMissing(Oid relid, char *attname, char *value);
 
-<<<<<<< HEAD
-extern Oid	StoreAttrDefault(Relation rel, AttrNumber attnum,
-							 Node *expr,
-							 bool *cookedMissingVal,
-							 Datum *missingval_p,
-							 bool *missingIsNull_p,
-							 bool is_internal,
-							 bool add_column_mode);
-
-||||||| e1c1c30f635
-extern Oid	StoreAttrDefault(Relation rel, AttrNumber attnum,
-							 Node *expr, bool is_internal,
-							 bool add_column_mode);
-
-=======
->>>>>>> adadae45816
 extern Node *cookDefault(ParseState *pstate,
 						 Node *raw_default,
 						 Oid atttypid,

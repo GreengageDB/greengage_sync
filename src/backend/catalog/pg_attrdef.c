@@ -21,6 +21,7 @@
 #include "catalog/dependency.h"
 #include "catalog/indexing.h"
 #include "catalog/objectaccess.h"
+#include "catalog/oid_dispatch.h"
 #include "catalog/pg_attrdef.h"
 #include "executor/executor.h"
 #include "optimizer/optimizer.h"
@@ -41,10 +42,20 @@
  * for this is that the missing value must never be updated after it is set,
  * which can only be when a column is added to the table. Otherwise we would
  * in effect be changing existing tuples.
+ *
+ * In GPDB in add_column_mode, the QD evaluates the default expression, and
+ * the QEs must use the pre-computed value. In QD, this function evaluates
+ * the value - like in upstream - and returns it in
+ * *missingval_p/missingIsNull_p. In the QE, the caller is expected to pass
+ * the pre-computed values in missingval/missingIsNull.
  */
 Oid
 StoreAttrDefault(Relation rel, AttrNumber attnum,
-				 Node *expr, bool is_internal, bool add_column_mode)
+				 Node *expr,
+				 bool *cookedMissingVal,
+				 Datum *missingval_p,
+				 bool *missingIsNull_p,
+				 bool is_internal, bool add_column_mode)
 {
 	char	   *adbin;
 	Relation	adrel;
@@ -69,8 +80,10 @@ StoreAttrDefault(Relation rel, AttrNumber attnum,
 	/*
 	 * Make the pg_attrdef entry.
 	 */
-	attrdefOid = GetNewOidWithIndex(adrel, AttrDefaultOidIndexId,
-									Anum_pg_attrdef_oid);
+	attrdefOid = GetNewOidForAttrDefault(adrel, AttrDefaultOidIndexId,
+										 Anum_pg_attrdef_oid,
+										 RelationGetRelid(rel),
+										 attnum);
 	values[Anum_pg_attrdef_oid - 1] = ObjectIdGetDatum(attrdefOid);
 	values[Anum_pg_attrdef_adrelid - 1] = RelationGetRelid(rel);
 	values[Anum_pg_attrdef_adnum - 1] = attnum;
@@ -123,8 +136,16 @@ StoreAttrDefault(Relation rel, AttrNumber attnum,
 		valuesAtt[Anum_pg_attribute_atthasdef - 1] = true;
 		replacesAtt[Anum_pg_attribute_atthasdef - 1] = true;
 
-		if (rel->rd_rel->relkind == RELKIND_RELATION && add_column_mode &&
-			!attgenerated)
+		if (rel->rd_rel->relkind != RELKIND_RELATION)
+		{
+			/* Do nothing for non-plain table (see 0a4efdc) */
+		}
+		else if (add_column_mode && !attgenerated && cookedMissingVal && *cookedMissingVal)
+		{
+			missingval = *missingval_p;
+			missingIsNull = *missingIsNull_p;
+		}
+		else if (add_column_mode && !attgenerated)
 		{
 			expr2 = expression_planner(expr2);
 			estate = CreateExecutorState();
@@ -153,20 +174,27 @@ StoreAttrDefault(Relation rel, AttrNumber attnum,
 															 defAttStruct->attbyval,
 															 defAttStruct->attalign));
 			}
-
+		}
+		if (rel->rd_rel->relkind == RELKIND_RELATION && add_column_mode && !attgenerated)
+		{
 			valuesAtt[Anum_pg_attribute_atthasmissing - 1] = !missingIsNull;
 			replacesAtt[Anum_pg_attribute_atthasmissing - 1] = true;
 			valuesAtt[Anum_pg_attribute_attmissingval - 1] = missingval;
 			replacesAtt[Anum_pg_attribute_attmissingval - 1] = true;
 			nullsAtt[Anum_pg_attribute_attmissingval - 1] = missingIsNull;
+
+			*cookedMissingVal = true;
+			*missingval_p = missingval;
+			*missingIsNull_p = missingIsNull;
 		}
 		atttup = heap_modify_tuple(atttup, RelationGetDescr(attrrel),
 								   valuesAtt, nullsAtt, replacesAtt);
 
 		CatalogTupleUpdate(attrrel, &atttup->t_self, atttup);
 
-		if (!missingIsNull)
-			pfree(DatumGetPointer(missingval));
+		/* GPDB: don't free it, it's returned to the caller */
+		//if (!missingIsNull)
+		//	pfree(DatumGetPointer(missingval));
 	}
 	table_close(attrrel, RowExclusiveLock);
 	heap_freetuple(atttup);
