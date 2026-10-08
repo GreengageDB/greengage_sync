@@ -46,6 +46,7 @@ extern Path *create_motion_path_for_upddel(PlannerInfo *root,
 										   GpPolicy *targetPolicy, Path *subpath,
 										   List *resultRelations,
 										   GpPolicy **policies);
+extern Path *create_motion_path_for_merge(PlannerInfo *root, Index rti, GpPolicy *targetPolicy, Path *subpath);
 extern Path *create_split_update_path(PlannerInfo *root, Index rti,
 									  GpPolicy *targetPolicy, Path *subpath,
 									  List *resultRelations);

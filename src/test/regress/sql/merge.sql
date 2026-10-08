@@ -997,6 +997,15 @@ MERGE INTO pa_target t
 SELECT * FROM pa_target ORDER BY tid;
 ROLLBACK;
 
+-- GPDB: updating the distribution key makes every segment raise the
+-- wrong-segment error, and which segment reports first varies from run to
+-- run, so mask the partition and segment numbers.
+-- start_matchsubs
+-- m/MERGE cannot write a row of "\w+" that belongs to another segment/
+-- s/MERGE cannot write a row of "\w+" that belongs to another segment/MERGE cannot write a row of "###" that belongs to another segment/
+-- m/belongs to segment \d+, but the MERGE action runs on segment \d+/
+-- s/belongs to segment \d+, but the MERGE action runs on segment \d+/belongs to segment #, but the MERGE action runs on segment #/
+-- end_matchsubs
 -- try updating the partition key column
 BEGIN;
 MERGE INTO pa_target t
@@ -1021,6 +1030,11 @@ CREATE TABLE part2 (balance float, tid integer, val text);
 CREATE TABLE part3 (tid integer, balance float, val text);
 CREATE TABLE part4 (extraid text, tid integer, balance float, val text);
 ALTER TABLE part4 DROP COLUMN extraid;
+-- GPDB: distribution policy must match the parent table.  part2 would be
+-- distributed by its first column (balance), and part4 lost its distribution
+-- key with extraid.
+ALTER TABLE part2 SET DISTRIBUTED BY (tid);
+ALTER TABLE part4 SET DISTRIBUTED BY (tid);
 
 ALTER TABLE pa_target ATTACH PARTITION part1 FOR VALUES IN (1,4);
 ALTER TABLE pa_target ATTACH PARTITION part2 FOR VALUES IN (2,5,6);
