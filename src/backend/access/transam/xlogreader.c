@@ -563,12 +563,7 @@ XLogDecodeNextRecord(XLogReaderState *state, bool nonblocking)
 	state->errormsg_buf[0] = '\0';
 	decoded = NULL;
 
-<<<<<<< HEAD
 	ResetDecoder(state);
-||||||| e1c1c30f635
-	ResetDecoder(state);
-=======
->>>>>>> adadae45816
 	state->abortedRecPtr = InvalidXLogRecPtr;
 	state->missingContrecPtr = InvalidXLogRecPtr;
 
@@ -598,11 +593,7 @@ XLogDecodeNextRecord(XLogReaderState *state, bool nonblocking)
 	}
 
 restart:
-<<<<<<< HEAD
-||||||| e1c1c30f635
-=======
 	state->nonblocking = nonblocking;
->>>>>>> adadae45816
 	state->currRecPtr = RecPtr;
 	assembled = false;
 
@@ -776,13 +767,7 @@ restart:
 			 */
 			if (pageHeader->xlp_info & XLP_FIRST_IS_OVERWRITE_CONTRECORD)
 			{
-<<<<<<< HEAD
-				state->overwrittenRecPtr = state->currRecPtr;
-				ResetDecoder(state);
-||||||| e1c1c30f635
-=======
 				state->overwrittenRecPtr = RecPtr;
->>>>>>> adadae45816
 				RecPtr = targetPagePtr;
 				goto restart;
 			}
@@ -931,13 +916,9 @@ err:
 		state->abortedRecPtr = RecPtr;
 		state->missingContrecPtr = targetPagePtr;
 	}
-<<<<<<< HEAD
-||||||| e1c1c30f635
-=======
 
 	if (decoded && decoded->oversized)
 		pfree(decoded);
->>>>>>> adadae45816
 
 	/*
 	 * Invalidate the read state. We might read from a different source after
@@ -1350,7 +1331,6 @@ XLogReaderValidatePageHeader(XLogReaderState *state, XLogRecPtr recptr,
 	return true;
 }
 
-<<<<<<< HEAD
 /*
  * In GPDB, this is used in the test in src/test/walrep, so we need it in the
  * backend, too.
@@ -1364,16 +1344,6 @@ XLogReaderValidatePageHeader(XLogReaderState *state, XLogRecPtr recptr,
  * here.
  */
 
-||||||| e1c1c30f635
-#ifdef FRONTEND
-/*
- * Functions that are currently not needed in the backend, but are better
- * implemented inside xlogreader.c because of the internal facilities available
- * here.
- */
-
-=======
->>>>>>> adadae45816
 /*
  * Find the first record with an lsn >= RecPtr.
  *
@@ -1493,6 +1463,8 @@ err:
 
 	return InvalidXLogRecPtr;
 }
+
+#endif							/* FRONTEND */
 
 /*
  * Helper function to ease writing of XLogRoutine->page_read callbacks.
@@ -2079,14 +2051,6 @@ RestoreBlockImage(XLogReaderState *record, uint8 block_id, char *page)
 	{
 		char errormessage[MAX_ERRORMSG_LEN];
 		/* If a backup block image is compressed, decompress it */
-<<<<<<< HEAD
-		if (!zstd_decompress_backupblock(ptr, bkpb->bimg_len, tmp.data,
-										 BLCKSZ - bkpb->hole_length,
-										 errormessage))
-||||||| e1c1c30f635
-		if (pglz_decompress(ptr, bkpb->bimg_len, tmp.data,
-							BLCKSZ - bkpb->hole_length, true) < 0)
-=======
 		bool		decomp_success = true;
 
 		if ((bkpb->bimg_info & BKPIMAGE_COMPRESS_PGLZ) != 0)
@@ -2135,7 +2099,6 @@ RestoreBlockImage(XLogReaderState *record, uint8 block_id, char *page)
 		}
 
 		if (!decomp_success)
->>>>>>> adadae45816
 		{
 			report_invalid_record(record, "invalid compressed image at %X/%X, block %d (%s)",
 								  LSN_FORMAT_ARGS(record->ReadRecPtr),

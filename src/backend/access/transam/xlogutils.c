@@ -8,15 +8,9 @@
  * None of this code is used during normal system operation.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/backend/access/transam/xlogutils.c
@@ -486,16 +480,6 @@ XLogReadBufferExtended(RelFileNode rnode, ForkNumber forknum,
 
 	Assert(blkno != P_NEW);
 
-<<<<<<< HEAD
-	/*
-	 * Open the relation at smgr level.  Relations using shared buffers need
-	 * the default SMGR implementation.
-	 */
-	smgr = smgropen(rnode, InvalidBackendId, SMGR_MD);
-||||||| e1c1c30f635
-	/* Open the relation at smgr level */
-	smgr = smgropen(rnode, InvalidBackendId);
-=======
 	/* Do we have a clue where the buffer might be already? */
 	if (BufferIsValid(recent_buffer) &&
 		mode == RBM_NORMAL &&
@@ -505,9 +489,11 @@ XLogReadBufferExtended(RelFileNode rnode, ForkNumber forknum,
 		goto recent_buffer_fast_path;
 	}
 
-	/* Open the relation at smgr level */
-	smgr = smgropen(rnode, InvalidBackendId);
->>>>>>> adadae45816
+	/*
+	 * Open the relation at smgr level.  Relations using shared buffers need
+	 * the default SMGR implementation.
+	 */
+	smgr = smgropen(rnode, InvalidBackendId, SMGR_MD);
 
 	/*
 	 * Create the target file if it doesn't already exist.  This lets us cope

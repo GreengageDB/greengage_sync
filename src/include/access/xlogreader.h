@@ -308,19 +308,6 @@ struct XLogReaderState
 
 	/* Buffer to hold error message */
 	char	   *errormsg_buf;
-<<<<<<< HEAD
-
-	/*
-	 * Set at the end of recovery: the start point of a partial record at the
-	 * end of WAL (InvalidXLogRecPtr if there wasn't one), and the start
-	 * location of its first contrecord that went missing.
-	 */
-	XLogRecPtr	abortedRecPtr;
-	XLogRecPtr	missingContrecPtr;
-	/* Set when XLP_FIRST_IS_OVERWRITE_CONTRECORD is found */
-	XLogRecPtr	overwrittenRecPtr;
-||||||| e1c1c30f635
-=======
 	bool		errormsg_deferred;
 
 	/*
@@ -328,7 +315,6 @@ struct XLogReaderState
 	 * data.
 	 */
 	bool		nonblocking;
->>>>>>> adadae45816
 };
 
 /*
@@ -357,12 +343,6 @@ extern void XLogReaderSetDecodeBuffer(XLogReaderState *state,
 
 /* Position the XLogReader to given record */
 extern void XLogBeginRead(XLogReaderState *state, XLogRecPtr RecPtr);
-<<<<<<< HEAD
-||||||| e1c1c30f635
-#ifdef FRONTEND
-extern XLogRecPtr XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr);
-#endif							/* FRONTEND */
-=======
 extern XLogRecPtr XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr);
 
 /* Return values from XLogPageReadCB. */
@@ -372,7 +352,6 @@ typedef enum XLogPageReadResult
 	XLREAD_FAIL = -1,			/* failed during reading a record */
 	XLREAD_WOULDBLOCK = -2		/* nonblocking mode only, no data */
 } XLogPageReadResult;
->>>>>>> adadae45816
 
 /* Read the next XLog record. Returns NULL on end-of-WAL or failure */
 extern struct XLogRecord *XLogReadRecord(XLogReaderState *state,
@@ -392,12 +371,6 @@ extern DecodedXLogRecord *XLogReadAhead(XLogReaderState *state,
 /* Validate a page */
 extern bool XLogReaderValidatePageHeader(XLogReaderState *state,
 										 XLogRecPtr recptr, char *phdr);
-
-/* In GPDB, this is needed in the backend, too, for WAL replication tests. */
-/* #ifdef FRONTEND */
-#if 1
-extern XLogRecPtr XLogFindNextRecord(XLogReaderState *state, XLogRecPtr RecPtr);
-#endif							/* FRONTEND */
 
 /*
  * Error information from WALRead that both backend and frontend caller can

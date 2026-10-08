@@ -17,17 +17,11 @@
 #include "access/xlog_internal.h"
 #include "catalog/pg_control.h"
 #include "lib/stringinfo.h"
-<<<<<<< HEAD
 #include "storage/buf.h"
 #include "storage/fd.h"
 #include "utils/pg_crc.h"
 #include "utils/relcache.h"
 #include "cdb/cdbpublic.h"
-||||||| e1c1c30f635
-#include "nodes/pg_list.h"
-#include "storage/fd.h"
-=======
->>>>>>> adadae45816
 #include "nodes/pg_list.h"
 
 
@@ -44,66 +38,6 @@ extern PGDLLIMPORT XLogRecPtr XactLastRecEnd;
 extern PGDLLIMPORT XLogRecPtr XactLastCommitEnd;
 
 /* these variables are GUC parameters related to XLOG */
-<<<<<<< HEAD
-extern int	wal_segment_size;
-extern int	min_wal_size_mb;
-extern int	max_wal_size_mb;
-extern int	wal_keep_size_mb;
-extern int	max_slot_wal_keep_size_mb;
-extern int	XLOGbuffers;
-extern int	XLogArchiveTimeout;
-extern int	wal_retrieve_retry_interval;
-extern char *XLogArchiveCommand;
-extern bool EnableHotStandby;
-
-extern bool fullPageWrites;
-extern bool wal_log_hints;
-extern bool wal_compression;
-extern bool wal_init_zero;
-extern bool wal_recycle;
-extern bool *wal_consistency_checking;
-extern char *wal_consistency_checking_string;
-extern bool log_checkpoints;
-extern char *recoveryRestoreCommand;
-extern char *recoveryEndCommand;
-extern char *archiveCleanupCommand;
-extern bool recoveryTargetInclusive;
-extern int	recoveryTargetAction;
-extern int	recovery_min_apply_delay;
-extern char *PrimaryConnInfo;
-extern char *PrimarySlotName;
-extern bool wal_receiver_create_temp_slot;
-extern bool track_wal_io_timing;
-||||||| e1c1c30f635
-extern int	wal_segment_size;
-extern int	min_wal_size_mb;
-extern int	max_wal_size_mb;
-extern int	wal_keep_size_mb;
-extern int	max_slot_wal_keep_size_mb;
-extern int	XLOGbuffers;
-extern int	XLogArchiveTimeout;
-extern int	wal_retrieve_retry_interval;
-extern char *XLogArchiveCommand;
-extern bool EnableHotStandby;
-extern bool fullPageWrites;
-extern bool wal_log_hints;
-extern bool wal_compression;
-extern bool wal_init_zero;
-extern bool wal_recycle;
-extern bool *wal_consistency_checking;
-extern char *wal_consistency_checking_string;
-extern bool log_checkpoints;
-extern char *recoveryRestoreCommand;
-extern char *recoveryEndCommand;
-extern char *archiveCleanupCommand;
-extern bool recoveryTargetInclusive;
-extern int	recoveryTargetAction;
-extern int	recovery_min_apply_delay;
-extern char *PrimaryConnInfo;
-extern char *PrimarySlotName;
-extern bool wal_receiver_create_temp_slot;
-extern bool track_wal_io_timing;
-=======
 extern PGDLLIMPORT int wal_segment_size;
 extern PGDLLIMPORT int min_wal_size_mb;
 extern PGDLLIMPORT int max_wal_size_mb;
@@ -124,7 +58,6 @@ extern PGDLLIMPORT char *wal_consistency_checking_string;
 extern PGDLLIMPORT bool log_checkpoints;
 extern PGDLLIMPORT bool track_wal_io_timing;
 extern PGDLLIMPORT int wal_decode_buffer_size;
->>>>>>> adadae45816
 
 extern PGDLLIMPORT int CheckPointSegments;
 
