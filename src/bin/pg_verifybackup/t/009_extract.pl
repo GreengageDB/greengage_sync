@@ -56,7 +56,8 @@ for my $tc (@test_configuration)
 		# Take backup with server compression enabled.
 		my @backup = (
 			'pg_basebackup', '-D', $backup_path,
-			'-Xfetch', '--no-sync', '-cfast', '-Fp');
+			'-Xfetch', '--no-sync', '-cfast', '-Fp',
+			'--target-gp-dbid', '1');
 		push @backup, @{ $tc->{'backup_flags'} };
 
 		my @verify = ('pg_verifybackup', '-e', $backup_path);

@@ -68,7 +68,8 @@ for my $tc (@test_configuration)
 		my @backup = (
 			'pg_basebackup',       '--no-sync',
 			'-cfast',              '--target',
-			"server:$backup_path", '-Xfetch');
+			"server:$backup_path", '-Xfetch',
+			'--target-gp-dbid',    '1');
 		push @backup, @{ $tc->{'backup_flags'} };
 		$primary->command_ok(\@backup,
 			"server side backup, compression $method");

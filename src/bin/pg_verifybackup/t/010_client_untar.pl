@@ -77,7 +77,8 @@ for my $tc (@test_configuration)
 		# Take a client-side backup.
 		my @backup = (
 			'pg_basebackup', '-D', $backup_path,
-			'-Xfetch', '--no-sync', '-cfast', '-Ft');
+			'-Xfetch', '--no-sync', '-cfast', '-Ft',
+			'--target-gp-dbid', '1');
 		push @backup, @{ $tc->{'backup_flags'} };
 		my $backup_stdout = '';
 		my $backup_stderr = '';

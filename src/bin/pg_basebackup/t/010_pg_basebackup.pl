@@ -43,11 +43,17 @@ $node->command_fails(['pg_basebackup', '--target-gp-dbid', '123'],
 
 # Sanity checks for options
 $node->command_fails_like(
-	[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress', 'none:1' ],
+	[
+		'pg_basebackup', '-D', "$tempdir/backup", '--compress', 'none:1',
+		'--target-gp-dbid', '123'
+	],
 	qr/\Qcompression algorithm "none" does not accept a compression level/,
 	'failure if method "none" specified with compression level');
 $node->command_fails_like(
-	[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress', 'none+' ],
+	[
+		'pg_basebackup', '-D', "$tempdir/backup", '--compress', 'none+',
+		'--target-gp-dbid', '123'
+	],
 	qr/\Qunrecognized compression algorithm "none+"/,
 	'failure on incorrect separator to define compression level');
 

@@ -3012,10 +3012,11 @@ main(int argc, char **argv)
 	 * probes once it is promoted ("PROBE received dbid:N doesn't match this
 	 * segments configured dbid").  In tar mode the file must be added manually
 	 * (see note above), so only do this for plain-format backups extracted
-	 * into basedir.  (The PG15 merge dropped this call when pg_basebackup's
+	 * into basedir; a backup sent to a server-side target has no local
+	 * directory.  (The PG15 merge dropped this call when pg_basebackup's
 	 * receive path was rewritten around bbstreamer.)
 	 */
-	if (format == 'p')
+	if (format == 'p' && backup_target == NULL)
 		WriteInternalConfFile();
 
 	success = true;
