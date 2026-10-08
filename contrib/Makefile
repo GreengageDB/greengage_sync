@@ -45,13 +45,7 @@ SUBDIRS = \
 		pgrowlocks	\
 		pgstattuple	\
 		pg_visibility	\
-<<<<<<< HEAD
-||||||| e1c1c30f635
-		postgres_fdw	\
-=======
 		pg_walinspect	\
-		postgres_fdw	\
->>>>>>> adadae45816
 		seg		\
 		spi		\
 		tablefunc	\
