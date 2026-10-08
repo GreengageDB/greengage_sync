@@ -870,14 +870,8 @@ makeOperatorDependencies(HeapTuple tuple,
 							oper->oprowner);
 
 	/* Dependency on extension */
-<<<<<<< HEAD
-	recordDependencyOnCurrentExtension(&myself, isUpdate);
-||||||| e1c1c30f635
-	recordDependencyOnCurrentExtension(&myself, true);
-=======
 	if (makeExtensionDep)
 		recordDependencyOnCurrentExtension(&myself, true);
->>>>>>> adadae45816
 
 	return myself;
 }

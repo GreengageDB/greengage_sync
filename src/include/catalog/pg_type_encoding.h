@@ -23,7 +23,7 @@
  *		typedef struct FormData_pg_type_encoding
  * ----------------
  */
-CATALOG(pg_type_encoding,6220,TypeEncodingRelationId)
+CATALOG(pg_type_encoding,7032,TypeEncodingRelationId)
 {
 	Oid		typid BKI_LOOKUP(pg_type);
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */
@@ -39,9 +39,8 @@ CATALOG(pg_type_encoding,6220,TypeEncodingRelationId)
  */
 typedef FormData_pg_type_encoding *Form_pg_type_encoding;
 
-DECLARE_TOAST(pg_type_encoding, 6222, 6223);
+DECLARE_TOAST(pg_type_encoding, 7034, 7035);
 
-DECLARE_UNIQUE_INDEX_PKEY(pg_type_encoding_typid_index, 6207, on pg_type_encoding using btree(typid oid_ops));
-#define TypeEncodingTypidIndexId	6207
+DECLARE_UNIQUE_INDEX_PKEY(pg_type_encoding_typid_index, 7038, TypeEncodingTypidIndexId, on pg_type_encoding using btree(typid oid_ops));
 
 #endif   /* PG_TYPE_ENCODING_H */
