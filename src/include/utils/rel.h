@@ -4,15 +4,9 @@
  *	  POSTGRES relation descriptor (a/k/a relcache entry) definitions.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2009, Greenplum inc.
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/utils/rel.h
@@ -624,7 +618,6 @@ typedef struct ViewOptions
  * each time you need to access the SMgrRelation.  It's quite cheap in
  * comparison to whatever an smgr function is going to do.
  */
-<<<<<<< HEAD
 #define RelationOpenSmgr(relation) \
 	do { \
 		if ((relation)->rd_smgr == NULL) \
@@ -633,21 +626,13 @@ typedef struct ViewOptions
 								  (relation)->rd_backend, \
 								  RelationIsAppendOptimized(relation)?SMGR_AO:SMGR_MD)); \
 	} while (0)
-||||||| e1c1c30f635
-#define RelationOpenSmgr(relation) \
-	do { \
-		if ((relation)->rd_smgr == NULL) \
-			smgrsetowner(&((relation)->rd_smgr), smgropen((relation)->rd_node, (relation)->rd_backend)); \
-	} while (0)
-=======
 static inline SMgrRelation
 RelationGetSmgr(Relation rel)
 {
 	if (unlikely(rel->rd_smgr == NULL))
-		smgrsetowner(&(rel->rd_smgr), smgropen(rel->rd_node, rel->rd_backend));
+		smgrsetowner(&(rel->rd_smgr), smgropen(rel->rd_node, rel->rd_backend, RelationIsAppendOptimized(rel) ? SMGR_AO : SMGR_MD));
 	return rel->rd_smgr;
 }
->>>>>>> adadae45816
 
 /*
  * RelationCloseSmgr
@@ -720,7 +705,7 @@ RelationGetSmgr(Relation rel)
  * that do not use shared/local buffers.
  */
 #define RelationUsesBufferManager(relation) \
-	((relation)->rd_smgr->smgr_which == SMGR_MD)
+	(RelationGetSmgr(relation)->smgr_which == SMGR_MD)
 
 /*
  * RelationUsesTempNamespace
