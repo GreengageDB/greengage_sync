@@ -149,12 +149,14 @@ SELECT * FROM pg_cursors;
 
 
 -- check handling of an error during COMMIT
+-- GPDB: foreign keys are not enforced, so a deferred foreign key check
+-- cannot fail the COMMIT.  Use a deferred primary key violation instead.
 CREATE TABLE testpk (id int PRIMARY KEY);
-CREATE TABLE testfk(f1 int REFERENCES testpk DEFERRABLE INITIALLY DEFERRED);
+CREATE TABLE testfk(f1 int PRIMARY KEY DEFERRABLE INITIALLY DEFERRED);
 
 DO LANGUAGE plpython3u $$
 # this insert will fail during commit:
-plpy.execute("INSERT INTO testfk VALUES (0)")
+plpy.execute("INSERT INTO testfk VALUES (0), (0)")
 plpy.commit()
 plpy.warning('should not get here')
 $$;
@@ -164,7 +166,7 @@ SELECT * FROM testfk;
 
 DO LANGUAGE plpython3u $$
 # this insert will fail during commit:
-plpy.execute("INSERT INTO testfk VALUES (0)")
+plpy.execute("INSERT INTO testfk VALUES (0), (0)")
 try:
     plpy.commit()
 except Exception as e:
