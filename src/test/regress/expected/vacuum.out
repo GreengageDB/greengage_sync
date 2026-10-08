@@ -71,7 +71,7 @@ CREATE INDEX ON vaccluster(wrap_do_analyze(i));
 -- support that in short time. Note this causes "ANALYZE/VACUUM FULL vaccluster"
 -- succeed (On PG it fails: "ERROR:  ANALYZE cannot be executed from VACUUM or ANALYZE")
 INSERT INTO vaccluster VALUES (1), (2);
-ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg1 127.0.0.1:25433 pid=15126)
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement  (seg0 172.17.0.3:7002 pid=542198)
 CONTEXT:  SQL function "do_analyze" during startup
 SQL function "wrap_do_analyze" statement 1
 ANALYZE vaccluster;
@@ -189,7 +189,7 @@ VACUUM (INDEX_CLEANUP FALSE, FREEZE TRUE) vaccluster;
 CREATE TEMP TABLE vac_truncate_test(i INT NOT NULL, j text)
 	WITH (vacuum_truncate=true, autovacuum_enabled=false);
 INSERT INTO vac_truncate_test VALUES (1, NULL), (NULL, NULL);
-ERROR:  null value in column "i" of relation "vac_truncate_test" violates not-null constraint
+ERROR:  null value in column "i" of relation "vac_truncate_test" violates not-null constraint  (seg0 172.17.0.3:7002 pid=542198)
 DETAIL:  Failing row contains (null, null).
 VACUUM (TRUNCATE FALSE, DISABLE_PAGE_SKIPPING) vac_truncate_test;
 SELECT pg_relation_size('vac_truncate_test') > 0;
@@ -219,19 +219,16 @@ VACUUM (FREEZE) vacparted;
 VACUUM ANALYZE vacparted(a,b,a);
 ERROR:  column "a" of relation "vacparted1" appears more than once
 ANALYZE vacparted(a,b,b);
-<<<<<<< HEAD
 ERROR:  column "b" of relation "vacparted1" appears more than once
-||||||| e1c1c30f635
-ERROR:  column "b" of relation "vacparted" appears more than once
-=======
-ERROR:  column "b" of relation "vacparted" appears more than once
 -- partitioned table with index
 CREATE TABLE vacparted_i (a int primary key, b varchar(100))
   PARTITION BY HASH (a);
 CREATE TABLE vacparted_i1 PARTITION OF vacparted_i
   FOR VALUES WITH (MODULUS 2, REMAINDER 0);
+NOTICE:  table has parent, setting distribution columns to match parent table
 CREATE TABLE vacparted_i2 PARTITION OF vacparted_i
   FOR VALUES WITH (MODULUS 2, REMAINDER 1);
+NOTICE:  table has parent, setting distribution columns to match parent table
 INSERT INTO vacparted_i SELECT i, 'test_'|| i from generate_series(1,10) i;
 VACUUM (ANALYZE) vacparted_i;
 VACUUM (FULL) vacparted_i;
@@ -247,7 +244,6 @@ SELECT relname, relhasindex FROM pg_class
 (3 rows)
 
 DROP TABLE vacparted_i;
->>>>>>> adadae45816
 -- multiple tables specified
 VACUUM vaccluster, vactst;
 VACUUM vacparted, does_not_exist;
