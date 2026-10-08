@@ -1914,6 +1914,30 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 	XLogRecoveryCtl->lastReplayedTLI = *replayTLI;
 	SpinLockRelease(&XLogRecoveryCtl->info_lck);
 
+	if (create_restartpoint_on_ckpt_record_replay && ArchiveRecoveryRequested)
+	{
+		/*
+		 * Create restartpoint on checkpoint record if requested.
+		 *
+		 * The checkpointer creates restartpoints during archive recovery at
+		 * its own leisure. But gp_replica_check fails with this, because it
+		 * bypasses the shared buffer cache and reads directly from disk. So,
+		 * via GUC it can request to force creating restart point mainly to
+		 * flush the shared buffers to disk.
+		 */
+		uint8		xlogRecInfo = record->xl_info & ~XLR_INFO_MASK;
+
+		if (record->xl_rmid == RM_XLOG_ID &&
+			(xlogRecInfo == XLOG_CHECKPOINT_SHUTDOWN ||
+			 xlogRecInfo == XLOG_CHECKPOINT_ONLINE))
+		{
+			if (IsUnderPostmaster)
+				RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_WAIT);
+			else
+				elog(LOG, "Skipping CreateRestartPoint() as checkpointer is not launched.");
+		}
+	}
+
 	/*
 	 * If rm_redo called XLogRequestWalReceiverReply, then we wake up the
 	 * receiver so that it notices the updated lastReplayedEndRecPtr and sends
