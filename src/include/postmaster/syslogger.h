@@ -3,7 +3,7 @@
  * syslogger.h
  *	  Exports from postmaster/syslogger.c.
  *
- * Copyright (c) 2004-2022, PostgreSQL Global Development Group
+ * Copyright (c) 2004-2021, PostgreSQL Global Development Group
  *
  * src/include/postmaster/syslogger.h
  *
@@ -64,7 +64,6 @@ typedef struct
 	int32		zero;			/* leading zero */
 	int32		len;			/* len, not including hdr */
 	int32		pid;			/* writer's pid */
-<<<<<<< HEAD
 	int32       thid;			/* thread id */
 	int32		main_thid;		/* main thread id */
 	int32		chunk_no;		/* chunk number */
@@ -73,14 +72,6 @@ typedef struct
 	char		is_segv_msg;	/* indicate whether this is a message sent in SEGV/BUS/ILL handler */
 	int64		log_line_number;	/* indicate the order of the message */
 	int64		next;			/* next chained chunk.  also force an 8 bytes align */
-||||||| e1c1c30f635
-	char		is_last;		/* last chunk of message? 't' or 'f' ('T' or
-								 * 'F' for CSV case) */
-	char		data[FLEXIBLE_ARRAY_MEMBER];	/* data payload starts here */
-=======
-	bits8		flags;			/* bitmask of PIPE_PROTO_* */
-	char		data[FLEXIBLE_ARRAY_MEMBER];	/* data payload starts here */
->>>>>>> adadae45816
 } PipeProtoHeader;
 
 #define PIPE_HEADER_UNALIGNED_SIZE  sizeof(PipeProtoHeader)
@@ -96,7 +87,6 @@ typedef struct
 
 #define PIPE_HEADER_SIZE offsetof(PipeProtoChunk, data)
 
-<<<<<<< HEAD
 typedef struct CSVChunkStr
 {
     const PipeProtoChunk *chunk;
@@ -172,38 +162,21 @@ typedef struct
 	/* The depth of stack frame addresses that are stored after this structure */
 	int32 frame_depth;
 } GpSegvErrorData;
-||||||| e1c1c30f635
-=======
-/* flag bits for PipeProtoHeader->flags */
-#define PIPE_PROTO_IS_LAST	0x01	/* last chunk of message? */
-/* log destinations */
-#define PIPE_PROTO_DEST_STDERR	0x10
-#define PIPE_PROTO_DEST_CSVLOG	0x20
-#define PIPE_PROTO_DEST_JSONLOG	0x40
->>>>>>> adadae45816
 
 /* GUC options */
-extern PGDLLIMPORT bool Logging_collector;
-extern PGDLLIMPORT int Log_RotationAge;
-extern PGDLLIMPORT int Log_RotationSize;
+extern bool Logging_collector;
+extern int	Log_RotationAge;
+extern int	Log_RotationSize;
 extern PGDLLIMPORT char *Log_directory;
 extern PGDLLIMPORT char *Log_filename;
-<<<<<<< HEAD
 extern bool Log_truncate_on_rotation;
 extern int	Log_file_mode;
 extern int gp_log_format;
-||||||| e1c1c30f635
-extern bool Log_truncate_on_rotation;
-extern int	Log_file_mode;
-=======
-extern PGDLLIMPORT bool Log_truncate_on_rotation;
-extern PGDLLIMPORT int Log_file_mode;
->>>>>>> adadae45816
 
 #ifndef WIN32
-extern PGDLLIMPORT int syslogPipe[2];
+extern int	syslogPipe[2];
 #else
-extern PGDLLIMPORT HANDLE syslogPipe[2];
+extern HANDLE syslogPipe[2];
 #endif
 
 
