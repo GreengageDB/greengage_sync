@@ -4,15 +4,9 @@
  *	   routines for accessing the system catalogs
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc.
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1206,26 +1200,11 @@ estimate_rel_size(Relation rel, int32 *attr_widths,
 	BlockNumber relallvisible;
 	double		density;
 
-	if (RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind))
+	if (RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind) ||
+		rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||
+		rel->rd_rel->relkind == RELKIND_AOBLOCKDIR ||
+		rel->rd_rel->relkind == RELKIND_AOVISIMAP)
 	{
-<<<<<<< HEAD
-		case RELKIND_RELATION:
-		case RELKIND_MATVIEW:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_AOSEGMENTS:
-		case RELKIND_AOBLOCKDIR:
-		case RELKIND_AOVISIMAP:
-			table_relation_estimate_size(rel, attr_widths, pages, tuples,
-										 allvisfrac);
-			break;
-||||||| e1c1c30f635
-		case RELKIND_RELATION:
-		case RELKIND_MATVIEW:
-		case RELKIND_TOASTVALUE:
-			table_relation_estimate_size(rel, attr_widths, pages, tuples,
-										 allvisfrac);
-			break;
-=======
 		table_relation_estimate_size(rel, attr_widths, pages, tuples,
 									 allvisfrac);
 	}
@@ -1235,7 +1214,6 @@ estimate_rel_size(Relation rel, int32 *attr_widths,
 		 * XXX: It'd probably be good to move this into a callback, individual
 		 * index types e.g. know if they have a metapage.
 		 */
->>>>>>> adadae45816
 
 		/* it has storage, ok to call the smgr */
 		curpages = RelationGetNumberOfBlocks(rel);

@@ -965,8 +965,7 @@ add_row_identity_columns(PlannerInfo *root, Index rtindex,
 		IsAppendonlyMetadataRelkind(relkind))
 	{
 		/*
-		 * Emit CTID so that executor can find the row to merge, update or
-		 * delete.
+		 * Emit CTID so that executor can find the row to update or delete.
 		 */
 		var = makeVar(rtindex,
 					  SelfItemPointerAttributeNumber,

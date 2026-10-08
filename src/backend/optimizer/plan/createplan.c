@@ -5,15 +5,9 @@
  *	  Planning is complete, we just need to convert the selected
  *	  Path into a Plan.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -233,13 +227,7 @@ static IndexScan *make_indexscan(List *qptlist, List *qpqual, Index scanrelid,
 								 ScanDirection indexscandir);
 static IndexOnlyScan *make_indexonlyscan(List *qptlist, List *qpqual,
 										 Index scanrelid, Oid indexid,
-<<<<<<< HEAD
 										 List *indexqual, List *indexqualorig,
-||||||| e1c1c30f635
-										 List *indexqual, List *indexorderby,
-=======
-										 List *indexqual, List *recheckqual,
->>>>>>> adadae45816
 										 List *indexorderby,
 										 List *indextlist,
 										 ScanDirection indexscandir);
@@ -330,26 +318,10 @@ static IncrementalSort *make_incrementalsort_from_pathkeys(Plan *lefttree,
 static Sort *make_sort_from_groupcols(List *groupcls,
 									  AttrNumber *grpColIdx,
 									  Plan *lefttree);
-<<<<<<< HEAD
-static ResultCache *make_resultcache(Plan *lefttree, Oid *hashoperators,
-									 Oid *collations,
-									 List *param_exprs,
-									 bool singlerow,
-									 uint32 est_entries);
-||||||| e1c1c30f635
-static Material *make_material(Plan *lefttree);
-static ResultCache *make_resultcache(Plan *lefttree, Oid *hashoperators,
-									 Oid *collations,
-									 List *param_exprs,
-									 bool singlerow,
-									 uint32 est_entries);
-=======
-static Material *make_material(Plan *lefttree);
 static Memoize *make_memoize(Plan *lefttree, Oid *hashoperators,
 							 Oid *collations, List *param_exprs,
 							 bool singlerow, bool binary_mode,
 							 uint32 est_entries, Bitmapset *keyparamids);
->>>>>>> adadae45816
 static WindowAgg *make_windowagg(List *tlist, Index winref,
 								 int partNumCols, AttrNumber *partColIdx, Oid *partOperators, Oid *partCollations,
 								 int ordNumCols, AttrNumber *ordColIdx, Oid *ordOperators, Oid *ordCollations,
@@ -376,15 +348,9 @@ static ModifyTable *make_modifytable(PlannerInfo *root, Plan *subplan,
 									 List *resultRelations,
 									 List *updateColnosLists,
 									 List *withCheckOptionLists, List *returningLists,
-<<<<<<< HEAD
 									 bool isSplitUpdate,
-									 List *rowMarks, OnConflictExpr *onconflict, int epqParam);
-||||||| e1c1c30f635
-									 List *rowMarks, OnConflictExpr *onconflict, int epqParam);
-=======
 									 List *rowMarks, OnConflictExpr *onconflict,
-									 List *mergeActionList, int epqParam);
->>>>>>> adadae45816
+									 List *mergeActionLists, int epqParam);
 static GatherMerge *create_gather_merge_plan(PlannerInfo *root,
 											 GatherMergePath *best_path);
 
@@ -4873,35 +4839,6 @@ create_ctescan_plan(PlannerInfo *root, Path *best_path,
 	}
 	if (lc == NULL)				/* shouldn't happen */
 		elog(ERROR, "could not find CTE \"%s\"", rte->ctename);
-<<<<<<< HEAD
-||||||| e1c1c30f635
-	if (ndx >= list_length(cteroot->cte_plan_ids))
-		elog(ERROR, "could not find plan for CTE \"%s\"", rte->ctename);
-	plan_id = list_nth_int(cteroot->cte_plan_ids, ndx);
-	Assert(plan_id > 0);
-	foreach(lc, cteroot->init_plans)
-	{
-		ctesplan = (SubPlan *) lfirst(lc);
-		if (ctesplan->plan_id == plan_id)
-			break;
-	}
-	if (lc == NULL)				/* shouldn't happen */
-		elog(ERROR, "could not find plan for CTE \"%s\"", rte->ctename);
-=======
-	if (ndx >= list_length(cteroot->cte_plan_ids))
-		elog(ERROR, "could not find plan for CTE \"%s\"", rte->ctename);
-	plan_id = list_nth_int(cteroot->cte_plan_ids, ndx);
-	if (plan_id <= 0)
-		elog(ERROR, "no plan was made for CTE \"%s\"", rte->ctename);
-	foreach(lc, cteroot->init_plans)
-	{
-		ctesplan = (SubPlan *) lfirst(lc);
-		if (ctesplan->plan_id == plan_id)
-			break;
-	}
-	if (lc == NULL)				/* shouldn't happen */
-		elog(ERROR, "could not find plan for CTE \"%s\"", rte->ctename);
->>>>>>> adadae45816
 
 	/*
 	 * In PostgreSQL, we use the index to look up the plan ID in the
@@ -5280,7 +5217,7 @@ remove_isnotfalse(List *clauses)
 	{
 		Node *node = (Node *) lfirst(l);
 
-		if (IsA(node, Expr) || IsA(node, BooleanTest))
+		if (IsA(node, BooleanTest))
 		{
 			Expr *expr = (Expr *) node;
 
@@ -5393,7 +5330,7 @@ create_nestloop_plan(PlannerInfo *root,
 	bool		partition_selectors_created;
 	bool		prefetch = false;
 
-	push_partition_selector_candidate_for_join(root, best_path);
+	push_partition_selector_candidate_for_join(root, &best_path->jpath);
 
 #if  0
 	/*
@@ -5404,7 +5341,7 @@ create_nestloop_plan(PlannerInfo *root,
 	joinrestrictclauses =
 		select_nonredundant_join_clauses(root,
 										 joinrestrictclauses,
-										 best_path->innerjoinpath);
+										 best_path->jpath.innerjoinpath);
 #endif
 
 	/* NestLoop can project, so no need to be picky about child tlists */
@@ -5415,7 +5352,7 @@ create_nestloop_plan(PlannerInfo *root,
 	 * inject Partition Selectors to the inner side.
 	 */
 	partition_selectors_created =
-		pop_and_inject_partition_selectors(root, best_path);
+		pop_and_inject_partition_selectors(root, &best_path->jpath);
 
 	/* For a nestloop, include outer relids in curOuterRels for inner side */
 	root->curOuterRels = bms_union(root->curOuterRels,
@@ -5434,8 +5371,8 @@ create_nestloop_plan(PlannerInfo *root,
 	 * NOTE: materialize_finished_plan() does *almost* what we want -- except
 	 * we aren't finished.
 	 */
-	if (best_path->innerjoinpath->motionHazard ||
-		!best_path->innerjoinpath->rescannable)
+	if (best_path->jpath.innerjoinpath->motionHazard ||
+		!best_path->jpath.innerjoinpath->rescannable)
 	{
 		Plan	   *p;
 		Material   *mat;
@@ -5473,7 +5410,7 @@ create_nestloop_plan(PlannerInfo *root,
 		 * MPP-1657: Even if there is already a materialize here, we
 		 * may need to update its strictness.
 		 */
-		if (best_path->outerjoinpath->motionHazard)
+		if (best_path->jpath.outerjoinpath->motionHazard)
 		{
 			mat->cdb_strict = true;
 			prefetch = true;
@@ -5502,7 +5439,7 @@ create_nestloop_plan(PlannerInfo *root,
 		otherclauses = NIL;
 	}
 
-	if (best_path->jointype == JOIN_LASJ_NOTIN)
+	if (best_path->jpath.jointype == JOIN_LASJ_NOTIN)
 	{
 		joinclauses = remove_isnotfalse(joinclauses);
 	}
@@ -5534,9 +5471,9 @@ create_nestloop_plan(PlannerInfo *root,
 
 	copy_generic_path_info(&join_plan->join.plan, &best_path->jpath.path);
 
-	if (IsA(best_path->innerjoinpath, MaterialPath))
+	if (IsA(best_path->jpath.innerjoinpath, MaterialPath))
 	{
-		MaterialPath *mp = (MaterialPath *) best_path->innerjoinpath;
+		MaterialPath *mp = (MaterialPath *) best_path->jpath.innerjoinpath;
 
 		if (mp->cdb_strict)
 			prefetch = true;
@@ -5561,16 +5498,16 @@ create_nestloop_plan(PlannerInfo *root,
 	 *
 	 * See ExecPrefetchJoinQual() for details.
 	 */
-	if (best_path->outerjoinpath &&
-		best_path->outerjoinpath->motionHazard &&
+	if (best_path->jpath.outerjoinpath &&
+		best_path->jpath.outerjoinpath->motionHazard &&
 		join_plan->join.joinqual != NIL)
 		join_plan->join.prefetch_joinqual = true;
 
 	/*
 	 * Similar for non join qual.
 	 */
-	if (best_path->outerjoinpath &&
-		best_path->outerjoinpath->motionHazard &&
+	if (best_path->jpath.outerjoinpath &&
+		best_path->jpath.outerjoinpath->motionHazard &&
 		join_plan->join.plan.qual != NIL)
 		join_plan->join.prefetch_qual = true;
 
@@ -6880,12 +6817,7 @@ make_indexonlyscan(List *qptlist,
 				   Index scanrelid,
 				   Oid indexid,
 				   List *indexqual,
-<<<<<<< HEAD
 				   List *indexqualorig,
-||||||| e1c1c30f635
-=======
-				   List *recheckqual,
->>>>>>> adadae45816
 				   List *indexorderby,
 				   List *indextlist,
 				   ScanDirection indexscandir)
@@ -6900,12 +6832,8 @@ make_indexonlyscan(List *qptlist,
 	node->scan.scanrelid = scanrelid;
 	node->indexid = indexid;
 	node->indexqual = indexqual;
-<<<<<<< HEAD
 	node->indexqualorig = indexqualorig;
-||||||| e1c1c30f635
-=======
-	node->recheckqual = recheckqual;
->>>>>>> adadae45816
+	node->recheckqual = indexqualorig;
 	node->indexorderby = indexorderby;
 	node->indextlist = indextlist;
 	node->indexorderdir = indexscandir;
@@ -8492,15 +8420,9 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 				 List *resultRelations,
 				 List *updateColnosLists,
 				 List *withCheckOptionLists, List *returningLists,
-<<<<<<< HEAD
 				 bool isSplitUpdate,
-				 List *rowMarks, OnConflictExpr *onconflict, int epqParam)
-||||||| e1c1c30f635
-				 List *rowMarks, OnConflictExpr *onconflict, int epqParam)
-=======
 				 List *rowMarks, OnConflictExpr *onconflict,
 				 List *mergeActionLists, int epqParam)
->>>>>>> adadae45816
 {
 	ModifyTable *node = makeNode(ModifyTable);
 	List	   *fdw_private_list;

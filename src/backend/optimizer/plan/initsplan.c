@@ -3,15 +3,9 @@
  * initsplan.c
  *	  Target list, qualification, joininfo initialization routines
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -89,17 +83,7 @@ static bool check_outerjoin_delay(PlannerInfo *root, Relids *relids_p,
 static bool check_equivalence_delay(PlannerInfo *root,
 									RestrictInfo *restrictinfo);
 static bool check_redundant_nullability_qual(PlannerInfo *root, Node *clause);
-<<<<<<< HEAD
-static void check_resultcacheable(RestrictInfo *restrictinfo);
-||||||| e1c1c30f635
-static void check_mergejoinable(RestrictInfo *restrictinfo);
-static void check_hashjoinable(RestrictInfo *restrictinfo);
-static void check_resultcacheable(RestrictInfo *restrictinfo);
-=======
-static void check_mergejoinable(RestrictInfo *restrictinfo);
-static void check_hashjoinable(RestrictInfo *restrictinfo);
 static void check_memoizable(RestrictInfo *restrictinfo);
->>>>>>> adadae45816
 
 
 /*****************************************************************************

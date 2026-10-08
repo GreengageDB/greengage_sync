@@ -3,15 +3,9 @@
  * pathnode.c
  *	  Routines to manipulate pathlists and create path nodes
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -3764,24 +3758,12 @@ create_nestloop_path(PlannerInfo *root,
 		restrict_clauses = jclauses;
 	}
 
-<<<<<<< HEAD
-
 	pathnode = makeNode(NestPath);
-	pathnode->path.pathtype = T_NestLoop;
-	pathnode->path.parent = joinrel;
-	pathnode->path.pathtarget = joinrel->reltarget;
-	pathnode->path.param_info =
-||||||| e1c1c30f635
-	pathnode->path.pathtype = T_NestLoop;
-	pathnode->path.parent = joinrel;
-	pathnode->path.pathtarget = joinrel->reltarget;
-	pathnode->path.param_info =
-=======
+
 	pathnode->jpath.path.pathtype = T_NestLoop;
 	pathnode->jpath.path.parent = joinrel;
 	pathnode->jpath.path.pathtarget = joinrel->reltarget;
 	pathnode->jpath.path.param_info =
->>>>>>> adadae45816
 		get_joinrel_parampathinfo(root,
 								  joinrel,
 								  outer_path,
@@ -3801,13 +3783,13 @@ create_nestloop_path(PlannerInfo *root,
 	pathnode->jpath.innerjoinpath = inner_path;
 	pathnode->jpath.joinrestrictinfo = restrict_clauses;
 
-	pathnode->path.locus = join_locus;
-	pathnode->path.motionHazard = outer_path->motionHazard || inner_path->motionHazard;
+	pathnode->jpath.path.locus = join_locus;
+	pathnode->jpath.path.motionHazard = outer_path->motionHazard || inner_path->motionHazard;
 
 	/* we're only as rescannable as our child plans */
-	pathnode->path.rescannable = outer_path->rescannable && inner_path->rescannable;
+	pathnode->jpath.path.rescannable = outer_path->rescannable && inner_path->rescannable;
 
-	pathnode->path.sameslice_relids = bms_union(inner_path->sameslice_relids, outer_path->sameslice_relids);
+	pathnode->jpath.path.sameslice_relids = bms_union(inner_path->sameslice_relids, outer_path->sameslice_relids);
 
 	/*
 	 * inner_path & outer_path are possibly modified above. Let's recalculate
@@ -3825,7 +3807,7 @@ create_nestloop_path(PlannerInfo *root,
 		return (Path *) create_unique_rowid_path(root,
 												 joinrel,
 												 (Path *) pathnode,
-												 pathnode->innerjoinpath->parent->relids,
+												 pathnode->jpath.innerjoinpath->parent->relids,
 												 rowidexpr_id);
 	}
 
@@ -3848,7 +3830,7 @@ create_nestloop_path(PlannerInfo *root,
 	 */
 	return turn_volatile_seggen_to_singleqe(root,
 											(Path *) pathnode,
-											(Node *) (pathnode->joinrestrictinfo));
+											(Node *) (pathnode->jpath.joinrestrictinfo));
 }
 
 /*
@@ -5635,6 +5617,9 @@ adjust_modifytable_subpath(PlannerInfo *root, CmdType operation,
 	else if (operation == CMD_UPDATE && isSplitUpdate)
 		*subpath = create_split_update_path(root, commonRti, commonPolicy,
 											*subpath, resultRelations);
+	else if (operation == CMD_MERGE)
+		*subpath = create_motion_path_for_merge(root, commonRti, commonPolicy,
+												*subpath);
 	else
 		*subpath = create_motion_path_for_upddel(root, commonPolicy, *subpath,
 												 resultRelations, policies);

@@ -4,15 +4,9 @@
  *	  Post-processing of a completed plan tree: fix references to subplan
  *	  vars, compute regproc values for operators, etc
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -92,15 +86,15 @@ typedef struct
 typedef struct
 {
 	PlannerInfo *root;
-<<<<<<< HEAD
 	plan_tree_base_prefix base;
 } cdb_extract_plan_dependencies_context;
-||||||| e1c1c30f635
-=======
+
+typedef struct
+{
+	PlannerInfo *root;
 	indexed_tlist *subplan_itlist;
 	int			newvarno;
 } fix_windowagg_cond_context;
->>>>>>> adadae45816
 
 /*
  * Selecting the best alternative in an AlternativeSubPlan expression requires
@@ -216,17 +210,13 @@ static List *set_returning_clause_references(PlannerInfo *root,
 											 Plan *topplan,
 											 Index resultRelation,
 											 int rtoffset);
-<<<<<<< HEAD
 static  bool cdb_expr_requires_full_eval(Node *node);
 static Plan *cdb_insert_result_node(PlannerInfo *root,
 									Plan *plan, 
 									int rtoffset);
-||||||| e1c1c30f635
-=======
 static List *set_windowagg_runcondition_references(PlannerInfo *root,
 												   List *runcondition,
 												   Plan *plan);
->>>>>>> adadae45816
 
 static bool cdb_extract_plan_dependencies_walker(Node *node,
 									 cdb_extract_plan_dependencies_context *context);
@@ -475,20 +465,6 @@ set_plan_references(PlannerInfo *root, Plan *plan)
 	}
 
 	/* Now fix the Plan tree */
-<<<<<<< HEAD
-	Plan *retPlan = set_plan_refs(root, plan, rtoffset);
-
-#ifdef USE_ASSERT_CHECKING
-	/**
-	 * Ensuring that the output of setrefs behaves as expected.
-	 */
-	set_plan_references_output_asserts(glob, retPlan);
-#endif
-
-	return retPlan;
-||||||| e1c1c30f635
-	return set_plan_refs(root, plan, rtoffset);
-=======
 	result = set_plan_refs(root, plan, rtoffset);
 
 	/*
@@ -505,19 +481,17 @@ set_plan_references(PlannerInfo *root, Plan *plan)
 		{
 			int			ndx = foreach_current_index(lc);
 
-			/*
-			 * If it was used by some AlternativeSubPlan in this query level,
-			 * but wasn't selected as best by any AlternativeSubPlan, then we
-			 * don't need it.  Do not touch subplans that aren't parts of
-			 * AlternativeSubPlans.
-			 */
 			if (root->isAltSubplan[ndx] && !root->isUsedSubplan[ndx])
 				lfirst(lc) = NULL;
 		}
 	}
 
+#ifdef USE_ASSERT_CHECKING
+	/* GPDB: ensure the output of setrefs behaves as expected. */
+	set_plan_references_output_asserts(glob, result);
+#endif
+
 	return result;
->>>>>>> adadae45816
 }
 
 /*
@@ -724,7 +698,6 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 				if (cdb_expr_requires_full_eval((Node *)plan->targetlist))
 					return cdb_insert_result_node(root, plan, rtoffset);
 
-<<<<<<< HEAD
 				splan->scanrelid += rtoffset;
 
 				/* If the scan appears below a shareinput, we hit this assert. */
@@ -736,18 +709,9 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 
 				splan->plan.targetlist =
 					fix_scan_list(root, splan->plan.targetlist,
-||||||| e1c1c30f635
-				splan->scanrelid += rtoffset;
-				splan->plan.targetlist =
-					fix_scan_list(root, splan->plan.targetlist,
-=======
-				splan->scan.scanrelid += rtoffset;
-				splan->scan.plan.targetlist =
-					fix_scan_list(root, splan->scan.plan.targetlist,
->>>>>>> adadae45816
 								  rtoffset, NUM_EXEC_TLIST(plan));
-				splan->scan.plan.qual =
-					fix_scan_list(root, splan->scan.plan.qual,
+				splan->plan.qual =
+					fix_scan_list(root, splan->plan.qual,
 								  rtoffset, NUM_EXEC_QUAL(plan));
 			}
 			break;
@@ -1246,7 +1210,6 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 				 * in GPDB, we allow the ROWS/RANGE expressions to contain
 				 * references to the subplan, so we have to use fix_upper_expr.
 				 */
-<<<<<<< HEAD
 				if (wplan->startOffset || wplan->endOffset)
 				{
 					subplan_itlist =
@@ -1260,16 +1223,6 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 									   subplan_itlist, OUTER_VAR, rtoffset, 1);
 					pfree(subplan_itlist);
 				}
-||||||| e1c1c30f635
-				wplan->startOffset =
-					fix_scan_expr(root, wplan->startOffset, rtoffset, 1);
-				wplan->endOffset =
-					fix_scan_expr(root, wplan->endOffset, rtoffset, 1);
-=======
-				wplan->startOffset =
-					fix_scan_expr(root, wplan->startOffset, rtoffset, 1);
-				wplan->endOffset =
-					fix_scan_expr(root, wplan->endOffset, rtoffset, 1);
 				wplan->runCondition = fix_scan_list(root,
 													wplan->runCondition,
 													rtoffset,
@@ -1278,7 +1231,6 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 														wplan->runConditionOrig,
 														rtoffset,
 														NUM_EXEC_TLIST(plan));
->>>>>>> adadae45816
 			}
 			break;
 		case T_Result:
@@ -1643,12 +1595,6 @@ set_indexonlyscan_references(PlannerInfo *root,
 					   INDEX_VAR,
 					   rtoffset,
 					   NUM_EXEC_QUAL((Plan *) plan));
-<<<<<<< HEAD
-	/* indexqualorig is already transformed to reference index columns */
-	plan->indexqualorig = fix_scan_list(root, plan->indexqualorig,
-										rtoffset, 1);
-||||||| e1c1c30f635
-=======
 	plan->recheckqual = (List *)
 		fix_upper_expr(root,
 					   (Node *) plan->recheckqual,
@@ -1656,7 +1602,9 @@ set_indexonlyscan_references(PlannerInfo *root,
 					   INDEX_VAR,
 					   rtoffset,
 					   NUM_EXEC_QUAL((Plan *) plan));
->>>>>>> adadae45816
+	/* indexqualorig is already transformed to reference index columns */
+	plan->indexqualorig = fix_scan_list(root, plan->indexqualorig,
+										rtoffset, 1);
 	/* indexqual is already transformed to reference index columns */
 	plan->indexqual = fix_scan_list(root, plan->indexqual,
 									rtoffset, 1);

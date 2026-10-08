@@ -6,15 +6,9 @@
  * This module deals with SubLinks and CTEs, but not subquery RTEs (i.e.,
  * not sub-SELECT-in-FROM cases).
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -968,13 +962,7 @@ subplan_is_hashable(PlannerInfo *root, Plan *plan)
 	 */
 	subquery_size = plan->plan_rows *
 		(MAXALIGN(plan->plan_width) + MAXALIGN(SizeofHeapTupleHeader));
-<<<<<<< HEAD
 	if (subquery_size > global_work_mem(root))
-||||||| e1c1c30f635
-	if (subquery_size > hash_mem * 1024L)
-=======
-	if (subquery_size > get_hash_memory_limit())
->>>>>>> adadae45816
 		return false;
 
 	return true;
@@ -998,13 +986,7 @@ subpath_is_hashable(PlannerInfo *root, Path *path)
 	 */
 	subquery_size = path->rows *
 		(MAXALIGN(path->pathtarget->width) + MAXALIGN(SizeofHeapTupleHeader));
-<<<<<<< HEAD
 	if (subquery_size > global_work_mem(root))
-||||||| e1c1c30f635
-	if (subquery_size > hash_mem * 1024L)
-=======
-	if (subquery_size > get_hash_memory_limit())
->>>>>>> adadae45816
 		return false;
 
 	return true;

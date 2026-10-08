@@ -1411,7 +1411,6 @@ dependencies_clauselist_selectivity(PlannerInfo *root,
 	MVDependency **dependencies;
 	int			ndependencies;
 	int			i;
-	RangeTblEntry *rte = planner_rt_fetch(rel->relid, root);
 	AttrNumber	attnum_offset;
 	RangeTblEntry *rte = planner_rt_fetch(rel->relid, root);
 
