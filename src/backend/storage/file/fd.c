@@ -3,15 +3,9 @@
  * fd.c
  *	  Virtual file descriptor code.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2007-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -1023,13 +1017,7 @@ count_usable_fds(int max_to_probe, int *usable_fds, int *already_open)
 		{
 			/* Expect EMFILE or ENFILE, else it's fishy */
 			if (errno != EMFILE && errno != ENFILE)
-<<<<<<< HEAD
-				ereport(WARNING, (errmsg("dup(0) failed after %d successes: %m", used)));
-||||||| e1c1c30f635
-				elog(WARNING, "dup(0) failed after %d successes: %m", used);
-=======
 				elog(WARNING, "duplicating stderr file descriptor failed after %d successes: %m", used);
->>>>>>> adadae45816
 			break;
 		}
 

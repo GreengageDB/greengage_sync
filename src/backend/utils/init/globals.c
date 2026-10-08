@@ -40,7 +40,7 @@ volatile sig_atomic_t IdleSessionTimeoutPending = false;
 volatile sig_atomic_t ProcSignalBarrierPending = false;
 volatile sig_atomic_t IdleGangTimeoutPending = false;
 volatile sig_atomic_t LogMemoryContextPending = false;
-<<<<<<< HEAD
+volatile sig_atomic_t IdleStatsUpdateTimeoutPending = false;
 /*
  * GPDB: Make these signed integers (instead of uint32) to detect garbage
  * negative values.
@@ -48,16 +48,6 @@ volatile sig_atomic_t LogMemoryContextPending = false;
 volatile int32 InterruptHoldoffCount = 0;
 volatile int32 QueryCancelHoldoffCount = 0;
 volatile int32 CritSectionCount = 0;
-||||||| e1c1c30f635
-volatile uint32 InterruptHoldoffCount = 0;
-volatile uint32 QueryCancelHoldoffCount = 0;
-volatile uint32 CritSectionCount = 0;
-=======
-volatile sig_atomic_t IdleStatsUpdateTimeoutPending = false;
-volatile uint32 InterruptHoldoffCount = 0;
-volatile uint32 QueryCancelHoldoffCount = 0;
-volatile uint32 CritSectionCount = 0;
->>>>>>> adadae45816
 
 int			MyProcPid;
 pg_time_t	MyStartTime;
@@ -147,7 +137,6 @@ int			IntervalStyle = INTSTYLE_POSTGRES;
 
 bool		enableFsync = true;
 bool		allowSystemTableMods = false;
-<<<<<<< HEAD
 int			planner_work_mem = 32768;
 int			work_mem = 32768;
 int			statement_mem = 256000;
@@ -158,13 +147,6 @@ int			max_statement_mem = 2048000;
  */
 int			gp_vmem_limit_per_query = 0;
 double		hash_mem_multiplier = 1.0;
-||||||| e1c1c30f635
-int			work_mem = 4096;
-double		hash_mem_multiplier = 1.0;
-=======
-int			work_mem = 4096;
-double		hash_mem_multiplier = 2.0;
->>>>>>> adadae45816
 int			maintenance_work_mem = 65536;
 int			max_parallel_maintenance_workers = 2;
 

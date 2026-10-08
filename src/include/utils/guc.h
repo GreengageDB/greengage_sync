@@ -4,15 +4,9 @@
  * External declarations pertaining to backend/utils/misc/guc.c and
  * backend/utils/misc/guc-file.l
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2007-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Copyright (c) 2000-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Copyright (c) 2000-2021, PostgreSQL Global Development Group
-=======
- * Copyright (c) 2000-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Written by Peter Eisentraut <peter_e@gmx.net>.
  *
  * src/include/utils/guc.h
@@ -259,7 +253,16 @@ typedef enum
 #define GUC_UNIT				(GUC_UNIT_MEMORY | GUC_UNIT_TIME)
 
 /* GPDB speific */
-#define GUC_DISALLOW_USER_SET  0x00200000 /* Do not allow this GUC to be set by the user */
+/*
+ * NB: keep these above every upstream GUC_* flag bit.  GUC_DISALLOW_USER_SET
+ * used to be 0x00200000, but PG15 added upstream GUC_RUNTIME_COMPUTED at that
+ * very bit (0x200000); the collision made every runtime-computed GUC
+ * (data_checksums, wal_segment_size, min/max_wal_size, shared_memory_size)
+ * look user-disallowed, so set_config_option silently dropped even the
+ * internal SetConfigOption() from ReadControlFile -- e.g. "show data_checksums"
+ * reported off on a checksummed cluster.  Use a free high bit instead.
+ */
+#define GUC_DISALLOW_USER_SET  0x01000000 /* Do not allow this GUC to be set by the user */
 #define GUC_GPDB_NEED_SYNC     0x00400000  /* guc value is synced between master and primary */
 #define GUC_GPDB_NO_SYNC       0x00800000  /* guc value is not synced between master and primary */
 
@@ -277,7 +280,6 @@ extern PGDLLIMPORT bool Debug_print_parse;
 extern PGDLLIMPORT bool Debug_print_rewritten;
 extern PGDLLIMPORT bool Debug_pretty_print;
 
-<<<<<<< HEAD
 extern bool	Debug_print_full_dtm;
 extern bool	Debug_print_snapshot_dtm;
 extern bool Debug_disable_distributed_snapshot;
@@ -347,25 +349,12 @@ extern bool gp_ignore_error_table;
 extern bool	Debug_dtm_action_primary;
 
 extern bool gp_log_optimization_time;
-extern bool log_parser_stats;
-extern bool log_planner_stats;
-extern bool log_executor_stats;
-extern bool log_statement_stats;
-extern bool log_dispatch_stats;
-extern bool log_btree_build_stats;
-||||||| e1c1c30f635
-extern bool log_parser_stats;
-extern bool log_planner_stats;
-extern bool log_executor_stats;
-extern bool log_statement_stats;
-extern bool log_btree_build_stats;
-=======
 extern PGDLLIMPORT bool log_parser_stats;
 extern PGDLLIMPORT bool log_planner_stats;
 extern PGDLLIMPORT bool log_executor_stats;
 extern PGDLLIMPORT bool log_statement_stats;
+extern bool log_dispatch_stats;
 extern PGDLLIMPORT bool log_btree_build_stats;
->>>>>>> adadae45816
 
 extern PGDLLIMPORT bool check_function_bodies;
 extern PGDLLIMPORT bool session_auth_is_superuser;
@@ -834,7 +823,6 @@ extern void assign_search_path(const char *newval, void *extra);
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
 
-<<<<<<< HEAD
 /* in cdb/cdbvars.c */
 extern bool check_gp_role(char **newval, void **extra, GucSource source);
 extern void assign_gp_role(const char *newval, void *extra);
@@ -848,11 +836,9 @@ extern const char *gpvars_show_gp_resqueue_memory_policy(void);
 extern bool gpvars_check_statement_mem(int *newval, void **extra, GucSource source);
 extern int guc_name_compare(const char *namea, const char *nameb);
 extern void DispatchSyncPGVariable(struct config_generic * gconfig);
-||||||| e1c1c30f635
-=======
+
 /* in access/transam/xlogprefetcher.c */
 extern bool check_recovery_prefetch(int *new_value, void **extra, GucSource source);
 extern void assign_recovery_prefetch(int new_value, void *extra);
->>>>>>> adadae45816
 
 #endif							/* GUC_H */

@@ -42,6 +42,7 @@
 #include "storage/proc.h"
 #include "tcop/tcopprot.h"
 #include "utils/builtins.h"
+#include "utils/ps_status.h"
 #include "utils/fmgroids.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
@@ -308,7 +309,6 @@ BootstrapModeMain(int argc, char *argv[], bool check_only)
 		proc_exit(1);
 	}
 
-<<<<<<< HEAD
 	switch (MyAuxProcType)
 	{
 		case StartupProcess:
@@ -344,47 +344,9 @@ BootstrapModeMain(int argc, char *argv[], bool check_only)
 	if (userDoption)
 	{
 		/* userDoption isn't used any more */
-		free(userDoption);
+		pfree(userDoption);
 		userDoption = NULL;
 	}
-||||||| e1c1c30f635
-	switch (MyAuxProcType)
-	{
-		case StartupProcess:
-			MyBackendType = B_STARTUP;
-			break;
-		case ArchiverProcess:
-			MyBackendType = B_ARCHIVER;
-			break;
-		case BgWriterProcess:
-			MyBackendType = B_BG_WRITER;
-			break;
-		case CheckpointerProcess:
-			MyBackendType = B_CHECKPOINTER;
-			break;
-		case WalWriterProcess:
-			MyBackendType = B_WAL_WRITER;
-			break;
-		case WalReceiverProcess:
-			MyBackendType = B_WAL_RECEIVER;
-			break;
-		default:
-			MyBackendType = B_INVALID;
-	}
-	if (IsUnderPostmaster)
-		init_ps_display(NULL);
-
-	/* Acquire configuration parameters, unless inherited from postmaster */
-	if (!IsUnderPostmaster)
-	{
-		if (!SelectConfigFiles(userDoption, progname))
-			proc_exit(1);
-	}
-=======
-	/* Acquire configuration parameters */
-	if (!SelectConfigFiles(userDoption, progname))
-		proc_exit(1);
->>>>>>> adadae45816
 
 	/*
 	 * Validate we have been given a reasonable-looking DataDir and change

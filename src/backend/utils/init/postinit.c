@@ -67,13 +67,9 @@
 #include "storage/sync.h"
 #include "tcop/tcopprot.h"
 #include "utils/acl.h"
-<<<<<<< HEAD
 #include "utils/backend_cancel.h"
-#include "utils/faultinjector.h"
-||||||| e1c1c30f635
-=======
 #include "utils/builtins.h"
->>>>>>> adadae45816
+#include "utils/faultinjector.h"
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
@@ -657,16 +653,6 @@ BaseInit(void)
 	smgrinit();
 	InitBufferPoolAccess();
 
-<<<<<<< HEAD
-	/* 
-	 * Initialize catalog tablespace storage component
-	 * with knowledge of how to perform unlink.
-	 * 
-	 * Needed for xlog replay and normal operations.
-	 */
-	TablespaceStorageInit(UnlinkTablespaceDirectory);
-||||||| e1c1c30f635
-=======
 	/*
 	 * Initialize temporary file access after pgstat, so that the temporary
 	 * file shutdown hook can report temporary file statistics.
@@ -684,7 +670,12 @@ BaseInit(void)
 	 * drop ephemeral slots, which in turn triggers stats reporting.
 	 */
 	ReplicationSlotInitialize();
->>>>>>> adadae45816
+
+	/*
+	 * Initialize catalog tablespace storage component with knowledge of how to
+	 * perform unlink.  Needed for xlog replay and normal operations.
+	 */
+	TablespaceStorageInit(UnlinkTablespaceDirectory);
 }
 
 /*

@@ -46,14 +46,9 @@
 #include "catalog/namespace.h"
 #include "commands/async.h"
 #include "commands/prepare.h"
-<<<<<<< HEAD
 #include "commands/extension.h"
-#include "executor/spi.h"
-||||||| e1c1c30f635
-#include "executor/spi.h"
-=======
 #include "common/pg_prng.h"
->>>>>>> adadae45816
+#include "executor/spi.h"
 #include "jit/jit.h"
 #include "libpq/libpq.h"
 #include "libpq/pqformat.h"
@@ -179,7 +174,7 @@ static long max_stack_depth_bytes = 100 * 1024L;
  * Stack base pointer -- initialized by PostmasterMain and inherited by
  * subprocesses (but see also InitPostmasterChild).
  */
-static char *stack_base_ptr = NULL;
+char *stack_base_ptr = NULL;
 
 /*
  * On IA64 we also have to remember the register stack base.
@@ -1264,6 +1259,7 @@ exec_mpp_query(const char *query_string,
 		plan->commandType != CMD_INSERT &&
 		plan->commandType != CMD_UPDATE &&
 		plan->commandType != CMD_DELETE &&
+		plan->commandType != CMD_MERGE &&
 		plan->commandType != CMD_UTILITY)
 		elog(ERROR, "MPPEXEC: received non-DML Plan");
 	commandType = plan->commandType;
@@ -1347,6 +1343,8 @@ exec_mpp_query(const char *query_string,
 			commandTag = CMDTAG_MPPEXEC_UPDATE;
 		else if (commandType == CMD_DELETE)
 			commandTag = CMDTAG_MPPEXEC_DELETE;
+		else if (commandType == CMD_MERGE)
+			commandTag = CMDTAG_MPPEXEC_MERGE;
 		else
 			commandTag = CMDTAG_MPPEXEC;
 
@@ -4248,7 +4246,14 @@ ProcessInterrupts(const char* filename, int lineno)
 			IdleSessionTimeoutPending = false;
 	}
 
-<<<<<<< HEAD
+	if (IdleStatsUpdateTimeoutPending)
+	{
+		/* timer should have been disarmed */
+		Assert(!IsTransactionBlock());
+		IdleStatsUpdateTimeoutPending = false;
+		pgstat_report_stat(true);
+	}
+
 	if (IdleGangTimeoutPending)
 	{
 		/* As above, ignore the signal if the GUC has been reset to zero. */
@@ -4256,15 +4261,6 @@ ProcessInterrupts(const char* filename, int lineno)
 			DisconnectAndDestroyUnusedQEs();
 
 		IdleGangTimeoutPending = false;
-||||||| e1c1c30f635
-=======
-	if (IdleStatsUpdateTimeoutPending)
-	{
-		/* timer should have been disarmed */
-		Assert(!IsTransactionBlock());
-		IdleStatsUpdateTimeoutPending = false;
-		pgstat_report_stat(true);
->>>>>>> adadae45816
 	}
 
 	if (ProcSignalBarrierPending)
@@ -4905,63 +4901,26 @@ void
 PostgresSingleUserMain(int argc, char *argv[],
 					   const char *username)
 {
-<<<<<<< HEAD
-	int			firstchar;
-	StringInfoData input_message;
-	sigjmp_buf	local_sigjmp_buf;
-	volatile bool send_ready_for_query = true;
-	bool		idle_in_transaction_timeout_enabled = false;
-	bool		idle_session_timeout_enabled = false;
-	bool		idle_gang_timeout_enabled = false;
-
-	/*
-	 * CDB: Catch program error signals.
-	 *
-	 * Save our main thread-id for comparison during signals.
-	 */
-	main_tid = pthread_self();
-||||||| e1c1c30f635
-	int			firstchar;
-	StringInfoData input_message;
-	sigjmp_buf	local_sigjmp_buf;
-	volatile bool send_ready_for_query = true;
-	bool		idle_in_transaction_timeout_enabled = false;
-	bool		idle_session_timeout_enabled = false;
-=======
 	const char *dbname = NULL;
->>>>>>> adadae45816
 
 	Assert(!IsUnderPostmaster);
 
-<<<<<<< HEAD
+	/* Initialize startup process environment. */
+	InitStandaloneProcess(argv[0]);
+
+	/* CDB: remember our nice priority for segment-worker renicing. */
 #ifndef WIN32
 	PostmasterPriority = getpriority(PRIO_PROCESS, 0);
 #endif
 
 	set_ps_display("startup");
 
-	SetProcessingMode(InitProcessing);
-||||||| e1c1c30f635
-	SetProcessingMode(InitProcessing);
-=======
-	/* Initialize startup process environment. */
-	InitStandaloneProcess(argv[0]);
->>>>>>> adadae45816
-
 	/*
 	 * Set default values for command-line options.
 	 */
-<<<<<<< HEAD
 	EchoQuery = false;
 
-	if (!IsUnderPostmaster)
-		InitializeGUCOptions();
-||||||| e1c1c30f635
-	if (!IsUnderPostmaster)
-		InitializeGUCOptions();
-=======
 	InitializeGUCOptions();
->>>>>>> adadae45816
 
 	/*
 	 * Parse command-line options.
@@ -4979,27 +4938,6 @@ PostgresSingleUserMain(int argc, char *argv[],
 							progname)));
 	}
 
-<<<<<<< HEAD
-	/* Acquire configuration parameters, unless inherited from postmaster */
-	if (!IsUnderPostmaster)
-	{
-		if (!SelectConfigFiles(userDoption, progname))
-			proc_exit(1);
-
-        /*
-	     * Remember stand-alone backend startup time.
-         * CDB: Moved this up from below for use in error message headers.
-         */
-	    PgStartTime = GetCurrentTimestamp();
-	}
-||||||| e1c1c30f635
-	/* Acquire configuration parameters, unless inherited from postmaster */
-	if (!IsUnderPostmaster)
-	{
-		if (!SelectConfigFiles(userDoption, progname))
-			proc_exit(1);
-	}
-=======
 	/* Acquire configuration parameters */
 	if (!SelectConfigFiles(userDoption, progname))
 		proc_exit(1);
@@ -5065,12 +5003,19 @@ PostgresMain(const char *dbname, const char *username)
 	bool		idle_in_transaction_timeout_enabled = false;
 	bool		idle_session_timeout_enabled = false;
 	bool		idle_stats_update_timeout_enabled = false;
+	bool		idle_gang_timeout_enabled = false;
 
 	AssertArg(dbname != NULL);
 	AssertArg(username != NULL);
 
 	SetProcessingMode(InitProcessing);
->>>>>>> adadae45816
+
+	/*
+	 * CDB: Catch program error signals.
+	 *
+	 * Save our main thread-id for comparison during signals.
+	 */
+	main_tid = pthread_self();
 
 	/*
 	 * Set up signal handlers.  (InitPostmasterChild or InitStandaloneProcess
@@ -5249,18 +5194,6 @@ PostgresMain(const char *dbname, const char *username)
 	initStringInfo(&row_description_buf);
 	MemoryContextSwitchTo(TopMemoryContext);
 
-<<<<<<< HEAD
-
-||||||| e1c1c30f635
-	/*
-	 * Remember stand-alone backend startup time
-	 */
-	if (!IsUnderPostmaster)
-		PgStartTime = GetCurrentTimestamp();
-
-	/*
-=======
->>>>>>> adadae45816
 	/*
 	 * POSTGRES main processing loop begins here
 	 *
@@ -5284,6 +5217,8 @@ PostgresMain(const char *dbname, const char *username)
 	 */
 	if (sigsetjmp(local_sigjmp_buf, 1) != 0)
 	{
+		int			leaked_holdoff;
+
 		/*
 		 * NOTE: if you are tempted to add more code in this if-block,
 		 * consider the high probability that it should be in
@@ -5294,6 +5229,29 @@ PostgresMain(const char *dbname, const char *username)
 
 		/* Since not using PG_TRY, must reset error stack by hand */
 		error_context_stack = NULL;
+
+		/*
+		 * Re-establish the "no interrupts held at the idle command loop"
+		 * invariant.  errfinish() already zeroes InterruptHoldoffCount /
+		 * QueryCancelHoldoffCount before throwing an ERROR, but a PG_CATCH
+		 * handler that *restores* a previously-saved holdoff count and then
+		 * continues or re-throws (several GPDB distributed-commit and
+		 * resource-group transaction-abort callbacks in cdbtm.c / resgroup.c
+		 * do exactly this) can leave a stale, leaked count behind once the
+		 * stack has fully unwound to this top level.  By the time we reach the
+		 * outer error-recovery handler the entire call stack is gone, so no
+		 * frame can legitimately be holding an interrupt -- any non-zero value
+		 * is a leak.  This handler's own HOLD/RESUME below is balanced, so a
+		 * leaked count would otherwise persist into the next command and make
+		 * CHECK_FOR_INTERRUPTS() a permanent no-op for the session.  That in
+		 * turn wedges WaitForProcSignalBarrier() (added in PG15 to DROP/ALTER
+		 * DATABASE) into an unkillable self-deadlock: the emitter must absorb
+		 * its own ProcSignal barrier via CHECK_FOR_INTERRUPTS, which never
+		 * fires while interrupts are held.
+		 */
+		leaked_holdoff = InterruptHoldoffCount;
+		InterruptHoldoffCount = 0;
+		QueryCancelHoldoffCount = 0;
 
 		/* Prevent interrupts while cleaning up */
 		HOLD_INTERRUPTS();
@@ -5321,6 +5279,16 @@ PostgresMain(const char *dbname, const char *username)
 
 		/* Report the error to the client and/or server log */
 		EmitErrorReport();
+
+		/*
+		 * Surface (server log only) any interrupt holdoff that was leaked by a
+		 * catch-and-continue handler before we cleared it above, so the
+		 * underlying unbalanced HOLD/RESUME can still be tracked down rather
+		 * than silently papered over.
+		 */
+		if (leaked_holdoff != 0)
+			elog(LOG, "cleared leaked interrupt holdoff count (%d) during error recovery",
+				 leaked_holdoff);
 
 		/*
 		 * Make sure debug_query_string gets reset before we possibly clobber
@@ -5517,12 +5485,6 @@ PostgresMain(const char *dbname, const char *username)
 				if (notifyInterruptPending)
 					ProcessNotifyInterrupt(false);
 
-<<<<<<< HEAD
-				pgstat_report_stat(false);
-				pgstat_report_queuestat();
-||||||| e1c1c30f635
-				pgstat_report_stat(false);
-=======
 				/* Start the idle-stats-update timer */
 				stats_timeout = pgstat_report_stat(false);
 				if (stats_timeout > 0)
@@ -5531,7 +5493,7 @@ PostgresMain(const char *dbname, const char *username)
 					enable_timeout_after(IDLE_STATS_UPDATE_TIMEOUT,
 										 stats_timeout);
 				}
->>>>>>> adadae45816
+				pgstat_report_queuestat();
 
 				strncat(activity, "idle", remain);
 				set_ps_display(activity);
@@ -5580,7 +5542,6 @@ PostgresMain(const char *dbname, const char *username)
 		firstchar = ReadCommand(&input_message);
 
 		/*
-<<<<<<< HEAD
 		 * Reset QueryFinishPending flag, so that if we received a delayed
 		 * query finish requested after we had already finished processing
 		 * the previous command, we don't prematurely finish the next
@@ -5591,19 +5552,10 @@ PostgresMain(const char *dbname, const char *username)
 		IdleTracker_ActivateProcess();
 
 		/*
-		 * (4) turn off the idle-in-transaction and idle-session timeouts, if
-		 * active.  We do this before step (5) so that any last-moment timeout
-		 * is certain to be detected in step (5).
-||||||| e1c1c30f635
-		 * (4) turn off the idle-in-transaction and idle-session timeouts, if
-		 * active.  We do this before step (5) so that any last-moment timeout
-		 * is certain to be detected in step (5).
-=======
 		 * (4) turn off the idle-in-transaction, idle-session and
 		 * idle-stats-update timeouts if active.  We do this before step (5)
 		 * so that any last-moment timeout is certain to be detected in step
 		 * (5).
->>>>>>> adadae45816
 		 *
 		 * At most one of these timeouts will be active, so there's no need to
 		 * worry about combining the timeout.c calls into one.
@@ -5618,18 +5570,15 @@ PostgresMain(const char *dbname, const char *username)
 			disable_timeout(IDLE_SESSION_TIMEOUT, false);
 			idle_session_timeout_enabled = false;
 		}
-<<<<<<< HEAD
-		if (idle_gang_timeout_enabled)
-		{
-			disable_timeout(IDLE_GANG_TIMEOUT, false);
-			idle_gang_timeout_enabled = false;
-||||||| e1c1c30f635
-=======
 		if (idle_stats_update_timeout_enabled)
 		{
 			disable_timeout(IDLE_STATS_UPDATE_TIMEOUT, false);
 			idle_stats_update_timeout_enabled = false;
->>>>>>> adadae45816
+		}
+		if (idle_gang_timeout_enabled)
+		{
+			disable_timeout(IDLE_GANG_TIMEOUT, false);
+			idle_gang_timeout_enabled = false;
 		}
 
 		/*

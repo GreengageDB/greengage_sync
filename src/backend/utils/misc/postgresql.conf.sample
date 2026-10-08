@@ -145,16 +145,8 @@ max_prepared_transactions = 250		# can be 0 or more
 					# (change requires restart)
 # Caution: it is not advisable to set max_prepared_transactions nonzero unless
 # you actively intend to use prepared transactions.
-<<<<<<< HEAD
 #work_mem = 32MB				# min 64kB
 #hash_mem_multiplier = 1.0		# 1-1000.0 multiplier on hash table work_mem
-||||||| e1c1c30f635
-#work_mem = 4MB				# min 64kB
-#hash_mem_multiplier = 1.0		# 1-1000.0 multiplier on hash table work_mem
-=======
-#work_mem = 4MB				# min 64kB
-#hash_mem_multiplier = 2.0		# 1-1000.0 multiplier on hash table work_mem
->>>>>>> adadae45816
 #maintenance_work_mem = 64MB		# min 1MB
 #autovacuum_work_mem = -1		# min 1MB, or -1 to use maintenance_work_mem
 #logical_decoding_work_mem = 64MB	# min 64kB
@@ -475,25 +467,6 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 
 # - Where to Log -
 
-<<<<<<< HEAD
-||||||| e1c1c30f635
-#log_destination = 'stderr'		# Valid values are combinations of
-					# stderr, csvlog, syslog, and eventlog,
-					# depending on platform.  csvlog
-					# requires logging_collector to be on.
-
-# This is used when logging to stderr:
-#logging_collector = off		# Enable capturing of stderr and csvlog
-					# into log files. Required to be on for
-					# csvlogs.
-					# (change requires restart)
-
-# These are only used if logging_collector is on:
-#log_directory = 'log'			# directory where log files are written,
-					# can be absolute or relative to PGDATA
-#log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'	# log file name pattern,
-					# can include strftime() escapes
-=======
 #log_destination = 'stderr'		# Valid values are combinations of
 					# stderr, csvlog, jsonlog, syslog, and
 					# eventlog, depending on platform.
@@ -511,7 +484,6 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 					# can be absolute or relative to PGDATA
 #log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'	# log file name pattern,
 					# can include strftime() escapes
->>>>>>> adadae45816
 #log_file_mode = 0600			# creation mode for log files,
 					# begin with 0 to use octal notation
 #log_rotation_age = 1d			# Automatic rotation of logfiles will
@@ -665,18 +637,12 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 # STATISTICS
 #------------------------------------------------------------------------------
 
-<<<<<<< HEAD
 # - ANALYZE Statistics on Database Contents -
 
 #default_statistics_target = 100	# range 1 - 10000 (target # of
 					# histogram bins)
 
-# - Query and Index Statistics Collector -
-||||||| e1c1c30f635
-# - Query and Index Statistics Collector -
-=======
 # - Cumulative Query and Index Statistics -
->>>>>>> adadae45816
 
 #track_activities = on
 #track_activity_query_size = 1024	# (change requires restart)

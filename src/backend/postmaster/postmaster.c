@@ -32,15 +32,9 @@
  *	  clients.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1134,6 +1128,11 @@ PostmasterMain(int argc, char *argv[])
 		ereport(ERROR,
 				(errmsg("WAL streaming (max_wal_senders > 0) requires wal_level \"replica\" or \"logical\"")));
 
+	/*
+	 * GPDB: "postgres -C" of a runtime-computed parameter (e.g. pg_checksums
+	 * reading data_checksums from an offline data directory) gets here
+	 * without a segment identity, and it doesn't need one.
+	 */
     if ( GpIdentity.dbid == -1 && Gp_role == GP_ROLE_UTILITY)
     {
         /**
@@ -1141,7 +1140,7 @@ PostmasterMain(int argc, char *argv[])
          *  we don't actually know the dbid.
          */
     }
-	else if ( GpIdentity.dbid < 0 )
+	else if ( GpIdentity.dbid < 0 && output_config_variable == NULL )
 	{
 	    ereport(FATAL,
             (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1149,7 +1148,7 @@ PostmasterMain(int argc, char *argv[])
              "The dbid value to pass can be determined from this server's entry in the segment configuration; it may be -1 if running in utility mode.")));
 	}
 
-    if ( GpIdentity.segindex < -1 ) /* -1 is okay -- that means the master */
+    if ( GpIdentity.segindex < -1 && output_config_variable == NULL ) /* -1 is okay -- that means the master */
 	{
 	    ereport(FATAL,
             (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1228,7 +1227,6 @@ PostmasterMain(int argc, char *argv[])
 	LocalProcessControlFile(false);
 
 	/*
-<<<<<<< HEAD
 	 * CDB: gpdb auxilary process like fts probe, dtx recovery process is
 	 * essential, we need to load them ahead of custom shared preload libraries
 	 * to avoid exceeding max_worker_processes.
@@ -1240,15 +1238,6 @@ PostmasterMain(int argc, char *argv[])
 	 * it needs to be called before InitializeMaxBackends(), and it's probably
 	 * a good idea to call it before any modules had chance to take the
 	 * background worker slots.
-||||||| e1c1c30f635
-	 * Register the apply launcher.  Since it registers a background worker,
-	 * it needs to be called before InitializeMaxBackends(), and it's probably
-	 * a good idea to call it before any modules had chance to take the
-	 * background worker slots.
-=======
-	 * Register the apply launcher.  It's probably a good idea to call this
-	 * before any modules had a chance to take the background worker slots.
->>>>>>> adadae45816
 	 */
 	ApplyLauncherRegister();
 
@@ -2861,7 +2850,6 @@ retry1:
 					(errcode(ERRCODE_TOO_MANY_CONNECTIONS),
 					 errmsg("sorry, too many clients already")));
 			break;
-<<<<<<< HEAD
 		case CAC_SUPERUSER:
 			/* Greenplum does not currently use SUPERUSER state. */
 			Assert(port->canAcceptConnections != CAC_SUPERUSER);
@@ -2897,12 +2885,6 @@ retry1:
 							   (uint32) (recptr >> 32), (uint32) recptr,
 							   TextDatumGetCString(pgsql_version(NULL)))));
 			break;
-||||||| e1c1c30f635
-		case CAC_SUPERUSER:
-			/* OK for now, will check in InitPostgres */
-			break;
-=======
->>>>>>> adadae45816
 		case CAC_OK:
 			break;
 	}
@@ -4764,16 +4746,9 @@ BackendStartup(Port *port)
 
 	/* Pass down canAcceptConnections state */
 	port->canAcceptConnections = canAcceptConnections(BACKEND_TYPE_NORMAL);
-<<<<<<< HEAD
 	bn->dead_end = (port->canAcceptConnections != CAC_OK &&
 					port->canAcceptConnections != CAC_SUPERUSER &&
 					port->canAcceptConnections != CAC_MIRROR_READY);
-||||||| e1c1c30f635
-	bn->dead_end = (port->canAcceptConnections != CAC_OK &&
-					port->canAcceptConnections != CAC_SUPERUSER);
-=======
-	bn->dead_end = (port->canAcceptConnections != CAC_OK);
->>>>>>> adadae45816
 
 	/*
 	 * Unless it's a dead_end child, assign it a child slot number
@@ -5508,15 +5483,8 @@ SubPostmasterMain(int argc, char *argv[])
 	if (strcmp(argv[1], "--forkbackend") == 0   ||
 		strcmp(argv[1], "--forkavlauncher") == 0 ||
 		strcmp(argv[1], "--forkavworker") == 0 ||
-<<<<<<< HEAD
-		strcmp(argv[1], "--forkautovac") == 0   ||
 		strcmp(argv[1], "--forkglobaldeadlockdetector") == 0 ||
-		strcmp(argv[1], "--forkboot") == 0 ||
-||||||| e1c1c30f635
-		strcmp(argv[1], "--forkboot") == 0 ||
-=======
 		strcmp(argv[1], "--forkaux") == 0 ||
->>>>>>> adadae45816
 		strncmp(argv[1], "--forkbgworker=", 15) == 0)
 		PGSharedMemoryReAttach();
 	else

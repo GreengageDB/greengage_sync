@@ -6,15 +6,9 @@
  * See src/backend/utils/misc/README for more information.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Copyright (c) 2000-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Copyright (c) 2000-2021, PostgreSQL Global Development Group
-=======
- * Copyright (c) 2000-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Written by Peter Eisentraut <peter_e@gmx.net>.
  *
  * IDENTIFICATION
@@ -231,6 +225,7 @@ static bool check_effective_io_concurrency(int *newval, void **extra, GucSource 
 static bool check_maintenance_io_concurrency(int *newval, void **extra, GucSource source);
 static bool check_huge_page_size(int *newval, void **extra, GucSource source);
 static bool check_client_connection_check_interval(int *newval, void **extra, GucSource source);
+static void assign_pgstat_temp_directory(const char *newval, void *extra);
 static void assign_maintenance_io_concurrency(int newval, void *extra);
 static bool check_application_name(char **newval, void **extra, GucSource source);
 static void assign_application_name(const char *newval, void *extra);
@@ -1260,18 +1255,6 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	{
-<<<<<<< HEAD
-		{"geqo", PGC_USERSET, DEFUNCT_OPTIONS,
-			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
-            NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-||||||| e1c1c30f635
-		{"geqo", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("Enables genetic query optimization."),
-			gettext_noop("This algorithm attempts to do planning without "
-						 "exhaustive searching."),
-			GUC_EXPLAIN
-=======
 		{"enable_group_by_reordering", PGC_USERSET, QUERY_TUNING_METHOD,
 			gettext_noop("enable reordering of GROUP BY key"),
 			NULL,
@@ -1282,12 +1265,10 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	{
-		{"geqo", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("Enables genetic query optimization."),
-			gettext_noop("This algorithm attempts to do planning without "
-						 "exhaustive searching."),
-			GUC_EXPLAIN
->>>>>>> adadae45816
+		{"geqo", PGC_USERSET, DEFUNCT_OPTIONS,
+			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
+            NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
 		&defunct_bool,
 		false,
@@ -2461,12 +2442,7 @@ static struct config_int ConfigureNamesInt[] =
 			GUC_UNIT_BLOCKS
 		},
 		&NBuffers,
-<<<<<<< HEAD
 		4096, 16, INT_MAX / 2,
-||||||| e1c1c30f635
-		1024, 16, INT_MAX / 2,
-=======
-		16384, 16, INT_MAX / 2,
 		NULL, NULL, NULL
 	},
 
@@ -2489,7 +2465,6 @@ static struct config_int ConfigureNamesInt[] =
 		},
 		&shared_memory_size_in_huge_pages,
 		-1, -1, INT_MAX,
->>>>>>> adadae45816
 		NULL, NULL, NULL
 	},
 
@@ -2965,20 +2940,9 @@ static struct config_int ConfigureNamesInt[] =
 			gettext_noop("Sets the maximum time before warning if checkpoints "
 						 "triggered by WAL volume happen too frequently."),
 			gettext_noop("Write a message to the server log if checkpoints "
-<<<<<<< HEAD
 						 "caused by the filling of checkpoint segment files happens more "
 						 "frequently than this number of seconds. Zero turns off the warning."),
 			GUC_UNIT_S | GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
-||||||| e1c1c30f635
-						 "caused by the filling of checkpoint segment files happens more "
-						 "frequently than this number of seconds. Zero turns off the warning."),
-			GUC_UNIT_S
-=======
-						 "caused by the filling of WAL segment files happen more "
-						 "frequently than this amount of time. "
-						 "Zero turns off the warning."),
-			GUC_UNIT_S
->>>>>>> adadae45816
 		},
 		&CheckPointWarning,
 		30, 0, INT_MAX,
@@ -3107,20 +3071,10 @@ static struct config_int ConfigureNamesInt[] =
 
 	{
 		{"commit_siblings", PGC_USERSET, WAL_SETTINGS,
-<<<<<<< HEAD
 			gettext_noop("Sets the minimum concurrent open transactions before performing "
 						 "commit_delay."),
 			NULL,
 			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL | GUC_DISALLOW_USER_SET
-||||||| e1c1c30f635
-			gettext_noop("Sets the minimum concurrent open transactions before performing "
-						 "commit_delay."),
-			NULL
-=======
-			gettext_noop("Sets the minimum number of concurrent open transactions "
-						 "required before performing commit_delay."),
-			NULL
->>>>>>> adadae45816
 		},
 		&CommitSiblings,
 		5, 0, 1000,
@@ -3749,31 +3703,6 @@ static struct config_int ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 
-<<<<<<< HEAD
-||||||| e1c1c30f635
-	{
-		{"client_connection_check_interval", PGC_USERSET, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the time interval between checks for disconnection while running queries."),
-			NULL,
-			GUC_UNIT_MS
-		},
-		&client_connection_check_interval,
-		0, 0, INT_MAX,
-		check_client_connection_check_interval, NULL, NULL
-	},
-
-=======
-	{
-		{"client_connection_check_interval", PGC_USERSET, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the time interval between checks for disconnection while running queries."),
-			NULL,
-			GUC_UNIT_MS
-		},
-		&client_connection_check_interval,
-		0, 0, INT_MAX,
-		check_client_connection_check_interval, NULL, NULL
-	},
-
 	{
 		{"log_startup_progress_interval", PGC_SIGHUP, LOGGING_WHEN,
 			gettext_noop("Time between progress updates for "
@@ -3786,7 +3715,6 @@ static struct config_int ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 
->>>>>>> adadae45816
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL
@@ -3920,13 +3848,6 @@ static struct config_real ConfigureNamesReal[] =
 	},
 
 	{
-<<<<<<< HEAD
-		{"geqo_selection_bias", PGC_USERSET, DEFUNCT_OPTIONS,
-			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
-||||||| e1c1c30f635
-		{"geqo_selection_bias", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("GEQO: selective pressure within the population."),
-=======
 		{"recursive_worktable_factor", PGC_USERSET, QUERY_TUNING_OTHER,
 			gettext_noop("Sets the planner's estimate of the average size "
 						 "of a recursive query's working table."),
@@ -3939,9 +3860,8 @@ static struct config_real ConfigureNamesReal[] =
 	},
 
 	{
-		{"geqo_selection_bias", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("GEQO: selective pressure within the population."),
->>>>>>> adadae45816
+		{"geqo_selection_bias", PGC_USERSET, DEFUNCT_OPTIONS,
+			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
 			NULL,
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
@@ -4088,14 +4008,8 @@ static struct config_string ConfigureNamesString[] =
 	{
 		{"archive_command", PGC_SIGHUP, WAL_ARCHIVING,
 			gettext_noop("Sets the shell command that will be called to archive a WAL file."),
-<<<<<<< HEAD
 			NULL,
 			GUC_NOT_IN_SAMPLE
-||||||| e1c1c30f635
-			NULL
-=======
-			gettext_noop("This is used only if \"archive_library\" is not set.")
->>>>>>> adadae45816
 		},
 		&XLogArchiveCommand,
 		"",
@@ -4736,8 +4650,7 @@ static struct config_string ConfigureNamesString[] =
 	},
 
 	{
-<<<<<<< HEAD
-		{"stats_temp_directory", PGC_SIGHUP, STATS_COLLECTOR,
+		{"stats_temp_directory", PGC_SIGHUP, STATS_CUMULATIVE,
 			gettext_noop("Writes temporary statistics files to the specified directory."),
 			NULL,
 			GUC_SUPERUSER_ONLY | GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
@@ -4748,20 +4661,6 @@ static struct config_string ConfigureNamesString[] =
 	},
 
 	{
-||||||| e1c1c30f635
-		{"stats_temp_directory", PGC_SIGHUP, STATS_COLLECTOR,
-			gettext_noop("Writes temporary statistics files to the specified directory."),
-			NULL,
-			GUC_SUPERUSER_ONLY
-		},
-		&pgstat_temp_directory,
-		PG_STAT_TMP_DIR,
-		check_canonical_path, assign_pgstat_temp_directory, NULL
-	},
-
-	{
-=======
->>>>>>> adadae45816
 		{"synchronous_standby_names", PGC_SIGHUP, REPLICATION_PRIMARY,
 			gettext_noop("Number of synchronous standbys and list of names of potential synchronous ones."),
 			NULL,
@@ -5230,7 +5129,17 @@ static struct config_enum ConfigureNamesEnum[] =
 			gettext_noop("Look ahead in the WAL to find references to uncached data.")
 		},
 		&recovery_prefetch,
-		RECOVERY_PREFETCH_TRY, recovery_prefetch_options,
+		/*
+		 * GPDB: default OFF.  Our PG15 base (15beta2) carries a WAL prefetcher
+		 * bug where lrq_complete_lsn()'s readahead can advance the reader past
+		 * the record just returned, tripping
+		 * Assert(record == prefetcher->reader->record) in
+		 * XLogPrefetcherReadRecord() and crashing the startup process during
+		 * WAL replay -- which takes mirror segments down under load.  Disable
+		 * the recovery-only prefetch optimization until the upstream fix is
+		 * backported; re-enable to RECOVERY_PREFETCH_TRY afterwards.
+		 */
+		RECOVERY_PREFETCH_OFF, recovery_prefetch_options,
 		check_recovery_prefetch, assign_recovery_prefetch, NULL
 	},
 
@@ -9143,20 +9052,11 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	char		AutoConfFileName[MAXPGPATH];
 	char		AutoConfTmpFileName[MAXPGPATH];
 
-<<<<<<< HEAD
 	if (!am_ftshandler && !superuser())
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("must be superuser to execute ALTER SYSTEM command")));
 
-||||||| e1c1c30f635
-	if (!superuser())
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("must be superuser to execute ALTER SYSTEM command")));
-
-=======
->>>>>>> adadae45816
 	/*
 	 * Extract statement arguments
 	 */
@@ -9185,9 +9085,17 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	}
 
 	/*
-	 * Check permission to run ALTER SYSTEM on the target variable
+	 * Check permission to run ALTER SYSTEM on the target variable.
+	 *
+	 * GPDB: the FTS message handler rewrites synchronous_standby_names in
+	 * gp_replication.conf through this path (set_gp_replication_config ->
+	 * AlterSystemSetConfigFile) while running outside a transaction, so it
+	 * must bypass this per-parameter permission check just like the superuser
+	 * check above.  Otherwise superuser()/pg_parameter_aclcheck issue a
+	 * syscache lookup that trips Assert(IsTransactionState()) and crashes the
+	 * segment, preventing mirror promotion (PG15 added this second check).
 	 */
-	if (!superuser())
+	if (!am_ftshandler && !superuser())
 	{
 		if (resetall)
 			ereport(ERROR,
@@ -9515,7 +9423,6 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 			break;
 	}
 
-<<<<<<< HEAD
 	if (stmt->kind == VAR_SET_DEFAULT ||
 		stmt->kind == VAR_RESET ||
 		stmt->kind == VAR_RESET_ALL)
@@ -9538,12 +9445,10 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 			CdbDispatchSetCommand(buffer.data, false);
 		}
 	}
-||||||| e1c1c30f635
-=======
+
 	/* Invoke the post-alter hook for setting this GUC variable, by name. */
 	InvokeObjectPostAlterHookArgStr(ParameterAclRelationId, stmt->name,
 									ACL_SET, stmt->kind, false);
->>>>>>> adadae45816
 }
 
 /*
@@ -9669,7 +9574,7 @@ DispatchSetPGVariable(const char *name, List *args, bool is_local)
 						break;
 					case T_Float:
 						/* represented as a string, so just copy it */
-						appendStringInfoString(&buffer, strVal(&con->val));
+						appendStringInfoString(&buffer, castNode(Float, &con->val)->fval);
 						break;
 					case T_String:
 						val = strVal(&con->val);
@@ -10182,28 +10087,16 @@ MarkGUCPrefixReserved(const char *className)
 			strncmp(className, var->name, classLen) == 0 &&
 			var->name[classLen] == GUC_QUALIFIER_SEPARATOR)
 		{
-<<<<<<< HEAD
 			if (Gp_role != GP_ROLE_EXECUTE)
 				ereport(WARNING,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 errmsg("unrecognized configuration parameter \"%s\"",
-							var->name)));
-||||||| e1c1c30f635
-			ereport(WARNING,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 errmsg("unrecognized configuration parameter \"%s\"",
-							var->name)));
-=======
-			ereport(WARNING,
-					(errcode(ERRCODE_INVALID_NAME),
-					 errmsg("invalid configuration parameter name \"%s\", removing it",
-							var->name),
-					 errdetail("\"%s\" is now a reserved prefix.",
-							   className)));
+						(errcode(ERRCODE_INVALID_NAME),
+						 errmsg("invalid configuration parameter name \"%s\", removing it",
+								var->name),
+						 errdetail("\"%s\" is now a reserved prefix.",
+								   className)));
 			num_guc_variables--;
 			memmove(&guc_variables[i], &guc_variables[i + 1],
 					(num_guc_variables - i) * sizeof(struct config_generic *));
->>>>>>> adadae45816
 		}
 	}
 
@@ -13051,6 +12944,16 @@ assign_maintenance_io_concurrency(int newval, void *extra)
 	if (AmStartupProcess())
 		XLogPrefetchReconfigure();
 #endif
+}
+
+/*
+ * GPDB: stats_temp_directory is retained as a GUC for backward compatibility,
+ * but PG15 replaced the file-based statistics collector with shared-memory
+ * stats, so the assign hook no longer has anything to do.
+ */
+static void
+assign_pgstat_temp_directory(const char *newval, void *extra)
+{
 }
 
 static bool
