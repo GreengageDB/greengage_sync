@@ -925,7 +925,6 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 															 CStringGetDatum(trigname));
 	values[Anum_pg_trigger_tgfoid - 1] = ObjectIdGetDatum(funcoid);
 	values[Anum_pg_trigger_tgtype - 1] = Int16GetDatum(tgtype);
-<<<<<<< HEAD
 	
 	/*
 	 * Special for Greenplum Database: Ignore foreign keys for now. Create
@@ -950,13 +949,6 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 	}
 	values[Anum_pg_trigger_tgenabled - 1] = CharGetDatum(tgenabled);
 	values[Anum_pg_trigger_tgisinternal - 1] = BoolGetDatum(isInternal || in_partition);
-||||||| e1c1c30f635
-	values[Anum_pg_trigger_tgenabled - 1] = CharGetDatum(TRIGGER_FIRES_ON_ORIGIN);
-	values[Anum_pg_trigger_tgisinternal - 1] = BoolGetDatum(isInternal || in_partition);
-=======
-	values[Anum_pg_trigger_tgenabled - 1] = trigger_fires_when;
-	values[Anum_pg_trigger_tgisinternal - 1] = BoolGetDatum(isInternal);
->>>>>>> adadae45816
 	values[Anum_pg_trigger_tgconstrrelid - 1] = ObjectIdGetDatum(constrrelid);
 	values[Anum_pg_trigger_tgconstrindid - 1] = ObjectIdGetDatum(indexOid);
 	values[Anum_pg_trigger_tgconstraint - 1] = ObjectIdGetDatum(constraintOid);
@@ -2632,29 +2624,17 @@ ExecARInsertTriggers(EState *estate, ResultRelInfo *relinfo,
 
 	if ((trigdesc && trigdesc->trig_insert_after_row) ||
 		(transition_capture && transition_capture->tcs_insert_new_table))
-<<<<<<< HEAD
 	{
 		if(RelationIsAoCols(relinfo->ri_RelationDesc))
 			elog(ERROR, "Trigger is not supported on AOCS yet");
 
-		AfterTriggerSaveEvent(estate, relinfo, TRIGGER_EVENT_INSERT,
-||||||| e1c1c30f635
-		AfterTriggerSaveEvent(estate, relinfo, TRIGGER_EVENT_INSERT,
-=======
 		AfterTriggerSaveEvent(estate, relinfo, NULL, NULL,
 							  TRIGGER_EVENT_INSERT,
->>>>>>> adadae45816
 							  true, NULL, slot,
 							  recheckIndexes, NULL,
-<<<<<<< HEAD
-							  transition_capture);
-	}
-||||||| e1c1c30f635
-							  transition_capture);
-=======
 							  transition_capture,
 							  false);
->>>>>>> adadae45816
+	}
 }
 
 bool

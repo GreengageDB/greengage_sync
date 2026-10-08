@@ -5,7 +5,7 @@
  *
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -243,6 +243,34 @@ ProcessQuery(Portal portal,
 	autostats_get_cmdtype(queryDesc, &cmdType, &relationOid);
 
 	/*
+	 * Build command completion status data, if caller wants one.
+	 */
+	if (qc)
+	{
+		switch (queryDesc->operation)
+		{
+			case CMD_SELECT:
+				SetQueryCompletion(qc, CMDTAG_SELECT, queryDesc->estate->es_processed);
+				break;
+			case CMD_INSERT:
+				SetQueryCompletion(qc, CMDTAG_INSERT, queryDesc->estate->es_processed);
+				break;
+			case CMD_UPDATE:
+				SetQueryCompletion(qc, CMDTAG_UPDATE, queryDesc->estate->es_processed);
+				break;
+			case CMD_DELETE:
+				SetQueryCompletion(qc, CMDTAG_DELETE, queryDesc->estate->es_processed);
+				break;
+			case CMD_MERGE:
+				SetQueryCompletion(qc, CMDTAG_MERGE, queryDesc->estate->es_processed);
+				break;
+			default:
+				SetQueryCompletion(qc, CMDTAG_UNKNOWN, queryDesc->estate->es_processed);
+				break;
+		}
+	}
+
+	/*
 	 * Now, we close down all the scans and free allocated resources.
 	 */
 	ExecutorFinish(queryDesc);
@@ -268,7 +296,7 @@ ProcessQuery(Portal portal,
 				SetQueryCompletion(qc, CMDTAG_DELETE, queryDesc->es_processed);
 				break;
 			case CMD_MERGE:
-				SetQueryCompletion(qc, CMDTAG_MERGE, queryDesc->estate->es_processed);
+				SetQueryCompletion(qc, CMDTAG_MERGE, queryDesc->es_processed);
 				break;
 			default:
 				SetQueryCompletion(qc, CMDTAG_UNKNOWN, queryDesc->es_processed);

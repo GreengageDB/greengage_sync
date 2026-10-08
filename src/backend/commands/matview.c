@@ -300,7 +300,6 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 	 */
 	SetMatViewPopulatedState(matviewRel, !stmt->skipData);
 
-<<<<<<< HEAD
 	/*
 	 * The stored query was rewritten at the time of the MV definition, but
 	 * has not been scribbled on by the planner.
@@ -325,27 +324,18 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 	 * Don't lock it down too tight to create a temporary table just yet.  We
 	 * will switch modes when we are about to execute user code.
 	 */
-	GetUserIdAndSecContext(&save_userid, &save_sec_context);
-	SetUserIdAndSecContext(relowner,
-						   save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
-	save_nestlevel = NewGUCNestLevel();
-
-||||||| e1c1c30f635
-	relowner = matviewRel->rd_rel->relowner;
-
 	/*
-	 * Switch to the owner's userid, so that any functions are run as that
-	 * user.  Also arrange to make GUC variable changes local to this command.
-	 * Don't lock it down too tight to create a temporary table just yet.  We
-	 * will switch modes when we are about to execute user code.
+	 * GPDB: switch to the owner's userid for creating the transient table.
+	 * The original userid/sec_context were already saved (and SECURITY_
+	 * RESTRICTED_OPERATION set) at the top of this function; do NOT re-fetch
+	 * them here, or the final SetUserIdAndSecContext(save_userid,
+	 * save_sec_context) would restore the restricted context instead of the
+	 * original, tripping the "prevSecContext == 0" assert in the next
+	 * StartTransaction.  The GUC nest level is likewise already established.
 	 */
-	GetUserIdAndSecContext(&save_userid, &save_sec_context);
 	SetUserIdAndSecContext(relowner,
 						   save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
-	save_nestlevel = NewGUCNestLevel();
 
-=======
->>>>>>> adadae45816
 	/* Concurrent refresh builds new data in temp tablespace, and does diff. */
 	if (concurrent)
 	{
@@ -363,22 +353,12 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 	 * it against access by any other process until commit (by which time it
 	 * will be gone).
 	 */
-<<<<<<< HEAD
 	OIDNewHeap = make_new_heap_with_colname(matviewOid, tableSpace, matviewRel->rd_rel->relam, NULL, relpersistence,
 							   ExclusiveLock, false, true, "__$");
-||||||| e1c1c30f635
-	OIDNewHeap = make_new_heap(matviewOid, tableSpace, relpersistence,
-							   ExclusiveLock);
-=======
-	OIDNewHeap = make_new_heap(matviewOid, tableSpace,
-							   matviewRel->rd_rel->relam,
-							   relpersistence, ExclusiveLock);
->>>>>>> adadae45816
 	LockRelationOid(OIDNewHeap, AccessExclusiveLock);
 	dest = CreateTransientRelDestReceiver(OIDNewHeap, matviewOid, concurrent, relpersistence,
 										  stmt->skipData);
 
-<<<<<<< HEAD
 	/*
 	 * Now lock down security-restricted operations.
 	 */
@@ -388,15 +368,6 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 	refreshClause = MakeRefreshClause(concurrent, stmt->skipData, stmt->relation);
 
 	dataQuery->intoPolicy = matviewRel->rd_cdbpolicy;
-||||||| e1c1c30f635
-	/*
-	 * Now lock down security-restricted operations.
-	 */
-	SetUserIdAndSecContext(relowner,
-						   save_sec_context | SECURITY_RESTRICTED_OPERATION);
-
-=======
->>>>>>> adadae45816
 	/* Generate the data, if wanted. */
 	/*
 	 * In GPDB, we call refresh_matview_datafill() even when WITH NO DATA was
@@ -427,7 +398,6 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 		refresh_by_heap_swap(matviewOid, OIDNewHeap, relpersistence);
 
 		/*
-<<<<<<< HEAD
 		 * Inform stats collector about our activity: basically, we truncated
 		 * the matview and inserted some new data.  (The concurrent code path
 		 * above doesn't need to worry about this because the inserts and
@@ -440,17 +410,6 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 		 * the current comment to avoid futher upstream merge issues.
 		 * The pgstat is updated in function transientrel_shutdown on QE side.
 		 * This related to issue: https://github.com/greenplum-db/gpdb/issues/11375
-||||||| e1c1c30f635
-		 * Inform stats collector about our activity: basically, we truncated
-		 * the matview and inserted some new data.  (The concurrent code path
-		 * above doesn't need to worry about this because the inserts and
-		 * deletes it issues get counted by lower-level code.)
-=======
-		 * Inform cumulative stats system about our activity: basically, we
-		 * truncated the matview and inserted some new data.  (The concurrent
-		 * code path above doesn't need to worry about this because the
-		 * inserts and deletes it issues get counted by lower-level code.)
->>>>>>> adadae45816
 		 */
 		// pgstat_count_truncate(matviewRel);
 		// if (!stmt->skipData)
@@ -874,7 +833,6 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 	 */
 	resetStringInfo(&querybuf);
 	appendStringInfo(&querybuf,
-<<<<<<< HEAD
 					 "SELECT _$newdata FROM %s _$newdata "
 					 "WHERE _$newdata IS NOT NULL AND EXISTS "
 					 "(SELECT 1 FROM %s _$newdata2 WHERE _$newdata2 IS NOT NULL "
@@ -883,23 +841,6 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 					 "_$newdata.ctid and _$newdata2.gp_segment_id = "
 					 "_$newdata.gp_segment_id)",
 					 tempname, tempname);
-||||||| e1c1c30f635
-					 "SELECT _$newdata FROM %s _$newdata "
-					 "WHERE _$newdata IS NOT NULL AND EXISTS "
-					 "(SELECT 1 FROM %s _$newdata2 WHERE _$newdata2 IS NOT NULL "
-					 "AND _$newdata2 OPERATOR(pg_catalog.*=) _$newdata "
-					 "AND _$newdata2.ctid OPERATOR(pg_catalog.<>) "
-					 "_$newdata.ctid)",
-					 tempname, tempname);
-=======
-					 "SELECT newdata.*::%s FROM %s newdata "
-					 "WHERE newdata.* IS NOT NULL AND EXISTS "
-					 "(SELECT 1 FROM %s newdata2 WHERE newdata2.* IS NOT NULL "
-					 "AND newdata2.* OPERATOR(pg_catalog.*=) newdata.* "
-					 "AND newdata2.ctid OPERATOR(pg_catalog.<>) "
-					 "newdata.ctid)",
-					 tempname, tempname, tempname);
->>>>>>> adadae45816
 	if (SPI_execute(querybuf.data, false, 1) != SPI_OK_SELECT)
 		elog(ERROR, "SPI_exec failed: %s", querybuf.data);
 	if (SPI_processed > 0)
@@ -931,19 +872,9 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 
 	appendStringInfo(&querybuf,
 					 "CREATE TEMP TABLE %s AS "
-<<<<<<< HEAD
 					 "SELECT _$mv.ctid AS tid, _$mv.gp_segment_id as sid, _$newdata.* "
 					 "FROM %s _$mv FULL JOIN %s _$newdata ON (",
 					 diffname, matviewname, tempname);
-||||||| e1c1c30f635
-					 "SELECT _$mv.ctid AS tid, _$newdata "
-					 "FROM %s _$mv FULL JOIN %s _$newdata ON (",
-					 diffname, matviewname, tempname);
-=======
-					 "SELECT mv.ctid AS tid, newdata.*::%s AS newdata "
-					 "FROM %s mv FULL JOIN %s newdata ON (",
-					 diffname, tempname, matviewname, tempname);
->>>>>>> adadae45816
 
 	/*
 	 * Get the list of index OIDs for the table from the relcache, and look up
@@ -1037,19 +968,9 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 				if (foundUniqueIndex)
 					appendStringInfoString(&querybuf, " AND ");
 
-<<<<<<< HEAD
 				leftop = quote_qualified_identifier("_$newdata",
 													NameStr(newattr->attname));
 				rightop = quote_qualified_identifier("_$mv",
-||||||| e1c1c30f635
-				leftop = quote_qualified_identifier("_$newdata",
-													NameStr(attr->attname));
-				rightop = quote_qualified_identifier("_$mv",
-=======
-				leftop = quote_qualified_identifier("newdata",
-													NameStr(attr->attname));
-				rightop = quote_qualified_identifier("mv",
->>>>>>> adadae45816
 													 NameStr(attr->attname));
 
 				generate_operator_clause(&querybuf,
@@ -1079,20 +1000,10 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 
 
 	appendStringInfoString(&querybuf,
-<<<<<<< HEAD
 						   " AND _$newdata.* OPERATOR(pg_catalog.*=) _$mv.*) "
 						   "WHERE _$newdata.* IS NULL OR _$mv.* IS NULL "
 						   "ORDER BY tid ");
 	appendStringInfoString(&querybuf, distributed);
-||||||| e1c1c30f635
-						   " AND _$newdata OPERATOR(pg_catalog.*=) _$mv) "
-						   "WHERE _$newdata IS NULL OR _$mv IS NULL "
-						   "ORDER BY tid");
-=======
-						   " AND newdata.* OPERATOR(pg_catalog.*=) mv.*) "
-						   "WHERE newdata.* IS NULL OR mv.* IS NULL "
-						   "ORDER BY tid");
->>>>>>> adadae45816
 
 	/* Create the temporary "diff" table. */
 	if (SPI_exec(querybuf.data, 0) != SPI_OK_UTILITY)
@@ -1117,22 +1028,10 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 	/* Deletes must come before inserts; do them first. */
 	resetStringInfo(&querybuf);
 	appendStringInfo(&querybuf,
-<<<<<<< HEAD
 					 "DELETE FROM %s _$mv WHERE ctid OPERATOR(pg_catalog.=) ANY "
 					 "(SELECT _$diff.tid FROM %s _$diff "
 					 "WHERE _$diff.tid = _$mv.ctid and _$diff.sid = _$mv.gp_segment_id and"
 	 				 " _$diff.tid IS NOT NULL)",
-||||||| e1c1c30f635
-					 "DELETE FROM %s _$mv WHERE ctid OPERATOR(pg_catalog.=) ANY "
-					 "(SELECT _$diff.tid FROM %s _$diff "
-					 "WHERE _$diff.tid IS NOT NULL "
-					 "AND _$diff._$newdata IS NULL)",
-=======
-					 "DELETE FROM %s mv WHERE ctid OPERATOR(pg_catalog.=) ANY "
-					 "(SELECT diff.tid FROM %s diff "
-					 "WHERE diff.tid IS NOT NULL "
-					 "AND diff.newdata IS NULL)",
->>>>>>> adadae45816
 					 matviewname, diffname);
 	if (SPI_exec(querybuf.data, 0) != SPI_OK_DELETE)
 		elog(ERROR, "SPI_exec failed: %s", querybuf.data);
@@ -1149,18 +1048,8 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 			appendStringInfo(&querybuf, " %s,", NameStr(attr->attname));
 	}
 	appendStringInfo(&querybuf,
-<<<<<<< HEAD
 					 " FROM %s _$diff WHERE tid IS NULL",
 					 diffname);
-||||||| e1c1c30f635
-					 "INSERT INTO %s SELECT (_$diff._$newdata).* "
-					 "FROM %s _$diff WHERE tid IS NULL",
-					 matviewname, diffname);
-=======
-					 "INSERT INTO %s SELECT (diff.newdata).* "
-					 "FROM %s diff WHERE tid IS NULL",
-					 matviewname, diffname);
->>>>>>> adadae45816
 	if (SPI_exec(querybuf.data, 0) != SPI_OK_INSERT)
 		elog(ERROR, "SPI_exec failed: %s", querybuf.data);
 

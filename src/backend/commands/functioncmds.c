@@ -666,6 +666,13 @@ compute_common_attribute(ParseState *pstate,
 	/* Recognized an option */
 	return true;
 
+duplicate_error:
+	ereport(ERROR,
+			(errcode(ERRCODE_SYNTAX_ERROR),
+			 errmsg("conflicting or redundant options"),
+			 parser_errposition(pstate, defel->location)));
+	return false;
+
 procedure_error:
 	ereport(ERROR,
 			(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
@@ -1718,13 +1725,9 @@ RemoveFunctionById(Oid funcOid)
 
 	table_close(relation, RowExclusiveLock);
 
-<<<<<<< HEAD
 	/* Remove anything in pg_proc_callback for this function */
 	deleteProcCallbacks(funcOid);
-||||||| e1c1c30f635
-=======
 	pgstat_drop_function(funcOid);
->>>>>>> adadae45816
 
 	/*
 	 * If there's a pg_aggregate tuple, delete that too.
@@ -1919,7 +1922,6 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 		tup = heap_modify_tuple(tup, RelationGetDescr(rel),
 								repl_val, repl_null, repl_repl);
 	}
-<<<<<<< HEAD
 	if (parallel_item)
 		procForm->proparallel = interpret_func_parallel(parallel_item);
 	if (describe_item)
@@ -1971,12 +1973,6 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 							 procForm->prolang);
 	validate_sql_exec_location(exec_location,
 							   procForm->proretset);
-||||||| e1c1c30f635
-	if (parallel_item)
-		procForm->proparallel = interpret_func_parallel(parallel_item);
-=======
-	/* DO NOT put more touches of procForm below here; it's now dangling. */
->>>>>>> adadae45816
 
 	/* Do the update */
 	CatalogTupleUpdate(rel, &tup->t_self, tup);
@@ -2668,7 +2664,7 @@ ExecuteDoStmt(ParseState *pstate, DoStmt *stmt, bool atomic)
 static void
 CheckForModifySystemFunc(Oid funcOid, List *funcName)
 {
-	if (!allowSystemTableMods && funcOid < FirstBootstrapObjectId)
+	if (!allowSystemTableMods && funcOid < FirstUnpinnedObjectId)
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("permission defined: \"%s\" is a system function",

@@ -3,15 +3,9 @@
  * indexcmds.c
  *	  POSTGRES define and remove index code.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -92,32 +86,6 @@
 static bool CompareOpclassOptions(Datum *opts1, Datum *opts2, int natts);
 static void CheckPredicate(Expr *predicate);
 static void ComputeIndexAttrs(IndexInfo *indexInfo,
-<<<<<<< HEAD
-				  Oid *typeOidP,
-				  Oid *collationOidP,
-				  Oid *classOidP,
-				  int16 *colOptionP,
-				  List *attList,
-				  List *exclusionOpNames,
-				  Oid relId,
-				  const char *accessMethodName, Oid accessMethodId,
-				  bool amcanorder,
-				  bool isconstraint);
-||||||| e1c1c30f635
-							  Oid *typeOidP,
-							  Oid *collationOidP,
-							  Oid *classOidP,
-							  int16 *colOptionP,
-							  List *attList,
-							  List *exclusionOpNames,
-							  Oid relId,
-							  const char *accessMethodName, Oid accessMethodId,
-							  bool amcanorder,
-							  bool isconstraint);
-static char *ChooseIndexName(const char *tabname, Oid namespaceId,
-							 List *colnames, List *exclusionOpNames,
-							 bool primary, bool isconstraint);
-=======
 							  Oid *typeOidP,
 							  Oid *collationOidP,
 							  Oid *classOidP,
@@ -131,10 +99,9 @@ static char *ChooseIndexName(const char *tabname, Oid namespaceId,
 							  Oid ddl_userid,
 							  int ddl_sec_context,
 							  int *ddl_save_nestlevel);
-static char *ChooseIndexName(const char *tabname, Oid namespaceId,
+char *ChooseIndexName(const char *tabname, Oid namespaceId,
 							 List *colnames, List *exclusionOpNames,
 							 bool primary, bool isconstraint);
->>>>>>> adadae45816
 static char *ChooseIndexNameAddition(List *colnames);
 static void ReindexIndex(ReindexStmt *stmt, ReindexParams *params,
 						 bool isTopLevel);
@@ -702,16 +669,10 @@ DefineIndex(Oid relationId,
 	LOCKTAG		heaplocktag;
 	LOCKMODE	lockmode;
 	Snapshot	snapshot;
-<<<<<<< HEAD
-	int			save_nestlevel = -1;
 	bool		shouldDispatch;
-||||||| e1c1c30f635
-	int			save_nestlevel = -1;
-=======
 	Oid			root_save_userid;
 	int			root_save_sec_context;
 	int			root_save_nestlevel;
->>>>>>> adadae45816
 	int			i;
 	Oid			blkdirrelid = InvalidOid;
 
@@ -1482,7 +1443,14 @@ DefineIndex(Oid relationId,
 	}
 
 	/*
-<<<<<<< HEAD
+	 * Roll back any GUC changes executed by index functions, and keep
+	 * subsequent changes local to this command.  This is essential if some
+	 * index function changed a behavior-affecting GUC, e.g. search_path.
+	 */
+	AtEOXact_GUC(false, root_save_nestlevel);
+	root_save_nestlevel = NewGUCNestLevel();
+
+	/*
 	 * In the QD, remember the chosen index name and stash it with the
 	 * chosen OIDs, so that it's dispatched to the QE later.
 	 */
@@ -1492,15 +1460,6 @@ DefineIndex(Oid relationId,
 												  relationId,
 												  indexRelationName);
 	}
-||||||| e1c1c30f635
-=======
-	 * Roll back any GUC changes executed by index functions, and keep
-	 * subsequent changes local to this command.  This is essential if some
-	 * index function changed a behavior-affecting GUC, e.g. search_path.
-	 */
-	AtEOXact_GUC(false, root_save_nestlevel);
-	root_save_nestlevel = NewGUCNestLevel();
->>>>>>> adadae45816
 
 	/* Add any requested comment */
 	if (stmt->idxcomment != NULL)
@@ -1724,15 +1683,9 @@ DefineIndex(Oid relationId,
 								indexRelationId,	/* this is our child */
 								createdConstraintId,
 								is_alter_table, check_rights, check_not_in_use,
-<<<<<<< HEAD
 								skip_build, quiet, is_new_table);
-||||||| e1c1c30f635
-								skip_build, quiet);
-=======
-								skip_build, quiet);
 					SetUserIdAndSecContext(child_save_userid,
 										   child_save_sec_context);
->>>>>>> adadae45816
 				}
 
 				pgstat_progress_update_param(PROGRESS_CREATEIDX_PARTITIONS_DONE,
@@ -1794,7 +1747,9 @@ DefineIndex(Oid relationId,
 		return address;
 	}
 
-<<<<<<< HEAD
+	AtEOXact_GUC(false, root_save_nestlevel);
+	SetUserIdAndSecContext(root_save_userid, root_save_sec_context);
+
 	stmt->idxname = indexRelationName;
 	if (shouldDispatch)
 	{
@@ -1812,11 +1767,6 @@ DefineIndex(Oid relationId,
 		if (!indexInfo->ii_BrokenHotChain)
 			cdb_sync_indcheckxmin_with_segments(indexRelationId);
 	}
-||||||| e1c1c30f635
-=======
-	AtEOXact_GUC(false, root_save_nestlevel);
-	SetUserIdAndSecContext(root_save_userid, root_save_sec_context);
->>>>>>> adadae45816
 
 	if (!concurrent)
 	{

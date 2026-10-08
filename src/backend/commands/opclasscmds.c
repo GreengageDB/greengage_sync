@@ -817,9 +817,8 @@ DefineOpFamily(CreateOpFamilyStmt *stmt)
 				 errmsg("must be superuser to create an operator family")));
 
 	/* Insert pg_opfamily catalog entry */
-<<<<<<< HEAD
 	ObjectAddress objAddr;
-	objAddr = CreateOpFamily(stmt->amname, opfname, namespaceoid, amoid);
+	objAddr = CreateOpFamily(stmt, opfname, namespaceoid, amoid);
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
@@ -832,11 +831,6 @@ DefineOpFamily(CreateOpFamilyStmt *stmt)
 	}
 
 	return objAddr;
-||||||| e1c1c30f635
-	return CreateOpFamily(stmt->amname, opfname, namespaceoid, amoid);
-=======
-	return CreateOpFamily(stmt, opfname, namespaceoid, amoid);
->>>>>>> adadae45816
 }
 
 
