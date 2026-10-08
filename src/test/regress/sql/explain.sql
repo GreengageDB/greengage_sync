@@ -55,17 +55,39 @@ begin
 end;
 $$;
 
+-- GGDB: the JIT regression jobs run with jit enabled and lowered jit cost
+-- thresholds, so EXPLAIN (VERBOSE) emits a "Settings: jit = ..." line. That line
+-- is ignored by init_file, but its width still perturbs the explain_filter output
+-- column and breaks the otherwise-identical non-jit jobs. Pin the jit GUCs to
+-- their boot defaults so EXPLAIN output is the same under both job types (the JSON
+-- cases below already strip jit for the same "varies in test environment" reason).
+set jit = off;
+set jit_above_cost = 100000;
+set optimizer_jit_above_cost = 7500;
+-- Disable JIT, or we'll get different output on machines where that's been
+-- forced on
+set jit = off;
+
+-- Similarly, disable track_io_timing, to avoid output differences when
+-- enabled.
+set track_io_timing = off;
+
 -- Simple cases
 
 select explain_filter('explain select * from int8_tbl i8');
 select explain_filter('explain (analyze) select * from int8_tbl i8');
 select explain_filter('explain (analyze, verbose) select * from int8_tbl i8');
 select explain_filter('explain (analyze, buffers, format text) select * from int8_tbl i8');
-select explain_filter('explain (analyze, buffers, format json) select * from int8_tbl i8');
 select explain_filter('explain (analyze, buffers, format xml) select * from int8_tbl i8');
 select explain_filter('explain (analyze, buffers, format yaml) select * from int8_tbl i8');
 select explain_filter('explain (buffers, format text) select * from int8_tbl i8');
 select explain_filter('explain (buffers, format json) select * from int8_tbl i8');
+
+-- Check output including I/O timings.  These fields are conditional
+-- but always set in JSON format, so check them only in this case.
+set track_io_timing = on;
+select explain_filter('explain (analyze, buffers, format json) select * from int8_tbl i8');
+set track_io_timing = off;
 
 -- SETTINGS option
 -- We have to ignore other settings that might be imposed by the environment,
@@ -108,9 +130,29 @@ select jsonb_pretty(
   #- '{0,Settings,jit}'
   #- '{0,Settings,jit_above_cost}'
   #- '{0,Settings,optimizer_jit_above_cost}'
+  -- GGDB: the work_mem-derived per-node and per-slice memory accounting
+  -- (work_mem / Executor Memory* / Work Maximum Memory) is emitted by the
+  -- planner/ORCA jobs but NOT by the JIT regression jobs (segment-side
+  -- JIT-compiled nodes bypass that accounting), so strip it for output that is
+  -- identical across all four (jit x optimizer) jobs.
+  #- '{0,Plan,Plans,0,work_mem}'
+  #- '{0,Plan,Plans,0,Executor Memory}'
+  #- '{0,Plan,Plans,0,Executor Memory Segments}'
+  #- '{0,Plan,Plans,0,Executor Max Memory}'
+  #- '{0,Plan,Plans,0,Executor Max Memory Segment}'
+  #- '{0,Slice statistics,1,Work Maximum Memory}'
 );
 
 rollback;
 
+-- Test display of temporary objects
+create temp table t1(f1 float8);
+
+create function pg_temp.mysin(float8) returns float8 language plpgsql
+as 'begin return sin($1); end';
+
+select explain_filter('explain (verbose) select * from t1 where pg_temp.mysin(f1) < 0.5');
+
+-- Test compute_query_id
 set compute_query_id = on;
 select explain_filter('explain (verbose) select * from int8_tbl i8');

@@ -2374,7 +2374,7 @@ create index ab_a3_b2_a_idx on ab_a3_b2 (a);
 create index ab_a3_b3_a_idx on ab_a3_b3 (a);
 set enable_hashjoin = 0;
 set enable_mergejoin = 0;
-set enable_resultcache = 0;
+set enable_memoize = 0;
 select explain_parallel_append('select avg(ab.a) from ab inner join lprt_a a on ab.a = a.a where a.a in(0, 0, 1)');
                                         explain_parallel_append                                        
 -------------------------------------------------------------------------------------------------------
@@ -2403,8 +2403,7 @@ select explain_parallel_append('select avg(ab.a) from ab inner join lprt_a a on 
                                              Index Cond: (a = ANY ('{0,0,1}'::integer[]))
                      ->  Sort (actual rows=N loops=N)
                            Sort Key: a.a
-                           Sort Method:  quicksort  Memory: 30kB
-                           Executor Memory: 29kB  Segments: 1  Max: 29kB (segment 1)
+                           Sort Method:  quicksort  Memory: 25kB
                            ->  Partition Selector (selector id: $0) (actual rows=N loops=N)
                                  ->  Seq Scan on lprt_a a (actual rows=N loops=N)
                                        Filter: (a = ANY ('{0,0,1}'::integer[]))
@@ -2487,8 +2486,7 @@ select explain_parallel_append('select avg(ab.a) from ab inner join lprt_a a on 
                                              Index Cond: (a = ANY ('{1,0,3}'::integer[]))
                      ->  Sort (actual rows=N loops=N)
                            Sort Key: a.a
-                           Sort Method:  quicksort  Memory: 55kB
-                           Executor Memory: 88kB  Segments: 2  Max: 59kB (segment 0)
+                           Sort Method:  quicksort  Memory: 50kB
                            ->  Partition Selector (selector id: $0) (actual rows=N loops=N)
                                  ->  Seq Scan on lprt_a a (actual rows=N loops=N)
                                        Filter: (a = ANY ('{1,0,3}'::integer[]))
@@ -2523,8 +2521,7 @@ select explain_parallel_append('select avg(ab.a) from ab inner join lprt_a a on 
                                              Index Cond: (a = ANY ('{1,0,0}'::integer[]))
                      ->  Sort (actual rows=N loops=N)
                            Sort Key: a.a
-                           Sort Method:  quicksort  Memory: 30kB
-                           Executor Memory: 29kB  Segments: 1  Max: 29kB (segment 1)
+                           Sort Method:  quicksort  Memory: 25kB
                            ->  Partition Selector (selector id: $0) (actual rows=N loops=N)
                                  ->  Seq Scan on lprt_a a (actual rows=N loops=N)
                                        Filter: (a = ANY ('{1,0,0}'::integer[]))
@@ -2560,8 +2557,7 @@ select explain_parallel_append('select avg(ab.a) from ab inner join lprt_a a on 
                                              Index Cond: (a = ANY ('{1,0,0}'::integer[]))
                      ->  Sort (actual rows=N loops=N)
                            Sort Key: a.a
-                           Sort Method:  quicksort  Memory: 30kB
-                           Executor Memory: 29kB  Segments: 1  Max: 29kB (segment 1)
+                           Sort Method:  quicksort  Memory: 25kB
                            ->  Partition Selector (selector id: $0) (actual rows=N loops=N)
                                  ->  Seq Scan on lprt_a a (actual rows=N loops=N)
                                        Filter: (a = ANY ('{1,0,0}'::integer[]))
@@ -2570,7 +2566,7 @@ select explain_parallel_append('select avg(ab.a) from ab inner join lprt_a a on 
 
 reset enable_hashjoin;
 reset enable_mergejoin;
-reset enable_resultcache;
+reset enable_memoize;
 reset parallel_setup_cost;
 reset parallel_tuple_cost;
 reset min_parallel_table_scan_size;
@@ -3335,9 +3331,9 @@ select * from stable_qual_pruning where a < localtimestamp;
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
    ->  Append (actual rows=0 loops=1)
          ->  Seq Scan on stable_qual_pruning1 stable_qual_pruning_1 (actual rows=0 loops=1)
-               Filter: (a < 'Wed Jul 23 03:08:45.23423 2025'::timestamp without time zone)
+               Filter: (a < 'Sat Jun 20 14:43:38.242732 2026'::timestamp without time zone)
          ->  Seq Scan on stable_qual_pruning2 stable_qual_pruning_2 (actual rows=0 loops=1)
-               Filter: (a < 'Wed Jul 23 03:08:45.23423 2025'::timestamp without time zone)
+               Filter: (a < 'Sat Jun 20 14:43:38.242732 2026'::timestamp without time zone)
  Optimizer: Postgres query optimizer
 (7 rows)
 
@@ -3382,7 +3378,7 @@ select * from stable_qual_pruning
 -----------------------------------------------------------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
    ->  Seq Scan on stable_qual_pruning2 stable_qual_pruning (actual rows=0 loops=1)
-         Filter: (a = ANY ('{"Tue Feb 01 00:00:00 2000","Thu Sep 15 22:18:08.839445 2022"}'::timestamp without time zone[]))
+         Filter: (a = ANY ('{"Tue Feb 01 00:00:00 2000","Sat Jun 20 14:43:38.253246 2026"}'::timestamp without time zone[]))
  Optimizer: Postgres query optimizer
 (4 rows)
 
@@ -4070,7 +4066,7 @@ where s.a = 1 and s.b = 1 and s.c = (select 1);
          ->  Seq Scan on q111 q1
                Filter: ((a = 1) AND (b = 1) AND (c = $0))
          ->  Result
-               One-Time Filter: (gp_execution_segment() = 2)
+               One-Time Filter: (gp_execution_segment() = 0)
                ->  Result
                      One-Time Filter: (1 = $0)
  Optimizer: Postgres query optimizer
@@ -4113,7 +4109,7 @@ explain (costs off) execute q (1, 1);
          ->  Seq Scan on q111 q1
                Filter: ((a = $1) AND (b = $2) AND (c = $0))
          ->  Result
-               One-Time Filter: (gp_execution_segment() = 2)
+               One-Time Filter: (gp_execution_segment() = 0)
                ->  Result
                      One-Time Filter: ((1 = $1) AND (1 = $2) AND (1 = $0))
  Optimizer: Postgres query optimizer

@@ -43,7 +43,6 @@
 
 #include <math.h>
 
-#include "fmgr.h"
 #include "miscadmin.h"
 #include "nodes/extensible.h"
 #include "nodes/parsenodes.h"
@@ -53,6 +52,7 @@
 #include "cdb/cdbgang.h"
 #include "nodes/altertablenodes.h"
 #include "utils/builtins.h"
+#include "catalog/gp_distribution_policy.h"
 
 /*
  * readfuncs.c is compiled normally into readfuncs.o, but it's also
@@ -99,12 +99,11 @@
 /* Read an unsigned integer field (anything written as ":fldname %u") */
 #define READ_UINT_FIELD(fldname)    READ_SCALAR_FIELD(fldname, atoui(token))
 
-/* Read an uint64 field (anything written as ":fldname %ll") */
-#ifndef WIN32
-#define READ_UINT64_FIELD(fldname)  READ_SCALAR_FIELD(fldname, atoll(token))
-#else
-#define READ_UINT64_FIELD(fldname)  READ_SCALAR_FIELD(fldname, _atoi64(token))
-#endif
+/* Read an unsigned integer field (anything written using UINT64_FORMAT) */
+#define READ_UINT64_FIELD(fldname) \
+	token = pg_strtok(&length);		/* skip :fldname */ \
+	token = pg_strtok(&length);		/* get field value */ \
+	local_node->fldname = strtou64(token, NULL, 10)
 
 /* Read a long integer field (anything written as ":fldname %ld") */
 #define READ_LONG_FIELD(fldname) \
@@ -364,8 +363,10 @@ _readQuery(void)
 	READ_NODE_FIELD(rowMarks);
 	READ_NODE_FIELD(setOperations);
 	READ_NODE_FIELD(constraintDeps);
-    READ_NODE_FIELD(withCheckOptions);
-    READ_LOCATION_FIELD(stmt_location);
+	READ_NODE_FIELD(withCheckOptions);
+	READ_NODE_FIELD(mergeActionList);
+	READ_BOOL_FIELD(mergeUseOuterJoin);
+	READ_LOCATION_FIELD(stmt_location);
 	READ_INT_FIELD(stmt_len);
     READ_BOOL_FIELD(parentStmtType);
 
@@ -484,6 +485,7 @@ _readWindowClause(void)
 	READ_INT_FIELD(frameOptions);
 	READ_NODE_FIELD(startOffset);
 	READ_NODE_FIELD(endOffset);
+	READ_NODE_FIELD(runCondition);
 	READ_OID_FIELD(startInRangeFunc);
 	READ_OID_FIELD(endInRangeFunc);
 	READ_OID_FIELD(inRangeColl);
@@ -587,6 +589,42 @@ _readWithClause(void)
 }
 
 /*
+ * _readMergeWhenClause
+ */
+static MergeWhenClause *
+_readMergeWhenClause(void)
+{
+	READ_LOCALS(MergeWhenClause);
+
+	READ_BOOL_FIELD(matched);
+	READ_ENUM_FIELD(commandType, CmdType);
+	READ_NODE_FIELD(condition);
+	READ_NODE_FIELD(targetList);
+	READ_NODE_FIELD(values);
+	READ_ENUM_FIELD(override, OverridingKind);
+
+	READ_DONE();
+}
+
+/*
+ * _readMergeAction
+ */
+static MergeAction *
+_readMergeAction(void)
+{
+	READ_LOCALS(MergeAction);
+
+	READ_BOOL_FIELD(matched);
+	READ_ENUM_FIELD(commandType, CmdType);
+	READ_ENUM_FIELD(override, OverridingKind);
+	READ_NODE_FIELD(qual);
+	READ_NODE_FIELD(targetList);
+	READ_NODE_FIELD(updateColnos);
+
+	READ_DONE();
+}
+
+/*
  * _readSetOperationStmt
  */
 static SetOperationStmt *
@@ -648,6 +686,7 @@ _readTableFunc(void)
 {
 	READ_LOCALS(TableFunc);
 
+	READ_ENUM_FIELD(functype, TableFuncType);
 	READ_NODE_FIELD(ns_uris);
 	READ_NODE_FIELD(ns_names);
 	READ_NODE_FIELD(docexpr);
@@ -658,7 +697,9 @@ _readTableFunc(void)
 	READ_NODE_FIELD(colcollations);
 	READ_NODE_FIELD(colexprs);
 	READ_NODE_FIELD(coldefexprs);
+	READ_NODE_FIELD(colvalexprs);
 	READ_BITMAPSET_FIELD(notnulls);
+	READ_NODE_FIELD(plan);
 	READ_INT_FIELD(ordinalitycol);
 	READ_LOCATION_FIELD(location);
 
@@ -682,6 +723,27 @@ _readIntoClause(void)
 
 	READ_DONE();
 }
+
+#ifndef COMPILING_BINARY_FUNCS
+/*
+ * _readGpPolicy
+ *	  Text counterpart of readfast.c's binary _readGpPolicy; reads what
+ *	  _outGpPolicy (outfuncs.c) wrote.
+ */
+static GpPolicy *
+_readGpPolicy(void)
+{
+	READ_LOCALS(GpPolicy);
+
+	READ_ENUM_FIELD(ptype, GpPolicyType);
+	READ_INT_FIELD(numsegments);
+	READ_INT_FIELD(nattrs);
+	READ_ATTRNUMBER_ARRAY(attrs, local_node->nattrs);
+	READ_OID_ARRAY(opclasses, local_node->nattrs);
+
+	READ_DONE();
+}
+#endif /* COMPILING_BINARY_FUNCS */
 
 static CopyIntoClause *
 _readCopyIntoClause(void)
@@ -716,7 +778,7 @@ _readVar(void)
 {
 	READ_LOCALS(Var);
 
-	READ_UINT_FIELD(varno);
+	READ_INT_FIELD(varno);
 	READ_INT_FIELD(varattno);
 	READ_OID_FIELD(vartype);
 	READ_INT_FIELD(vartypmod);
@@ -797,6 +859,9 @@ _readConstraint(void)
 	READ_NODE_FIELD(old_conpfeqop);
 	READ_OID_FIELD(old_pktable_oid);
 
+	READ_BOOL_FIELD(nulls_not_distinct);
+	READ_NODE_FIELD(fk_del_set_cols);
+
 	READ_BOOL_FIELD(skip_validation);
 	READ_BOOL_FIELD(initially_valid);
 
@@ -825,6 +890,7 @@ _readIndexStmt(void)
 	READ_UINT_FIELD(oldCreateSubid);
 	READ_UINT_FIELD(oldFirstRelfilenodeSubid);
 	READ_BOOL_FIELD(unique);
+	READ_BOOL_FIELD(nulls_not_distinct);
 	READ_BOOL_FIELD(primary);
 	READ_BOOL_FIELD(isconstraint);
 	READ_BOOL_FIELD(deferrable);
@@ -993,7 +1059,7 @@ unwrapStringList(List *list)
 
 	foreach(lc, list)
 	{
-		Value	   *val = (Value *) lfirst(lc);
+		String	   *val = (String *) lfirst(lc);
 
 		lfirst(lc) = strVal(val);
 		pfree(val);
@@ -1229,20 +1295,20 @@ _readAConst(void)
 
 	token = pg_strtok(&length);
 	token = debackslash(token,length);
-	local_node->val.type = T_String;
+	local_node->val.node.type = T_String;
 
 	if (token[0] == '"')
 	{
-		local_node->val.val.str = palloc(length - 1);
-		strncpy(local_node->val.val.str , token+1, strlen(token)-2);
-		local_node->val.val.str[strlen(token)-2] = '\0';
+		local_node->val.sval.sval = palloc(length - 1);
+		strncpy(local_node->val.sval.sval , token+1, strlen(token)-2);
+		local_node->val.sval.sval[strlen(token)-2] = '\0';
 	}
 	else if (length > 2 && (token[0] == 'b'|| token[0] == 'B') && (token[1] == '\'' || token[1] == '"'))
 	{
-		local_node->val.type = T_BitString;
-		local_node->val.val.str = palloc(length+1);
-		strncpy(local_node->val.val.str , token, length);
-		local_node->val.val.str[length] = '\0';
+		local_node->val.node.type = T_BitString;
+		local_node->val.sval.sval = palloc(length+1);
+		strncpy(local_node->val.sval.sval , token, length);
+		local_node->val.sval.sval[length] = '\0';
 	}
 	else
 	{
@@ -1262,20 +1328,20 @@ _readAConst(void)
 	 	   }
 	 	if (isInt)
 		{
-			local_node->val.type = T_Integer;
-			local_node->val.val.ival = atol(token);
+			local_node->val.node.type = T_Integer;
+			local_node->val.ival.ival = atol(token);
 		}
 		else if (isFloat)
 		{
-			local_node->val.type = T_Float;
-			local_node->val.val.str = palloc(length + 1);
-			strcpy(local_node->val.val.str , token);
+			local_node->val.node.type = T_Float;
+			local_node->val.sval.sval = palloc(length + 1);
+			strcpy(local_node->val.sval.sval , token);
 		}
 		else
 		{
 			elog(ERROR,"Deserialization problem:  A_Const not string, bitstring, float, or int");
-			local_node->val.val.str = palloc(length + 1);
-			strcpy(local_node->val.val.str , token);
+			local_node->val.sval.sval = palloc(length + 1);
+			strcpy(local_node->val.sval.sval , token);
 		}
 	}
 
@@ -1621,6 +1687,7 @@ _readScalarArrayOpExpr(void)
 	READ_OID_FIELD(opno);
 	READ_OID_FIELD(opfuncid);
 	READ_OID_FIELD(hashfuncid);
+	READ_OID_FIELD(negfuncid);
 	READ_BOOL_FIELD(useOr);
 	READ_OID_FIELD(inputcollid);
 	READ_NODE_FIELD(args);
@@ -2193,6 +2260,277 @@ _readOnConflictExpr(void)
 }
 
 /*
+ * _readJsonFormat
+ */
+static JsonFormat *
+_readJsonFormat(void)
+{
+	READ_LOCALS(JsonFormat);
+
+	READ_ENUM_FIELD(format_type, JsonFormatType);
+	READ_ENUM_FIELD(encoding, JsonEncoding);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+/*
+ * _readJsonReturning
+ */
+static JsonReturning *
+_readJsonReturning(void)
+{
+	READ_LOCALS(JsonReturning);
+
+	READ_NODE_FIELD(format);
+	READ_OID_FIELD(typid);
+	READ_INT_FIELD(typmod);
+
+	READ_DONE();
+}
+
+/*
+ * _readJsonValueExpr
+ */
+static JsonValueExpr *
+_readJsonValueExpr(void)
+{
+	READ_LOCALS(JsonValueExpr);
+
+	READ_NODE_FIELD(raw_expr);
+	READ_NODE_FIELD(formatted_expr);
+	READ_NODE_FIELD(format);
+
+	READ_DONE();
+}
+
+/*
+ * GPDB: readers for the untransformed SQL/JSON and publication parse nodes
+ * that GPDB dispatches to the segments. See the matching _out* functions in
+ * outfuncs.c for why these exist.
+ */
+static JsonFuncExpr *
+_readJsonFuncExpr(void)
+{
+	READ_LOCALS(JsonFuncExpr);
+
+	READ_ENUM_FIELD(op, JsonExprOp);
+	READ_NODE_FIELD(common);
+	READ_NODE_FIELD(output);
+	READ_NODE_FIELD(on_empty);
+	READ_NODE_FIELD(on_error);
+	READ_ENUM_FIELD(wrapper, JsonWrapper);
+	READ_BOOL_FIELD(omit_quotes);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonCommon *
+_readJsonCommon(void)
+{
+	READ_LOCALS(JsonCommon);
+
+	READ_NODE_FIELD(expr);
+	READ_NODE_FIELD(pathspec);
+	READ_STRING_FIELD(pathname);
+	READ_NODE_FIELD(passing);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonOutput *
+_readJsonOutput(void)
+{
+	READ_LOCALS(JsonOutput);
+
+	READ_NODE_FIELD(typeName);
+	READ_NODE_FIELD(returning);
+
+	READ_DONE();
+}
+
+static JsonArgument *
+_readJsonArgument(void)
+{
+	READ_LOCALS(JsonArgument);
+
+	READ_NODE_FIELD(val);
+	READ_STRING_FIELD(name);
+
+	READ_DONE();
+}
+
+static PublicationObjSpec *
+_readPublicationObjSpec(void)
+{
+	READ_LOCALS(PublicationObjSpec);
+
+	READ_ENUM_FIELD(pubobjtype, PublicationObjSpecType);
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(pubtable);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static PublicationTable *
+_readPublicationTable(void)
+{
+	READ_LOCALS(PublicationTable);
+
+	READ_NODE_FIELD(relation);
+	READ_NODE_FIELD(whereClause);
+	READ_NODE_FIELD(columns);
+
+	READ_DONE();
+}
+
+/*
+ * _readJsonConstructorExpr
+ */
+static JsonConstructorExpr *
+_readJsonConstructorExpr(void)
+{
+	READ_LOCALS(JsonConstructorExpr);
+
+	READ_ENUM_FIELD(type, JsonConstructorType);
+	READ_NODE_FIELD(args);
+	READ_NODE_FIELD(func);
+	READ_NODE_FIELD(coercion);
+	READ_NODE_FIELD(returning);
+	READ_BOOL_FIELD(absent_on_null);
+	READ_BOOL_FIELD(unique);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+/*
+ * _readJsonBehavior
+ */
+static JsonBehavior *
+_readJsonBehavior(void)
+{
+	READ_LOCALS(JsonBehavior);
+
+	READ_ENUM_FIELD(btype, JsonBehaviorType);
+	READ_NODE_FIELD(default_expr);
+
+	READ_DONE();
+}
+
+/*
+ * _readJsonExpr
+ */
+static JsonExpr *
+_readJsonExpr(void)
+{
+	READ_LOCALS(JsonExpr);
+
+	READ_ENUM_FIELD(op, JsonExprOp);
+	READ_NODE_FIELD(formatted_expr);
+	READ_NODE_FIELD(result_coercion);
+	READ_NODE_FIELD(format);
+	READ_NODE_FIELD(path_spec);
+	READ_NODE_FIELD(passing_names);
+	READ_NODE_FIELD(passing_values);
+	READ_NODE_FIELD(returning);
+	READ_NODE_FIELD(on_empty);
+	READ_NODE_FIELD(on_error);
+	READ_NODE_FIELD(coercions);
+	READ_ENUM_FIELD(wrapper, JsonWrapper);
+	READ_BOOL_FIELD(omit_quotes);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonTableParent *
+_readJsonTableParent(void)
+{
+	READ_LOCALS(JsonTableParent);
+
+	READ_NODE_FIELD(path);
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(child);
+	READ_BOOL_FIELD(outerJoin);
+	READ_INT_FIELD(colMin);
+	READ_INT_FIELD(colMax);
+	READ_BOOL_FIELD(errorOnError);
+
+	READ_DONE();
+}
+
+static JsonTableSibling *
+_readJsonTableSibling(void)
+{
+	READ_LOCALS(JsonTableSibling);
+
+	READ_NODE_FIELD(larg);
+	READ_NODE_FIELD(rarg);
+	READ_BOOL_FIELD(cross);
+
+	READ_DONE();
+}
+
+/*
+ * _readJsonCoercion
+ */
+static JsonCoercion *
+_readJsonCoercion(void)
+{
+	READ_LOCALS(JsonCoercion);
+
+	READ_NODE_FIELD(expr);
+	READ_BOOL_FIELD(via_populate);
+	READ_BOOL_FIELD(via_io);
+	READ_OID_FIELD(collation);
+
+	READ_DONE();
+}
+
+/*
+ * _readJsonItemCoercions
+ */
+static JsonItemCoercions *
+_readJsonItemCoercions(void)
+{
+	READ_LOCALS(JsonItemCoercions);
+
+	READ_NODE_FIELD(null);
+	READ_NODE_FIELD(string);
+	READ_NODE_FIELD(numeric);
+	READ_NODE_FIELD(boolean);
+	READ_NODE_FIELD(date);
+	READ_NODE_FIELD(time);
+	READ_NODE_FIELD(timetz);
+	READ_NODE_FIELD(timestamp);
+	READ_NODE_FIELD(timestamptz);
+	READ_NODE_FIELD(composite);
+
+	READ_DONE();
+}
+
+/*
+ * _readJsonIsPredicate
+ */
+static JsonIsPredicate *
+_readJsonIsPredicate()
+{
+	READ_LOCALS(JsonIsPredicate);
+
+	READ_NODE_FIELD(expr);
+	READ_NODE_FIELD(format);
+	READ_ENUM_FIELD(item_type, JsonValueType);
+	READ_BOOL_FIELD(unique_keys);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+/*
  *	Stuff from pathnodes.h.
  *
  * Mostly we don't need to read planner nodes back in again, but some
@@ -2307,6 +2645,23 @@ _readSortBy(void)
 	READ_ENUM_FIELD(sortby_dir, SortByDir);
 	READ_ENUM_FIELD(sortby_nulls, SortByNulls);
 	READ_NODE_FIELD(useOp);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static WindowDef *
+_readWindowDef(void)
+{
+	READ_LOCALS(WindowDef);
+
+	READ_STRING_FIELD(name);
+	READ_STRING_FIELD(refname);
+	READ_NODE_FIELD(partitionClause);
+	READ_NODE_FIELD(orderClause);
+	READ_INT_FIELD(frameOptions);
+	READ_NODE_FIELD(startOffset);
+	READ_NODE_FIELD(endOffset);
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();
@@ -2671,6 +3026,7 @@ _readModifyTable(void)
 	READ_NODE_FIELD(exclRelTlist);
 	READ_BOOL_FIELD(isSplitUpdate);
 	READ_BOOL_FIELD(forceTupleRouting);
+	READ_NODE_FIELD(mergeActionLists);
 
 	READ_DONE();
 }
@@ -2804,7 +3160,7 @@ _readSeqScan(void)
 {
 	READ_LOCALS_NO_FIELDS(SeqScan);
 
-	ReadCommonScan(local_node);
+	ReadCommonScan(&local_node->scan);
 
 	READ_DONE();
 }
@@ -2880,6 +3236,7 @@ _readIndexOnlyScan(void)
 
 	READ_OID_FIELD(indexid);
 	READ_NODE_FIELD(indexqual);
+	READ_NODE_FIELD(recheckqual);
 	READ_NODE_FIELD(indexorderby);
 	READ_NODE_FIELD(indextlist);
 	READ_ENUM_FIELD(indexorderdir, ScanDirection);
@@ -3003,6 +3360,7 @@ _readSubqueryScan(void)
 	ReadCommonScan(&local_node->scan);
 
 	READ_NODE_FIELD(subplan);
+	READ_ENUM_FIELD(scanstatus, SubqueryScanStatus);
 
 	READ_DONE();
 }
@@ -3284,12 +3642,12 @@ _readMaterial(void)
 }
 
 /*
- * _readResultCache
+ * _readMemoize
  */
-static ResultCache *
-_readResultCache(void)
+static Memoize *
+_readMemoize(void)
 {
-	READ_LOCALS(ResultCache);
+	READ_LOCALS(Memoize);
 
 	ReadCommonPlan(&local_node->plan);
 
@@ -3298,7 +3656,9 @@ _readResultCache(void)
 	READ_OID_ARRAY(collations, local_node->numKeys);
 	READ_NODE_FIELD(param_exprs);
 	READ_BOOL_FIELD(singlerow);
+	READ_BOOL_FIELD(binary_mode);
 	READ_UINT_FIELD(est_entries);
+	READ_BITMAPSET_FIELD(keyparamids);
 
 	READ_DONE();
 }
@@ -3428,11 +3788,14 @@ _readWindowAgg(void)
 	READ_INT_FIELD(frameOptions);
 	READ_NODE_FIELD(startOffset);
 	READ_NODE_FIELD(endOffset);
+	READ_NODE_FIELD(runCondition);
+	READ_NODE_FIELD(runConditionOrig);
 	READ_OID_FIELD(startInRangeFunc);
 	READ_OID_FIELD(endInRangeFunc);
 	READ_OID_FIELD(inRangeColl);
 	READ_BOOL_FIELD(inRangeAsc);
 	READ_BOOL_FIELD(inRangeNullsFirst);
+	READ_BOOL_FIELD(topWindow);
 
 	READ_DONE();
 }
@@ -3735,6 +4098,9 @@ _readRestrictInfo(void)
 	READ_BOOL_FIELD(outerjoin_delayed);
 	READ_BOOL_FIELD(can_join);
 	READ_BOOL_FIELD(pseudoconstant);
+	READ_BOOL_FIELD(leakproof);
+	READ_ENUM_FIELD(has_volatile, VolatileFunctionStatus);
+	READ_UINT_FIELD(security_level);
 	READ_BOOL_FIELD(contain_outer_query_references);
 	READ_BITMAPSET_FIELD(clause_relids);
 	READ_BITMAPSET_FIELD(required_relids);
@@ -3752,6 +4118,8 @@ _readRestrictInfo(void)
 	READ_NODE_FIELD(right_em);
 	READ_BOOL_FIELD(outer_is_left);
 	READ_OID_FIELD(hashjoinoperator);
+	READ_OID_FIELD(left_hasheqoperator);
+	READ_OID_FIELD(right_hasheqoperator);
 
 	READ_DONE();
 }
@@ -4226,7 +4594,7 @@ _readCreatePublicationStmt()
 
 	READ_STRING_FIELD(pubname);
 	READ_NODE_FIELD(options);
-	READ_NODE_FIELD(tables);
+	READ_NODE_FIELD(pubobjects);
 	READ_BOOL_FIELD(for_all_tables);
 
 	READ_DONE();
@@ -4239,9 +4607,9 @@ _readAlterPublicationStmt()
 
 	READ_STRING_FIELD(pubname);
 	READ_NODE_FIELD(options);
-	READ_NODE_FIELD(tables);
+	READ_NODE_FIELD(pubobjects);
 	READ_BOOL_FIELD(for_all_tables);
-	READ_ENUM_FIELD(tableAction, DefElemAction);
+	READ_ENUM_FIELD(action, AlterPublicationAction);
 
 	READ_DONE();
 }
@@ -4625,6 +4993,10 @@ parseNodeString(void)
 		return_value = _readCTECycleClause();
 	else if (MATCH("COMMONTABLEEXPR", 15))
 		return_value = _readCommonTableExpr();
+	else if (MATCH("MERGEWHENCLAUSE", 15))
+		return_value = _readMergeWhenClause();
+	else if (MATCH("MERGEACTION", 11))
+		return_value = _readMergeAction();
 	else if (MATCH("SETOPERATIONSTMT", 16))
 		return_value = _readSetOperationStmt();
 	else if (MATCH("ALIAS", 5))
@@ -4633,6 +5005,8 @@ parseNodeString(void)
 		return_value = _readRangeVar();
 	else if (MATCH("INTOCLAUSE", 10))
 		return_value = _readIntoClause();
+	else if (MATCH("GPPOLICY", 8))
+		return_value = _readGpPolicy();
 	else if (MATCH("COPYINTOCLAUSE", 14))
 		return_value = _readCopyIntoClause();
 	else if (MATCH("REFRESHCLAUSE", 13))
@@ -4685,23 +5059,23 @@ parseNodeString(void)
 		return_value = _readArrayCoerceExpr();
 	else if (MATCH("CONVERTROWTYPEEXPR", 18))
 		return_value = _readConvertRowtypeExpr();
-	else if (MATCH("COLLATE", 7))
+	else if (MATCH("COLLATEEXPR", 11))
 		return_value = _readCollateExpr();
-	else if (MATCH("CASE", 4))
+	else if (MATCH("CASEEXPR", 8))
 		return_value = _readCaseExpr();
-	else if (MATCH("WHEN", 4))
+	else if (MATCH("CASEWHEN", 8))
 		return_value = _readCaseWhen();
 	else if (MATCH("CASETESTEXPR", 12))
 		return_value = _readCaseTestExpr();
-	else if (MATCH("ARRAY", 5))
+	else if (MATCH("ARRAYEXPR", 9))
 		return_value = _readArrayExpr();
-	else if (MATCH("ROW", 3))
+	else if (MATCH("ROWEXPR", 7))
 		return_value = _readRowExpr();
-	else if (MATCH("ROWCOMPARE", 10))
+	else if (MATCH("ROWCOMPAREEXPR", 14))
 		return_value = _readRowCompareExpr();
-	else if (MATCH("COALESCE", 8))
+	else if (MATCH("COALESCEEXPR", 12))
 		return_value = _readCoalesceExpr();
-	else if (MATCH("MINMAX", 6))
+	else if (MATCH("MINMAXEXPR", 10))
 		return_value = _readMinMaxExpr();
 	else if (MATCH("SQLVALUEFUNCTION", 16))
 		return_value = _readSQLValueFunction();
@@ -4735,17 +5109,17 @@ parseNodeString(void)
 		return_value = _readOnConflictExpr();
 	else if (MATCH("APPENDRELINFO", 13))
 		return_value = _readAppendRelInfo();
-	else if (MATCH("RTE", 3))
+	else if (MATCH("RANGETBLENTRY", 13))
 		return_value = _readRangeTblEntry();
 	else if (MATCH("RANGETBLFUNCTION", 16))
 		return_value = _readRangeTblFunction();
 	else if (MATCH("TABLESAMPLECLAUSE", 17))
 		return_value = _readTableSampleClause();
-	else if (MATCH("NOTIFY", 6))
+	else if (MATCH("NOTIFYSTMT", 10))
 		return_value = _readNotifyStmt();
 	else if (MATCH("DEFELEM", 7))
 		return_value = _readDefElem();
-	else if (MATCH("DECLARECURSOR", 13))
+	else if (MATCH("DECLARECURSORSTMT", 17))
 		return_value = _readDeclareCursorStmt();
 	else if (MATCH("PLANNEDSTMT", 11))
 		return_value = _readPlannedStmt();
@@ -4821,8 +5195,8 @@ parseNodeString(void)
 		return_value = _readHashJoin();
 	else if (MATCH("MATERIAL", 8))
 		return_value = _readMaterial();
-	else if (MATCH("RESULTCACHE", 11))
-		return_value = _readResultCache();
+	else if (MATCH("MEMOIZE", 7))
+		return_value = _readMemoize();
 	else if (MATCH("SORT", 4))
 		return_value = _readSort();
 	else if (MATCH("INCREMENTALSORT", 15))
@@ -5039,6 +5413,8 @@ parseNodeString(void)
 		return_value = _readSliceTable();
 	else if (MATCHX("SORTBY"))
 		return_value = _readSortBy();
+	else if (MATCHX("WINDOWDEF"))
+		return_value = _readWindowDef();
 	else if (MATCHX("TABLEVALUEEXPR"))
 		return_value = _readTableValueExpr();
 	else if (MATCHX("TRUNCATESTMT"))
@@ -5069,6 +5445,40 @@ parseNodeString(void)
 		return_value = _readGpPartitionListSpec();
 	else if (MATCHX("COLUMNREFERENCESTORAGEDIRECTIVE"))
 		return_value = _readColumnReferenceStorageDirective();
+	else if (MATCH("JSONFORMAT", 10))
+		return_value = _readJsonFormat();
+	else if (MATCH("JSONRETURNING", 13))
+		return_value = _readJsonReturning();
+	else if (MATCH("JSONVALUEEXPR", 13))
+		return_value = _readJsonValueExpr();
+	else if (MATCH("JSONCONSTRUCTOREXPR", 19))
+		return_value = _readJsonConstructorExpr();
+	else if (MATCH("JSONISPREDICATE", 15))
+		return_value = _readJsonIsPredicate();
+	else if (MATCH("JSONBEHAVIOR", 12))
+		return_value = _readJsonBehavior();
+	else if (MATCH("JSONEXPR", 8))
+		return_value = _readJsonExpr();
+	else if (MATCH("JSONCOERCION", 12))
+		return_value = _readJsonCoercion();
+	else if (MATCH("JSONITEMCOERCIONS", 17))
+		return_value = _readJsonItemCoercions();
+	else if (MATCH("JSONTABLEPARENT", 15))
+		return_value = _readJsonTableParent();
+	else if (MATCH("JSONTABLESIBLING", 16))
+		return_value = _readJsonTableSibling();
+	else if (MATCH("JSONFUNCEXPR", 12))
+		return_value = _readJsonFuncExpr();
+	else if (MATCH("JSONCOMMON", 10))
+		return_value = _readJsonCommon();
+	else if (MATCH("JSONOUTPUT", 10))
+		return_value = _readJsonOutput();
+	else if (MATCH("JSONARGUMENT", 12))
+		return_value = _readJsonArgument();
+	else if (MATCH("PUBLICATIONOBJSPEC", 18))
+		return_value = _readPublicationObjSpec();
+	else if (MATCH("PUBLICATIONTABLE", 16))
+		return_value = _readPublicationTable();
 	else
 	{
         ereport(ERROR,

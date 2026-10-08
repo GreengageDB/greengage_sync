@@ -3,12 +3,12 @@
  * inherit.c
  *	  Routines to process child relations in inheritance trees
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
  * IDENTIFICATION
- *	  src/backend/optimizer/path/inherit.c
+ *	  src/backend/optimizer/util/inherit.c
  *
  *-------------------------------------------------------------------------
  */
@@ -348,7 +348,7 @@ expand_partitioned_rtentry(PlannerInfo *root, RelOptInfo *relinfo,
 	 * that survive pruning.  Below, we will initialize child objects for the
 	 * surviving partitions.
 	 */
-	live_parts = prune_append_rel_partitions(relinfo);
+	relinfo->live_parts = live_parts = prune_append_rel_partitions(relinfo);
 
 	/* Expand simple_rel_array and friends to hold child objects. */
 	num_live_parts = bms_num_members(live_parts);
@@ -399,6 +399,17 @@ expand_partitioned_rtentry(PlannerInfo *root, RelOptInfo *relinfo,
 
 			/* release the lock, since we're not scanning this partition */
 			table_close(childrel, lockmode);
+
+			/*
+			 * GPDB: also drop this partition from live_parts.  We intentionally
+			 * leave part_rels[i] NULL for the skipped partition, but downstream
+			 * code walks live_parts and expects a part_rels[] entry for every
+			 * live member (e.g. the Assert(child_rel != NULL) in
+			 * apply_scanjoin_target_to_paths()).  Keeping the two in sync avoids
+			 * a crash on COPY ... IGNORE EXTERNAL PARTITIONS over a partitioned
+			 * table that has an external (foreign) partition.
+			 */
+			relinfo->live_parts = live_parts = bms_del_member(live_parts, i);
 
 			continue;
 		}

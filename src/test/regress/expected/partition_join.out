@@ -426,11 +426,11 @@ EXPLAIN (COSTS OFF)
 SELECT * FROM prt1 t1 LEFT JOIN LATERAL
 			  (SELECT t2.a AS t2a, t3.a AS t3a, least(t1.a,t2.a,t3.b) FROM prt1 t2 JOIN prt2 t3 ON (t2.a = t3.b)) ss
 			  ON t1.a = ss.t2a WHERE t1.b = 0 ORDER BY t1.a;
-ERROR:  could not devise a query plan for the given query
+ERROR:  could not devise a query plan for the given query (pathnode.c:275)
 SELECT * FROM prt1 t1 LEFT JOIN LATERAL
 			  (SELECT t2.a AS t2a, t3.a AS t3a, least(t1.a,t2.a,t3.b) FROM prt1 t2 JOIN prt2 t3 ON (t2.a = t3.b)) ss
 			  ON t1.a = ss.t2a WHERE t1.b = 0 ORDER BY t1.a;
-ERROR:  could not devise a query plan for the given query
+ERROR:  could not devise a query plan for the given query (pathnode.c:275)
 EXPLAIN (COSTS OFF)
 SELECT t1.a, ss.t2a, ss.t2c FROM prt1 t1 LEFT JOIN LATERAL
 			  (SELECT t2.a AS t2a, t3.a AS t3a, t2.b t2b, t2.c t2c, least(t1.a,t2.a,t3.b) FROM prt1 t2 JOIN prt2 t3 ON (t2.a = t3.b)) ss
@@ -1358,31 +1358,27 @@ SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM (prt1 t1 LEFT JOIN prt2 t2
                            ->  Redistribute Motion 3:3  (slice7; segments: 3)
                                  Hash Key: t2_2.b
                                  ->  Seq Scan on prt2_p2 t2_2
-               ->  Merge Left Join
-                     Merge Cond: (t1_3.a = t2_3.b)
+               ->  Merge Right Join
+                     Merge Cond: (t1_3.a = (((t3_3.a + t3_3.b) / 2)))
+                     ->  Merge Left Join
+                           Merge Cond: (t1_3.a = t2_3.b)
+                           ->  Sort
+                                 Sort Key: t1_3.a
+                                 ->  Seq Scan on prt1_p3 t1_3
+                           ->  Sort
+                                 Sort Key: t2_3.b
+                                 ->  Redistribute Motion 3:3  (slice8; segments: 3)
+                                       Hash Key: t2_3.b
+                                       ->  Seq Scan on prt2_p3 t2_3
                      ->  Sort
-                           Sort Key: t1_3.a
-                           ->  Redistribute Motion 3:3  (slice8; segments: 3)
-                                 Hash Key: t1_3.a
-                                 ->  Merge Left Join
-                                       Merge Cond: ((((t3_3.a + t3_3.b) / 2)) = t1_3.a)
-                                       ->  Sort
-                                             Sort Key: (((t3_3.a + t3_3.b) / 2))
-                                             ->  Result
-                                                   ->  Redistribute Motion 3:3  (slice9; segments: 3)
-                                                         Hash Key: ((t3_3.a + t3_3.b) / 2)
-                                                         ->  Seq Scan on prt1_e_p3 t3_3
-                                                               Filter: (c = 0)
-                                       ->  Sort
-                                             Sort Key: t1_3.a
-                                             ->  Seq Scan on prt1_p3 t1_3
-                     ->  Sort
-                           Sort Key: t2_3.b
-                           ->  Redistribute Motion 3:3  (slice10; segments: 3)
-                                 Hash Key: t2_3.b
-                                 ->  Seq Scan on prt2_p3 t2_3
+                           Sort Key: (((t3_3.a + t3_3.b) / 2))
+                           ->  Result
+                                 ->  Redistribute Motion 3:3  (slice9; segments: 3)
+                                       Hash Key: ((t3_3.a + t3_3.b) / 2)
+                                       ->  Seq Scan on prt1_e_p3 t3_3
+                                             Filter: (c = 0)
  Optimizer: Postgres query optimizer
-(75 rows)
+(71 rows)
 
 SELECT t1.a, t1.c, t2.b, t2.c, t3.a + t3.b, t3.c FROM (prt1 t1 LEFT JOIN prt2 t2 ON t1.a = t2.b) RIGHT JOIN prt1_e t3 ON (t1.a = (t3.a + t3.b)/2) WHERE t3.c = 0 ORDER BY t1.a, t2.b, t3.a + t3.b;
   a  |  c   |  b  |  c   | ?column? | c 
@@ -2181,11 +2177,11 @@ EXPLAIN (COSTS OFF)
 SELECT * FROM prt1_l t1 LEFT JOIN LATERAL
 			  (SELECT t2.a AS t2a, t2.c AS t2c, t2.b AS t2b, t3.b AS t3b, least(t1.a,t2.a,t3.b) FROM prt1_l t2 JOIN prt2_l t3 ON (t2.a = t3.b AND t2.c = t3.c)) ss
 			  ON t1.a = ss.t2a AND t1.c = ss.t2c WHERE t1.b = 0 ORDER BY t1.a;
-ERROR:  could not devise a query plan for the given query
+ERROR:  could not devise a query plan for the given query (pathnode.c:275)
 SELECT * FROM prt1_l t1 LEFT JOIN LATERAL
 			  (SELECT t2.a AS t2a, t2.c AS t2c, t2.b AS t2b, t3.b AS t3b, least(t1.a,t2.a,t3.b) FROM prt1_l t2 JOIN prt2_l t3 ON (t2.a = t3.b AND t2.c = t3.c)) ss
 			  ON t1.a = ss.t2a AND t1.c = ss.t2c WHERE t1.b = 0 ORDER BY t1.a;
-ERROR:  could not devise a query plan for the given query
+ERROR:  could not devise a query plan for the given query (pathnode.c:275)
 -- join with one side empty
 EXPLAIN (COSTS OFF)
 SELECT t1.a, t1.c, t2.b, t2.c FROM (SELECT * FROM prt1_l WHERE a = 1 AND a = 2) t1 RIGHT JOIN prt2_l t2 ON t1.a = t2.b AND t1.b = t2.a AND t1.c = t2.c;
@@ -5377,28 +5373,27 @@ SELECT t1.a, t1.c, t2.a, t2.c, t3.a, t3.c FROM (plt1_adv t1 LEFT JOIN plt2_adv t
                                  Hash Key: t3_1.c
                                  ->  Seq Scan on plt3_adv_p1 t3_1
                ->  Merge Full Join
-                     Merge Cond: (t3_2.c = t1_2.c)
+                     Merge Cond: (t1_2.c = t3_2.c)
                      Filter: (((COALESCE(t1_2.a, 0) % 5) <> 3) AND ((COALESCE(t1_2.a, 0) % 5) <> 4))
+                     ->  Merge Left Join
+                           Merge Cond: (t1_2.c = t2_2.c)
+                           ->  Sort
+                                 Sort Key: t1_2.c
+                                 ->  Redistribute Motion 3:3  (slice5; segments: 3)
+                                       Hash Key: t1_2.c
+                                       ->  Seq Scan on plt1_adv_p2 t1_2
+                           ->  Sort
+                                 Sort Key: t2_2.c
+                                 ->  Redistribute Motion 3:3  (slice6; segments: 3)
+                                       Hash Key: t2_2.c
+                                       ->  Seq Scan on plt2_adv_p2 t2_2
                      ->  Sort
                            Sort Key: t3_2.c
-                           ->  Redistribute Motion 3:3  (slice5; segments: 3)
+                           ->  Redistribute Motion 3:3  (slice7; segments: 3)
                                  Hash Key: t3_2.c
                                  ->  Seq Scan on plt3_adv_p2 t3_2
-                     ->  Materialize
-                           ->  Merge Left Join
-                                 Merge Cond: (t1_2.c = t2_2.c)
-                                 ->  Sort
-                                       Sort Key: t1_2.c
-                                       ->  Redistribute Motion 3:3  (slice6; segments: 3)
-                                             Hash Key: t1_2.c
-                                             ->  Seq Scan on plt1_adv_p2 t1_2
-                                 ->  Sort
-                                       Sort Key: t2_2.c
-                                       ->  Redistribute Motion 3:3  (slice7; segments: 3)
-                                             Hash Key: t2_2.c
-                                             ->  Seq Scan on plt2_adv_p2 t2_2
  Optimizer: Postgres query optimizer
-(42 rows)
+(41 rows)
 
 SELECT t1.a, t1.c, t2.a, t2.c, t3.a, t3.c FROM (plt1_adv t1 LEFT JOIN plt2_adv t2 ON (t1.c = t2.c)) FULL JOIN plt3_adv t3 ON (t1.c = t3.c) WHERE coalesce(t1.a, 0) % 5 != 3 AND coalesce(t1.a, 0) % 5 != 4 ORDER BY t1.c, t1.a, t2.a, t3.a;
  a  |  c   | a  |  c   | a  |  c   
@@ -5701,3 +5696,64 @@ SELECT t1.*, t2.* FROM alpha t1 INNER JOIN beta t2 ON (t1.a = t2.a AND t1.b = t2
   1 | 209 | 0009 |  1 | 209 | 0009
 (8 rows)
 
+-- partitionwise join with fractional paths
+CREATE TABLE fract_t (id BIGINT, PRIMARY KEY (id)) PARTITION BY RANGE (id);
+CREATE TABLE fract_t0 PARTITION OF fract_t FOR VALUES FROM ('0') TO ('1000');
+NOTICE:  table has parent, setting distribution columns to match parent table
+CREATE TABLE fract_t1 PARTITION OF fract_t FOR VALUES FROM ('1000') TO ('2000');
+NOTICE:  table has parent, setting distribution columns to match parent table
+-- insert data
+INSERT INTO fract_t (id) (SELECT generate_series(0, 1999));
+ANALYZE fract_t;
+-- verify plan; nested index only scans
+SET max_parallel_workers_per_gather = 0;
+SET enable_partitionwise_join = on;
+EXPLAIN (COSTS OFF)
+SELECT * FROM fract_t x LEFT JOIN fract_t y USING (id) ORDER BY id ASC LIMIT 10;
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Limit
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         Merge Key: x.id
+         ->  Limit
+               ->  Merge Append
+                     Sort Key: x.id
+                     ->  Merge Left Join
+                           Merge Cond: (x_1.id = y_1.id)
+                           ->  Index Only Scan using fract_t0_pkey on fract_t0 x_1
+                           ->  Index Only Scan using fract_t0_pkey on fract_t0 y_1
+                     ->  Merge Left Join
+                           Merge Cond: (x_2.id = y_2.id)
+                           ->  Index Only Scan using fract_t1_pkey on fract_t1 x_2
+                           ->  Index Only Scan using fract_t1_pkey on fract_t1 y_2
+ Optimizer: Postgres query optimizer
+(15 rows)
+
+EXPLAIN (COSTS OFF)
+SELECT * FROM fract_t x LEFT JOIN fract_t y USING (id) ORDER BY id DESC LIMIT 10;
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Limit
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         Merge Key: x.id
+         ->  Limit
+               ->  Sort
+                     Sort Key: x.id DESC
+                     ->  Append
+                           ->  Hash Left Join
+                                 Hash Cond: (x_1.id = y_1.id)
+                                 ->  Seq Scan on fract_t0 x_1
+                                 ->  Hash
+                                       ->  Seq Scan on fract_t0 y_1
+                           ->  Hash Left Join
+                                 Hash Cond: (x_2.id = y_2.id)
+                                 ->  Seq Scan on fract_t1 x_2
+                                 ->  Hash
+                                       ->  Seq Scan on fract_t1 y_2
+ Optimizer: Postgres query optimizer
+(18 rows)
+
+-- cleanup
+DROP TABLE fract_t;
+RESET max_parallel_workers_per_gather;
+RESET enable_partitionwise_join;

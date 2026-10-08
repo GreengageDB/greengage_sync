@@ -1,10 +1,10 @@
 use strict;
 use warnings;
-use PostgresNode;
-use TestLib;
-use Test::More tests => 3;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
+use Test::More;
 
-my $node = get_new_node('master');
+my $node = PostgreSQL::Test::Cluster->new('master');
 
 # Create a data directory with initdb
 $node->init(has_archiving    => 1);
@@ -16,8 +16,14 @@ $node->append_conf(
 # Start the PostgreSQL server
 $node->start;
 
-# Take a backup of a running server
-$node->backup_fs_hot('testbackup');
+# Take a backup of the server.  GGDB: PG15 removed exclusive backup mode and
+# backup_fs_hot() with it (39969e2a1e4); take a cold filesystem backup
+# instead, as upstream did in 010_logical_decoding_timelines.pl.  The tables
+# below are still created after the backup and reach the restored node only
+# through the WAL archive.
+$node->stop;
+$node->backup_fs_cold('testbackup');
+$node->start;
 
 # Create a couple of tables: heap, append-optimized, columnar append-optimized
 # Restored cluster should replay these actions later
@@ -35,7 +41,7 @@ $node->safe_psql(
 $node->stop;
 
 # Restore it to create a new independent node
-my $restored_node = get_new_node('restored_node');
+my $restored_node = PostgreSQL::Test::Cluster->new('restored_node');
 
 # Recovery in non-standby mode
 $restored_node->init_from_backup($node, 'testbackup', has_restoring => 1, standby => 0);
@@ -48,3 +54,4 @@ is($restored_node->safe_psql('postgres', 'SELECT count(*) from ao'), '10', 'AO t
 is($restored_node->safe_psql('postgres', 'SELECT count(*) from co'), '10', 'AOCS table read check');
 is($restored_node->safe_psql('postgres', 'SELECT count(*) from heap'), '10', 'Heap table read check');
 
+done_testing();

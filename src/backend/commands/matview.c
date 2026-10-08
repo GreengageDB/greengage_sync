@@ -3,7 +3,7 @@
  * matview.c
  *	  materialized view support
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -193,6 +193,17 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 										  lockmode, 0,
 										  RangeVarCallbackOwnsTable, NULL);
 	matviewRel = table_open(matviewOid, NoLock);
+	relowner = matviewRel->rd_rel->relowner;
+
+	/*
+	 * Switch to the owner's userid, so that any functions are run as that
+	 * user.  Also lock down security-restricted operations and arrange to
+	 * make GUC variable changes local to this command.
+	 */
+	GetUserIdAndSecContext(&save_userid, &save_sec_context);
+	SetUserIdAndSecContext(relowner,
+						   save_sec_context | SECURITY_RESTRICTED_OPERATION);
+	save_nestlevel = NewGUCNestLevel();
 
 	/* Make sure it is a materialized view. */
 	if (matviewRel->rd_rel->relkind != RELKIND_MATVIEW)
@@ -211,7 +222,8 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 	if (concurrent && stmt->skipData)
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("CONCURRENTLY and WITH NO DATA options cannot be used together")));
+				 errmsg("%s and %s options cannot be used together",
+						"CONCURRENTLY", "WITH NO DATA")));
 
 	/*
 	 * Check that everything is correct for a refresh. Problems at this point
@@ -312,10 +324,17 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 	 * Don't lock it down too tight to create a temporary table just yet.  We
 	 * will switch modes when we are about to execute user code.
 	 */
-	GetUserIdAndSecContext(&save_userid, &save_sec_context);
+	/*
+	 * GPDB: switch to the owner's userid for creating the transient table.
+	 * The original userid/sec_context were already saved (and SECURITY_
+	 * RESTRICTED_OPERATION set) at the top of this function; do NOT re-fetch
+	 * them here, or the final SetUserIdAndSecContext(save_userid,
+	 * save_sec_context) would restore the restricted context instead of the
+	 * original, tripping the "prevSecContext == 0" assert in the next
+	 * StartTransaction.  The GUC nest level is likewise already established.
+	 */
 	SetUserIdAndSecContext(relowner,
 						   save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
-	save_nestlevel = NewGUCNestLevel();
 
 	/* Concurrent refresh builds new data in temp tablespace, and does diff. */
 	if (concurrent)
@@ -712,9 +731,12 @@ transientrel_destroy(DestReceiver *self)
 /*
  * Given a qualified temporary table name, append an underscore followed by
  * the given integer, to make a new table name based on the old one.
+ * The result is a palloc'd string.
  *
- * This leaks memory through palloc(), which won't be cleaned up until the
- * current memory context is freed.
+ * As coded, this would fail to make a valid SQL name if the given name were,
+ * say, "FOO"."BAR".  Currently, the table name portion of the input will
+ * never be double-quoted because it's of the form "pg_temp_NNN", cf
+ * make_new_heap().  But we might have to work harder someday.
  */
 static char *
 make_temptable_name_n(char *tempname, int n)
@@ -804,6 +826,10 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 	 * that in a way that allows showing the first duplicated row found.  Even
 	 * after we pass this test, a unique index on the materialized view may
 	 * find a duplicate key problem.
+	 *
+	 * Note: here and below, we use "tablename.*::tablerowtype" as a hack to
+	 * keep ".*" from being expanded into multiple columns in a SELECT list.
+	 * Compare ruleutils.c's get_variable().
 	 */
 	resetStringInfo(&querybuf);
 	appendStringInfo(&querybuf,

@@ -97,6 +97,12 @@ select ' {( " a " " a ", " z " " z " )  }'::textmultirange;
  {("  a   a ","  z   z  ")}
 (1 row)
 
+select textrange('\\\\', repeat('a', 200))::textmultirange;
+                                                                                                        textrange                                                                                                        
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {["\\\\\\\\",aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)}
+(1 row)
+
 select '{(,z)}'::textmultirange;
  textmultirange 
 ----------------
@@ -289,10 +295,10 @@ select textmultirange(textrange('a', 'c'), textrange('f', 'g'));
  {[a,c),[f,g)}
 (1 row)
 
-select textmultirange(textrange('a', 'c'), textrange('b', 'd'));
- textmultirange 
-----------------
- {[a,d)}
+select textmultirange(textrange('\\\\', repeat('a', 200)), textrange('c', 'd'));
+                                                                                                        textmultirange                                                                                                         
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {["\\\\\\\\",aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa),[c,d)}
 (1 row)
 
 --
@@ -347,9 +353,35 @@ select textrange(null, null)::textmultirange;
 (1 row)
 
 --
+-- test unnest(multirange) function
+--
+select unnest(int4multirange(int4range('5', '6'), int4range('1', '2')));
+ unnest 
+--------
+ [1,2)
+ [5,6)
+(2 rows)
+
+select unnest(textmultirange(textrange('a', 'b'), textrange('d', 'e')));
+ unnest 
+--------
+ [a,b)
+ [d,e)
+(2 rows)
+
+select unnest(textmultirange(textrange('\\\\', repeat('a', 200)), textrange('c', 'd')));
+                                                                                                        unnest                                                                                                         
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ ["\\\\\\\\",aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
+ [c,d)
+(2 rows)
+
+--
 -- create some test data and test the operators
 --
 CREATE TABLE nummultirange_test (nmr NUMMULTIRANGE);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'nmr' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE INDEX nummultirange_test_btree ON nummultirange_test(nmr);
 INSERT INTO nummultirange_test VALUES('{}');
 INSERT INTO nummultirange_test VALUES('{[,)}');
@@ -435,40 +467,40 @@ SELECT * FROM nummultirange_test WHERE nmr < '{[-1000.0, -1000.0]}';
   nmr   
 --------
  {}
+ {}
+ {}
+ {}
  {(,)}
  {(,)}
  {(,5)}
- {}
- {}
- {}
 (7 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr < '{[0.0, 1.0]}';
   nmr   
 --------
  {}
+ {}
+ {}
+ {}
  {(,)}
  {(,)}
  {(,5)}
- {}
- {}
- {}
 (7 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr < '{[1000.0, 1001.0]}';
           nmr          
 -----------------------
  {}
+ {}
+ {}
+ {}
+ {(,)}
  {(,)}
  {[3,)}
- {(,)}
  {(,5)}
- {}
- {}
  {[1.1,2.2)}
- {}
- {[1.7,1.9)}
  {[1.7,1.7],[1.9,2.1)}
+ {[1.7,1.9)}
 (11 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr <= '{}';
@@ -483,33 +515,33 @@ SELECT * FROM nummultirange_test WHERE nmr <= '{}';
 SELECT * FROM nummultirange_test WHERE nmr <= '{[3,)}';
           nmr          
 -----------------------
+ {[3,)}
+ {}
+ {}
+ {}
  {}
  {(,)}
- {[3,)}
  {(,)}
  {(,5)}
- {}
- {}
  {[1.1,2.2)}
- {}
- {[1.7,1.9)}
  {[1.7,1.7],[1.9,2.1)}
+ {[1.7,1.9)}
 (11 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr >= '{}';
           nmr          
 -----------------------
+ {[3,)}
+ {}
+ {}
+ {}
  {}
  {(,)}
- {[3,)}
  {(,)}
  {(,5)}
- {}
- {}
  {[1.1,2.2)}
- {}
- {[1.7,1.9)}
  {[1.7,1.7],[1.9,2.1)}
+ {[1.7,1.9)}
 (11 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr >= '{[3,)}';
@@ -522,12 +554,12 @@ SELECT * FROM nummultirange_test WHERE nmr > '{}';
           nmr          
 -----------------------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
  {(,5)}
  {[1.1,2.2)}
- {[1.7,1.9)}
  {[1.7,1.7],[1.9,2.1)}
+ {[1.7,1.9)}
 (7 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr > '{[-1000.0, -1000.0]}';
@@ -535,8 +567,8 @@ SELECT * FROM nummultirange_test WHERE nmr > '{[-1000.0, -1000.0]}';
 -----------------------
  {[3,)}
  {[1.1,2.2)}
- {[1.7,1.9)}
  {[1.7,1.7],[1.9,2.1)}
+ {[1.7,1.9)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr > '{[0.0, 1.0]}';
@@ -544,8 +576,8 @@ SELECT * FROM nummultirange_test WHERE nmr > '{[0.0, 1.0]}';
 -----------------------
  {[3,)}
  {[1.1,2.2)}
- {[1.7,1.9)}
  {[1.7,1.7],[1.9,2.1)}
+ {[1.7,1.9)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr > '{[1000.0, 1001.0]}';
@@ -557,8 +589,8 @@ SELECT * FROM nummultirange_test WHERE nmr <> '{}';
           nmr          
 -----------------------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
  {(,5)}
  {[1.1,2.2)}
  {[1.7,1.9)}
@@ -568,16 +600,16 @@ SELECT * FROM nummultirange_test WHERE nmr <> '{}';
 SELECT * FROM nummultirange_test WHERE nmr <> '{(,5)}';
           nmr          
 -----------------------
- {}
- {(,)}
- {[3,)}
- {(,)}
- {}
- {}
  {[1.1,2.2)}
- {}
  {[1.7,1.9)}
  {[1.7,1.7],[1.9,2.1)}
+ {}
+ {(,)}
+ {(,)}
+ {}
+ {}
+ {}
+ {[3,)}
 (10 rows)
 
 select nummultirange(numrange(2.0, 1.0));
@@ -594,17 +626,17 @@ SELECT * FROM nummultirange_test WHERE range_overlaps_multirange(numrange(4.0, 4
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
  {(,5)}
+ {[3,)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE numrange(4.0, 4.2) && nmr;
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
  {(,5)}
 (4 rows)
 
@@ -612,8 +644,8 @@ SELECT * FROM nummultirange_test WHERE multirange_overlaps_range(nmr, numrange(4
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
  {(,5)}
 (4 rows)
 
@@ -621,8 +653,8 @@ SELECT * FROM nummultirange_test WHERE nmr && numrange(4.0, 4.2);
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
  {(,5)}
 (4 rows)
 
@@ -630,25 +662,25 @@ SELECT * FROM nummultirange_test WHERE multirange_overlaps_multirange(nmr, nummu
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
  {(,5)}
+ {[3,)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr && nummultirange(numrange(4.0, 4.2), numrange(6.0, 7.0));
   nmr   
 --------
+ {(,5)}
+ {(,)}
  {(,)}
  {[3,)}
- {(,)}
- {(,5)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr && nummultirange(numrange(6.0, 7.0));
   nmr   
 --------
- {(,)}
  {[3,)}
+ {(,)}
  {(,)}
 (3 rows)
 
@@ -656,52 +688,52 @@ SELECT * FROM nummultirange_test WHERE nmr && nummultirange(numrange(6.0, 7.0), 
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
 (3 rows)
 
 -- mr contains x
 SELECT * FROM nummultirange_test WHERE multirange_contains_elem(nmr, 4.0);
   nmr   
 --------
- {(,)}
  {[3,)}
- {(,)}
  {(,5)}
+ {(,)}
+ {(,)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr @> 4.0;
   nmr   
 --------
- {(,)}
+ {(,5)}
  {[3,)}
  {(,)}
- {(,5)}
+ {(,)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE multirange_contains_range(nmr, numrange(4.0, 4.2));
   nmr   
 --------
- {(,)}
  {[3,)}
- {(,)}
  {(,5)}
+ {(,)}
+ {(,)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE nmr @> numrange(4.0, 4.2);
   nmr   
 --------
- {(,)}
  {[3,)}
- {(,)}
  {(,5)}
+ {(,)}
+ {(,)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE multirange_contains_multirange(nmr, '{[4.0,4.2), [6.0, 8.0)}');
   nmr   
 --------
- {(,)}
  {[3,)}
+ {(,)}
  {(,)}
 (3 rows)
 
@@ -709,8 +741,8 @@ SELECT * FROM nummultirange_test WHERE nmr @> '{[4.0,4.2), [6.0, 8.0)}'::nummult
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
 (3 rows)
 
 -- x is contained by mr
@@ -718,8 +750,8 @@ SELECT * FROM nummultirange_test WHERE elem_contained_by_multirange(4.0, nmr);
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
  {(,5)}
 (4 rows)
 
@@ -727,42 +759,42 @@ SELECT * FROM nummultirange_test WHERE 4.0 <@ nmr;
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
  {(,5)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE range_contained_by_multirange(numrange(4.0, 4.2), nmr);
   nmr   
 --------
- {(,)}
  {[3,)}
- {(,)}
  {(,5)}
+ {(,)}
+ {(,)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE numrange(4.0, 4.2) <@ nmr;
   nmr   
 --------
+ {(,5)}
+ {(,)}
  {(,)}
  {[3,)}
- {(,)}
- {(,5)}
 (4 rows)
 
 SELECT * FROM nummultirange_test WHERE multirange_contained_by_multirange('{[4.0,4.2), [6.0, 8.0)}', nmr);
   nmr   
 --------
  {(,)}
- {[3,)}
  {(,)}
+ {[3,)}
 (3 rows)
 
 SELECT * FROM nummultirange_test WHERE '{[4.0,4.2), [6.0, 8.0)}'::nummultirange <@ nmr;
   nmr   
 --------
- {(,)}
  {[3,)}
+ {(,)}
  {(,)}
 (3 rows)
 
@@ -2226,6 +2258,8 @@ SELECT '{[1,4), [7,10)}'::nummultirange * '{[0,2), [3,8), [9,12)}'::nummultirang
 
 -- test GiST index
 create table test_multirange_gist(mr int4multirange);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'mr' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into test_multirange_gist select int4multirange(int4range(g, g+10),int4range(g+20, g+30),int4range(g+40, g+50)) from generate_series(1,2000) g;
 insert into test_multirange_gist select '{}'::int4multirange from generate_series(1,500) g;
 insert into test_multirange_gist select int4multirange(int4range(g, g+10000)) from generate_series(1,1000) g;
@@ -2241,10 +2275,112 @@ analyze test_multirange_gist;
 SET enable_seqscan    = t;
 SET enable_indexscan  = f;
 SET enable_bitmapscan = f;
+select count(*) from test_multirange_gist where mr = '{}'::int4multirange;
+ count 
+-------
+   500
+(1 row)
+
 select count(*) from test_multirange_gist where mr @> 'empty'::int4range;
  count 
 -------
   3700
+(1 row)
+
+select count(*) from test_multirange_gist where mr && 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr <@ 'empty'::int4range;
+ count 
+-------
+   500
+(1 row)
+
+select count(*) from test_multirange_gist where mr << 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr >> 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr &< 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr &> 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr -|- 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr @> '{}'::int4multirange;
+ count 
+-------
+  3700
+(1 row)
+
+select count(*) from test_multirange_gist where mr @> '{}'::int4multirange;
+ count 
+-------
+  3700
+(1 row)
+
+select count(*) from test_multirange_gist where mr && '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr <@ '{}'::int4multirange;
+ count 
+-------
+   500
+(1 row)
+
+select count(*) from test_multirange_gist where mr << '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr >> '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr &< '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr &> '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr -|- '{}'::int4multirange;
+ count 
+-------
+     0
 (1 row)
 
 select count(*) from test_multirange_gist where mr = int4multirange(int4range(10,20), int4range(30,40), int4range(50,60));
@@ -2365,6 +2501,114 @@ select count(*) from test_multirange_gist where mr -|- int4multirange(int4range(
 SET enable_seqscan    = f;
 SET enable_indexscan  = t;
 SET enable_bitmapscan = f;
+select count(*) from test_multirange_gist where mr = '{}'::int4multirange;
+ count 
+-------
+   500
+(1 row)
+
+select count(*) from test_multirange_gist where mr @> 'empty'::int4range;
+ count 
+-------
+  3700
+(1 row)
+
+select count(*) from test_multirange_gist where mr && 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr <@ 'empty'::int4range;
+ count 
+-------
+   500
+(1 row)
+
+select count(*) from test_multirange_gist where mr << 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr >> 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr &< 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr &> 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr -|- 'empty'::int4range;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr @> '{}'::int4multirange;
+ count 
+-------
+  3700
+(1 row)
+
+select count(*) from test_multirange_gist where mr @> '{}'::int4multirange;
+ count 
+-------
+  3700
+(1 row)
+
+select count(*) from test_multirange_gist where mr && '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr <@ '{}'::int4multirange;
+ count 
+-------
+   500
+(1 row)
+
+select count(*) from test_multirange_gist where mr << '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr >> '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr &< '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr &> '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from test_multirange_gist where mr -|- '{}'::int4multirange;
+ count 
+-------
+     0
+(1 row)
+
 select count(*) from test_multirange_gist where mr @> 'empty'::int4range;
  count 
 -------
@@ -2490,6 +2734,8 @@ drop table test_multirange_gist;
 -- range_agg function
 --
 create table reservations ( room_id integer not null, booked_during daterange );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'room_id' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into reservations values
 -- 1: has a meets and a gap
 (1, daterange('2018-07-01', '2018-07-07')),
@@ -2544,6 +2790,70 @@ FROM    (VALUES
  {[a,f],[g,j)}
 (1 row)
 
+-- range_agg with multirange inputs
+select range_agg(nmr) from nummultirange_test;
+ range_agg 
+-----------
+ {(,)}
+(1 row)
+
+select range_agg(nmr) from nummultirange_test where false;
+ range_agg 
+-----------
+ 
+(1 row)
+
+select range_agg(null::nummultirange) from nummultirange_test;
+ range_agg 
+-----------
+ 
+(1 row)
+
+select range_agg(nmr) from (values ('{}'::nummultirange)) t(nmr);
+ range_agg 
+-----------
+ {}
+(1 row)
+
+select range_agg(nmr) from (values ('{}'::nummultirange), ('{}'::nummultirange)) t(nmr);
+ range_agg 
+-----------
+ {}
+(1 row)
+
+select range_agg(nmr) from (values ('{[1,2]}'::nummultirange)) t(nmr);
+ range_agg 
+-----------
+ {[1,2]}
+(1 row)
+
+select range_agg(nmr) from (values ('{[1,2], [5,6]}'::nummultirange)) t(nmr);
+   range_agg   
+---------------
+ {[1,2],[5,6]}
+(1 row)
+
+select range_agg(nmr) from (values ('{[1,2], [2,3]}'::nummultirange)) t(nmr);
+ range_agg 
+-----------
+ {[1,3]}
+(1 row)
+
+select range_agg(nmr) from (values ('{[1,2]}'::nummultirange), ('{[5,6]}'::nummultirange)) t(nmr);
+   range_agg   
+---------------
+ {[1,2],[5,6]}
+(1 row)
+
+select range_agg(nmr) from (values ('{[1,2]}'::nummultirange), ('{[2,3]}'::nummultirange)) t(nmr);
+ range_agg 
+-----------
+ {[1,3]}
+(1 row)
+
+--
+-- range_intersect_agg function
+--
 select range_intersect_agg(nmr) from nummultirange_test;
  range_intersect_agg 
 ---------------------
@@ -2556,11 +2866,47 @@ select range_intersect_agg(nmr) from nummultirange_test where false;
  
 (1 row)
 
+select range_intersect_agg(null::nummultirange) from nummultirange_test;
+ range_intersect_agg 
+---------------------
+ 
+(1 row)
+
+select range_intersect_agg(nmr) from (values ('{[1,3]}'::nummultirange), ('{[6,12]}'::nummultirange)) t(nmr);
+ range_intersect_agg 
+---------------------
+ {}
+(1 row)
+
+select range_intersect_agg(nmr) from (values ('{[1,6]}'::nummultirange), ('{[3,12]}'::nummultirange)) t(nmr);
+ range_intersect_agg 
+---------------------
+ {[3,6]}
+(1 row)
+
+select range_intersect_agg(nmr) from (values ('{[1,6], [10,12]}'::nummultirange), ('{[4,14]}'::nummultirange)) t(nmr);
+ range_intersect_agg 
+---------------------
+ {[4,6],[10,12]}
+(1 row)
+
 -- test with just one input:
+select range_intersect_agg(nmr) from (values ('{}'::nummultirange)) t(nmr);
+ range_intersect_agg 
+---------------------
+ {}
+(1 row)
+
 select range_intersect_agg(nmr) from (values ('{[1,2]}'::nummultirange)) t(nmr);
  range_intersect_agg 
 ---------------------
  {[1,2]}
+(1 row)
+
+select range_intersect_agg(nmr) from (values ('{[1,6], [10,12]}'::nummultirange)) t(nmr);
+ range_intersect_agg 
+---------------------
+ {[1,6],[10,12]}
 (1 row)
 
 select range_intersect_agg(nmr) from nummultirange_test where nmr @> 4.0;
@@ -2570,6 +2916,8 @@ select range_intersect_agg(nmr) from nummultirange_test where nmr @> 4.0;
 (1 row)
 
 create table nummultirange_test2(nmr nummultirange);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'nmr' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create index nummultirange_test2_hash_idx on nummultirange_test2 using hash (nmr);
 INSERT INTO nummultirange_test2 VALUES('{[, 5)}');
 INSERT INTO nummultirange_test2 VALUES(nummultirange(numrange(1.1, 2.2)));
@@ -2653,6 +3001,8 @@ select '{[123.001, 5.e9)}'::float8multirange @> 888.882::float8;
 (1 row)
 
 create table float8multirange_test(f8mr float8multirange, i int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f8mr' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into float8multirange_test values(float8multirange(float8range(-100.00007, '1.111113e9')), 42);
 select * from float8multirange_test;
            f8mr            | i  
@@ -2702,13 +3052,13 @@ create type intmultirange as (x int, y int);
 create type intrange as range(subtype=int); -- should fail
 ERROR:  type "intmultirange" already exists
 DETAIL:  Failed while creating a multirange type for type "intrange".
-HINT:  You can manually specify a multirange type name using the "multirange_type_name" attribute
+HINT:  You can manually specify a multirange type name using the "multirange_type_name" attribute.
 drop type intmultirange;
 create type intr_multirange as (x int, y int);
 create type intr as range(subtype=int); -- should fail
 ERROR:  type "intr_multirange" already exists
 DETAIL:  Failed while creating a multirange type for type "intr".
-HINT:  You can manually specify a multirange type name using the "multirange_type_name" attribute
+HINT:  You can manually specify a multirange type name using the "multirange_type_name" attribute.
 drop type intr_multirange;
 --
 -- Test multiple multirange types over the same subtype and manual naming of
@@ -2728,6 +3078,13 @@ LINE 1: select multirange_of_text(textrange2('a','Z'));
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select multirange_of_text(textrange1('a','Z')) @> 'b'::text;
 ERROR:  range lower bound must be less than or equal to range upper bound
+select unnest(multirange_of_text(textrange1('a','b'), textrange1('d','e')));
+ unnest 
+--------
+ [a,b)
+ [d,e)
+(2 rows)
+
 select _textrange1(textrange2('a','z')) @> 'b'::text;
  ?column? 
 ----------
@@ -2843,6 +3200,8 @@ select ARRAY[nummultirange(numrange(1.1, 1.2)), nummultirange(numrange(12.3, 155
 (1 row)
 
 create table i8mr_array (f1 int, f2 int8multirange[]);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into i8mr_array values (42, array[int8multirange(int8range(1,10)), int8multirange(int8range(2,20))]);
 select * from i8mr_array;
  f1 |           f2            

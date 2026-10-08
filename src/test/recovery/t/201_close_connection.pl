@@ -6,19 +6,10 @@
 # in pipeline (either let installcheck recurse into modules, or run modules separately).
 use strict;
 use warnings;
-use PostgresNode;
-use TestLib;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 use Test::More;
 use File::Copy;
-
-if ($ENV{with_ssl} eq 'openssl')
-{
-    plan tests => 3;
-}
-else
-{
-    plan tests => 2;
-}
 
 my $long_query = q{
     SELECT pg_sleep(60);
@@ -31,7 +22,7 @@ my $set_guc_off = q{
 };
 my ($pid, $timed_out);
 
-my $node = get_new_node('node');
+my $node = PostgreSQL::Test::Cluster->new('node');
 $node->init;
 $node->start;
 
@@ -101,3 +92,5 @@ if ($ENV{with_ssl} eq 'openssl')
     is($is_alive, '0', 'Test: client_connection_check_interval enabled, SSL');
     $node->stop;
 }
+
+done_testing();

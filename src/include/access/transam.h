@@ -4,7 +4,7 @@
  *	  postgres transaction access method support code
  *
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/access/transam.h
@@ -279,6 +279,7 @@ extern Oid	GetNewObjectId(void);
 extern void AdvanceObjectId(Oid newOid);
 extern Oid	GetNewSegRelfilenode(void);
 extern bool OidFollowsNextOid(Oid id);
+extern void StopGeneratingPinnedObjectIds(void);
 
 #ifdef USE_ASSERT_CHECKING
 extern void AssertTransactionIdInAllowableRange(TransactionId xid);

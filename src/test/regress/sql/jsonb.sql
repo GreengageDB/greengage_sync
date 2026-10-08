@@ -1,3 +1,16 @@
+-- directory paths are passed to us in environment variables
+\getenv abs_srcdir PG_ABS_SRCDIR
+
+CREATE TABLE testjsonb (
+       j jsonb
+);
+
+\set filename :abs_srcdir '/data/jsonb.data'
+COPY testjsonb FROM :'filename';
+-- GPDB: analyze right after loading, like the other regress data sets, so
+-- that the plans below do not depend on whether auto-analyze has run yet.
+ANALYZE testjsonb;
+
 -- Strings.
 SELECT '""'::jsonb;				-- OK.
 SELECT $$''$$::jsonb;			-- ERROR, single quotes are not allowed

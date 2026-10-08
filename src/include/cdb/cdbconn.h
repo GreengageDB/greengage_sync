@@ -16,6 +16,7 @@
 #ifndef CDBCONN_H
 #define CDBCONN_H
 
+#include "libpq-fe.h"			/* PGconn */
 
 /* --------------------------------------------------------------------------------------------------
  * Structure for segment database definition and working values

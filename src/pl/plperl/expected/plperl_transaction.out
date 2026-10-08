@@ -192,5 +192,54 @@ SELECT * FROM pg_cursors;
 ------+-----------+-------------+-----------+---------------+---------------+-------------
 (0 rows)
 
+-- check handling of an error during COMMIT
+-- GPDB: foreign keys are not enforced, so a deferred foreign key check
+-- cannot fail the COMMIT.  Use a deferred primary key violation instead.
+CREATE TABLE testpk (id int PRIMARY KEY);
+CREATE TABLE testfk(f1 int PRIMARY KEY DEFERRABLE INITIALLY DEFERRED);
+DO LANGUAGE plperl $$
+# this insert will fail during commit:
+spi_exec_query("INSERT INTO testfk VALUES (0), (0)");
+spi_commit();
+elog(WARNING, 'should not get here');
+$$;
+ERROR:  duplicate key value violates unique constraint "testfk_pkey" at line 4.
+CONTEXT:  PL/Perl anonymous code block
+SELECT * FROM testpk;
+ id 
+----
+(0 rows)
+
+SELECT * FROM testfk;
+ f1 
+----
+(0 rows)
+
+DO LANGUAGE plperl $$
+# this insert will fail during commit:
+spi_exec_query("INSERT INTO testfk VALUES (0), (0)");
+eval {
+    spi_commit();
+};
+if ($@) {
+    elog(INFO, $@);
+}
+# these inserts should work:
+spi_exec_query("INSERT INTO testpk VALUES (1)");
+spi_exec_query("INSERT INTO testfk VALUES (1)");
+$$;
+INFO:  duplicate key value violates unique constraint "testfk_pkey" at line 5.
+SELECT * FROM testpk;
+ id 
+----
+  1
+(1 row)
+
+SELECT * FROM testfk;
+ f1 
+----
+  1
+(1 row)
+
 DROP TABLE test1;
 DROP TABLE test2;

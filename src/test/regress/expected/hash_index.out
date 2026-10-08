@@ -1,5 +1,54 @@
 --
 -- HASH_INDEX
+--
+-- directory paths are passed to us in environment variables
+\getenv abs_srcdir PG_ABS_SRCDIR
+CREATE TABLE hash_i4_heap (
+	seqno 		int4,
+	random 		int4
+) distributed by (seqno);
+CREATE TABLE hash_name_heap (
+	seqno 		int4,
+	random 		name
+) distributed by (seqno);
+CREATE TABLE hash_txt_heap (
+	seqno 		int4,
+	random 		text
+) distributed by (seqno);
+CREATE TABLE hash_f8_heap (
+	seqno		int4,
+	random 		float8
+) distributed by (seqno);
+\set filename :abs_srcdir '/data/hash.data'
+COPY hash_i4_heap FROM :'filename';
+COPY hash_name_heap FROM :'filename';
+COPY hash_txt_heap FROM :'filename';
+COPY hash_f8_heap FROM :'filename';
+-- the data in this file has a lot of duplicates in the index key
+-- fields, leading to long bucket chains and lots of table expansion.
+-- this is therefore a stress test of the bucket overflow code (unlike
+-- the data in hash.data, which has unique index keys).
+--
+-- \set filename :abs_srcdir '/data/hashovfl.data'
+-- COPY hash_ovfl_heap FROM :'filename';
+ANALYZE hash_i4_heap;
+ANALYZE hash_name_heap;
+ANALYZE hash_txt_heap;
+ANALYZE hash_f8_heap;
+CREATE INDEX hash_i4_index ON hash_i4_heap USING hash (random int4_ops);
+CREATE INDEX hash_name_index ON hash_name_heap USING hash (random name_ops);
+CREATE INDEX hash_txt_index ON hash_txt_heap USING hash (random text_ops);
+CREATE INDEX hash_f8_index ON hash_f8_heap USING hash (random float8_ops)
+  WITH (fillfactor=60);
+--
+-- Also try building functional, expressional, and partial indexes on
+-- tables that already contain data.
+--
+create index hash_f8_index_1 on hash_f8_heap(abs(random));
+create index hash_f8_index_2 on hash_f8_heap((seqno + 1), random);
+create index hash_f8_index_3 on hash_f8_heap(random) where seqno > 1000;
+--
+-- hash index
 -- grep 843938989 hash.data
 --
 SELECT * FROM hash_i4_heap
@@ -200,6 +249,8 @@ SELECT h.seqno AS f20000
 -- Cause some overflow insert and splits.
 --
 CREATE TABLE hash_split_heap (keycol INT);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'keycol' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO hash_split_heap SELECT 1 FROM generate_series(1, 500) a;
 CREATE INDEX hash_split_index on hash_split_heap USING HASH (keycol);
 INSERT INTO hash_split_heap SELECT 1 FROM generate_series(1, 5000) a;
@@ -227,11 +278,15 @@ REINDEX INDEX hash_split_index;
 DROP TABLE hash_split_heap;
 -- Index on temp table.
 CREATE TEMP TABLE hash_temp_heap (x int, y int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO hash_temp_heap VALUES (1,1);
 CREATE INDEX hash_idx ON hash_temp_heap USING hash (x);
 DROP TABLE hash_temp_heap CASCADE;
 -- Float4 type.
 CREATE TABLE hash_heap_float4 (x float4, y int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'x' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO hash_heap_float4 VALUES (1.1,1);
 CREATE INDEX hash_idx ON hash_heap_float4 USING hash (x);
 DROP TABLE hash_heap_float4 CASCADE;

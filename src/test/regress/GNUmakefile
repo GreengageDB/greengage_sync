@@ -31,8 +31,7 @@ endif
 
 # stuff to pass into build of pg_regress
 EXTRADEFS = '-DHOST_TUPLE="$(host_tuple)"' \
-	'-DSHELLPROG="$(SHELL)"' \
-	'-DDLSUFFIX="$(DLSUFFIX)"'
+	'-DSHELLPROG="$(SHELL)"'
 
 ##
 ## Prepare for tests
@@ -216,9 +215,6 @@ endif
 
 installcheck-mirrorless: all tablespace-setup
 	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/mirrorless_schedule --dbname=regress-mirrorless $(EXTRA_TESTS)
-
-standbycheck: all
-	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/standby_schedule  $(EXTRA_TESTS)
 
 # old interfaces follow...
 

@@ -5,7 +5,9 @@
 #include "catalog/storage_database.h"
 #include "common/relpath.h"
 #include "utils/faultinjector.h"
+#include "storage/bufmgr.h"
 #include "storage/lmgr.h"
+#include "storage/md.h"
 
 typedef struct PendingDbDelete
 {
@@ -164,6 +166,36 @@ static void
 dropDatabaseDirectory(DbDirNode *deldb, bool isRedo)
 {
 	char *dbpath = GetDatabasePath(deldb->database, deldb->tablespace);
+
+	/*
+	 * GPDB: Drop any shared buffers and pending md.c fsync requests for this
+	 * database *before* unlinking its files.  Otherwise a dirty buffer left
+	 * behind in the pool would later be written out by a checkpoint (or the
+	 * end-of-recovery checkpoint after a crash) to a file we just removed,
+	 * FATAL-ing the checkpointer with "could not open file".
+	 *
+	 * The DROP DATABASE path (dropdb -> DropDatabaseBuffers), movedb() and
+	 * createdb_failure_callback() all discard the buffers before removing the
+	 * files, and dbase_redo() does the same for the XLOG_DBASE_DROP record.
+	 * This pendingDbDeletes path is the one exception, and it is the path
+	 * taken when a CREATE DATABASE fails after createdb() has returned: a QE
+	 * failing the distributed PREPARE at commit, or a ROLLBACK PREPARED run
+	 * by a different backend (or replayed during recovery).
+	 * createdb_failure_callback -- an ENSURE_ERROR_CLEANUP handler that only
+	 * covers the copy itself -- never runs then, and with the WAL_LOG
+	 * strategy (PG15) the dirty block-copy buffers of the half-created
+	 * database were never discarded.  Mirror the canonical dbase_redo order
+	 * here so both the direct and redo cleanups are crash-safe.
+	 *
+	 * DropDatabaseBuffers() is database-wide, but that is safe for every
+	 * caller: for createdb the database is being fully abandoned, and movedb
+	 * already dropped all of the database's buffers (after a
+	 * CHECKPOINT_FLUSH_ALL, under AccessExclusiveLock) before scheduling any
+	 * directory delete, so no dirty buffer can remain by the time we get here.
+	 */
+	DropDatabaseBuffers(deldb->database);
+	ForgetDatabaseSyncRequests(deldb->database);
+
 	/*
 	 * Remove files from the old tablespace
 	 */

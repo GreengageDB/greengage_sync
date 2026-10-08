@@ -3,7 +3,7 @@
  * copyto.c
  *		COPY <table> TO file/program/client
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -78,8 +78,8 @@ static void ClosePipeToProgram(CopyToState cstate);
 static uint64 CopyTo(CopyToState cstate);
 static uint64 CopyToDispatch(CopyToState cstate);
 static void CopyToDispatchFlush(CopyToState cstate);
-static void CopyAttributeOutText(CopyToState cstate, char *string);
-static void CopyAttributeOutCSV(CopyToState cstate, char *string,
+static void CopyAttributeOutText(CopyToState cstate, const char *string);
+static void CopyAttributeOutCSV(CopyToState cstate, const char *string,
 								bool use_quote, bool single_attr);
 
 /* Low-level communications functions */
@@ -454,9 +454,9 @@ BeginCopyToCommon(ParseState *pstate,
 		 * Run parse analysis and rewrite.  Note this also acquires sufficient
 		 * locks on the source table(s).
 		 */
-		rewritten = pg_analyze_and_rewrite(raw_query,
-										   pstate->p_sourcetext, NULL, 0,
-										   NULL);
+		rewritten = pg_analyze_and_rewrite_fixedparams(raw_query,
+													   pstate->p_sourcetext, NULL, 0,
+													   NULL);
 
 		/* check that we got back something we can work with */
 		if (rewritten == NIL)
@@ -1487,8 +1487,11 @@ CopyTo(CopyToState cstate)
 
 				colname = NameStr(TupleDescAttr(tupDesc, attnum - 1)->attname);
 
-				CopyAttributeOutCSV(cstate, colname, false,
-									list_length(cstate->attnumlist) == 1);
+				if (cstate->opts.csv_mode)
+					CopyAttributeOutCSV(cstate, colname, false,
+										list_length(cstate->attnumlist) == 1);
+				else
+					CopyAttributeOutText(cstate, colname);
 			}
 
 			CopySendEndOfRow(cstate);
@@ -1704,10 +1707,10 @@ CopyOneCustomRowTo(CopyToState cstate, bytea *value)
 	} while (0)
 
 static void
-CopyAttributeOutText(CopyToState cstate, char *string)
+CopyAttributeOutText(CopyToState cstate, const char *string)
 {
-	char	   *ptr;
-	char	   *start;
+	const char *ptr;
+	const char *start;
 	char		c;
 	char		delimc = cstate->opts.delim[0];
 	char		escapec = cstate->opts.escape[0];
@@ -1868,11 +1871,11 @@ CopyAttributeOutText(CopyToState cstate, char *string)
  * CSV-style escaping
  */
 static void
-CopyAttributeOutCSV(CopyToState cstate, char *string,
+CopyAttributeOutCSV(CopyToState cstate, const char *string,
 					bool use_quote, bool single_attr)
 {
-	char	   *ptr;
-	char	   *start;
+	const char *ptr;
+	const char *start;
 	char		c;
 	char		delimc = cstate->opts.delim[0];
 	char		quotec;
@@ -1915,7 +1918,7 @@ CopyAttributeOutCSV(CopyToState cstate, char *string,
 			use_quote = true;
 		else
 		{
-			char	   *tptr = ptr;
+			const char *tptr = ptr;
 
 			while ((c = *tptr) != '\0')
 			{

@@ -1,15 +1,34 @@
+-- GPDB: gp_gin_index runs (parallel_schedule) before the jsonb and tsearch
+-- tests, which create testjsonb and test_tsvector.  Create and load them here so
+-- this test is self-contained, and drop them at the end so jsonb/tsearch can
+-- recreate them.
+\getenv abs_srcdir PG_ABS_SRCDIR
+CREATE TABLE testjsonb (j jsonb);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'j' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+\set filename :abs_srcdir '/data/jsonb.data'
+COPY testjsonb FROM :'filename';
+CREATE TABLE test_tsvector (t text, a tsvector);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 't' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+\set filename :abs_srcdir '/data/tsearch.data'
+COPY test_tsvector FROM :'filename';
+-- GPDB: analyze both, as the old copy.source setup did before this test ran,
+-- so the plans below do not depend on whether auto-analyze has run yet.
+ANALYZE testjsonb;
+ANALYZE test_tsvector;
 CREATE INDEX jidx ON testjsonb USING gin (j);
 SET optimizer_enable_tablescan = off;
 SET enable_seqscan = off;
 set enable_bitmapscan = on;
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"wait":null}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=600.04..600.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=500.01..600.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=500.01..600.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=24.04..24.05 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=20.00..24.03 rows=1 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=20.00..24.01 rows=1 width=0)
                Recheck Cond: (j @> '{"wait": null}'::jsonb)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..500.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..20.00 rows=1 width=0)
                      Index Cond: (j @> '{"wait": null}'::jsonb)
  Optimizer: Postgres query optimizer
 (7 rows)
@@ -25,7 +44,7 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"wait":"CC"}';
                      ->  Bitmap Index Scan on jidx  (cost=0.00..20.07 rows=3 width=0)
                            Index Cond: (j @> '{"wait": "CC"}'::jsonb)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"wait":"CC", "public":true}';
                                       QUERY PLAN                                      
@@ -38,52 +57,52 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"wait":"CC", "public":true}'
                      ->  Bitmap Index Scan on jidx  (cost=0.00..36.07 rows=3 width=0)
                            Index Cond: (j @> '{"wait": "CC", "public": true}'::jsonb)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"age":25}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=600.04..600.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=500.01..600.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=500.01..600.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=24.06..24.07 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=20.02..24.06 rows=2 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=20.02..24.03 rows=1 width=0)
                Recheck Cond: (j @> '{"age": 25}'::jsonb)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..500.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..20.02 rows=1 width=0)
                      Index Cond: (j @> '{"age": 25}'::jsonb)
  Optimizer: Postgres query optimizer
 (7 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"age":25.0}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=600.04..600.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=500.01..600.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=500.01..600.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=24.06..24.07 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=20.02..24.06 rows=2 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=20.02..24.03 rows=1 width=0)
                Recheck Cond: (j @> '{"age": 25.0}'::jsonb)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..500.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..20.02 rows=1 width=0)
                      Index Cond: (j @> '{"age": 25.0}'::jsonb)
  Optimizer: Postgres query optimizer
 (7 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"array":["foo"]}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=600.04..600.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=500.01..600.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=500.01..600.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=24.04..24.05 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=20.00..24.03 rows=1 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=20.00..24.01 rows=1 width=0)
                Recheck Cond: (j @> '{"array": ["foo"]}'::jsonb)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..500.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..20.00 rows=1 width=0)
                      Index Cond: (j @> '{"array": ["foo"]}'::jsonb)
  Optimizer: Postgres query optimizer
 (7 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"array":["bar"]}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=600.04..600.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=500.01..600.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=500.01..600.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=24.04..24.05 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=20.00..24.03 rows=1 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=20.00..24.01 rows=1 width=0)
                Recheck Cond: (j @> '{"array": ["bar"]}'::jsonb)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..500.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..20.00 rows=1 width=0)
                      Index Cond: (j @> '{"array": ["bar"]}'::jsonb)
  Optimizer: Postgres query optimizer
 (7 rows)
@@ -142,7 +161,7 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{}';
                      ->  Bitmap Index Scan on jidx  (cost=0.00..72047.59 rows=337 width=0)
                            Index Cond: (j @> '{}'::jsonb)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j ? 'public';
                                       QUERY PLAN                                       
@@ -155,16 +174,16 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j ? 'public';
                      ->  Bitmap Index Scan on jidx  (cost=0.00..13.35 rows=60 width=0)
                            Index Cond: (j ? 'public'::text)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j ? 'bar';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=400.04..400.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=300.01..400.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=300.01..400.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=16.04..16.05 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=12.00..16.03 rows=1 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=12.00..16.01 rows=1 width=0)
                Recheck Cond: (j ? 'bar'::text)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..300.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..12.00 rows=1 width=0)
                      Index Cond: (j ? 'bar'::text)
  Optimizer: Postgres query optimizer
 (7 rows)
@@ -180,7 +199,7 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j ?| ARRAY['public','disabled'];
                      ->  Bitmap Index Scan on jidx  (cost=0.00..22.50 rows=111 width=0)
                            Index Cond: (j ?| '{public,disabled}'::text[])
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j ?& ARRAY['public','disabled'];
                                       QUERY PLAN                                       
@@ -193,7 +212,7 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j ?& ARRAY['public','disabled'];
                      ->  Bitmap Index Scan on jidx  (cost=0.00..20.27 rows=12 width=0)
                            Index Cond: (j ?& '{public,disabled}'::text[])
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 SELECT count(*) FROM testjsonb WHERE j @> '{}';
  count 
@@ -239,7 +258,7 @@ EXPLAIN SELECT count(*) from testjsonb  WHERE j->'array' ? 'bar';
                      ->  Bitmap Index Scan on jidx_array  (cost=0.00..12.08 rows=3 width=0)
                            Index Cond: ((j -> 'array'::text) ? 'bar'::text)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 SELECT count(*) from testjsonb  WHERE j->'array' ? 'bar';
  count 
@@ -261,7 +280,7 @@ EXPLAIN SELECT count(*) from testjsonb  WHERE j->'array' ? '5'::text;
                      ->  Bitmap Index Scan on jidx_array  (cost=0.00..12.08 rows=3 width=0)
                            Index Cond: ((j -> 'array'::text) ? '5'::text)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 SELECT count(*) from testjsonb  WHERE j->'array' ? '5'::text;
  count 
@@ -281,7 +300,7 @@ EXPLAIN SELECT count(*) from testjsonb  WHERE j->'array' @> '5'::jsonb;
                      ->  Bitmap Index Scan on jidx_array  (cost=0.00..12.08 rows=3 width=0)
                            Index Cond: ((j -> 'array'::text) @> '5'::jsonb)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 SELECT count(*) from testjsonb  WHERE j->'array' @> '5'::jsonb;
  count 
@@ -294,13 +313,13 @@ DROP INDEX jidx_array;
 DROP INDEX jidx;
 CREATE INDEX jidx ON testjsonb USING gin (j jsonb_path_ops);
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"wait":null}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=400.04..400.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=300.01..400.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=300.01..400.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=16.04..16.05 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=12.00..16.03 rows=1 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=12.00..16.01 rows=1 width=0)
                Recheck Cond: (j @> '{"wait": null}'::jsonb)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..300.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..12.00 rows=1 width=0)
                      Index Cond: (j @> '{"wait": null}'::jsonb)
  Optimizer: Postgres query optimizer
 (7 rows)
@@ -316,7 +335,7 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"wait":"CC"}';
                      ->  Bitmap Index Scan on jidx  (cost=0.00..12.07 rows=3 width=0)
                            Index Cond: (j @> '{"wait": "CC"}'::jsonb)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"wait":"CC", "public":true}';
                                       QUERY PLAN                                      
@@ -329,28 +348,28 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"wait":"CC", "public":true}'
                      ->  Bitmap Index Scan on jidx  (cost=0.00..20.07 rows=3 width=0)
                            Index Cond: (j @> '{"wait": "CC", "public": true}'::jsonb)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"age":25}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=400.04..400.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=300.01..400.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=300.01..400.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=16.06..16.07 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=12.02..16.06 rows=2 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=12.02..16.03 rows=1 width=0)
                Recheck Cond: (j @> '{"age": 25}'::jsonb)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..300.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..12.02 rows=1 width=0)
                      Index Cond: (j @> '{"age": 25}'::jsonb)
  Optimizer: Postgres query optimizer
 (7 rows)
 
 EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{"age":25.0}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=400.04..400.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=300.01..400.04 rows=2 width=0)
-         ->  Bitmap Heap Scan on testjsonb  (cost=300.01..400.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=16.06..16.07 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=12.02..16.06 rows=2 width=0)
+         ->  Bitmap Heap Scan on testjsonb  (cost=12.02..16.03 rows=1 width=0)
                Recheck Cond: (j @> '{"age": 25.0}'::jsonb)
-               ->  Bitmap Index Scan on jidx  (cost=0.00..300.01 rows=1 width=0)
+               ->  Bitmap Index Scan on jidx  (cost=0.00..12.02 rows=1 width=0)
                      Index Cond: (j @> '{"age": 25.0}'::jsonb)
  Optimizer: Postgres query optimizer
 (7 rows)
@@ -397,7 +416,7 @@ EXPLAIN SELECT count(*) FROM testjsonb WHERE j @> '{}';
                      ->  Bitmap Index Scan on jidx  (cost=0.00..72047.59 rows=337 width=0)
                            Index Cond: (j @> '{}'::jsonb)
  Optimizer: Postgres query optimizer
-(7 rows)
+(8 rows)
 
 SELECT count(*) FROM testjsonb WHERE j @> '{}';
  count 
@@ -415,34 +434,34 @@ insert into nestjsonb (j) values ('[[14,2,3]]');
 insert into nestjsonb (j) values ('[1,[14,2,3]]');
 create index on nestjsonb using gin(j jsonb_path_ops);
 explain select * from nestjsonb where j @> '{"a":[[{"x":2}]]}'::jsonb;
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=300.00..400.01 rows=1 width=125)
-   ->  Bitmap Heap Scan on nestjsonb  (cost=300.00..400.01 rows=1 width=125)
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=16.00..59.24 rows=528 width=32)
+   ->  Bitmap Heap Scan on nestjsonb  (cost=16.00..52.20 rows=176 width=32)
          Recheck Cond: (j @> '{"a": [[{"x": 2}]]}'::jsonb)
-         ->  Bitmap Index Scan on nestjsonb_j_idx  (cost=0.00..300.00 rows=1 width=0)
+         ->  Bitmap Index Scan on nestjsonb_j_idx  (cost=0.00..15.96 rows=176 width=0)
                Index Cond: (j @> '{"a": [[{"x": 2}]]}'::jsonb)
  Optimizer: Postgres query optimizer
 (6 rows)
 
 explain select * from nestjsonb where j @> '{"c":3}';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=300.00..400.01 rows=1 width=125)
-   ->  Bitmap Heap Scan on nestjsonb  (cost=300.00..400.01 rows=1 width=125)
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=16.00..59.24 rows=528 width=32)
+   ->  Bitmap Heap Scan on nestjsonb  (cost=16.00..52.20 rows=176 width=32)
          Recheck Cond: (j @> '{"c": 3}'::jsonb)
-         ->  Bitmap Index Scan on nestjsonb_j_idx  (cost=0.00..300.00 rows=1 width=0)
+         ->  Bitmap Index Scan on nestjsonb_j_idx  (cost=0.00..15.96 rows=176 width=0)
                Index Cond: (j @> '{"c": 3}'::jsonb)
  Optimizer: Postgres query optimizer
 (6 rows)
 
 explain select * from nestjsonb where j @> '[[14]]';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=300.00..400.01 rows=1 width=125)
-   ->  Bitmap Heap Scan on nestjsonb  (cost=300.00..400.01 rows=1 width=125)
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=16.00..59.24 rows=528 width=32)
+   ->  Bitmap Heap Scan on nestjsonb  (cost=16.00..52.20 rows=176 width=32)
          Recheck Cond: (j @> '[[14]]'::jsonb)
-         ->  Bitmap Index Scan on nestjsonb_j_idx  (cost=0.00..300.00 rows=1 width=0)
+         ->  Bitmap Index Scan on nestjsonb_j_idx  (cost=0.00..15.96 rows=176 width=0)
                Index Cond: (j @> '[[14]]'::jsonb)
  Optimizer: Postgres query optimizer
 (6 rows)
@@ -482,53 +501,53 @@ explain (costs off) SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
 (8 rows)
 
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ 'wr|qh';
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=509.68..509.69 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=509.64..509.67 rows=1 width=8)
-         ->  Partial Aggregate  (cost=509.64..509.65 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=501.24..509.24 rows=54 width=0)
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=25.08..25.09 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=25.02..25.07 rows=3 width=8)
+         ->  Partial Aggregate  (cost=25.02..25.03 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=21.22..24.89 rows=54 width=0)
                      Recheck Cond: (a @@ '''wr'' | ''qh'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..501.20 rows=54 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..21.21 rows=54 width=0)
                            Index Cond: (a @@ '''wr'' | ''qh'''::tsquery)
  Optimizer: Postgres query optimizer
 (8 rows)
 
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ 'wr&qh';
-                                        QUERY PLAN                                         
--------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=506.37..506.38 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=506.34..506.37 rows=1 width=8)
-         ->  Partial Aggregate  (cost=506.34..506.35 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=500.12..506.30 rows=5 width=0)
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=23.25..23.26 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=23.19..23.24 rows=3 width=8)
+         ->  Partial Aggregate  (cost=23.19..23.20 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=20.11..23.18 rows=5 width=0)
                      Recheck Cond: (a @@ '''wr'' & ''qh'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..500.11 rows=5 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..20.11 rows=5 width=0)
                            Index Cond: (a @@ '''wr'' & ''qh'''::tsquery)
  Optimizer: Postgres query optimizer
 (8 rows)
 
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ 'eq&yt';
-                                        QUERY PLAN                                         
--------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=576.82..576.83 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=576.79..576.82 rows=1 width=8)
-         ->  Partial Aggregate  (cost=576.79..576.80 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=500.04..576.77 rows=2 width=0)
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=23.22..23.23 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=23.16..23.21 rows=3 width=8)
+         ->  Partial Aggregate  (cost=23.16..23.17 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=20.04..23.16 rows=2 width=0)
                      Recheck Cond: (a @@ '''eq'' & ''yt'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..500.04 rows=2 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..20.04 rows=2 width=0)
                            Index Cond: (a @@ '''eq'' & ''yt'''::tsquery)
  Optimizer: Postgres query optimizer
 (8 rows)
 
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ 'eq|yt';
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=508.28..508.29 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=508.25..508.28 rows=1 width=8)
-         ->  Partial Aggregate  (cost=508.25..508.26 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=500.77..508.00 rows=33 width=0)
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=24.28..24.29 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=24.23..24.28 rows=3 width=8)
+         ->  Partial Aggregate  (cost=24.23..24.24 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=20.74..24.14 rows=32 width=0)
                      Recheck Cond: (a @@ '''eq'' | ''yt'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..500.74 rows=33 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..20.73 rows=32 width=0)
                            Index Cond: (a @@ '''eq'' | ''yt'''::tsquery)
  Optimizer: Postgres query optimizer
 (8 rows)
@@ -536,12 +555,12 @@ EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ 'eq|yt';
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ '(eq&yt)|(wr&qh)';
                                         QUERY PLAN                                         
 -------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=906.49..906.50 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=906.45..906.48 rows=1 width=8)
-         ->  Partial Aggregate  (cost=906.45..906.46 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=900.15..906.40 rows=7 width=0)
+ Finalize Aggregate  (cost=39.31..39.32 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=39.25..39.30 rows=3 width=8)
+         ->  Partial Aggregate  (cost=39.25..39.26 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=36.15..39.23 rows=7 width=0)
                      Recheck Cond: (a @@ '''eq'' & ''yt'' | ''wr'' & ''qh'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..900.15 rows=7 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..36.15 rows=7 width=0)
                            Index Cond: (a @@ '''eq'' & ''yt'' | ''wr'' & ''qh'''::tsquery)
  Optimizer: Postgres query optimizer
 (8 rows)
@@ -549,64 +568,64 @@ EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ '(eq&yt)|(wr&qh)';
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ '(eq|yt)&(wr|qh)';
                                             QUERY PLAN                                             
 ---------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=906.74..906.75 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=906.71..906.74 rows=1 width=8)
-         ->  Partial Aggregate  (cost=906.71..906.72 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=900.24..906.63 rows=11 width=0)
+ Finalize Aggregate  (cost=39.45..39.46 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=39.39..39.44 rows=3 width=8)
+         ->  Partial Aggregate  (cost=39.39..39.40 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=36.23..39.36 rows=10 width=0)
                      Recheck Cond: (a @@ '( ''eq'' | ''yt'' ) & ( ''wr'' | ''qh'' )'::tsquery)
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..900.23 rows=11 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..36.23 rows=10 width=0)
                            Index Cond: (a @@ '( ''eq'' | ''yt'' ) & ( ''wr'' | ''qh'' )'::tsquery)
  Optimizer: Postgres query optimizer
 (8 rows)
 
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ 'w:*|q:*';
-                                         QUERY PLAN                                          
----------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=817.59..817.60 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=817.56..817.59 rows=1 width=8)
-         ->  Partial Aggregate  (cost=817.56..817.57 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=803.94..816.29 rows=170 width=0)
+                                        QUERY PLAN                                         
+-------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=41.45..41.46 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=41.39..41.44 rows=3 width=8)
+         ->  Partial Aggregate  (cost=41.39..41.40 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=35.85..40.97 rows=169 width=0)
                      Recheck Cond: (a @@ '''w'':* | ''q'':*'::tsquery)
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..803.81 rows=170 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..35.81 rows=169 width=0)
                            Index Cond: (a @@ '''w'':* | ''q'':*'::tsquery)
  Optimizer: Postgres query optimizer
 (8 rows)
 
 -- For orca, ScalarArrayOpExpr condition on index scan not supported
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ any ('{wr,qh}');
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=609.68..609.69 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=609.64..609.67 rows=1 width=8)
-         ->  Partial Aggregate  (cost=609.64..609.65 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=601.24..609.24 rows=54 width=0)
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=29.08..29.09 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=29.02..29.07 rows=3 width=8)
+         ->  Partial Aggregate  (cost=29.02..29.03 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=25.22..28.89 rows=54 width=0)
                      Recheck Cond: (a @@ ANY ('{''wr'',''qh''}'::tsquery[]))
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..601.20 rows=54 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..25.21 rows=54 width=0)
                            Index Cond: (a @@ ANY ('{''wr'',''qh''}'::tsquery[]))
  Optimizer: Postgres query optimizer
 (8 rows)
 
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ 'no_such_lexeme';
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
- Aggregate  (cost=400.04..400.05 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=300.01..400.04 rows=1 width=0)
-         ->  Bitmap Heap Scan on test_tsvector  (cost=300.01..400.02 rows=1 width=0)
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
+ Aggregate  (cost=16.04..16.05 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=12.01..16.04 rows=1 width=0)
+         ->  Bitmap Heap Scan on test_tsvector  (cost=12.01..16.02 rows=1 width=0)
                Recheck Cond: (a @@ '''no_such_lexeme'''::tsquery)
-               ->  Bitmap Index Scan on wowidx  (cost=0.00..300.01 rows=1 width=0)
+               ->  Bitmap Index Scan on wowidx  (cost=0.00..12.01 rows=1 width=0)
                      Index Cond: (a @@ '''no_such_lexeme'''::tsquery)
  Optimizer: Postgres query optimizer
 (7 rows)
 
 EXPLAIN SELECT count(*) FROM test_tsvector WHERE a @@ '!no_such_lexeme';
-                                             QUERY PLAN                                              
------------------------------------------------------------------------------------------------------
- Finalize Aggregate  (cost=1801017.57..1801017.58 rows=1 width=8)
-   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=1801017.53..1801017.56 rows=1 width=8)
-         ->  Partial Aggregate  (cost=1801017.53..1801017.54 rows=1 width=8)
-               ->  Bitmap Heap Scan on test_tsvector  (cost=1801003.93..1801016.27 rows=170 width=0)
+                                           QUERY PLAN                                            
+-------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=72049.44..72049.45 rows=1 width=8)
+   ->  Gather Motion 3:1  (slice1; segments: 3)  (cost=72049.38..72049.43 rows=3 width=8)
+         ->  Partial Aggregate  (cost=72049.38..72049.39 rows=1 width=8)
+               ->  Bitmap Heap Scan on test_tsvector  (cost=72043.84..72048.96 rows=169 width=0)
                      Recheck Cond: (a @@ '!''no_such_lexeme'''::tsquery)
-                     ->  Bitmap Index Scan on wowidx  (cost=0.00..1801003.80 rows=170 width=0)
+                     ->  Bitmap Index Scan on wowidx  (cost=0.00..72043.80 rows=169 width=0)
                            Index Cond: (a @@ '!''no_such_lexeme'''::tsquery)
  Optimizer: Postgres query optimizer
 (8 rows)
@@ -683,10 +702,10 @@ INSERT INTO complex_array_table VALUES (ARRAY[COMPLEX(2,4), COMPLEX(6,8)]);
 EXPLAIN SELECT * FROM complex_array_table WHERE complex_arr @> ARRAY[COMPLEX(2,4)];
                                                 QUERY PLAN                                                
 ----------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=200.00..300.01 rows=1 width=53)
-   ->  Bitmap Heap Scan on complex_array_table  (cost=200.00..300.01 rows=1 width=53)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=14.00..52.62 rows=264 width=32)
+   ->  Bitmap Heap Scan on complex_array_table  (cost=14.00..49.10 rows=88 width=32)
          Recheck Cond: (complex_arr @> '{"2 + 4i"}'::complex[])
-         ->  Bitmap Index Scan on complex_array_table_complex_arr_idx  (cost=0.00..200.00 rows=1 width=0)
+         ->  Bitmap Index Scan on complex_array_table_complex_arr_idx  (cost=0.00..13.98 rows=88 width=0)
                Index Cond: (complex_arr @> '{"2 + 4i"}'::complex[])
  Optimizer: Postgres query optimizer
 (6 rows)
@@ -703,10 +722,10 @@ set optimizer_enable_tablescan=off;
 EXPLAIN SELECT * FROM complex_array_table WHERE complex_arr @> ARRAY[COMPLEX(2,4)];
                                                 QUERY PLAN                                                
 ----------------------------------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3)  (cost=200.00..300.01 rows=1 width=53)
-   ->  Bitmap Heap Scan on complex_array_table  (cost=200.00..300.01 rows=1 width=53)
+ Gather Motion 3:1  (slice1; segments: 3)  (cost=14.00..52.62 rows=264 width=32)
+   ->  Bitmap Heap Scan on complex_array_table  (cost=14.00..49.10 rows=88 width=32)
          Recheck Cond: (complex_arr @> '{"2 + 4i"}'::complex[])
-         ->  Bitmap Index Scan on complex_array_table_complex_arr_idx  (cost=0.00..200.00 rows=1 width=0)
+         ->  Bitmap Index Scan on complex_array_table_complex_arr_idx  (cost=0.00..13.98 rows=88 width=0)
                Index Cond: (complex_arr @> '{"2 + 4i"}'::complex[])
  Optimizer: Postgres query optimizer
 (6 rows)
@@ -715,3 +734,6 @@ DROP TABLE complex_array_table;
 RESET enable_seqscan;
 RESET enable_bitmapscan;
 RESET optimizer_enable_tablescan;
+-- GPDB: drop the shared tables created at the top of this test.
+DROP TABLE testjsonb;
+DROP TABLE test_tsvector;

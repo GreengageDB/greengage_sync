@@ -3,7 +3,7 @@
  *
  *	information support functions
  *
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/info.c
  */
 
@@ -380,12 +380,21 @@ get_db_infos(ClusterInfo *cluster)
 				i_encoding,
 				i_datcollate,
 				i_datctype,
+				i_datlocprovider,
+				i_daticulocale,
 				i_spclocation;
 	char		query[QUERY_ALLOC];
 
 	snprintf(query, sizeof(query),
-			 "SELECT d.oid, d.datname, d.encoding, d.datcollate, d.datctype, "
-			 "%s AS spclocation "
+			 "SELECT d.oid, d.datname, d.encoding, d.datcollate, d.datctype, ");
+	if (GET_MAJOR_VERSION(old_cluster.major_version) < 1500)
+		snprintf(query + strlen(query), sizeof(query) - strlen(query),
+				 "'c' AS datlocprovider, NULL AS daticulocale, ");
+	else
+		snprintf(query + strlen(query), sizeof(query) - strlen(query),
+				 "datlocprovider, daticulocale, ");
+	snprintf(query + strlen(query), sizeof(query) - strlen(query),
+			 "pg_catalog.pg_tablespace_location(t.oid) AS spclocation "
 			 "FROM pg_catalog.pg_database d "
 			 " LEFT OUTER JOIN pg_catalog.pg_tablespace t "
 			 " ON d.dattablespace = t.oid "
@@ -403,6 +412,8 @@ get_db_infos(ClusterInfo *cluster)
 	i_encoding = PQfnumber(res, "encoding");
 	i_datcollate = PQfnumber(res, "datcollate");
 	i_datctype = PQfnumber(res, "datctype");
+	i_datlocprovider = PQfnumber(res, "datlocprovider");
+	i_daticulocale = PQfnumber(res, "daticulocale");
 	i_spclocation = PQfnumber(res, "spclocation");
 
 	ntups = PQntuples(res);
@@ -415,6 +426,11 @@ get_db_infos(ClusterInfo *cluster)
 		dbinfos[tupnum].db_encoding = atoi(PQgetvalue(res, tupnum, i_encoding));
 		dbinfos[tupnum].db_collate = pg_strdup(PQgetvalue(res, tupnum, i_datcollate));
 		dbinfos[tupnum].db_ctype = pg_strdup(PQgetvalue(res, tupnum, i_datctype));
+		dbinfos[tupnum].db_collprovider = PQgetvalue(res, tupnum, i_datlocprovider)[0];
+		if (PQgetisnull(res, tupnum, i_daticulocale))
+			dbinfos[tupnum].db_iculocale = NULL;
+		else
+			dbinfos[tupnum].db_iculocale = pg_strdup(PQgetvalue(res, tupnum, i_daticulocale));
 		snprintf(dbinfos[tupnum].db_tablespace, sizeof(dbinfos[tupnum].db_tablespace), "%s",
 				 PQgetvalue(res, tupnum, i_spclocation));
 	}

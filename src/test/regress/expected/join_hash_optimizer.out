@@ -100,6 +100,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 0;
 set local work_mem = '4MB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 explain (costs off)
   select count(*) from simple r join simple s using (id);
                                   QUERY PLAN                                  
@@ -141,6 +142,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '4MB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local enable_parallel_hash = off;
 explain (costs off)
   select count(*) from simple r join simple s using (id);
@@ -183,6 +185,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '4MB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local enable_parallel_hash = on;
 explain (costs off)
   select count(*) from simple r join simple s using (id);
@@ -228,6 +231,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 0;
 set local work_mem = '128kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) from simple r join simple s using (id);
@@ -270,6 +274,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '128kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = off;
 explain (costs off)
@@ -313,6 +318,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '192kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = on;
 explain (costs off)
@@ -360,11 +366,12 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 0;
 set local work_mem = '128kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) FROM simple r JOIN bigger_than_it_looks s USING (id);
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                                QUERY PLAN                                 
+---------------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
@@ -375,7 +382,7 @@ explain (costs off)
                            ->  Broadcast Motion 3:3  (slice2; segments: 3)
                                  ->  Seq Scan on bigger_than_it_looks
  Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+(10 rows)
 
 select count(*) FROM simple r JOIN bigger_than_it_looks s USING (id);
  count 
@@ -399,12 +406,13 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '128kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = off;
 explain (costs off)
   select count(*) from simple r join bigger_than_it_looks s using (id);
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                                QUERY PLAN                                 
+---------------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
@@ -415,7 +423,7 @@ explain (costs off)
                            ->  Broadcast Motion 3:3  (slice2; segments: 3)
                                  ->  Seq Scan on bigger_than_it_looks
  Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+(10 rows)
 
 select count(*) from simple r join bigger_than_it_looks s using (id);
  count 
@@ -439,12 +447,13 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 1;
 set local work_mem = '192kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = on;
 explain (costs off)
   select count(*) from simple r join bigger_than_it_looks s using (id);
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                                QUERY PLAN                                 
+---------------------------------------------------------------------------
  Finalize Aggregate
    ->  Gather Motion 3:1  (slice1; segments: 3)
          ->  Partial Aggregate
@@ -455,7 +464,7 @@ explain (costs off)
                            ->  Broadcast Motion 3:3  (slice2; segments: 3)
                                  ->  Seq Scan on bigger_than_it_looks
  Optimizer: Pivotal Optimizer (GPORCA)
-(13 rows)
+(10 rows)
 
 select count(*) from simple r join bigger_than_it_looks s using (id);
  count 
@@ -484,6 +493,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 0;
 set local work_mem = '128kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) from simple r join extremely_skewed s using (id);
@@ -528,6 +538,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '128kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = off;
 explain (costs off)
@@ -573,6 +584,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 1;
 set local work_mem = '128kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 set local enable_parallel_hash = on;
 explain (costs off)
@@ -619,6 +631,7 @@ savepoint settings;
 set local max_parallel_workers_per_gather = 2;
 set local work_mem = '4MB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set local hash_mem_multiplier = 1.0;
 set local parallel_leader_participation = off;
 select * from hash_join_batches(
 $$
@@ -652,6 +665,7 @@ set enable_material = off;
 set enable_mergejoin = off;
 set work_mem = '64kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) from join_foo
@@ -712,6 +726,7 @@ set enable_material = off;
 set enable_mergejoin = off;
 set work_mem = '4MB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set hash_mem_multiplier = 1.0;
 explain (costs off)
   select count(*) from join_foo
     left join (select b1.id, b1.t from join_bar b1 join join_bar b2 using (id)) ss
@@ -771,6 +786,7 @@ set enable_material = off;
 set enable_mergejoin = off;
 set work_mem = '64kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set hash_mem_multiplier = 1.0;
 set local statement_mem = '1000kB'; -- GPDB uses statement_mem instead of work_mem
 explain (costs off)
   select count(*) from join_foo
@@ -831,6 +847,7 @@ set enable_material = off;
 set enable_mergejoin = off;
 set work_mem = '4MB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set hash_mem_multiplier = 1.0;
 explain (costs off)
   select count(*) from join_foo
     left join (select b1.id, b1.t from join_bar b1 join join_bar b2 using (id)) ss
@@ -1018,6 +1035,7 @@ set max_parallel_workers_per_gather = 2;
 set enable_parallel_hash = on;
 set work_mem = '128kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set hash_mem_multiplier = 1.0;
 insert into wide select generate_series(3, 100) as id, rpad('', 320000, 'x') as t;
 explain (costs off)
   select length(max(s.t))
@@ -1104,7 +1122,11 @@ BEGIN;
 SET LOCAL enable_sort = OFF; -- avoid mergejoins
 SET LOCAL from_collapse_limit = 1; -- allows easy changing of join order
 CREATE TABLE hjtest_1 (a text, b int, id int, c bool);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE hjtest_2 (a bool, id int, b text, c int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO hjtest_1(a, b, id, c) VALUES ('text', 2, 1, false); -- matches
 INSERT INTO hjtest_1(a, b, id, c) VALUES ('text', 1, 2, false); -- fails id join condition
 INSERT INTO hjtest_1(a, b, id, c) VALUES ('text', 20, 1, false); -- fails < 50

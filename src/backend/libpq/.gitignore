@@ -10,5 +10,6 @@ fe-secure-common.c
 fe-secure-gssapi.c
 fe-secure-openssl.c
 fe-secure.c
+fe-trace.c
 getpeereid.c
 pqexpbuffer.c
