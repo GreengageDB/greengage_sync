@@ -281,6 +281,11 @@ sub run_pg_rewind
 	copy(
 		"$primary_pgdata/postgresql.conf",
 		"$tmp_folder/primary-postgresql.conf.tmp");
+	# GPDB: postgresql.conf includes internal.auto.conf (gp_dbid) relative to
+	# its own location, so it must sit next to the copy.
+	copy(
+		"$primary_pgdata/internal.auto.conf",
+		"$tmp_folder/internal.auto.conf");
 
 	# Now run pg_rewind
 	if ($test_mode eq "local")

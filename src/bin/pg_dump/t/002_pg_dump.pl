@@ -92,10 +92,12 @@ my %pgdump_runs = (
 		],
 		# Give coverage for manually compressed blob.toc files during
 		# restore.
-		compress_cmd => {
-			program => $ENV{'GZIP_PROGRAM'},
-			args    => [ '-f', "$tempdir/compression_gzip_dir/blobs.toc", ],
-		},
+		# Disabled, because GPDB doesn't support large objects, so there
+		# is no blobs.toc to compress.
+		#compress_cmd => {
+		#	program => $ENV{'GZIP_PROGRAM'},
+		#	args    => [ '-f', "$tempdir/compression_gzip_dir/blobs.toc", ],
+		#},
 		restore_cmd => [
 			'pg_restore', '--jobs=2',
 			"--file=$tempdir/compression_gzip_dir.sql",
@@ -742,7 +744,10 @@ my %tests = (
 		create_order => 100,
 		create_sql =>
 		  'ALTER SCHEMA public OWNER TO "regress_quoted  \"" role";',
-		regexp => qr/^(GRANT|REVOKE)/m,
+		# GPDB: the GRANTs on the gp_* views in pg_catalog are dumped in
+		# every database, because initdb creates them after it records
+		# pg_init_privs.
+		regexp => qr/^(GRANT|REVOKE)(?! SELECT ON TABLE pg_catalog\.gp_)/m,
 		unlike => { defaults_public_owner => 1 },
 	},
 
@@ -1088,7 +1093,10 @@ my %tests = (
 	'COMMENT ON SCHEMA public' => {
 		regexp => qr/^COMMENT ON SCHEMA public IS .+;/m,
 		# regress_public_owner emits this, due to create_sql of next test
+		# GPDB: binary-upgrade dumps the public schema to keep its Oid, so
+		# it dumps the comment too.
 		like => {
+			binary_upgrade     => 1,
 			pg_dumpall_dbprivs => 1,
 			pg_dumpall_exclude => 1,
 		},

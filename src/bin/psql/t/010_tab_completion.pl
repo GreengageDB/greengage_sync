@@ -276,7 +276,9 @@ check_completion(
 	qr|tmp_check/somefile |,
 	"filename completion with one possibility");
 
-clear_query();
+# GPDB: large objects are not supported, so \lo_import fails and the \r
+# after it does not run; clear the line instead.
+clear_line();
 
 # note: readline might print a bell before the completion
 check_completion(
