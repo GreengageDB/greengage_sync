@@ -11,7 +11,11 @@ DATA = citext--1.4.sql \
 	citext--1.0--1.1.sql
 PGFILEDESC = "citext - case-insensitive character string data type"
 
-REGRESS = citext
+# GPDB: create_index_acl (upstream 00377b9a02b) is not run: its index
+# expression calls a function that runs SET search_path, which a QE refuses
+# ("function cannot execute on a QE slice because it issues a non-SELECT
+# statement"), and its unique index does not contain the distribution key.
+REGRESS = citext citext_utf8
 REGRESS_OPTS += --init-file=$(top_srcdir)/src/test/regress/init_file
 
 ifdef USE_PGXS
