@@ -1153,22 +1153,14 @@ brin_summarize_range_internal(PG_FUNCTION_ARGS)
 	if (heapBlk64 > BRIN_ALL_BLOCKRANGES || heapBlk64 < 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-<<<<<<< HEAD
-				 errmsg("block number out of range: %s", blk)));
-	}
+				 errmsg("block number out of range: %lld",
+						(long long) heapBlk64)));
 	if (heapBlk64 != BRIN_ALL_BLOCKRANGES)
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Greenplum could not summarize indicated page range")));
 	}
-||||||| e1c1c30f635
-				 errmsg("block number out of range: %s", blk)));
-	}
-=======
-				 errmsg("block number out of range: %lld",
-						(long long) heapBlk64)));
->>>>>>> adadae45816
 	heapBlk = (BlockNumber) heapBlk64;
 
 	/*
