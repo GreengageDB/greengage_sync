@@ -17,14 +17,8 @@ $primary->command_ok(
 	[
 		'pg_basebackup', '-D',
 		$backup_path,    '--no-sync',
-<<<<<<< HEAD
 		'--manifest-force-encode',
 		'--target-gp-dbid', '1'
-||||||| e1c1c30f635
-		'--manifest-force-encode'
-=======
-		'-cfast',        '--manifest-force-encode'
->>>>>>> adadae45816
 	],
 	"backup ok with forced hex encoding");
 

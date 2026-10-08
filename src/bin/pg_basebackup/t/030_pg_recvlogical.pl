@@ -86,6 +86,11 @@ $node->command_ok(
 $slot = $node->slot('test');
 isnt($slot->{'restart_lsn'}, '', 'restart lsn is defined for new slot');
 
+# GPDB: the rest needs PREPARE TRANSACTION, which is not supported in
+# utility mode (the TAP nodes run in utility mode), so stop here.
+done_testing();
+exit;
+
 $node->safe_psql('postgres',
 	"BEGIN; INSERT INTO test_table values (11); PREPARE TRANSACTION 'test'");
 $node->safe_psql('postgres', "COMMIT PREPARED 'test'");
