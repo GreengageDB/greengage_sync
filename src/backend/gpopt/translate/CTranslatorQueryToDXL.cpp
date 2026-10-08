@@ -3326,8 +3326,9 @@ CTranslatorQueryToDXL::UnsupportedRTEKind(RTEKind rtekind)
 		case RTE_NAMEDTUPLESTORE:
 		{
 			// trigger transition tables
-			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
-					   GPOS_WSZ_LIT("RangeTableEntry of type Named Tuplestore"));
+			GPOS_RAISE(
+				gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+				GPOS_WSZ_LIT("RangeTableEntry of type Named Tuplestore"));
 		}
 		case RTE_RESULT:
 		{
