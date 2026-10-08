@@ -673,12 +673,9 @@ main(int argc, char **argv)
 
             case 8:
                 have_extra_float_digits = true;
-                extra_float_digits = atoi(optarg);
-                if (extra_float_digits < -15 || extra_float_digits > 3)
-                {
-                    pg_log_error("extra_float_digits must be in range -15..3");
+                if (!option_parse_int(optarg, "--extra-float-digits", -15, 3,
+                                      &extra_float_digits))
                     exit_nicely(1);
-                }
                 break;
 
             case 9:				/* inserts */
