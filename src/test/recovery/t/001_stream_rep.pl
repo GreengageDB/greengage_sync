@@ -63,6 +63,8 @@ print "standby 2: $result\n";
 is($result, qq(1002), 'check streamed content on standby 2');
 
 # Likewise, but for a sequence
+# GPDB: sequences default to CACHE 20, so the first nextval() logs
+# 20 + SEQ_LOG_VALS values ahead: last_value is 52 on the standbys, not 33.
 $node_primary->safe_psql('postgres',
 	"CREATE SEQUENCE seq1; SELECT nextval('seq1')");
 
@@ -73,11 +75,11 @@ $node_standby_1->wait_for_catchup($node_standby_2, 'replay', $primary_lsn);
 
 $result = $node_standby_1->safe_psql('postgres', "SELECT * FROM seq1");
 print "standby 1: $result\n";
-is($result, qq(33|0|t), 'check streamed sequence content on standby 1');
+is($result, qq(52|0|t), 'check streamed sequence content on standby 1');
 
 $result = $node_standby_2->safe_psql('postgres', "SELECT * FROM seq1");
 print "standby 2: $result\n";
-is($result, qq(33|0|t), 'check streamed sequence content on standby 2');
+is($result, qq(52|0|t), 'check streamed sequence content on standby 2');
 
 # Check that only READ-only queries can run on standbys
 is($node_standby_1->psql('postgres', 'INSERT INTO tab_int VALUES (1)'),

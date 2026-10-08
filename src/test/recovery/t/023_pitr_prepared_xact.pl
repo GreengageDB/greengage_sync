@@ -13,6 +13,7 @@ use File::Compare;
 # TRANSACTION in utility-mode. We need at least 1 test so create a
 # dummy one.
 is(-1, -1, "Disable this TAP test");
+done_testing();
 exit;
 
 # Initialize and start primary node with WAL archiving
