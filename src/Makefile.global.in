@@ -501,13 +501,8 @@ with_temp_install = \
 	$(with_temp_install_extra)
 
 ifeq ($(enable_tap_tests),yes)
-<<<<<<< HEAD
-||||||| e1c1c30f635
-
-=======
 
 ifndef PGXS
->>>>>>> adadae45816
 define prove_installcheck
 echo "+++ tap install-check in $(subdir) +++" && \
 rm -rf '$(CURDIR)'/tmp_check && \
@@ -748,12 +743,8 @@ pg_regress_locale_flags = $(if $(ENCODING),--encoding=$(ENCODING)) $(NOLOCALE)
 pg_regress_clean_files = results/ regression.diffs regression.out tmp_check/ tmp_check_iso/ log/ output_iso/ tests_using_faultinjector.txt
 
 pg_regress_check = \
-<<<<<<< HEAD
     $(faultinjector_prep) \
-||||||| e1c1c30f635
-=======
     echo "+++ regress check in $(subdir) +++" && \
->>>>>>> adadae45816
     $(with_temp_install) \
     $(top_builddir)/src/test/regress/pg_regress \
     --temp-instance=./tmp_check \
@@ -762,24 +753,16 @@ pg_regress_check = \
     $(TEMP_CONF) \
     $(pg_regress_locale_flags) $(EXTRA_REGRESS_OPTS) $(FAULTINJECTOR_OPTS)
 pg_regress_installcheck = \
-<<<<<<< HEAD
     $(faultinjector_prep) \
-||||||| e1c1c30f635
-=======
     echo "+++ regress install-check in $(subdir) +++" && \
->>>>>>> adadae45816
     $(top_builddir)/src/test/regress/pg_regress \
     --inputdir=$(srcdir) \
     --bindir='$(bindir)' \
     $(pg_regress_locale_flags) $(EXTRA_REGRESS_OPTS) $(FAULTINJECTOR_OPTS)
 
 pg_isolation_regress_check = \
-<<<<<<< HEAD
     $(faultinjector_prep) \
-||||||| e1c1c30f635
-=======
     echo "+++ isolation check in $(subdir) +++" && \
->>>>>>> adadae45816
     $(with_temp_install) \
     $(top_builddir)/src/test/isolation/pg_isolation_regress \
     --temp-instance=./tmp_check_iso \
@@ -788,12 +771,8 @@ pg_isolation_regress_check = \
     $(TEMP_CONF) \
     $(pg_regress_locale_flags) $(EXTRA_REGRESS_OPTS) $(FAULTINJECTOR_OPTS)
 pg_isolation_regress_installcheck = \
-<<<<<<< HEAD
     $(faultinjector_prep) \
-||||||| e1c1c30f635
-=======
     echo "+++ isolation install-check in $(subdir) +++" && \
->>>>>>> adadae45816
     $(top_builddir)/src/test/isolation/pg_isolation_regress \
     --inputdir=$(srcdir) --outputdir=output_iso \
     --bindir='$(bindir)' \

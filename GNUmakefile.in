@@ -10,7 +10,6 @@ include $(top_builddir)/src/Makefile.global
 
 $(call recurse,all install,src config)
 
-<<<<<<< HEAD
 all:
 	$(MAKE) -C contrib/auto_explain all
 	$(MAKE) -C contrib/citext all
@@ -37,26 +36,12 @@ endif
 	$(MAKE) -C gpcontrib all
 	+@echo "All of Greenplum Database successfully made. Ready to install."
 
-||||||| e1c1c30f635
-all:
-	+@echo "All of PostgreSQL successfully made. Ready to install."
-
-=======
->>>>>>> adadae45816
 docs:
 	$(MAKE) -C doc all
 
-<<<<<<< HEAD
 $(call recurse,world,doc src config contrib gpcontrib,all)
 world:
 	+@echo "PostgreSQL, contrib, and documentation successfully made. Ready to install."
-||||||| e1c1c30f635
-$(call recurse,world,doc src config contrib,all)
-world:
-	+@echo "PostgreSQL, contrib, and documentation successfully made. Ready to install."
-=======
-$(call recurse,world,doc src config contrib,all)
->>>>>>> adadae45816
 
 # build src/ before contrib/
 world-contrib-recurse: world-src-recurse
@@ -69,7 +54,6 @@ world-bin-contrib-recurse: world-bin-src-recurse
 html man:
 	$(MAKE) -C doc $@
 
-<<<<<<< HEAD
 install:
 	$(MAKE) -C contrib/amcheck $@  # needed by src/bin/pg_amcheck
 	$(MAKE) -C contrib/auto_explain $@
@@ -97,42 +81,22 @@ endif
 	$(MAKE) -C gpcontrib $@
 	+@echo "Greenplum Database installation complete."
 
-||||||| e1c1c30f635
-install:
-	+@echo "PostgreSQL installation complete."
-
-=======
->>>>>>> adadae45816
 install-docs:
 	$(MAKE) -C doc install
 
-<<<<<<< HEAD
 $(call recurse,install-world,doc src config contrib gpcontrib,install)
 install-world:
 	+@echo "PostgreSQL, contrib, and documentation installation complete."
-||||||| e1c1c30f635
-$(call recurse,install-world,doc src config contrib,install)
-install-world:
-	+@echo "PostgreSQL, contrib, and documentation installation complete."
-=======
-$(call recurse,install-world,doc src config contrib,install)
->>>>>>> adadae45816
 
 # build src/ before contrib/
 install-world-contrib-recurse: install-world-src-recurse
 
-<<<<<<< HEAD
-$(call recurse,installdirs uninstall init-po update-po,doc src config gpcontrib)
-||||||| e1c1c30f635
-$(call recurse,installdirs uninstall init-po update-po,doc src config)
-=======
 $(call recurse,install-world-bin,src config contrib,install)
 
 # build src/ before contrib/
 install-world-bin-contrib-recurse: install-world-bin-src-recurse
 
-$(call recurse,installdirs uninstall init-po update-po,doc src config)
->>>>>>> adadae45816
+$(call recurse,installdirs uninstall init-po update-po,doc src config gpcontrib)
 
 $(call recurse,distprep coverage,doc src config contrib gpcontrib)
 
@@ -177,7 +141,6 @@ check-tests installcheck installcheck-parallel installcheck-tests: CHECKPREP_TOP
 check-tests installcheck installcheck-parallel installcheck-tests: submake-generated-headers
 	$(MAKE) -C src/test/regress $@
 
-<<<<<<< HEAD
 check:
 	if [ ! -f $(prefix)/greenplum_path.sh ]; then \
 		$(MAKE) -C $(top_builddir) install; \
@@ -191,15 +154,7 @@ check:
 	  fi; \
 	  . $(prefix)/greenplum_path.sh && . $(top_builddir)/gpAux/gpdemo/gpdemo-env.sh && $(MAKE) -C $(top_builddir) installcheck; \
 	fi
-||||||| e1c1c30f635
-$(call recurse,check-world,src/test src/pl src/interfaces/ecpg contrib src/bin,check)
-$(call recurse,checkprep,  src/test src/pl src/interfaces/ecpg contrib src/bin)
-=======
-$(call recurse,check-world,src/test src/pl src/interfaces contrib src/bin,check)
-$(call recurse,checkprep,  src/test src/pl src/interfaces contrib src/bin)
->>>>>>> adadae45816
 
-<<<<<<< HEAD
 $(call recurse,check-world,src/test src/pl src/interfaces/ecpg contrib src/bin gpcontrib,check)
 $(call recurse,checkprep,  src/test src/pl src/interfaces/ecpg contrib src/bin gpcontrib)
 
@@ -255,13 +210,8 @@ $(call recurse,installcheck-world,src/bin/pg_upgrade,check)
 unittest-check:
 	$(MAKE) CFLAGS=-DUNITTEST -C src/backend unittest-check
 	$(MAKE) CFLAGS=-DUNITTEST -C src/bin unittest-check
-||||||| e1c1c30f635
-$(call recurse,installcheck-world,src/test src/pl src/interfaces/ecpg contrib src/bin,installcheck)
+
 $(call recurse,install-tests,src/test/regress,install-tests)
-=======
-$(call recurse,installcheck-world,src/test src/pl src/interfaces contrib src/bin,installcheck)
-$(call recurse,install-tests,src/test/regress,install-tests)
->>>>>>> adadae45816
 
 GNUmakefile: GNUmakefile.in $(top_builddir)/config.status
 	./config.status $@
