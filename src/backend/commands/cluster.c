@@ -6,15 +6,9 @@
  * There is hardly anything left of Paul Brown's original implementation...
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994-5, Regents of the University of California
  *
  *
@@ -43,16 +37,12 @@
 #include "catalog/objectaccess.h"
 #include "catalog/partition.h"
 #include "catalog/pg_am.h"
-<<<<<<< HEAD
 #include "catalog/pg_appendonly.h"
 #include "catalog/pg_attribute_encoding.h"
+#include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_type.h"
-||||||| e1c1c30f635
-=======
-#include "catalog/pg_inherits.h"
->>>>>>> adadae45816
 #include "catalog/toasting.h"
 #include "commands/cluster.h"
 #include "commands/defrem.h"
@@ -97,7 +87,7 @@ typedef struct
 } RelToCluster;
 
 
-static void cluster_multiple_rels(List *rtcs, ClusterParams *params);
+static void cluster_multiple_rels(ClusterStmt *stmt, List *rtcs, ClusterParams *params);
 static void rebuild_relation(Relation OldHeap, Oid indexOid, bool verbose);
 static void copy_table_data(Oid OIDNewHeap, Oid OIDOldHeap, Oid OIDOldIndex,
 							bool verbose, bool *pSwapToastByContent,
@@ -223,25 +213,18 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 			/* close relation, keep lock till commit */
 			table_close(rel, NoLock);
 
-<<<<<<< HEAD
-		/* Do the job. */
-		cluster_rel(tableOid, indexOid, &params, true /* printError */);
-
-		if (Gp_role == GP_ROLE_DISPATCH)
-		{
-			CdbDispatchUtilityStatement((Node *) stmt,
-										DF_CANCEL_ON_ERROR|
-										DF_WITH_SNAPSHOT|
-										DF_NEED_TWO_PHASE,
-										GetAssignedOidsForDispatch(),
-										NULL);
-		}
-||||||| e1c1c30f635
-		/* Do the job. */
-		cluster_rel(tableOid, indexOid, &params);
-=======
 			/* Do the job. */
-			cluster_rel(tableOid, indexOid, &params);
+			cluster_rel(tableOid, indexOid, &params, true /* printError */);
+
+			if (Gp_role == GP_ROLE_DISPATCH)
+			{
+				CdbDispatchUtilityStatement((Node *) stmt,
+											DF_CANCEL_ON_ERROR|
+											DF_WITH_SNAPSHOT|
+											DF_NEED_TWO_PHASE,
+											GetAssignedOidsForDispatch(),
+											NULL);
+			}
 
 			return;
 		}
@@ -281,7 +264,6 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 
 		/* close relation, releasing lock on parent table */
 		table_close(rel, AccessExclusiveLock);
->>>>>>> adadae45816
 	}
 	else
 	{
@@ -290,7 +272,7 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 	}
 
 	/* Do the job. */
-	cluster_multiple_rels(rtcs, &params);
+	cluster_multiple_rels(stmt, rtcs, &params);
 
 	/* Start a new transaction for the cleanup work. */
 	StartTransactionCommand();
@@ -307,73 +289,19 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
  * return.
  */
 static void
-cluster_multiple_rels(List *rtcs, ClusterParams *params)
+cluster_multiple_rels(ClusterStmt *stmt, List *rtcs, ClusterParams *params)
 {
 	ListCell   *lc;
 
-<<<<<<< HEAD
-		/* Ok, now that we've got them all, cluster them one by one */
-		foreach(rv, rvs)
-		{
-			RelToCluster *rvtc = (RelToCluster *) lfirst(rv);
-			bool		dispatch;
-			ClusterParams cluster_params = params;
-||||||| e1c1c30f635
-		/* Ok, now that we've got them all, cluster them one by one */
-		foreach(rv, rvs)
-		{
-			RelToCluster *rvtc = (RelToCluster *) lfirst(rv);
-			ClusterParams cluster_params = params;
-=======
 	/* Commit to get out of starting transaction */
 	PopActiveSnapshot();
 	CommitTransactionCommand();
->>>>>>> adadae45816
 
-<<<<<<< HEAD
-			/* Start a new transaction for each relation. */
-			StartTransactionCommand();
-			/* functions in indexes may want a snapshot set */
-			PushActiveSnapshot(GetTransactionSnapshot());
-			/* Do the job. */
-			cluster_params.options |= CLUOPT_RECHECK;
-			dispatch = cluster_rel(rvtc->tableOid, rvtc->indexOid,
-								   &cluster_params,
-								   false /* printError */);
-
-			if (Gp_role == GP_ROLE_DISPATCH && dispatch)
-			{
-				stmt->relation = makeNode(RangeVar);
-				stmt->relation->schemaname = get_namespace_name(get_rel_namespace(rvtc->tableOid));
-				stmt->relation->relname = get_rel_name(rvtc->tableOid);
-				CdbDispatchUtilityStatement((Node *) stmt,
-											DF_CANCEL_ON_ERROR|
-											DF_WITH_SNAPSHOT,
-											GetAssignedOidsForDispatch(),
-											NULL);
-			}
-
-			PopActiveSnapshot();
-			CommitTransactionCommand();
-		}
-||||||| e1c1c30f635
-			/* Start a new transaction for each relation. */
-			StartTransactionCommand();
-			/* functions in indexes may want a snapshot set */
-			PushActiveSnapshot(GetTransactionSnapshot());
-			/* Do the job. */
-			cluster_params.options |= CLUOPT_RECHECK;
-			cluster_rel(rvtc->tableOid, rvtc->indexOid,
-						&cluster_params);
-			PopActiveSnapshot();
-			CommitTransactionCommand();
-		}
-=======
 	/* Cluster the tables, each in a separate transaction */
 	foreach(lc, rtcs)
 	{
 		RelToCluster *rtc = (RelToCluster *) lfirst(lc);
->>>>>>> adadae45816
+		bool		dispatch;
 
 		/* Start a new transaction for each relation. */
 		StartTransactionCommand();
@@ -382,7 +310,29 @@ cluster_multiple_rels(List *rtcs, ClusterParams *params)
 		PushActiveSnapshot(GetTransactionSnapshot());
 
 		/* Do the job. */
-		cluster_rel(rtc->tableOid, rtc->indexOid, params);
+		dispatch = cluster_rel(rtc->tableOid, rtc->indexOid, params,
+							   false /* printError */);
+
+		if (Gp_role == GP_ROLE_DISPATCH && dispatch)
+		{
+			stmt->relation = makeNode(RangeVar);
+			stmt->relation->schemaname = get_namespace_name(get_rel_namespace(rtc->tableOid));
+			stmt->relation->relname = get_rel_name(rtc->tableOid);
+			/*
+			 * GPDB: rtcs may name child partitions (whole-database CLUSTER or a
+			 * partitioned-table CLUSTER), each with its OWN index.  Re-point
+			 * indexname at this relation's index, otherwise we would dispatch
+			 * the parent's index name against a child and the QEs would error
+			 * "<idx> is not an index for table <child>".
+			 */
+			stmt->indexname = OidIsValid(rtc->indexOid) ?
+				get_rel_name(rtc->indexOid) : NULL;
+			CdbDispatchUtilityStatement((Node *) stmt,
+										DF_CANCEL_ON_ERROR|
+										DF_WITH_SNAPSHOT,
+										GetAssignedOidsForDispatch(),
+										NULL);
+		}
 
 		PopActiveSnapshot();
 		CommitTransactionCommand();
@@ -417,6 +367,7 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 	Oid			save_userid;
 	int			save_sec_context;
 	int			save_nestlevel;
+	bool		result = false;
 	bool		verbose = ((params->options & CLUOPT_VERBOSE) != 0);
 	bool		recheck = ((params->options & CLUOPT_RECHECK) != 0);
 
@@ -470,15 +421,7 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 		if (!pg_class_ownercheck(tableOid, save_userid))
 		{
 			relation_close(OldHeap, AccessExclusiveLock);
-<<<<<<< HEAD
-			pgstat_progress_end_command();
-			return false;
-||||||| e1c1c30f635
-			pgstat_progress_end_command();
-			return;
-=======
 			goto out;
->>>>>>> adadae45816
 		}
 
 		/*
@@ -493,15 +436,7 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 		if (RELATION_IS_OTHER_TEMP(OldHeap))
 		{
 			relation_close(OldHeap, AccessExclusiveLock);
-<<<<<<< HEAD
-			pgstat_progress_end_command();
-			return false;
-||||||| e1c1c30f635
-			pgstat_progress_end_command();
-			return;
-=======
 			goto out;
->>>>>>> adadae45816
 		}
 
 		if (OidIsValid(indexOid))
@@ -512,15 +447,7 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 			if (!SearchSysCacheExists1(RELOID, ObjectIdGetDatum(indexOid)))
 			{
 				relation_close(OldHeap, AccessExclusiveLock);
-<<<<<<< HEAD
-				pgstat_progress_end_command();
-				return false;
-||||||| e1c1c30f635
-				pgstat_progress_end_command();
-				return;
-=======
 				goto out;
->>>>>>> adadae45816
 			}
 
 			/*
@@ -531,15 +458,7 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 				!get_index_isclustered(indexOid))
 			{
 				relation_close(OldHeap, AccessExclusiveLock);
-<<<<<<< HEAD
-				pgstat_progress_end_command();
-				return false;
-||||||| e1c1c30f635
-				pgstat_progress_end_command();
-				return;
-=======
 				goto out;
->>>>>>> adadae45816
 			}
 		}
 	}
@@ -592,20 +511,22 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 		!RelationIsPopulated(OldHeap))
 	{
 		relation_close(OldHeap, AccessExclusiveLock);
-<<<<<<< HEAD
-		pgstat_progress_end_command();
-		return false;
-||||||| e1c1c30f635
-		pgstat_progress_end_command();
-		return;
-=======
 		goto out;
->>>>>>> adadae45816
 	}
 
+	/*
+	 * GPDB: VACUUM FULL on an append-optimized table recurses into its
+	 * heap-backed auxiliary relations (aoseg, block directory, visimap) and
+	 * rewrites each one via cluster_rel(), just like the TOAST relation.
+	 * Those carry GPDB-specific relkinds, so accept them here in addition to
+	 * the upstream set.
+	 */
 	Assert(OldHeap->rd_rel->relkind == RELKIND_RELATION ||
 		   OldHeap->rd_rel->relkind == RELKIND_MATVIEW ||
-		   OldHeap->rd_rel->relkind == RELKIND_TOASTVALUE);
+		   OldHeap->rd_rel->relkind == RELKIND_TOASTVALUE ||
+		   OldHeap->rd_rel->relkind == RELKIND_AOSEGMENTS ||
+		   OldHeap->rd_rel->relkind == RELKIND_AOBLOCKDIR ||
+		   OldHeap->rd_rel->relkind == RELKIND_AOVISIMAP);
 
 	/*
 	 * All predicate locks on the tuples or pages are about to be made
@@ -619,6 +540,7 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 	rebuild_relation(OldHeap, indexOid, verbose);
 
 	/* NB: rebuild_relation does table_close() on OldHeap */
+	result = true;
 
 out:
 	/* Roll back any GUC changes executed by index functions */
@@ -628,7 +550,7 @@ out:
 	SetUserIdAndSecContext(save_userid, save_sec_context);
 
 	pgstat_progress_end_command();
-	return true;
+	return result;
 }
 
 /*
@@ -804,12 +726,7 @@ rebuild_relation(Relation OldHeap, Oid indexOid, bool verbose)
 
 	/* Create the transient table that will receive the re-ordered data */
 	OIDNewHeap = make_new_heap(tableOid, tableSpace,
-<<<<<<< HEAD
 							   accessMethod, NULL,
-||||||| e1c1c30f635
-=======
-							   accessMethod,
->>>>>>> adadae45816
 							   relpersistence,
 							   AccessExclusiveLock,
 							   true /* createAoBlockDirectory */,
@@ -847,22 +764,14 @@ make_column_name(char *prefix, char *colname)
  * duplicates the logical structure of the OldHeap; but will have the
  * specified physical storage properties NewTableSpace, NewAccessMethod, and
  * relpersistence.
-<<<<<<< HEAD
  *
  * Specify a colprefix can create a table with different colname, incase
  * column conflict issue happens in REFRESH MATERIALIZED VIEW operation.
-||||||| e1c1c30f635
- * duplicates the logical structure of the OldHeap, but is placed in
- * NewTableSpace which might be different from OldHeap's.  Also, it's built
- * with the specified persistence, which might differ from the original's.
-=======
->>>>>>> adadae45816
  *
  * After this, the caller should load the new heap with transferred/modified
  * data, then call finish_heap_swap to complete the operation.
  */
 Oid
-<<<<<<< HEAD
 make_new_heap_with_colname(Oid OIDOldHeap, Oid NewTableSpace, Oid NewAccessMethod,
 			  List *NewEncodings,
 			  char relpersistence,
@@ -870,13 +779,6 @@ make_new_heap_with_colname(Oid OIDOldHeap, Oid NewTableSpace, Oid NewAccessMetho
 			  bool createAoBlockDirectory,
 			  bool makeCdbPolicy,
 			  char *colprefix)
-||||||| e1c1c30f635
-make_new_heap(Oid OIDOldHeap, Oid NewTableSpace, char relpersistence,
-			  LOCKMODE lockmode)
-=======
-make_new_heap(Oid OIDOldHeap, Oid NewTableSpace, Oid NewAccessMethod,
-			  char relpersistence, LOCKMODE lockmode)
->>>>>>> adadae45816
 {
 	TupleDesc	OldHeapDesc;
 	char		NewHeapName[NAMEDATALEN];
@@ -1062,15 +964,7 @@ make_new_heap(Oid OIDOldHeap, Oid NewTableSpace, Oid NewAccessMethod,
 									 &isNull);
 		if (isNull)
 			reloptions = (Datum) 0;
-<<<<<<< HEAD
-		NewHeapCreateToastTable(OIDNewHeap, reloptions, lockmode);
-||||||| e1c1c30f635
-
-		NewHeapCreateToastTable(OIDNewHeap, reloptions, lockmode);
-=======
-
 		NewHeapCreateToastTable(OIDNewHeap, reloptions, lockmode, toastid);
->>>>>>> adadae45816
 
 		ReleaseSysCache(tuple);
 	}
