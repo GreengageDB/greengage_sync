@@ -385,7 +385,6 @@ CREATE FUNCTION voidtest5(a int) RETURNS SETOF VOID LANGUAGE SQL AS
 $$ SELECT generate_series(1, a) $$ STABLE;
 SELECT * FROM voidtest5(3);
 
-<<<<<<< HEAD:src/test/regress/sql/create_function_3.sql
 -- GPDB: a positional parameter reference ($1) in a SQL-standard function
 -- body produces a ParamRef node that must survive dispatch of CREATE FUNCTION
 -- to the segments (previously failed with "unrecognized node type" in readfast.c).
@@ -397,25 +396,23 @@ CREATE FUNCTION functest_gp_paramref_atomic(int) RETURNS int
         SELECT $1 + 1;
     END;
 SELECT functest_gp_paramref_atomic(41);
-||||||| e1c1c30f635:src/test/regress/sql/create_function_3.sql
-=======
+
 -- Things that shouldn't work:
 
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'SELECT ''not an integer'';';
 
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'not even SQL';
 
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'SELECT 1, 2, 3;';
 
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'SELECT $2;';
 
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
     AS 'a', 'b';
->>>>>>> adadae45816:src/test/regress/sql/create_function_sql.sql
 
 -- Cleanup
 DROP SCHEMA temp_func_test CASCADE;

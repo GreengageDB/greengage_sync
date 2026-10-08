@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 -- Suppress NOTICE messages when schema doesn't exist
 SET client_min_messages TO 'warning';
 DROP SCHEMA IF EXISTS test_util CASCADE;
@@ -42,8 +41,6 @@ SELECT
   'workmem_wanted_lines', (SELECT COUNT(*) FROM query_plan WHERE et like '%Work_mem wanted: %');
 end;
 $$ language plpgsql;
-||||||| e1c1c30f635
-=======
 --
 -- TEST_SETUP --- prepare environment expected by regression test scripts
 --
@@ -180,7 +177,7 @@ CREATE TABLE onek (
 COPY onek FROM :'filename';
 VACUUM ANALYZE onek;
 
-CREATE TABLE onek2 AS SELECT * FROM onek;
+CREATE TABLE onek2 AS SELECT * FROM onek DISTRIBUTED BY (unique1);
 VACUUM ANALYZE onek2;
 
 CREATE TABLE tenk1 (
@@ -206,7 +203,12 @@ CREATE TABLE tenk1 (
 COPY tenk1 FROM :'filename';
 VACUUM ANALYZE tenk1;
 
-CREATE TABLE tenk2 AS SELECT * FROM tenk1;
+-- GPDB: distribute tenk2 by unique1 (matching tenk1) so it is deterministic
+-- and co-located.  Without an explicit clause the Postgres planner picks
+-- unique1 as the key, but ORCA falls back to a randomly-distributed (NULL
+-- policy) table, which makes per-segment row counts vary run-to-run and
+-- destabilizes EXPLAIN ANALYZE output (e.g. select_parallel).
+CREATE TABLE tenk2 AS SELECT * FROM tenk1 DISTRIBUTED BY (unique1);
 VACUUM ANALYZE tenk2;
 
 CREATE TABLE person (
@@ -297,7 +299,7 @@ CREATE FUNCTION binary_coercible(oid, oid)
 CREATE FUNCTION ttdummy ()
     RETURNS trigger
     AS :'regresslib'
-    LANGUAGE C;
+    LANGUAGE C READS SQL DATA;
 
 CREATE FUNCTION get_columns_length(oid[])
     RETURNS int
@@ -326,4 +328,3 @@ create function part_hashtext_length(value text, seed int8)
 create operator class part_test_text_ops for type text using hash as
     operator 1 =,
     function 2 part_hashtext_length(text, int8);
->>>>>>> adadae45816

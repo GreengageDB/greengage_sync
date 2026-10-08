@@ -11,16 +11,11 @@
 # required setup steps
 test: test_setup
 
-<<<<<<< HEAD
-# run tablespace by itself, and first, because it forces a checkpoint;
-||||||| e1c1c30f635
-# run tablespace by itself, and first, because it forces a checkpoint;
-=======
 # run tablespace by itself, and early, because it forces a checkpoint;
->>>>>>> adadae45816
 # we'd prefer not to have checkpoints later in the tests because that
 # interferes with crash-recovery testing.
 test: tablespace
+
 # ----------
 # The first group of parallel tests
 # ----------
@@ -86,8 +81,6 @@ ignore: random
 # aggregates depends on create_aggregate
 # join depends on create_misc
 # ----------
-<<<<<<< HEAD
-ignore: random
 test: select_into select_distinct select_distinct_on select_implicit select_having subselect union case join aggregates random portals arrays btree_index hash_index update delete
 
 # In PostgreSQL, namespace test is run as part of the previous group, but there
@@ -102,12 +95,6 @@ test: namespace
 # in segments in a way that doesn't work:
 # ERROR:  function cannot execute on a QE slice because it accesses relation "public.xacttest"
 #test: transactions
-||||||| e1c1c30f635
-ignore: random
-test: select_into select_distinct select_distinct_on select_implicit select_having subselect union case join aggregates transactions random portals arrays btree_index hash_index update delete namespace prepared_xacts
-=======
-test: select_into select_distinct select_distinct_on select_implicit select_having subselect union case join aggregates transactions random portals arrays btree_index hash_index update delete namespace prepared_xacts
->>>>>>> adadae45816
 
 # ----------
 # Another group of parallel tests
@@ -182,7 +169,12 @@ test: gp_foreign_data
 # The stats test resets stats, so nothing else needing stats access can be in
 # this group.
 # ----------
-test: partition_join partition_prune reloptions hash_part indexing partition_aggregate partition_info tuplesort explain compression memoize stats
+test: partition_join partition_prune reloptions hash_part indexing partition_aggregate partition_info tuplesort explain compression memoize
+#
+# 'stats' test has been disabled in GPDB, because it tries to set stats-related
+# GUCs stats_block_level and stats_row_level, which have been removed from
+# GPDB.
+#test: stats
 
 # event_trigger cannot run concurrently with any test that runs DDL
 # oidjoins is read-only, though, and should run late for best coverage
@@ -190,17 +182,3 @@ test: event_trigger oidjoins
 
 # this test also uses event triggers, so likewise run it by itself
 test: fast_default
-<<<<<<< HEAD
-
-# run stats by itself because its delay may be insufficient under heavy load
-#
-# 'stats' test has been disabled in GPDB, because it tries to set stats-related
-# GUCs stats_block_level and stats_row_level, which have been removed from
-# GPDB.
-#test: stats
-||||||| e1c1c30f635
-
-# run stats by itself because its delay may be insufficient under heavy load
-test: stats
-=======
->>>>>>> adadae45816

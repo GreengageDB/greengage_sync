@@ -15,13 +15,13 @@
 --
 LOAD :'regresslib';
 -- Things that shouldn't work:
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C NO SQL
     AS 'nosuchfile';
 ERROR:  could not access file "nosuchfile": No such file or directory
 -- To produce stable regression test output, we have to filter the name
 -- of the regresslib file out of the error message in this test.
 \set VERBOSITY sqlstate
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C NO SQL
     AS :'regresslib', 'nosuchsymbol';
 ERROR:  42883
 \set VERBOSITY default
@@ -31,6 +31,6 @@ SELECT regexp_replace(:'LAST_ERROR_MESSAGE', 'file ".*"', 'file "..."');
  could not find function "nosuchsymbol" in file "..."
 (1 row)
 
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE internal
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE internal NO SQL
     AS 'nosuch';
 ERROR:  there is no built-in function named "nosuch"
