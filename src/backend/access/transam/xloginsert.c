@@ -41,17 +41,6 @@
 #include "storage/proc.h"
 #include "utils/memutils.h"
 
-<<<<<<< HEAD
-#ifdef USE_ZSTD
-/* Zstandard library is provided */
-#include <zstd.h>
-/* zstandard compression level to use. */
-#define COMPRESS_LEVEL 3
-#endif
-||||||| e1c1c30f635
-/* Buffer size required to store a compressed version of backup block image */
-#define PGLZ_MAX_BLCKSZ PGLZ_MAX_OUTPUT(BLCKSZ)
-=======
 /*
  * Guess the maximum buffer size required to store a compressed version of
  * backup block image.
@@ -72,7 +61,6 @@
 
 /* Buffer size required to store a compressed version of backup block image */
 #define COMPRESS_BUFSIZE	Max(Max(PGLZ_MAX_BLCKSZ, LZ4_MAX_BLCKSZ), ZSTD_MAX_BLCKSZ)
->>>>>>> adadae45816
 
 /*
  * For each block reference registered with XLogRegisterBuffer, we fill in
@@ -96,13 +84,7 @@ typedef struct
 								 * backup block data in XLogRecordAssemble() */
 
 	/* buffer to store a compressed version of backup block image */
-<<<<<<< HEAD
-	char		compressed_page[BLCKSZ];
-||||||| e1c1c30f635
-	char		compressed_page[PGLZ_MAX_BLCKSZ];
-=======
 	char		compressed_page[COMPRESS_BUFSIZE];
->>>>>>> adadae45816
 } registered_buffer;
 
 static registered_buffer *registered_buffers;
@@ -156,13 +138,8 @@ static MemoryContext xloginsert_cxt;
 static XLogRecData *XLogRecordAssemble(RmgrId rmid, uint8 info,
 									   XLogRecPtr RedoRecPtr, bool doPageWrites,
 									   XLogRecPtr *fpw_lsn, int *num_fpi,
-<<<<<<< HEAD
-									   TransactionId overrideXid);
-||||||| e1c1c30f635
-									   XLogRecPtr *fpw_lsn, int *num_fpi);
-=======
+									   TransactionId headerXid,
 									   bool *topxid_included);
->>>>>>> adadae45816
 static bool XLogCompressBackupBlock(char *page, uint16 hole_offset,
 									uint16 hole_length, char *dest, uint16 *dlen);
 static XLogRecPtr XLogInsert_Internal(RmgrId rmid, uint8 info, TransactionId
@@ -525,13 +502,8 @@ XLogInsert_Internal(RmgrId rmid, uint8 info, TransactionId headerXid)
 		GetFullPageWriteInfo(&RedoRecPtr, &doPageWrites);
 
 		rdt = XLogRecordAssemble(rmid, info, RedoRecPtr, doPageWrites,
-<<<<<<< HEAD
-								 &fpw_lsn, &num_fpi, headerXid);
-||||||| e1c1c30f635
-								 &fpw_lsn, &num_fpi);
-=======
-								 &fpw_lsn, &num_fpi, &topxid_included);
->>>>>>> adadae45816
+								 &fpw_lsn, &num_fpi, headerXid,
+								 &topxid_included);
 
 		EndPos = XLogInsertRecord(rdt, fpw_lsn, curinsert_flags, num_fpi,
 								  topxid_included);
@@ -560,14 +532,8 @@ XLogInsert_Internal(RmgrId rmid, uint8 info, TransactionId headerXid)
 static XLogRecData *
 XLogRecordAssemble(RmgrId rmid, uint8 info,
 				   XLogRecPtr RedoRecPtr, bool doPageWrites,
-<<<<<<< HEAD
 				   XLogRecPtr *fpw_lsn, int *num_fpi,
-				   TransactionId headerXid)
-||||||| e1c1c30f635
-				   XLogRecPtr *fpw_lsn, int *num_fpi)
-=======
-				   XLogRecPtr *fpw_lsn, int *num_fpi, bool *topxid_included)
->>>>>>> adadae45816
+				   TransactionId headerXid, bool *topxid_included)
 {
 	XLogRecData *rdt;
 	uint32		total_len = 0;
@@ -935,8 +901,6 @@ static bool
 XLogCompressBackupBlock(char *page, uint16 hole_offset, uint16 hole_length,
 						char *dest, uint16 *dlen)
 {
-#ifdef USE_ZSTD
-	static ZSTD_CCtx  *cxt = NULL;      /* ZSTD compression context */
 	int32		orig_len = BLCKSZ - hole_length;
 	int32		len = -1;
 	int32		extra_bytes = 0;
@@ -961,24 +925,6 @@ XLogCompressBackupBlock(char *page, uint16 hole_offset, uint16 hole_length,
 	else
 		source = page;
 
-<<<<<<< HEAD
-	if (!cxt)
-	{
-		cxt = ZSTD_createCCtx();
-		if (!cxt)
-			elog(ERROR, "out of memory");
-	}
-
-	len = ZSTD_compressCCtx(cxt,
-							dest, BLCKSZ,
-							source, orig_len,
-							COMPRESS_LEVEL);
-
-	if (ZSTD_isError(len))
-		elog(ERROR, "compression failed: %s uncompressed len %d",
-			 ZSTD_getErrorName(len), orig_len);
-||||||| e1c1c30f635
-=======
 	switch ((WalCompression) wal_compression)
 	{
 		case WAL_COMPRESSION_PGLZ:
@@ -1012,22 +958,11 @@ XLogCompressBackupBlock(char *page, uint16 hole_offset, uint16 hole_length,
 			break;
 			/* no default case, so that compiler will warn */
 	}
->>>>>>> adadae45816
 
 	/*
-<<<<<<< HEAD
-	 * We recheck the actual size even if ZSTD reports success and
-	 * see if the number of bytes saved by compression is larger than the
-	 * length of extra data needed for the compressed version of block image.
-||||||| e1c1c30f635
-	 * We recheck the actual size even if pglz_compress() reports success and
-	 * see if the number of bytes saved by compression is larger than the
-	 * length of extra data needed for the compressed version of block image.
-=======
 	 * We recheck the actual size even if compression reports success and see
 	 * if the number of bytes saved by compression is larger than the length
 	 * of extra data needed for the compressed version of block image.
->>>>>>> adadae45816
 	 */
 	if (len >= 0 &&
 		len + extra_bytes < orig_len)
@@ -1035,7 +970,6 @@ XLogCompressBackupBlock(char *page, uint16 hole_offset, uint16 hole_length,
 		*dlen = (uint16) len;	/* successful compression */
 		return true;
 	}
-#endif
 	return false;
 }
 

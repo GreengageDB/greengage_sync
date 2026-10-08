@@ -188,13 +188,9 @@ typedef struct SavedTransactionCharacteristics
 #define XACT_XINFO_HAS_ORIGIN			(1U << 5)
 #define XACT_XINFO_HAS_AE_LOCKS			(1U << 6)
 #define XACT_XINFO_HAS_GID				(1U << 7)
-<<<<<<< HEAD
 #define XACT_XINFO_HAS_DISTRIB			(1U << 8)
 #define XACT_XINFO_HAS_DELDBS			(1U << 9)
-||||||| e1c1c30f635
-=======
-#define XACT_XINFO_HAS_DROPPED_STATS	(1U << 8)
->>>>>>> adadae45816
+#define XACT_XINFO_HAS_DROPPED_STATS	(1U << 10)
 
 /*
  * Also stored in xinfo, these indicating a variety of additional actions that
@@ -351,12 +347,8 @@ typedef struct xl_xact_abort
 	/* xl_xact_dbinfo follows if XINFO_HAS_DBINFO */
 	/* xl_xact_subxacts follows if XINFO_HAS_SUBXACT */
 	/* xl_xact_relfilenodes follows if XINFO_HAS_RELFILENODES */
-<<<<<<< HEAD
 	/* xl_xact_deldbs follows if XACT_XINFO_HAS_DELDBS */
-||||||| e1c1c30f635
-=======
 	/* xl_xact_stats_items follows if XINFO_HAS_DROPPED_STATS */
->>>>>>> adadae45816
 	/* No invalidation messages needed. */
 	/* xl_xact_twophase follows if XINFO_HAS_TWOPHASE */
 	/* twophase_gid follows if XINFO_HAS_GID. As a null-terminated string. */
@@ -375,14 +367,10 @@ typedef struct xl_xact_prepare
 	int32		nsubxacts;		/* number of following subxact XIDs */
 	int32		ncommitrels;	/* number of delete-on-commit rels */
 	int32		nabortrels;		/* number of delete-on-abort rels */
-<<<<<<< HEAD
 	int32		ncommitdbs;		/* number of delete-on-commit dbs */
 	int32		nabortdbs;		/* number of delete-on-abort dbs */
-||||||| e1c1c30f635
-=======
 	int32		ncommitstats;	/* number of stats to drop on commit */
 	int32		nabortstats;	/* number of stats to drop on abort */
->>>>>>> adadae45816
 	int32		ninvalmsgs;		/* number of cache invalidation messages */
 	bool		initfileinval;	/* does relcache init file need invalidation? */
 	Oid			tablespace_oid_to_delete_on_abort;
@@ -425,15 +413,9 @@ typedef struct xl_xact_parsed_commit
 	TransactionId twophase_xid; /* only for 2PC */
 	char		twophase_gid[GIDSIZE];	/* only for 2PC */
 	int			nabortrels;		/* only for 2PC */
-<<<<<<< HEAD
 	RelFileNodePendingDelete *abortnodes;	/* only for 2PC */
-||||||| e1c1c30f635
-	RelFileNode *abortnodes;	/* only for 2PC */
-=======
-	RelFileNode *abortnodes;	/* only for 2PC */
 	int			nabortstats;	/* only for 2PC */
 	xl_xact_stats_item *abortstats; /* only for 2PC */
->>>>>>> adadae45816
 
 	XLogRecPtr	origin_lsn;
 	TimestampTz origin_timestamp;
@@ -561,32 +543,20 @@ extern void UnregisterXactCallbackOnce(XactCallback callback, void *arg);
 extern void RegisterSubXactCallback(SubXactCallback callback, void *arg);
 extern void UnregisterSubXactCallback(SubXactCallback callback, void *arg);
 
-<<<<<<< HEAD
 extern void RecordDistributedForgetCommitted(DistributedTransactionId gxid);
 extern bool IsSubTransactionAssignmentPending(void);
 extern void MarkSubTransactionAssigned(void);
-||||||| e1c1c30f635
-extern bool IsSubTransactionAssignmentPending(void);
-extern void MarkSubTransactionAssigned(void);
-=======
 extern bool IsSubxactTopXidLogPending(void);
 extern void MarkSubxactTopXidLogged(void);
->>>>>>> adadae45816
 
 extern int	xactGetCommittedChildren(TransactionId **ptr);
 
 extern XLogRecPtr XactLogCommitRecord(TimestampTz commit_time,
 									  Oid tablespace_oid_to_delete_on_commit,
 									  int nsubxacts, TransactionId *subxacts,
-<<<<<<< HEAD
 									  int nrels, RelFileNodePendingDelete *rels,
-||||||| e1c1c30f635
-									  int nrels, RelFileNode *rels,
-=======
-									  int nrels, RelFileNode *rels,
 									  int nstats,
 									  xl_xact_stats_item *stats,
->>>>>>> adadae45816
 									  int nmsgs, SharedInvalidationMessage *msgs,
 									  int ndeldbs, DbDirNode *deldbs,
 									  bool relcacheInval, int xactflags,
@@ -596,16 +566,10 @@ extern XLogRecPtr XactLogCommitRecord(TimestampTz commit_time,
 extern XLogRecPtr XactLogAbortRecord(TimestampTz abort_time,
 									 Oid tablespace_oid_to_abort,
 									 int nsubxacts, TransactionId *subxacts,
-<<<<<<< HEAD
 									 int nrels, RelFileNodePendingDelete *rels,
 									 int ndeldbs, DbDirNode *deldbs,
-||||||| e1c1c30f635
-									 int nrels, RelFileNode *rels,
-=======
-									 int nrels, RelFileNode *rels,
 									 int nstats,
 									 xl_xact_stats_item *stats,
->>>>>>> adadae45816
 									 int xactflags, TransactionId twophase_xid,
 									 const char *twophase_gid);
 extern void xact_redo(XLogReaderState *record);

@@ -524,10 +524,13 @@ pgarch_archiveXlog(char *xlog)
 	bool		ret;
 
 	char		contentid[12];	/* sign, 10 digits and '\0' */
+	char		xlogarchcmd[MAXPGPATH];
+	char	   *dp;
+	char	   *endp;
+	const char *sp;
 
 	snprintf(pathname, MAXPGPATH, XLOGDIR "/%s", xlog);
 
-<<<<<<< HEAD
 	/*
 	 * construct the command to be executed
 	 */
@@ -587,60 +590,6 @@ pgarch_archiveXlog(char *xlog)
 			(errmsg_internal("executing archive command \"%s\"",
 							 xlogarchcmd)));
 
-||||||| e1c1c30f635
-	/*
-	 * construct the command to be executed
-	 */
-	dp = xlogarchcmd;
-	endp = xlogarchcmd + MAXPGPATH - 1;
-	*endp = '\0';
-
-	for (sp = XLogArchiveCommand; *sp; sp++)
-	{
-		if (*sp == '%')
-		{
-			switch (sp[1])
-			{
-				case 'p':
-					/* %p: relative path of source file */
-					sp++;
-					strlcpy(dp, pathname, endp - dp);
-					make_native_path(dp);
-					dp += strlen(dp);
-					break;
-				case 'f':
-					/* %f: filename of source file */
-					sp++;
-					strlcpy(dp, xlog, endp - dp);
-					dp += strlen(dp);
-					break;
-				case '%':
-					/* convert %% to a single % */
-					sp++;
-					if (dp < endp)
-						*dp++ = *sp;
-					break;
-				default:
-					/* otherwise treat the % as not special */
-					if (dp < endp)
-						*dp++ = *sp;
-					break;
-			}
-		}
-		else
-		{
-			if (dp < endp)
-				*dp++ = *sp;
-		}
-	}
-	*dp = '\0';
-
-	ereport(DEBUG3,
-			(errmsg_internal("executing archive command \"%s\"",
-							 xlogarchcmd)));
-
-=======
->>>>>>> adadae45816
 	/* Report archive activity in PS display */
 	snprintf(activitymsg, sizeof(activitymsg), "archiving %s", xlog);
 	set_ps_display(activitymsg);

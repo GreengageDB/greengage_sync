@@ -221,7 +221,6 @@ TransactionIdDidAbort(TransactionId transactionId)
 }
 
 /*
-<<<<<<< HEAD
  * A QE reader uses this interface to determine commit status of a
  * subtransaction ID that is known to be our own subtransaction.  This is used
  * only in the case that subtransaction ID cache maintained in writer's PGPROC
@@ -271,36 +270,6 @@ TransactionIdIsKnownCompleted(TransactionId transactionId)
 }
 
 /*
-||||||| e1c1c30f635
- * TransactionIdIsKnownCompleted
- *		True iff transaction associated with the identifier is currently
- *		known to have either committed or aborted.
- *
- * This does NOT look into pg_xact but merely probes our local cache
- * (and so it's not named TransactionIdDidComplete, which would be the
- * appropriate name for a function that worked that way).  The intended
- * use is just to short-circuit TransactionIdIsInProgress calls when doing
- * repeated heapam_visibility.c checks for the same XID.  If this isn't
- * extremely fast then it will be counterproductive.
- *
- * Note:
- *		Assumes transaction identifier is valid.
- */
-bool
-TransactionIdIsKnownCompleted(TransactionId transactionId)
-{
-	if (TransactionIdEquals(transactionId, cachedFetchXid))
-	{
-		/* If it's in the cache at all, it must be completed. */
-		return true;
-	}
-
-	return false;
-}
-
-/*
-=======
->>>>>>> adadae45816
  * TransactionIdCommitTree
  *		Marks the given transaction and children as committed
  *
