@@ -3,15 +3,9 @@
  * joinpath.c
  *	  Routines to find all possible paths for processing a set of joins
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -655,6 +649,24 @@ get_memoize_path(PlannerInfo *root, RelOptInfo *innerrel,
 									&hash_operators,
 									&binary_mode))
 	{
+		double		calls = outer_path->rows;
+
+		/*
+		 * GPDB: path rows are per segment, but cost_memoize_rescan() compares
+		 * the number of calls against a global ndistinct estimate of the
+		 * cache keys, so with per-segment calls every call looks unique and
+		 * a Memoize path never wins.  Count the calls of all segments, as
+		 * next did with outer_path->parent->rows before 1e731ed12aa.  The
+		 * per-segment estimate is clamped to at least one row, so cap the
+		 * product at the relation's row count: for an unparameterized outer
+		 * path that gives exactly next's value.
+		 */
+		if (CdbPathLocus_IsPartitioned(outer_path->locus))
+		{
+			calls *= CdbPathLocus_NumSegments(outer_path->locus);
+			calls = Min(calls, outer_path->parent->rows);
+		}
+
 		return (Path *) create_memoize_path(root,
 											innerrel,
 											inner_path,
@@ -662,7 +674,7 @@ get_memoize_path(PlannerInfo *root, RelOptInfo *innerrel,
 											hash_operators,
 											extra->inner_unique,
 											binary_mode,
-											outer_path->rows);
+											calls);
 	}
 
 	return NULL;
@@ -2038,28 +2050,12 @@ consider_parallel_nestloop(PlannerInfo *root,
 			 * Try generating a memoize path and see if that makes the nested
 			 * loop any cheaper.
 			 */
-<<<<<<< HEAD
-			rcpath = get_resultcache_path(root, innerrel, outerrel,
-										  innerpath, outerpath, jointype,
-										  extra);
-			if (rcpath != NULL)
-				try_partial_nestloop_path(root, joinrel, outerpath, rcpath,
-										  pathkeys, jointype, save_jointype, extra);
-||||||| e1c1c30f635
-			rcpath = get_resultcache_path(root, innerrel, outerrel,
-										  innerpath, outerpath, jointype,
-										  extra);
-			if (rcpath != NULL)
-				try_partial_nestloop_path(root, joinrel, outerpath, rcpath,
-										  pathkeys, jointype, extra);
-=======
 			mpath = get_memoize_path(root, innerrel, outerrel,
 									 innerpath, outerpath, jointype,
 									 extra);
 			if (mpath != NULL)
 				try_partial_nestloop_path(root, joinrel, outerpath, mpath,
-										  pathkeys, jointype, extra);
->>>>>>> adadae45816
+										  pathkeys, jointype, save_jointype, extra);
 		}
 	}
 }

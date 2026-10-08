@@ -590,7 +590,8 @@ cdbllize_adjust_top_path(PlannerInfo *root, Path *best_path,
 	else if (query->commandType == CMD_SELECT ||
 			 query->commandType == CMD_INSERT ||
 			 query->commandType == CMD_UPDATE ||
-			 query->commandType == CMD_DELETE)
+			 query->commandType == CMD_DELETE ||
+			 query->commandType == CMD_MERGE)
 	{
 		Assert(query->parentStmtType == PARENTSTMTTYPE_NONE);
 
@@ -1488,7 +1489,7 @@ motion_sanity_walker(Node *node, sanity_result_t *result)
 		case T_Sort:
 		case T_IncrementalSort:
 		case T_Material:
-		case T_ResultCache:
+		case T_Memoize:
 		case T_ForeignScan:
 			if (plan_tree_walker(node, motion_sanity_walker, result, true))
 				return true;
