@@ -1,15 +1,9 @@
 /*
  * psql - the PostgreSQL interactive terminal
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Copyright (c) 2000-2021, PostgreSQL Global Development Group
-||||||| e1c1c30f635
- * Copyright (c) 2000-2021, PostgreSQL Global Development Group
-=======
- * Copyright (c) 2000-2022, PostgreSQL Global Development Group
->>>>>>> adadae45816
  *
  * src/bin/psql/tab-complete.c
  */
@@ -2426,14 +2420,7 @@ psql_completion(const char *text, int start, int end)
 					  "TABLESPACE", "UNLOGGED", "WITH", "WITHOUT");
 
 	/*
-<<<<<<< HEAD
-	 * If we have ALTER TABLE <smt> SET ACCESS METHOD provide a list of table
-||||||| e1c1c30f635
-		COMPLETE_WITH("(", "LOGGED", "SCHEMA", "TABLESPACE", "UNLOGGED",
-					  "WITH", "WITHOUT");
-=======
 	 * If we have ALTER TABLE <sth> SET ACCESS METHOD provide a list of table
->>>>>>> adadae45816
 	 * AMs.
 	 */
 	else if (Matches("ALTER", "TABLE", MatchAny, "SET", "ACCESS", "METHOD"))
@@ -4988,15 +4975,10 @@ _complete_from_query(const char *simple_query,
 				num_query_other,
 				num_keywords;
 	static PGresult *result = NULL;
-<<<<<<< HEAD
-||||||| e1c1c30f635
-
-=======
 	static bool non_empty_object;
 	static bool schemaquoted;
 	static bool objectquoted;
 
->>>>>>> adadae45816
 	/*
 	 * If this is the first time for this completion, we fetch a list of our
 	 * "things" from the backend.
@@ -5063,34 +5045,11 @@ _complete_from_query(const char *simple_query,
 			Assert(simple_query == NULL);
 
 			/*
-<<<<<<< HEAD
-			 * When fetching relation names, suppress system catalogs unless
-			 * the input-so-far begins with "pg_" or "gp_".	 This is a compromise
-			 * between not offering system catalogs for completion at all, and
-			 * having them swamp the result when the input is just "p".
-||||||| e1c1c30f635
-			 * When fetching relation names, suppress system catalogs unless
-			 * the input-so-far begins with "pg_".  This is a compromise
-			 * between not offering system catalogs for completion at all, and
-			 * having them swamp the result when the input is just "p".
-=======
 			 * We issue different queries depending on whether the input is
 			 * already qualified or not.  schema_query gives us the pieces to
 			 * assemble.
->>>>>>> adadae45816
 			 */
-<<<<<<< HEAD
-			if (strcmp(schema_query->catname,
-					   "pg_catalog.pg_class c") == 0 &&
-				strncmp(text, "pg_", 3) != 0 &&
-				strncmp(text, "gp_", 3) != 0)
-||||||| e1c1c30f635
-			if (strcmp(schema_query->catname,
-					   "pg_catalog.pg_class c") == 0 &&
-				strncmp(text, "pg_", 3) != 0)
-=======
 			if (schemaname == NULL || schema_query->namespace == NULL)
->>>>>>> adadae45816
 			{
 				/* Get unqualified names matching the input-so-far */
 				appendPQExpBufferStr(&query_buffer, "SELECT ");
