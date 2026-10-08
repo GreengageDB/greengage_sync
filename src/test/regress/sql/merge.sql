@@ -997,6 +997,15 @@ MERGE INTO pa_target t
 SELECT * FROM pa_target ORDER BY tid;
 ROLLBACK;
 
+-- GPDB: updating the distribution key makes every segment raise the
+-- wrong-segment error, and which segment reports first varies from run to
+-- run, so mask the partition and segment numbers.
+-- start_matchsubs
+-- m/MERGE cannot write a row of "\w+" that belongs to another segment/
+-- s/MERGE cannot write a row of "\w+" that belongs to another segment/MERGE cannot write a row of "###" that belongs to another segment/
+-- m/belongs to segment \d+, but the MERGE action runs on segment \d+/
+-- s/belongs to segment \d+, but the MERGE action runs on segment \d+/belongs to segment #, but the MERGE action runs on segment #/
+-- end_matchsubs
 -- try updating the partition key column
 BEGIN;
 MERGE INTO pa_target t
