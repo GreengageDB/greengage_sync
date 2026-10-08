@@ -1750,20 +1750,8 @@ BeginCopyFrom(ParseState *pstate,
 
 	cstate->whereClause = whereClause;
 
-<<<<<<< HEAD
 	cstate->eol_type = cstate->opts.eol_type;
 
-	MemoryContextSwitchTo(oldcontext);
-
-	oldcontext = MemoryContextSwitchTo(cstate->copycontext);
-
-||||||| e1c1c30f635
-	MemoryContextSwitchTo(oldcontext);
-
-	oldcontext = MemoryContextSwitchTo(cstate->copycontext);
-
-=======
->>>>>>> adadae45816
 	/* Initialize state variables */
 	cstate->cur_relname = RelationGetRelationName(cstate->rel);
 	cstate->cur_lineno = 0;
