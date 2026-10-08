@@ -1,13 +1,13 @@
 # test for pausing on startup and on a specified restore point
 use strict;
 use warnings;
-use PostgresNode;
-use TestLib;
-use Test::More tests => 1;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
+use Test::More;
 use File::Copy;
 
 # Initialize primary node with WAL archiving setup
-my $node_primary = get_new_node('primary');
+my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init(
     has_archiving    => 1,
     allows_streaming => 1);
@@ -20,7 +20,7 @@ $node_primary->start;
 
 # Initialize standby node from backup, fetching WAL from archives
 $node_primary->backup($backup_name);
-my $node_standby = get_new_node('standby');
+my $node_standby = PostgreSQL::Test::Cluster->new('standby');
 $node_standby->init_from_backup($node_primary, $backup_name,
     has_restoring => 1);
 $node_standby->append_conf('postgresql.conf', "gp_pause_on_restore_point_replay = on");
@@ -46,3 +46,5 @@ my $paused_at_restore_point_query =
     "SELECT pg_is_wal_replay_paused() and pg_last_wal_replay_lsn() = '$restore_point_lsn'::pg_lsn";
 my $result2 = $node_standby->safe_psql('postgres', $paused_at_restore_point_query);
 is($result2, qq(t), 'check if WAL replay is paused at restore point');
+
+done_testing();

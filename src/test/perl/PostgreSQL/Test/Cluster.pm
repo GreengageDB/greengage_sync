@@ -111,7 +111,6 @@ use Scalar::Util qw(blessed);
 our ($use_tcp, $test_localhost, $test_pghost, $last_host_assigned,
 	$last_port_assigned, @all_nodes, $died);
 
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
 our ($last_dbid);
 
 # Windows path to virtual file system root
@@ -122,12 +121,9 @@ if ($Config{osname} eq 'msys')
 	$vfs_path = `cd / && pwd -W`;
 	chomp $vfs_path;
 }
-||||||| e1c1c30f635:src/test/perl/PostgresNode.pm
-=======
 # the minimum version we believe to be compatible with this package without
 # subclassing.
 our $min_compat = 12;
->>>>>>> adadae45816:src/test/perl/PostgreSQL/Test/Cluster.pm
 
 INIT
 {
@@ -164,85 +160,6 @@ INIT
 
 =over
 
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
-=item PostgresNode::new($class, $name, $pghost, $pgport)
-
-Create a new PostgresNode instance. Does not initdb or start it.
-
-You should generally prefer to use get_new_node() instead since it takes care
-of finding port numbers, registering instances for cleanup, etc.
-
-=cut
-
-sub new
-{
-	my ($class, $name, $pghost, $pgport) = @_;
-	my $testname = basename($0);
-	$testname =~ s/\.[^.]+$//;
-
-	# GPDB needs unique dbid for each node for certain operations
-	$last_dbid = $last_dbid + 1;
-
-	my $self = {
-		_port    => $pgport,
-		_host    => $pghost,
-		_dbid    => $last_dbid,
-		_basedir => "$TestLib::tmp_check/t_${testname}_${name}_data",
-		_name    => $name,
-		_logfile_generation => 0,
-		_logfile_base       => "$TestLib::log_path/${testname}_${name}",
-		_logfile            => "$TestLib::log_path/${testname}_${name}.log"
-	};
-
-	bless $self, $class;
-	mkdir $self->{_basedir}
-	  or
-	  BAIL_OUT("could not create data directory \"$self->{_basedir}\": $!");
-	$self->dump_info;
-
-	return $self;
-}
-
-=pod
-
-||||||| e1c1c30f635:src/test/perl/PostgresNode.pm
-=item PostgresNode::new($class, $name, $pghost, $pgport)
-
-Create a new PostgresNode instance. Does not initdb or start it.
-
-You should generally prefer to use get_new_node() instead since it takes care
-of finding port numbers, registering instances for cleanup, etc.
-
-=cut
-
-sub new
-{
-	my ($class, $name, $pghost, $pgport) = @_;
-	my $testname = basename($0);
-	$testname =~ s/\.[^.]+$//;
-	my $self = {
-		_port    => $pgport,
-		_host    => $pghost,
-		_basedir => "$TestLib::tmp_check/t_${testname}_${name}_data",
-		_name    => $name,
-		_logfile_generation => 0,
-		_logfile_base       => "$TestLib::log_path/${testname}_${name}",
-		_logfile            => "$TestLib::log_path/${testname}_${name}.log"
-	};
-
-	bless $self, $class;
-	mkdir $self->{_basedir}
-	  or
-	  BAIL_OUT("could not create data directory \"$self->{_basedir}\": $!");
-	$self->dump_info;
-
-	return $self;
-}
-
-=pod
-
-=======
->>>>>>> adadae45816:src/test/perl/PostgreSQL/Test/Cluster.pm
 =item $node->port()
 
 Get the port number assigned to the host. This won't necessarily be a TCP port
@@ -774,29 +691,13 @@ sub backup
 	local %ENV = $self->_get_env();
 
 	print "# Taking pg_basebackup $backup_name from node \"$name\"\n";
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
-	TestLib::system_or_bail(
+	PostgreSQL::Test::Utils::system_or_bail(
 		'pg_basebackup',    '-D',
 		$backup_path,       '-h',
 		$self->host,        '-p',
 		$self->port,        '--checkpoint',
 		'fast',             '--no-sync',
 		'--target-gp-dbid', 99,
-||||||| e1c1c30f635:src/test/perl/PostgresNode.pm
-	TestLib::system_or_bail(
-		'pg_basebackup', '-D',
-		$backup_path,    '-h',
-		$self->host,     '-p',
-		$self->port,     '--checkpoint',
-		'fast',          '--no-sync',
-=======
-	PostgreSQL::Test::Utils::system_or_bail(
-		'pg_basebackup', '-D',
-		$backup_path,    '-h',
-		$self->host,     '-p',
-		$self->port,     '--checkpoint',
-		'fast',          '--no-sync',
->>>>>>> adadae45816:src/test/perl/PostgreSQL/Test/Cluster.pm
 		@{ $params{backup_options} });
 	print "# Backup finished\n";
 	return;
@@ -975,19 +876,11 @@ sub start
 
 	# Note: We set the cluster_name here, not in postgresql.conf (in
 	# sub init) so that it does not get copied to standbys.
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
-	$ret = TestLib::system_log('pg_ctl', '-D', $self->data_dir, '-l',
-		$self->logfile, '-o', "--cluster-name=$name -c gp_role=utility --gp_dbid=$self->{_dbid} --gp_contentid=0",
-||||||| e1c1c30f635:src/test/perl/PostgresNode.pm
-	$ret = TestLib::system_log('pg_ctl', '-D', $self->data_dir, '-l',
-		$self->logfile, '-o', "--cluster-name=$name", 'start');
-=======
 	# -w is now the default but having it here does no harm and helps
 	# compatibility with older versions.
 	$ret = PostgreSQL::Test::Utils::system_log(
 		'pg_ctl', '-w',           '-D', $self->data_dir,
-		'-l',     $self->logfile, '-o', "--cluster-name=$name",
->>>>>>> adadae45816:src/test/perl/PostgreSQL/Test/Cluster.pm
+		'-l',     $self->logfile, '-o', "--cluster-name=$name -c gp_role=utility --gp_dbid=$self->{_dbid} --gp_contentid=0",
 		'start');
 
 	if ($ret != 0)
@@ -1328,13 +1221,8 @@ sub _update_pid
 		print "# Postmaster PID for node \"$name\" is $self->{_pid}\n";
 
 		# If we found a pidfile when there shouldn't be one, complain.
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
-		BAIL_OUT("postmaster.pid unexpectedly present") unless $is_running or $fail_ok;
-||||||| e1c1c30f635:src/test/perl/PostgresNode.pm
-		BAIL_OUT("postmaster.pid unexpectedly present") unless $is_running;
-=======
-		BAIL_OUT("postmaster.pid unexpectedly present") if $is_running == 0;
->>>>>>> adadae45816:src/test/perl/PostgreSQL/Test/Cluster.pm
+		BAIL_OUT("postmaster.pid unexpectedly present")
+		  if $is_running == 0 && !$fail_ok;
 		return;
 	}
 
@@ -1342,13 +1230,8 @@ sub _update_pid
 	print "# No postmaster PID for node \"$name\"\n";
 
 	# Complain if we expected to find a pidfile.
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
-	BAIL_OUT("postmaster.pid unexpectedly not present") if $is_running and !$fail_ok;
-||||||| e1c1c30f635:src/test/perl/PostgresNode.pm
-	BAIL_OUT("postmaster.pid unexpectedly not present") if $is_running;
-=======
-	BAIL_OUT("postmaster.pid unexpectedly not present") if $is_running == 1;
->>>>>>> adadae45816:src/test/perl/PostgreSQL/Test/Cluster.pm
+	BAIL_OUT("postmaster.pid unexpectedly not present")
+	  if $is_running == 1 && !$fail_ok;
 	return;
 }
 
@@ -1424,11 +1307,15 @@ sub new
 		}
 	}
 
+	# GPDB needs unique dbid for each node for certain operations
+	$last_dbid = $last_dbid + 1;
+
 	my $testname = basename($0);
 	$testname =~ s/\.[^.]+$//;
 	my $node = {
 		_port => $port,
 		_host => $host,
+		_dbid => $last_dbid,
 		_basedir =>
 		  "$PostgreSQL::Test::Utils::tmp_check/t_${testname}_${name}_data",
 		_name               => $name,

@@ -3,12 +3,12 @@
 use strict;
 use warnings;
 
-use PostgresNode;
-use TestLib;
-use Test::More tests => 1;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
+use Test::More;
 
 # Initialize node to backup
-my $node_to_backup = get_new_node('to_backup');
+my $node_to_backup = PostgreSQL::Test::Cluster->new('to_backup');
 $node_to_backup->init(
 	has_archiving    => 1,
 	allows_streaming => 1);
@@ -38,7 +38,7 @@ $node_to_backup->safe_psql('postgres',
 	"SELECT pg_switch_wal();");
 
 # Create new node from from backup
-my $node_restored = get_new_node('restored');
+my $node_restored = PostgreSQL::Test::Cluster->new('restored');
 my $delay         = 5;
 $node_restored->init_from_backup($node_to_backup, $backup_name,
 	standby => 1, has_restoring => 1);
@@ -57,3 +57,5 @@ $node_restored->start;
 
 ok(time() - $trx_to_archive_time >= $delay,
 	"pg_ctl starts restored node only after replication delay if recovery_target_action = 'promote' is specified");
+
+done_testing();
