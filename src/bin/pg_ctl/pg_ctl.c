@@ -165,16 +165,10 @@ static void free_readfile(char **optlines);
 static pgpid_t start_postmaster(void);
 static void read_post_opts(void);
 
-<<<<<<< HEAD
 static bool is_secondary_instance(const char *pg_data);
-static WaitPMResult wait_for_postmaster(pgpid_t pm_pid, bool do_checkpoint);
-||||||| e1c1c30f635
-static WaitPMResult wait_for_postmaster(pgpid_t pm_pid, bool do_checkpoint);
-=======
 static WaitPMResult wait_for_postmaster_start(pgpid_t pm_pid, bool do_checkpoint);
 static bool wait_for_postmaster_stop(void);
 static bool wait_for_postmaster_promote(void);
->>>>>>> adadae45816
 static bool postmaster_is_alive(pid_t pid);
 
 #if defined(HAVE_GETRLIMIT) && defined(RLIMIT_CORE)
@@ -461,14 +455,8 @@ free_readfile(char **optlines)
 static pgpid_t
 start_postmaster(void)
 {
-<<<<<<< HEAD
 	char		launcher[MAXPGPATH] = "";
-	char		cmd[MAXPGPATH];
-||||||| e1c1c30f635
-	char		cmd[MAXPGPATH];
-=======
 	char	   *cmd;
->>>>>>> adadae45816
 
 #ifndef WIN32
 	pgpid_t		pm_pid;
@@ -525,30 +513,12 @@ start_postmaster(void)
 	 * has the same PID as the current child process.
 	 */
 	if (log_file != NULL)
-<<<<<<< HEAD
-		snprintf(cmd, MAXPGPATH, "exec %s \"%s\" %s%s < \"%s\" >> \"%s\" 2>&1",
-				 launcher, exec_path, pgdata_opt, post_opts,
-				 DEVNULL, log_file);
-||||||| e1c1c30f635
-		snprintf(cmd, MAXPGPATH, "exec \"%s\" %s%s < \"%s\" >> \"%s\" 2>&1",
-				 exec_path, pgdata_opt, post_opts,
-				 DEVNULL, log_file);
-=======
-		cmd = psprintf("exec \"%s\" %s%s < \"%s\" >> \"%s\" 2>&1",
-					   exec_path, pgdata_opt, post_opts,
+		cmd = psprintf("exec %s \"%s\" %s%s < \"%s\" >> \"%s\" 2>&1",
+					   launcher, exec_path, pgdata_opt, post_opts,
 					   DEVNULL, log_file);
->>>>>>> adadae45816
 	else
-<<<<<<< HEAD
-		snprintf(cmd, MAXPGPATH, "exec %s \"%s\" %s%s < \"%s\" 2>&1",
-				 launcher, exec_path, pgdata_opt, post_opts, DEVNULL);
-||||||| e1c1c30f635
-		snprintf(cmd, MAXPGPATH, "exec \"%s\" %s%s < \"%s\" 2>&1",
-				 exec_path, pgdata_opt, post_opts, DEVNULL);
-=======
-		cmd = psprintf("exec \"%s\" %s%s < \"%s\" 2>&1",
-					   exec_path, pgdata_opt, post_opts, DEVNULL);
->>>>>>> adadae45816
+		cmd = psprintf("exec %s \"%s\" %s%s < \"%s\" 2>&1",
+					   launcher, exec_path, pgdata_opt, post_opts, DEVNULL);
 
 	(void) execl("/bin/sh", "/bin/sh", "-c", cmd, (char *) NULL);
 
