@@ -278,14 +278,11 @@ restrict_and_check_grant(bool is_grant, AclMode avail_goptions, bool all_privs,
 		case OBJECT_TYPE:
 			whole_mask = ACL_ALL_RIGHTS_TYPE;
 			break;
-<<<<<<< HEAD
 		case OBJECT_EXTPROTOCOL:
 			whole_mask = ACL_ALL_RIGHTS_EXTPROTOCOL;
-||||||| e1c1c30f635
-=======
+			break;
 		case OBJECT_PARAMETER_ACL:
 			whole_mask = ACL_ALL_RIGHTS_PARAMETER_ACL;
->>>>>>> adadae45816
 			break;
 		default:
 			elog(ERROR, "unrecognized object type: %d", objtype);
@@ -536,16 +533,13 @@ ExecuteGrantStmt(GrantStmt *stmt)
 			all_privileges = ACL_ALL_RIGHTS_FOREIGN_SERVER;
 			errormsg = gettext_noop("invalid privilege type %s for foreign server");
 			break;
-<<<<<<< HEAD
 		case OBJECT_EXTPROTOCOL:
 			all_privileges = ACL_ALL_RIGHTS_EXTPROTOCOL;
 			errormsg = gettext_noop("invalid privilege type %s for external protocol");
-||||||| e1c1c30f635
-=======
+			break;
 		case OBJECT_PARAMETER_ACL:
 			all_privileges = ACL_ALL_RIGHTS_PARAMETER_ACL;
 			errormsg = gettext_noop("invalid privilege type %s for parameter");
->>>>>>> adadae45816
 			break;
 		default:
 			elog(ERROR, "unrecognized GrantStmt.objtype: %d",
@@ -690,14 +684,11 @@ ExecGrantStmt_oids(InternalGrant *istmt)
 		case OBJECT_TABLESPACE:
 			ExecGrant_Tablespace(istmt);
 			break;
-<<<<<<< HEAD
 		case OBJECT_EXTPROTOCOL:
 			ExecGrant_ExtProtocol(istmt);
-||||||| e1c1c30f635
-=======
+			break;
 		case OBJECT_PARAMETER_ACL:
 			ExecGrant_Parameter(istmt);
->>>>>>> adadae45816
 			break;
 		default:
 			elog(ERROR, "unrecognized GrantStmt.objtype: %d",
@@ -889,7 +880,6 @@ objectNamesToOids(ObjectType objtype, List *objnames, bool is_grant)
 				objects = lappend_oid(objects, srvid);
 			}
 			break;
-<<<<<<< HEAD
 		case OBJECT_EXTPROTOCOL:
 			foreach(cell, objnames)
 			{
@@ -897,8 +887,8 @@ objectNamesToOids(ObjectType objtype, List *objnames, bool is_grant)
 				Oid			ptcid = get_extprotocol_oid(ptcname, false);
 
 				objects = lappend_oid(objects, ptcid);
-||||||| e1c1c30f635
-=======
+			}
+			break;
 		case OBJECT_PARAMETER_ACL:
 			foreach(cell, objnames)
 			{
@@ -928,7 +918,6 @@ objectNamesToOids(ObjectType objtype, List *objnames, bool is_grant)
 				}
 				if (OidIsValid(parameterId))
 					objects = lappend_oid(objects, parameterId);
->>>>>>> adadae45816
 			}
 			break;
 		default:
@@ -1677,14 +1666,11 @@ RemoveRoleFromObjectACL(Oid roleid, Oid classid, Oid objid)
 			case ForeignDataWrapperRelationId:
 				istmt.objtype = OBJECT_FDW;
 				break;
-<<<<<<< HEAD
 			case ExtprotocolRelationId:
 				istmt.objtype = OBJECT_EXTPROTOCOL;
-||||||| e1c1c30f635
-=======
+				break;
 			case ParameterAclRelationId:
 				istmt.objtype = OBJECT_PARAMETER_ACL;
->>>>>>> adadae45816
 				break;
 			default:
 				elog(ERROR, "unexpected object class %u", classid);
@@ -3466,7 +3452,6 @@ ExecGrant_Type(InternalGrant *istmt)
 }
 
 static void
-<<<<<<< HEAD
 ExecGrant_ExtProtocol(InternalGrant *istmt)
 {
     Relation	relation;
@@ -3631,8 +3616,8 @@ ExecGrant_ExtProtocol(InternalGrant *istmt)
 
     table_close(relation, RowExclusiveLock);
 }
-||||||| e1c1c30f635
-=======
+
+static void
 ExecGrant_Parameter(InternalGrant *istmt)
 {
 	Relation	relation;
@@ -3780,7 +3765,6 @@ ExecGrant_Parameter(InternalGrant *istmt)
 	table_close(relation, RowExclusiveLock);
 }
 
->>>>>>> adadae45816
 
 static AclMode
 string_to_privilege(const char *privname)
