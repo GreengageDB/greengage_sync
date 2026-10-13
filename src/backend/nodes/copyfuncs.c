@@ -5939,16 +5939,6 @@ _copyForeignKeyCacheInfo(const ForeignKeyCacheInfo *from)
 	return newnode;
 }
 
-static PublicationTable *
-_copyPublicationTable(const PublicationTable *from)
-{
-	PublicationTable *newnode = makeNode(PublicationTable);
-
-	COPY_NODE_FIELD(relation);
-
-	return newnode;
-}
-
 static AggExprId*
 _copyAggExprId(const AggExprId *from)
 {
@@ -5961,6 +5951,16 @@ _copyRowIdExpr(const RowIdExpr *from)
 	RowIdExpr *newnode = makeNode(RowIdExpr);
 
 	newnode->rowidexpr_id = from->rowidexpr_id;
+
+	return newnode;
+}
+
+static PublicationTable *
+_copyPublicationTable(const PublicationTable *from)
+{
+	PublicationTable *newnode = makeNode(PublicationTable);
+
+	COPY_NODE_FIELD(relation);
 
 	return newnode;
 }
