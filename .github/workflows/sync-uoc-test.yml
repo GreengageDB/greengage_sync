@@ -1,0 +1,108 @@
+# Keeps <prefix>-test equal to <prefix>-base with every unit branch
+# <prefix>-uocN merged in, so CI on the test PR covers the review fixes made
+# in the unit PRs, whoever makes them.
+#
+# A sync batch is reviewed as one PR per unit of change, <prefix>-uocN ->
+# <prefix>-base, where <prefix>-base is the upstream merge commit with its
+# conflict markers.  <prefix>-test is the octopus merge of <prefix>-base and all
+# unit branches; its PR into <prefix>-base runs CI.  When a unit PR changes
+# (new commits, reopened, merged into the base), the unit branches and the
+# base that the test branch does not contain yet are merged into it.  A unit's
+# own change is already on both sides, so only the new commits come in.
+#
+# pull_request_target runs this file from the PR's base branch, so it lives on
+# <prefix>-base; remove it before the batch is merged further.  It only merges
+# branches of this repository and runs no code from them.
+#
+# A push made with GITHUB_TOKEN does not start other workflows, so CI on the
+# test PR only re-runs when the push uses a token in the SYNC_PUSH_TOKEN secret
+# (a fine-grained PAT or app token with "Contents: write" on this repository).
+# Without it the test branch is still updated and CI can be re-run by hand.
+#
+# Unit branches must not be force-pushed: a rewritten commit that the test
+# branch already contains cannot be merged again cleanly.
+
+name: Sync unit PRs into the test branch
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, closed]
+    branches: ['sync-*-base']
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-uoc-test-${{ github.event.pull_request.base.ref }}
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge unit branches into the test branch
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          PUSH_TOKEN: ${{ secrets.SYNC_PUSH_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          prefix=${BASE%-base}
+          test=$prefix-test
+          case "$HEAD" in
+            "$prefix"-uoc[0-9]*) ;;
+            *) echo "not a unit branch: $HEAD"; exit 0 ;;
+          esac
+
+          git init -q work && cd work
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote add origin "https://x-access-token:${PUSH_TOKEN}@github.com/${REPO}.git"
+          # commits and trees only; the blobs a merge needs are fetched on demand
+          git fetch -q --no-tags --filter=blob:none --depth=300 origin \
+            "+refs/heads/${prefix}-*:refs/remotes/origin/${prefix}-*"
+          if ! git rev-parse -q --verify "refs/remotes/origin/$test" >/dev/null; then
+            echo "no $test branch, nothing to do"; exit 0
+          fi
+
+          branches=()
+          for ref in $(git for-each-ref --format='%(refname:short)' "refs/remotes/origin/${prefix}-uoc*" | sort -V) \
+                     "origin/$BASE"; do
+            git merge-base --is-ancestor "$ref" "origin/$test" || branches+=("$ref")
+          done
+          if [ ${#branches[@]} -eq 0 ]; then
+            echo "$test already contains every unit branch and $BASE"; exit 0
+          fi
+          echo "merging into $test: ${branches[*]#origin/}"
+
+          git checkout -q --detach "origin/$test"
+          msg="Merge review fixes into $test (PR #$PR)
+
+          $(for b in "${branches[@]}"; do echo "- ${b#origin/}: $(git log -1 --format=%s "$b")"; done)"
+
+          if ! git merge -q --no-ff --no-edit -m "$msg" "${branches[@]}"; then
+            git merge --abort 2>/dev/null || git reset -q --hard
+            for b in "${branches[@]}"; do
+              if ! git merge -q --no-ff --no-edit "$b"; then
+                files=$(git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/')
+                body="Could not merge \`${b#origin/}\` into \`$test\` automatically. Conflicting files:"$'\n\n'"$files"$'\n\n'"Merge it into \`$test\` by hand."
+                gh pr comment "$PR" --repo "$REPO" --body "$body" || true
+                echo "::error::conflict merging ${b#origin/} into $test"
+                exit 1
+              fi
+            done
+            echo "::error::the octopus merge failed but the one-by-one merges did not"; exit 1
+          fi
+
+          if [ "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse "origin/$test^{tree}")" ]; then
+            # e.g. a unit PR merged into the base: nothing new for CI to test
+            echo "the tree of $test does not change, not pushing"; exit 0
+          fi
+          git --no-pager diff --stat "origin/$test" HEAD
+          git push origin "HEAD:refs/heads/$test"
+          echo "updated $test to $(git rev-parse --short HEAD)" >> "$GITHUB_STEP_SUMMARY"
