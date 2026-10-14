@@ -972,13 +972,10 @@ ExecChooseHashTableSize(double ntuples, int tupwidth, bool useskew,
 		 * overflow, nor can the final shift to recalculate nbuckets.)
 		 */
 		nbuckets = Max((int) dbuckets, 1024);
-		nbuckets = 1 << my_log2(nbuckets);
+		nbuckets = pg_nextpower2_32(nbuckets);
 
 		nbatch = 1;
 	}
-
-	Assert(nbuckets > 0);
-	Assert(nbatch > 0);
 
 	Assert(nbuckets > 0);
 	Assert(nbatch > 0);
