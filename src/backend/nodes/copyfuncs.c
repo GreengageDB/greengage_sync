@@ -294,11 +294,8 @@ _copyResult(const Result *from)
 	COPY_NODE_FIELD(resconstantqual);
 
 	COPY_SCALAR_FIELD(numHashFilterCols);
-	if (from->numHashFilterCols > 0)
-	{
-		COPY_POINTER_FIELD(hashFilterColIdx, from->numHashFilterCols * sizeof(AttrNumber));
-		COPY_POINTER_FIELD(hashFilterFuncs, from->numHashFilterCols * sizeof(Oid));
-	}
+	COPY_POINTER_FIELD(hashFilterColIdx, from->numHashFilterCols * sizeof(AttrNumber));
+	COPY_POINTER_FIELD(hashFilterFuncs, from->numHashFilterCols * sizeof(Oid));
 
 	return newnode;
 }
@@ -1360,10 +1357,7 @@ _copyTupleSplit(const TupleSplit *from)
 
 	CopyPlanFields((const Plan *) from, (Plan *) newnode);
 	COPY_SCALAR_FIELD(numCols);
-	if (from->numCols > 0)
-	{
-		COPY_POINTER_FIELD(grpColIdx, from->numCols * sizeof(AttrNumber));
-	}
+	COPY_POINTER_FIELD(grpColIdx, from->numCols * sizeof(AttrNumber));
 
 	COPY_NODE_FIELD(dqa_expr_lst);
 
@@ -2818,8 +2812,7 @@ _copyPathTarget(const PathTarget *from)
 	if (from->sortgrouprefs)
 	{
 		int numCols = list_length(from->exprs);
-		if (numCols > 0)
-			COPY_POINTER_FIELD(sortgrouprefs, numCols * sizeof(Index));
+		COPY_POINTER_FIELD(sortgrouprefs, numCols * sizeof(Index));
 	}
 	COPY_SCALAR_FIELD(cost);
 	COPY_SCALAR_FIELD(width);
