@@ -525,17 +525,6 @@ IsPinnedObject(Oid classId, Oid objectId)
 		return false;
 
 	/*
-	 * GPDB: objects created during a binary upgrade get OIDs from a reserved
-	 * block (see AssignBinaryUpgradeReservedOid() in oid_dispatch.c) that lies
-	 * below FirstUnpinnedObjectId.  They are dropped again after the upgrade,
-	 * so they must not be considered pinned.  No initdb-created object uses
-	 * this range.
-	 */
-	if (objectId >= FirstBinaryUpgradeReservedObjectId &&
-		objectId <= LastBinaryUpgradeReservedObjectId)
-		return false;
-
-	/*
 	 * All other initdb-created objects are pinned.  This is overkill (the
 	 * system doesn't really depend on having every last weird datatype, for
 	 * instance) but generating only the minimum required set of dependencies
