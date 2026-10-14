@@ -10,9 +10,10 @@
 # base that the test branch does not contain yet are merged into it.  A unit's
 # own change is already on both sides, so only the new commits come in.
 #
-# pull_request_target runs this file from the PR's base branch, so it lives on
-# <prefix>-base; remove it before the batch is merged further.  It only merges
-# branches of this repository and runs no code from them.
+# It runs on pull_request, whose workflow file comes from the PR's merge ref,
+# so the file lives on <prefix>-base (pull_request_target would take it from
+# the default branch).  Remove it before the batch is merged further.  It only
+# acts on PRs from branches of this repository and only merges branches.
 #
 # A push made with GITHUB_TOKEN does not start other workflows, so CI on the
 # test PR only re-runs when the push uses a token in the SYNC_PUSH_TOKEN secret
@@ -25,7 +26,7 @@
 name: Sync unit PRs into the test branch
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, synchronize, closed]
     branches: ['sync-*-base']
 
@@ -54,10 +55,9 @@ jobs:
           set -euo pipefail
           prefix=${BASE%-base}
           test=$prefix-test
-          case "$HEAD" in
-            "$prefix"-uoc[0-9]*) ;;
-            *) echo "not a unit branch: $HEAD"; exit 0 ;;
-          esac
+          if ! [[ "$HEAD" =~ ^${prefix}-uoc[0-9]+$ ]]; then
+            echo "not a unit branch: $HEAD"; exit 0
+          fi
 
           git init -q work && cd work
           git config user.name 'github-actions[bot]'
@@ -71,8 +71,10 @@ jobs:
           fi
 
           branches=()
-          for ref in $(git for-each-ref --format='%(refname:short)' "refs/remotes/origin/${prefix}-uoc*" | sort -V) \
-                     "origin/$BASE"; do
+          # only <prefix>-uoc<N>, not other branches that share the prefix
+          units=$(git for-each-ref --format='%(refname:short)' "refs/remotes/origin/${prefix}-uoc*" \
+                  | grep -E "^origin/${prefix}-uoc[0-9]+$" | sort -V || true)
+          for ref in $units "origin/$BASE"; do
             git merge-base --is-ancestor "$ref" "origin/$test" || branches+=("$ref")
           done
           if [ ${#branches[@]} -eq 0 ]; then
