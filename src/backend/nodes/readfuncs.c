@@ -2313,6 +2313,23 @@ _readSortBy(void)
 	READ_DONE();
 }
 
+static WindowDef *
+_readWindowDef(void)
+{
+	READ_LOCALS(WindowDef);
+
+	READ_STRING_FIELD(name);
+	READ_STRING_FIELD(refname);
+	READ_NODE_FIELD(partitionClause);
+	READ_NODE_FIELD(orderClause);
+	READ_INT_FIELD(frameOptions);
+	READ_NODE_FIELD(startOffset);
+	READ_NODE_FIELD(endOffset);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
 static TypeCast *
 _readTypeCast(void)
 {
@@ -4220,6 +4237,19 @@ _readVacuumRelation(void)
 	READ_DONE();
 }
 
+/*
+ * GPDB: see _outPublicationTable.
+ */
+static PublicationTable *
+_readPublicationTable(void)
+{
+	READ_LOCALS(PublicationTable);
+
+	READ_NODE_FIELD(relation);
+
+	READ_DONE();
+}
+
 static CreatePublicationStmt *
 _readCreatePublicationStmt()
 {
@@ -4966,6 +4996,8 @@ parseNodeString(void)
 		return_value = _readCreateOpFamilyStmt();
 	else if (MATCHX("CREATEPLANGSTMT"))
 		return_value = _readCreatePLangStmt();
+	else if (MATCHX("PUBLICATIONTABLE"))
+		return_value = _readPublicationTable();
 	else if (MATCHX("CREATEPUBLICATIONSTMT"))
 		return_value = _readCreatePublicationStmt();
 	else if (MATCHX("ALTERPUBLICATIONSTMT"))
@@ -5040,6 +5072,8 @@ parseNodeString(void)
 		return_value = _readSliceTable();
 	else if (MATCHX("SORTBY"))
 		return_value = _readSortBy();
+	else if (MATCHX("WINDOWDEF"))
+		return_value = _readWindowDef();
 	else if (MATCHX("TABLEVALUEEXPR"))
 		return_value = _readTableValueExpr();
 	else if (MATCHX("TRUNCATESTMT"))

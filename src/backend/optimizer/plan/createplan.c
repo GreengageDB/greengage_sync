@@ -319,25 +319,9 @@ static IncrementalSort *make_incrementalsort_from_pathkeys(Plan *lefttree,
 static Sort *make_sort_from_groupcols(List *groupcls,
 									  AttrNumber *grpColIdx,
 									  Plan *lefttree);
-<<<<<<< HEAD
-static ResultCache *make_resultcache(Plan *lefttree, Oid *hashoperators,
-									 Oid *collations,
-									 List *param_exprs,
-									 bool singlerow,
-									 uint32 est_entries);
-||||||| e1c1c30f635
-static Material *make_material(Plan *lefttree);
-static ResultCache *make_resultcache(Plan *lefttree, Oid *hashoperators,
-									 Oid *collations,
-									 List *param_exprs,
-									 bool singlerow,
-									 uint32 est_entries);
-=======
-static Material *make_material(Plan *lefttree);
 static Memoize *make_memoize(Plan *lefttree, Oid *hashoperators,
 							 Oid *collations, List *param_exprs,
 							 bool singlerow, uint32 est_entries);
->>>>>>> 3b231596ccf
 static WindowAgg *make_windowagg(List *tlist, Index winref,
 								 int partNumCols, AttrNumber *partColIdx, Oid *partOperators, Oid *partCollations,
 								 int ordNumCols, AttrNumber *ordColIdx, Oid *ordOperators, Oid *ordCollations,
@@ -5251,7 +5235,7 @@ create_nestloop_plan(PlannerInfo *root,
 	bool		partition_selectors_created;
 	bool		prefetch = false;
 
-	push_partition_selector_candidate_for_join(root, best_path);
+	push_partition_selector_candidate_for_join(root, &best_path->jpath);
 
 #if  0
 	/*
@@ -5262,7 +5246,7 @@ create_nestloop_plan(PlannerInfo *root,
 	joinrestrictclauses =
 		select_nonredundant_join_clauses(root,
 										 joinrestrictclauses,
-										 best_path->innerjoinpath);
+										 best_path->jpath.innerjoinpath);
 #endif
 
 	/* NestLoop can project, so no need to be picky about child tlists */
@@ -5273,7 +5257,7 @@ create_nestloop_plan(PlannerInfo *root,
 	 * inject Partition Selectors to the inner side.
 	 */
 	partition_selectors_created =
-		pop_and_inject_partition_selectors(root, best_path);
+		pop_and_inject_partition_selectors(root, &best_path->jpath);
 
 	/* For a nestloop, include outer relids in curOuterRels for inner side */
 	root->curOuterRels = bms_union(root->curOuterRels,
@@ -5292,8 +5276,8 @@ create_nestloop_plan(PlannerInfo *root,
 	 * NOTE: materialize_finished_plan() does *almost* what we want -- except
 	 * we aren't finished.
 	 */
-	if (best_path->innerjoinpath->motionHazard ||
-		!best_path->innerjoinpath->rescannable)
+	if (best_path->jpath.innerjoinpath->motionHazard ||
+		!best_path->jpath.innerjoinpath->rescannable)
 	{
 		Plan	   *p;
 		Material   *mat;
@@ -5331,7 +5315,7 @@ create_nestloop_plan(PlannerInfo *root,
 		 * MPP-1657: Even if there is already a materialize here, we
 		 * may need to update its strictness.
 		 */
-		if (best_path->outerjoinpath->motionHazard)
+		if (best_path->jpath.outerjoinpath->motionHazard)
 		{
 			mat->cdb_strict = true;
 			prefetch = true;
@@ -5360,7 +5344,7 @@ create_nestloop_plan(PlannerInfo *root,
 		otherclauses = NIL;
 	}
 
-	if (best_path->jointype == JOIN_LASJ_NOTIN)
+	if (best_path->jpath.jointype == JOIN_LASJ_NOTIN)
 	{
 		joinclauses = remove_isnotfalse(joinclauses);
 	}
@@ -5392,9 +5376,9 @@ create_nestloop_plan(PlannerInfo *root,
 
 	copy_generic_path_info(&join_plan->join.plan, &best_path->jpath.path);
 
-	if (IsA(best_path->innerjoinpath, MaterialPath))
+	if (IsA(best_path->jpath.innerjoinpath, MaterialPath))
 	{
-		MaterialPath *mp = (MaterialPath *) best_path->innerjoinpath;
+		MaterialPath *mp = (MaterialPath *) best_path->jpath.innerjoinpath;
 
 		if (mp->cdb_strict)
 			prefetch = true;
@@ -5419,16 +5403,16 @@ create_nestloop_plan(PlannerInfo *root,
 	 *
 	 * See ExecPrefetchJoinQual() for details.
 	 */
-	if (best_path->outerjoinpath &&
-		best_path->outerjoinpath->motionHazard &&
+	if (best_path->jpath.outerjoinpath &&
+		best_path->jpath.outerjoinpath->motionHazard &&
 		join_plan->join.joinqual != NIL)
 		join_plan->join.prefetch_joinqual = true;
 
 	/*
 	 * Similar for non join qual.
 	 */
-	if (best_path->outerjoinpath &&
-		best_path->outerjoinpath->motionHazard &&
+	if (best_path->jpath.outerjoinpath &&
+		best_path->jpath.outerjoinpath->motionHazard &&
 		join_plan->join.plan.qual != NIL)
 		join_plan->join.prefetch_qual = true;
 
