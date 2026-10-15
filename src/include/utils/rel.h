@@ -688,7 +688,7 @@ RelationGetSmgr(Relation rel)
  * that do not use shared/local buffers.
  */
 #define RelationUsesBufferManager(relation) \
-	(RelationGetSmgr(relation)->smgr_which == SMGR_MD)
+	(!RelationIsAppendOptimized(relation))
 
 /*
  * RelationUsesTempNamespace
