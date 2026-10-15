@@ -661,10 +661,10 @@ my %tests = (
 		create_order => 100,
 		create_sql =>
 		  'ALTER SCHEMA public OWNER TO "regress_quoted  \"" role";',
-		# GPDB: every Greengage dump grants SELECT on some gp_* catalog views
-		# (they have no pg_init_privs entries), so only look at the public
-		# schema's own ACL.
-		regexp => qr/^(GRANT|REVOKE) .* ON SCHEMA public /m,
+		# GPDB: every Greengage dump grants SELECT on the gp_* catalog views
+		# from cdb_schema.sql (they have no pg_init_privs entries), so ignore
+		# those.
+		regexp => qr/^(GRANT|REVOKE) (?!SELECT ON TABLE pg_catalog\.gp_)/m,
 		unlike => { defaults_public_owner => 1 },
 	},
 
