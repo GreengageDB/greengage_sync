@@ -192,7 +192,6 @@ CalculateShmemSize(int *num_semaphores)
 #endif
 
 	size = add_size(size, tmShmemSize());
-	size = add_size(size, CheckpointerShmemSize());
 	size = add_size(size, CancelBackendMsgShmemSize());
 	size = add_size(size, WorkFileShmemSize());
 	size = add_size(size, ShareInputShmemSize());
@@ -200,10 +199,6 @@ CalculateShmemSize(int *num_semaphores)
 #ifdef FAULT_INJECTOR
 	size = add_size(size, FaultInjector_ShmemSize());
 #endif
-
-	/* This elog happens before we know the name of the log file we are supposed to use */
-	elog(DEBUG1, "Size not including the buffer pool %lu",
-		 (unsigned long) size);
 
 	/* freeze the addin request size and include it */
 	addin_request_allowed = false;
