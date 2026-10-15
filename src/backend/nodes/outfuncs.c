@@ -6766,6 +6766,7 @@ outNode(StringInfo str, const void *obj)
 			case T_PublicationTable:
 				_outPublicationTable(str, obj);
 				break;
+
 			case T_CreatePublicationStmt:
 				_outCreatePublicationStmt(str, obj);
 				break;

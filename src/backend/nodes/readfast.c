@@ -2632,6 +2632,7 @@ readNodeBinary(void)
 			case T_PublicationTable:
 				return_value = _readPublicationTable();
 				break;
+
 			case T_CreatePublicationStmt:
 				return_value = _readCreatePublicationStmt();
 				break;
