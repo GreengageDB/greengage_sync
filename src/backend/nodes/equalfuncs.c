@@ -4211,11 +4211,11 @@ equal(const void *a, const void *b)
 		case T_PartitionCmd:
 			retval = _equalPartitionCmd(a, b);
 			break;
-		case T_DistributionKeyElem:
-			retval = _equalDistributionKeyElem(a, b);
-			break;
 		case T_PublicationTable:
 			retval = _equalPublicationTable(a, b);
+			break;
+		case T_DistributionKeyElem:
+			retval = _equalDistributionKeyElem(a, b);
 			break;
 
 		default:

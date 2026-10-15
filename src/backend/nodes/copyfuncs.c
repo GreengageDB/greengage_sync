@@ -6988,6 +6988,9 @@ copyObjectImpl(const void *from)
 		case T_PartitionCmd:
 			retval = _copyPartitionCmd(from);
 			break;
+		case T_PublicationTable:
+			retval = _copyPublicationTable(from);
+			break;
 		case T_GpAlterPartitionId:
 			retval = _copyGpAlterPartitionId(from);
 			break;
@@ -7047,9 +7050,6 @@ copyObjectImpl(const void *from)
 
 		case T_DistributedBy:
 			retval = _copyDistributedBy(from);
-			break;
-		case T_PublicationTable:
-			retval = _copyPublicationTable(from);
 			break;
 
 			/*
