@@ -1930,7 +1930,7 @@ selectDumpableNamespace(NamespaceInfo *nsinfo, Archive *fout)
 		/*
 		 * Also, make like it has a comment even if it doesn't; this is so
 		 * that we'll emit a command to drop the comment, if appropriate.
-		 * (Without this, we'd not call dumpComment for it.)
+		 * (Without this, we'd not call dumpCommentExtended for it.)
 		 */
 		nsinfo->dobj.components |= DUMP_COMPONENT_COMMENT;
 	}
@@ -11360,9 +11360,11 @@ dumpNamespace(Archive *fout, const NamespaceInfo *nspinfo)
 		 * schema starts with the initdb-default ACL, as it does in a new
 		 * database, so restore that default here.  dumpACL() then applies
 		 * any differences, and the ALTER SCHEMA OWNER that follows carries
-		 * the grants over to the owner.
+		 * the grants over to the owner.  With --no-privileges no ACL is
+		 * dumped, so leave the schema with the CREATE SCHEMA default.
 		 */
-		if (dopt->binary_upgrade && strcmp(nspinfo->dobj.name, "public") == 0)
+		if (dopt->binary_upgrade && !dopt->aclsSkip &&
+			strcmp(nspinfo->dobj.name, "public") == 0)
 			appendPQExpBufferStr(q, "GRANT ALL ON SCHEMA public TO PUBLIC;\n");
 	}
 	else
