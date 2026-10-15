@@ -5734,6 +5734,7 @@ sigusr1_handler(SIGNAL_ARGS)
 	{
 		/* WAL redo has started. We're out of reinitialization. */
 		bool		promotion_requested = false;
+		bool		crash_recovery;
 
 		FatalError = false;
 		AbortStartTime = 0;
@@ -5767,6 +5768,20 @@ sigusr1_handler(SIGNAL_ARGS)
 			promotion_requested = true;
 
 		/*
+		 * GPDB: since upstream 7ff23c6d277 the startup process sends
+		 * RECOVERY_STARTED in crash recovery too, not only in archive
+		 * recovery.  Crash recovery ends with the server accepting
+		 * connections, so don't report PM_STATUS_STANDBY for it either.
+		 * Without a recovery signal file this is crash recovery.
+		 */
+		{
+			struct stat stat_buf;
+
+			crash_recovery = (stat(STANDBY_SIGNAL_FILE, &stat_buf) != 0 &&
+							  stat(RECOVERY_SIGNAL_FILE, &stat_buf) != 0);
+		}
+
+		/*
 		 * If we aren't planning to enter hot standby mode later, treat
 		 * RECOVERY_STARTED as meaning we're out of startup, and report status
 		 * accordingly.
@@ -5776,7 +5791,7 @@ sigusr1_handler(SIGNAL_ARGS)
 		 * PM_STATUS_READY state instead. PM_STATUS_STANDBY will incorrectly show
 		 * database is ready to accept connections during promotion.
 		 */
-		if (!EnableHotStandby && !promotion_requested)
+		if (!EnableHotStandby && !promotion_requested && !crash_recovery)
 		{
 			AddToDataDirLockFile(LOCK_FILE_LINE_PM_STATUS, PM_STATUS_STANDBY);
 #ifdef USE_SYSTEMD

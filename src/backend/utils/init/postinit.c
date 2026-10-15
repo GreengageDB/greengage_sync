@@ -37,6 +37,7 @@
 #include "catalog/storage_tablespace.h"
 #include "commands/tablespace.h"
 
+#include "executor/nodeShareInputScan.h"
 #include "libpq/auth.h"
 #include "libpq/hba.h"
 #include "libpq/libpq-be.h"
@@ -781,7 +782,12 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 * before we begin our first transaction --- if we fail during the
 	 * initialization transaction, as is entirely possible, we need the
 	 * AbortTransaction call to clean up.
+	 *
+	 * GPDB: the ShareInputScan DSM detach callback is registered right
+	 * before, so that it runs after ShutdownPostgres but still before the
+	 * pgstat and temporary file shutdown hooks registered in BaseInit().
 	 */
+	ShareInputScanExitInit();
 	before_shmem_exit(ShutdownPostgres, 0);
 
 	/* The autovacuum launcher is done here */

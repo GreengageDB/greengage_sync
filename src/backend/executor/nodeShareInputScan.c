@@ -773,9 +773,6 @@ get_shareinput_fileset(void)
 
 		LWLockRelease(ShareInputScanLock);
 
-		/* see shareinput_Xslice_detach() */
-		if (shareinput_Xslice_seg == NULL)
-			before_shmem_exit(shareinput_Xslice_detach, 0);
 		shareinput_Xslice_seg = seg;
 	}
 
@@ -783,17 +780,33 @@ get_shareinput_fileset(void)
 }
 
 /*
- * Detach from the ShareInputScan DSM segment at backend exit, before pgstat
- * is shut down.
+ * Register the callback that detaches from the ShareInputScan DSM segment at
+ * backend exit.  Called from InitPostgres().
  *
  * The segment's mapping is pinned for the life of the backend, so without
- * this it would only be detached by dsm_backend_shutdown(), which runs after
- * all before_shmem_exit callbacks.  If we are the last backend attached, the
- * SharedFileSet's on-detach callback deletes the remaining tuplestore files,
- * and reporting their temporary file usage needs pgstat to still be up:
- * pgstat's shutdown hook is a before_shmem_exit callback since upstream
- * ee3f8d3d3ae/fb2c5028e63.  We are registered after pgstat_initialize(), so
- * we run before that hook.
+ * the callback it would only be detached by dsm_backend_shutdown(), which
+ * runs after all before_shmem_exit callbacks.  If we are the last backend
+ * attached, the SharedFileSet's on-detach callback deletes the remaining
+ * tuplestore files, and reporting their temporary file usage needs pgstat to
+ * still be up: pgstat's shutdown hook is a before_shmem_exit callback since
+ * upstream ee3f8d3d3ae/fb2c5028e63.
+ *
+ * before_shmem_exit callbacks run in reverse order of registration.  This
+ * must be called after BaseInit() (pgstat_initialize() and
+ * InitTemporaryFileAccess()), so that the detach runs before their shutdown
+ * hooks, but before ShutdownPostgres is registered, so that the detach runs
+ * after the transaction abort, as it did when the segment was detached by
+ * dsm_backend_shutdown(): executor state of an aborted query may still refer
+ * to the SharedFileSet until then.
+ */
+void
+ShareInputScanExitInit(void)
+{
+	before_shmem_exit(shareinput_Xslice_detach, 0);
+}
+
+/*
+ * Detach from the ShareInputScan DSM segment, see ShareInputScanExitInit().
  */
 static void
 shareinput_Xslice_detach(int code, Datum arg)
