@@ -1857,8 +1857,8 @@ hash_agg_set_limits(AggState *aggstate, double hashentrysize, double input_group
 	Size		hash_mem_limit = get_hash_memory_limit();
 
 	/*
-	 * GPDB: cap by the operator's statement_mem-derived memory budget instead
-	 * of plain work_mem.
+	 * GPDB: additionally cap hash_mem_limit by the operator's
+	 * statement_mem-derived memory budget.
 	 */
 	if (aggstate)
 	{
@@ -2076,8 +2076,8 @@ hash_choose_num_partitions(AggState *aggstate, double input_groups, double hashe
 	int			partition_bits;
 
 	/*
-	 * GPDB: cap by the operator's statement_mem-derived memory budget instead
-	 * of plain work_mem.
+	 * GPDB: additionally cap hash_mem_limit by the operator's
+	 * statement_mem-derived memory budget.
 	 */
 	if (aggstate)
 	{
