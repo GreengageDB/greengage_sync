@@ -6501,12 +6501,6 @@ UpdateCatalogForStandbyPromotion(void)
 	if (MyBackendId > MaxBackends || MyBackendId <= 0)
 			elog(FATAL, "bad backend id: %d", MyBackendId);
 
-	/*
-	 * No separate bufmgr initialization call is needed here any more:
-	 * BaseInit() calls InitBufferPoolAccess(), which registers the buffer
-	 * cleanup at process exit (upstream b406478b87e).
-	 */
-
 	/* Start transaction locally */
 	old_role = Gp_role;
 	Gp_role = GP_ROLE_UTILITY;
