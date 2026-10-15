@@ -5416,8 +5416,9 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 
 			/*
 			 * GPDB: unlike upstream, partitioned tables are allowed here; the
-			 * command recurses to the partitions and records the new AM on the
-			 * parent (see ATExecSetAccessMethodNoStorage).
+			 * command recurses to the partitions (unless ONLY is given) and
+			 * records the new AM on the parent (see
+			 * ATExecSetAccessMethodNoStorage).
 			 */
 			if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
 				ATSimpleRecursion(wqueue, rel, cmd, recurse, lockmode, context);
