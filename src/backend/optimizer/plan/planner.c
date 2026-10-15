@@ -5172,12 +5172,6 @@ create_final_distinct_paths(PlannerInfo *root, RelOptInfo *input_rel,
 
 	/*
 	 * Add GPDB two-stage agg plans
-	 *
-	 * GPDB: the "could not implement DISTINCT" check now lives in
-	 * create_distinct_paths(), after this function returns.  That is
-	 * equivalent to running it before this call: if no one-stage path could
-	 * be built, the input is neither sortable nor hashable, so no two-stage
-	 * path can be built either.
 	 */
 	if (Gp_role == GP_ROLE_DISPATCH && gp_enable_preunique)
 		cdb_create_twostage_distinct_paths(root,
