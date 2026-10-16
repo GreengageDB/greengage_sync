@@ -279,8 +279,9 @@ main(int argc, char *argv[])
 				break;
 
 			case 'r':
+				errno = 0;
 				set_relfilenode = strtoul(optarg, &endptr, 0);
-				if (endptr == optarg || *endptr != '\0')
+				if (endptr == optarg || *endptr != '\0' || errno != 0)
 				{
 					fprintf(stderr, _("%s: invalid argument for option -r\n"), progname);
 					fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
@@ -374,8 +375,9 @@ main(int argc, char *argv[])
 				break;
 
 			case 'k':
+				errno = 0;
 				set_data_checksum_version = strtol(optarg, &endptr, 0);
-				if (endptr == optarg || *endptr != '\0')
+				if (endptr == optarg || *endptr != '\0' || errno != 0)
 				{
 					fprintf(stderr, _("%s: invalid argument for option -k\n"), progname);
 					fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
@@ -395,6 +397,7 @@ main(int argc, char *argv[])
 				break;
 
 			case 1001: /* --system-identifier */
+				errno = 0;
 #if SIZEOF_LONG >= 8
 				system_identifier = strtoul(optarg, &endptr, 0);
 #elif defined(HAVE_STRTOULL)
@@ -402,7 +405,7 @@ main(int argc, char *argv[])
 #else
 #	error "The --system-identifier option requires 64-bit support."
 #endif
-				if (endptr == optarg || *endptr != '\0')
+				if (endptr == optarg || *endptr != '\0' || errno != 0)
 				{
 					fprintf(stderr, _("%s: invalid argument for --system-identifier\n"), progname);
 					fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
@@ -416,8 +419,9 @@ main(int argc, char *argv[])
 				break;
 
 			case 1002: /* --next-gxid */
+				errno = 0;
 				set_gxid = strtoul(optarg, &endptr, 0);
-				if (endptr == optarg || *endptr != '\0')
+				if (endptr == optarg || *endptr != '\0' || errno != 0)
 				{
 					pg_log_error("invalid argument for option %s", "--next-gxid");
 					fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
