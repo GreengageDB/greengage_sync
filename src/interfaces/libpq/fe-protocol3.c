@@ -1102,6 +1102,7 @@ pqGetErrorNotice3(PGconn *conn, bool isError)
 	if (isError)
 	{
 		if (res)
+<<<<<<< HEAD
 			res->errMsg = pqResultStrdup(res, workBuf.data);
 
 		/* CDB: Transfer statistical messages on to the new result. */
@@ -1126,11 +1127,16 @@ pqGetErrorNotice3(PGconn *conn, bool isError)
 			res->cdbstats = prev;
 		}
 
+||||||| e1c1c30f635
+			res->errMsg = pqResultStrdup(res, workBuf.data);
+=======
+			pqSetResultError(res, &workBuf);
+>>>>>>> 3b231596ccf
 		pqClearAsyncResult(conn);	/* redundant, but be safe */
 		conn->result = res;
 		if (PQExpBufferDataBroken(workBuf))
 			appendPQExpBufferStr(&conn->errorMessage,
-								 libpq_gettext("out of memory"));
+								 libpq_gettext("out of memory\n"));
 		else
 			appendPQExpBufferStr(&conn->errorMessage, workBuf.data);
 	}
@@ -1139,8 +1145,15 @@ pqGetErrorNotice3(PGconn *conn, bool isError)
 		/* if we couldn't allocate the result set, just discard the NOTICE */
 		if (res)
 		{
-			/* We can cheat a little here and not copy the message. */
-			res->errMsg = workBuf.data;
+			/*
+			 * We can cheat a little here and not copy the message.  But if we
+			 * were unlucky enough to run out of memory while filling workBuf,
+			 * insert "out of memory", as in pqSetResultError.
+			 */
+			if (PQExpBufferDataBroken(workBuf))
+				res->errMsg = libpq_gettext("out of memory\n");
+			else
+				res->errMsg = workBuf.data;
 			if (res->noticeHooks.noticeRec != NULL)
 				res->noticeHooks.noticeRec(res->noticeHooks.noticeRecArg, res);
 			PQclear(res);

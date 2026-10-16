@@ -120,9 +120,8 @@ static Result *create_group_result_plan(PlannerInfo *root,
 static ProjectSet *create_project_set_plan(PlannerInfo *root, ProjectSetPath *best_path);
 static Material *create_material_plan(PlannerInfo *root, MaterialPath *best_path,
 									  int flags);
-static ResultCache *create_resultcache_plan(PlannerInfo *root,
-											ResultCachePath *best_path,
-											int flags);
+static Memoize *create_memoize_plan(PlannerInfo *root, MemoizePath *best_path,
+									int flags);
 static Plan *create_unique_plan(PlannerInfo *root, UniquePath *best_path,
 								int flags);
 static Plan *create_motion_plan(PlannerInfo *root, CdbMotionPath *path);
@@ -320,11 +319,25 @@ static IncrementalSort *make_incrementalsort_from_pathkeys(Plan *lefttree,
 static Sort *make_sort_from_groupcols(List *groupcls,
 									  AttrNumber *grpColIdx,
 									  Plan *lefttree);
+<<<<<<< HEAD
 static ResultCache *make_resultcache(Plan *lefttree, Oid *hashoperators,
 									 Oid *collations,
 									 List *param_exprs,
 									 bool singlerow,
 									 uint32 est_entries);
+||||||| e1c1c30f635
+static Material *make_material(Plan *lefttree);
+static ResultCache *make_resultcache(Plan *lefttree, Oid *hashoperators,
+									 Oid *collations,
+									 List *param_exprs,
+									 bool singlerow,
+									 uint32 est_entries);
+=======
+static Material *make_material(Plan *lefttree);
+static Memoize *make_memoize(Plan *lefttree, Oid *hashoperators,
+							 Oid *collations, List *param_exprs,
+							 bool singlerow, uint32 est_entries);
+>>>>>>> 3b231596ccf
 static WindowAgg *make_windowagg(List *tlist, Index winref,
 								 int partNumCols, AttrNumber *partColIdx, Oid *partOperators, Oid *partCollations,
 								 int ordNumCols, AttrNumber *ordColIdx, Oid *ordOperators, Oid *ordCollations,
@@ -524,10 +537,10 @@ create_plan_recurse(PlannerInfo *root, Path *best_path, int flags)
 												 (MaterialPath *) best_path,
 												 flags);
 			break;
-		case T_ResultCache:
-			plan = (Plan *) create_resultcache_plan(root,
-													(ResultCachePath *) best_path,
-													flags);
+		case T_Memoize:
+			plan = (Plan *) create_memoize_plan(root,
+												(MemoizePath *) best_path,
+												flags);
 			break;
 		case T_Unique:
 			if (IsA(best_path, UpperUniquePath))
@@ -1734,16 +1747,16 @@ create_material_plan(PlannerInfo *root, MaterialPath *best_path, int flags)
 }
 
 /*
- * create_resultcache_plan
- *	  Create a ResultCache plan for 'best_path' and (recursively) plans
- *	  for its subpaths.
+ * create_memoize_plan
+ *	  Create a Memoize plan for 'best_path' and (recursively) plans for its
+ *	  subpaths.
  *
  *	  Returns a Plan node.
  */
-static ResultCache *
-create_resultcache_plan(PlannerInfo *root, ResultCachePath *best_path, int flags)
+static Memoize *
+create_memoize_plan(PlannerInfo *root, MemoizePath *best_path, int flags)
 {
-	ResultCache *plan;
+	Memoize    *plan;
 	Plan	   *subplan;
 	Oid		   *operators;
 	Oid		   *collations;
@@ -1775,8 +1788,8 @@ create_resultcache_plan(PlannerInfo *root, ResultCachePath *best_path, int flags
 		i++;
 	}
 
-	plan = make_resultcache(subplan, operators, collations, param_exprs,
-							best_path->singlerow, best_path->est_entries);
+	plan = make_memoize(subplan, operators, collations, param_exprs,
+						best_path->singlerow, best_path->est_entries);
 
 	copy_generic_path_info(&plan->plan, (Path *) best_path);
 
@@ -3696,7 +3709,7 @@ create_seqscan_plan(PlannerInfo *root, Path *best_path,
 							 scan_clauses,
 							 scan_relid);
 
-	copy_generic_path_info(&scan_plan->plan, best_path);
+	copy_generic_path_info(&scan_plan->scan.plan, best_path);
 
 	return scan_plan;
 }
@@ -5228,8 +5241,8 @@ create_nestloop_plan(PlannerInfo *root,
 	NestLoop   *join_plan;
 	Plan	   *outer_plan;
 	Plan	   *inner_plan;
-	List	   *tlist = build_path_tlist(root, &best_path->path);
-	List	   *joinrestrictclauses = best_path->joinrestrictinfo;
+	List	   *tlist = build_path_tlist(root, &best_path->jpath.path);
+	List	   *joinrestrictclauses = best_path->jpath.joinrestrictinfo;
 	List	   *joinclauses;
 	List	   *otherclauses;
 	Relids		outerrelids;
@@ -5253,7 +5266,7 @@ create_nestloop_plan(PlannerInfo *root,
 #endif
 
 	/* NestLoop can project, so no need to be picky about child tlists */
-	outer_plan = create_plan_recurse(root, best_path->outerjoinpath, 0);
+	outer_plan = create_plan_recurse(root, best_path->jpath.outerjoinpath, 0);
 
 	/*
 	 * If the outer side contained Append nodes that can do partition pruning,
@@ -5264,9 +5277,9 @@ create_nestloop_plan(PlannerInfo *root,
 
 	/* For a nestloop, include outer relids in curOuterRels for inner side */
 	root->curOuterRels = bms_union(root->curOuterRels,
-								   best_path->outerjoinpath->parent->relids);
+								   best_path->jpath.outerjoinpath->parent->relids);
 
-	inner_plan = create_plan_recurse(root, best_path->innerjoinpath, 0);
+	inner_plan = create_plan_recurse(root, best_path->jpath.innerjoinpath, 0);
 
 	/*
 	 * MPP-1459: subqueries are resolved after our deadlock checks in
@@ -5334,10 +5347,10 @@ create_nestloop_plan(PlannerInfo *root,
 
 	/* Get the join qual clauses (in plain expression form) */
 	/* Any pseudoconstant clauses are ignored here */
-	if (IS_OUTER_JOIN(best_path->jointype))
+	if (IS_OUTER_JOIN(best_path->jpath.jointype))
 	{
 		extract_actual_join_clauses(joinrestrictclauses,
-									best_path->path.parent->relids,
+									best_path->jpath.path.parent->relids,
 									&joinclauses, &otherclauses);
 	}
 	else
@@ -5353,7 +5366,7 @@ create_nestloop_plan(PlannerInfo *root,
 	}
 
 	/* Replace any outer-relation variables with nestloop params */
-	if (best_path->path.param_info)
+	if (best_path->jpath.path.param_info)
 	{
 		joinclauses = (List *)
 			replace_nestloop_params(root, (Node *) joinclauses);
@@ -5365,7 +5378,7 @@ create_nestloop_plan(PlannerInfo *root,
 	 * Identify any nestloop parameters that should be supplied by this join
 	 * node, and remove them from root->curOuterParams.
 	 */
-	outerrelids = best_path->outerjoinpath->parent->relids;
+	outerrelids = best_path->jpath.outerjoinpath->parent->relids;
 	nestParams = identify_current_nestloop_params(root, outerrelids);
 
 	join_plan = make_nestloop(tlist,
@@ -5374,10 +5387,10 @@ create_nestloop_plan(PlannerInfo *root,
 							  nestParams,
 							  outer_plan,
 							  inner_plan,
-							  best_path->jointype,
-							  best_path->inner_unique);
+							  best_path->jpath.jointype,
+							  best_path->jpath.inner_unique);
 
-	copy_generic_path_info(&join_plan->join.plan, &best_path->path);
+	copy_generic_path_info(&join_plan->join.plan, &best_path->jpath.path);
 
 	if (IsA(best_path->innerjoinpath, MaterialPath))
 	{
@@ -6657,13 +6670,13 @@ make_seqscan(List *qptlist,
 			 Index scanrelid)
 {
 	SeqScan    *node = makeNode(SeqScan);
-	Plan	   *plan = &node->plan;
+	Plan	   *plan = &node->scan.plan;
 
 	plan->targetlist = qptlist;
 	plan->qual = qpqual;
 	plan->lefttree = NULL;
 	plan->righttree = NULL;
-	node->scanrelid = scanrelid;
+	node->scan.scanrelid = scanrelid;
 
 	return node;
 }
@@ -7853,11 +7866,11 @@ materialize_finished_plan(PlannerInfo *root, Plan *subplan)
 	return matplan;
 }
 
-static ResultCache *
-make_resultcache(Plan *lefttree, Oid *hashoperators, Oid *collations,
-				 List *param_exprs, bool singlerow, uint32 est_entries)
+static Memoize *
+make_memoize(Plan *lefttree, Oid *hashoperators, Oid *collations,
+			 List *param_exprs, bool singlerow, uint32 est_entries)
 {
-	ResultCache *node = makeNode(ResultCache);
+	Memoize    *node = makeNode(Memoize);
 	Plan	   *plan = &node->plan;
 
 	plan->targetlist = lefttree->targetlist;
@@ -8479,7 +8492,7 @@ is_projection_capable_path(Path *path)
 	{
 		case T_Hash:
 		case T_Material:
-		case T_ResultCache:
+		case T_Memoize:
 		case T_Sort:
 		case T_IncrementalSort:
 		case T_Unique:
@@ -8492,6 +8505,10 @@ is_projection_capable_path(Path *path)
 		case T_Motion:
 		case T_ShareInputScan:
 		case T_PartitionSelector:
+			return false;
+		case T_CustomScan:
+			if (castNode(CustomPath, path)->flags & CUSTOMPATH_SUPPORT_PROJECTION)
+				return true;
 			return false;
 		case T_Append:
 
@@ -8528,7 +8545,7 @@ is_projection_capable_plan(Plan *plan)
 	{
 		case T_Hash:
 		case T_Material:
-		case T_ResultCache:
+		case T_Memoize:
 		case T_Sort:
 		case T_Unique:
 		case T_SetOp:
@@ -8542,6 +8559,10 @@ is_projection_capable_plan(Plan *plan)
 		case T_ShareInputScan:
 		case T_Sequence:
 		case T_PartitionSelector:
+			return false;
+		case T_CustomScan:
+			if (((CustomScan *) plan)->flags & CUSTOMPATH_SUPPORT_PROJECTION)
+				return true;
 			return false;
 		case T_ProjectSet:
 

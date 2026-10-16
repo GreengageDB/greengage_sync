@@ -179,9 +179,25 @@ typedef struct _dumpableObjectWithAcl
 typedef struct _namespaceInfo
 {
 	DumpableObject dobj;
+<<<<<<< HEAD
 	DumpableAcl dacl;
 	Oid			nspowner;		/* OID of owner */
 	const char *rolname;		/* name of owner */
+||||||| e1c1c30f635
+	char	   *rolname;		/* name of owner, or empty string */
+	char	   *nspacl;
+	char	   *rnspacl;
+	char	   *initnspacl;
+	char	   *initrnspacl;
+=======
+	bool		create;			/* CREATE SCHEMA, or just set owner? */
+	Oid			nspowner;
+	char	   *rolname;		/* name of owner, or empty string */
+	char	   *nspacl;
+	char	   *rnspacl;
+	char	   *initnspacl;
+	char	   *initrnspacl;
+>>>>>>> 3b231596ccf
 } NamespaceInfo;
 
 typedef struct _extensionInfo
@@ -204,9 +220,24 @@ typedef struct _typeInfo
 	 * result of format_type(), which will be quoted if needed, and might be
 	 * schema-qualified too.
 	 */
+<<<<<<< HEAD
 	char		*ftypname;
 	const char  *rolname;
 	char		*typacl;
+||||||| e1c1c30f635
+	char	   *rolname;		/* name of owner, or empty string */
+	char	   *typacl;
+	char	   *rtypacl;
+	char	   *inittypacl;
+	char	   *initrtypacl;
+=======
+	char	   *ftypname;
+	char	   *rolname;		/* name of owner, or empty string */
+	char	   *typacl;
+	char	   *rtypacl;
+	char	   *inittypacl;
+	char	   *initrtypacl;
+>>>>>>> 3b231596ccf
 	Oid			typelem;
 	Oid			typrelid;
 	char		typrelkind;		/* 'r', 'v', 'c', etc */
@@ -508,6 +539,7 @@ typedef struct _triggerInfo
 	Oid			tgconstrrelid;
 	char	   *tgconstrrelname;
 	char		tgenabled;
+	bool		tgisinternal;
 	bool		tgdeferrable;
 	bool		tginitdeferred;
 	char	   *tgdef;
@@ -707,6 +739,7 @@ typedef struct _SubscriptionInfo
 	char	   *subslotname;
 	char	   *subbinary;
 	char	   *substream;
+	char	   *subtwophasestate;
 	char	   *subsynccommit;
 	char	   *subpublications;
 } SubscriptionInfo;
