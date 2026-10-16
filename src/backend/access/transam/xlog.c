@@ -7845,10 +7845,10 @@ StartupXLOG(void)
 						(xlogRecInfo == XLOG_CHECKPOINT_SHUTDOWN ||
 						 xlogRecInfo == XLOG_CHECKPOINT_ONLINE))
 					{
-						if (ArchiveRecoveryRequested && IsUnderPostmaster)
+						if (IsUnderPostmaster)
 							RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_WAIT);
 						else
-							elog(LOG, "Skipping CreateRestartPoint() as bgwriter is not launched.");
+							elog(LOG, "Skipping CreateRestartPoint() as not running under postmaster (standalone mode).");
 					}
 				}
 
