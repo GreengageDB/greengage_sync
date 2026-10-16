@@ -1549,6 +1549,9 @@ _outNode(StringInfo str, void *obj)
 			case T_SortBy:
 				_outSortBy(str, obj);
 				break;
+			case T_WindowDef:
+				_outWindowDef(str, obj);
+				break;
 			case T_TypeCast:
 				_outTypeCast(str, obj);
 				break;
@@ -1868,8 +1871,8 @@ _outNode(StringInfo str, void *obj)
 			case T_RowIdentityVarInfo:
 				_outRowIdentityVarInfo(str, obj);
 				break;
-			case T_ResultCache:
-				_outResultCache(str, obj);
+			case T_Memoize:
+				_outMemoize(str, obj);
 				break;
 			case T_ReturnStmt:
 				_outReturnStmt(str, obj);

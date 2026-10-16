@@ -3521,7 +3521,6 @@ LockRefindAndRelease(LockMethod lockMethodTable, PGPROC *proc,
 }
 
 /*
-<<<<<<< HEAD
  * Prepare for prepare, while we're still in a transaction.
  *
  * This marks LOCALLOCK objects on temporary tables, so that we can
@@ -3615,9 +3614,9 @@ PrePrepare_Locks(void)
 		 */
 		locallock->istemptable = LockTagIsTemp(&locallock->tag.lock);
 	}
+}
 
-||||||| e1c1c30f635
-=======
+/*
  * CheckForSessionAndXactLocks
  *		Check to see if transaction holds both session-level and xact-level
  *		locks on the same object; if so, throw an error.
@@ -3711,7 +3710,6 @@ CheckForSessionAndXactLocks(void)
 
 	/* Success, so clean up */
 	hash_destroy(lockhtab);
->>>>>>> 3b231596ccf
 }
 
 /*
