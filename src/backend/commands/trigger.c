@@ -1648,9 +1648,11 @@ renametrig_internal(Relation tgrel, Relation targetrel, HeapTuple trigtup,
 	 * If the trigger has a name different from what we expected, let the user
 	 * know. (We can proceed anyway, since we must have reached here following
 	 * a tgparentid link.)
+	 *
+	 * GPDB: QEs repeat the rename, report it from the QD only.
 	 */
 	if (strcmp(NameStr(tgform->tgname), expected_name) != 0)
-		ereport(NOTICE,
+		ereport((Gp_role == GP_ROLE_EXECUTE) ? DEBUG1 : NOTICE,
 				errmsg("renamed trigger \"%s\" on relation \"%s\"",
 					   NameStr(tgform->tgname),
 					   RelationGetRelationName(targetrel)));
