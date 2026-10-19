@@ -3544,7 +3544,6 @@ PrePrepare_Locks(void)
 	while ((locallock = (LOCALLOCK *) hash_seq_search(&status)) != NULL)
 	{
 		LOCALLOCKOWNER *lockOwners = locallock->lockOwners;
-		bool		haveSessionLock;
 		bool		haveXactLock;
 		int			i;
 
@@ -3567,37 +3566,20 @@ PrePrepare_Locks(void)
 		if (locallock->nLocks <= 0)
 			continue;
 
-		/* Scan to see whether we hold it at session or transaction level */
-		haveSessionLock = haveXactLock = false;
+		/* Scan to see whether we hold it at transaction level */
+		haveXactLock = false;
 		for (i = locallock->numLockOwners - 1; i >= 0; i--)
 		{
-			if (lockOwners[i].owner == NULL)
-				haveSessionLock = true;
-			else
+			if (lockOwners[i].owner != NULL)
+			{
 				haveXactLock = true;
+				break;
+			}
 		}
 
 		/* Ignore it if we have only session lock */
 		if (!haveXactLock)
 			continue;
-
-		/*
-		 * If we have both session- and transaction-level locks, fail.  This
-		 * should never happen with regular locks, since we only take those at
-		 * session level in some special operations like VACUUM.  It's
-		 * possible to hit this with advisory locks, though.
-		 *
-		 * It would be nice if we could keep the session hold and give away
-		 * the transactional hold to the prepared xact.  However, that would
-		 * require two PROCLOCK objects, and we cannot be sure that another
-		 * PROCLOCK will be available when it comes time for PostPrepare_Locks
-		 * to do the deed.  So for now, we error out while we can still do so
-		 * safely.
-		 */
-		if (haveSessionLock)
-			ereport(ERROR,
-					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-					 errmsg("cannot PREPARE while holding both session-level and transaction-level locks on the same object")));
 
 		/* gp-change
 		 *
