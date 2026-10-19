@@ -780,8 +780,8 @@ DETAIL:  Feature not supported: ROW EXPRESSION
 (1 row)
 
 -- non-hashable type
--- With an anonymous row type, the typcache reports that the type is
--- hashable, but then it will fail at run time.
+-- With an anonymous row type, the typcache does not report that the
+-- type is hashable.  (Otherwise, this would fail at execution time.)
 explain (costs off)
 select x from (values (row(100::money)), (row(200::money))) _(x) union select x from (values (row(100::money)), (row(300::money))) _(x);
 INFO:  GPORCA failed to produce a plan, falling back to planner
