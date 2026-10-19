@@ -3601,7 +3601,17 @@ my %tests = (
 			\n\QGRANT USAGE ON SCHEMA public TO PUBLIC;\E
 			/xm,
 		like => { %full_runs, section_pre_data => 1, },
-		unlike => { no_privs => 1, },
+		unlike => { binary_upgrade => 1, no_privs => 1, },
+	},
+
+	# GPDB: binary upgrade re-creates the public schema, so its ACL is dumped
+	# relative to the CREATE SCHEMA default, which has no PUBLIC privileges.
+	'REVOKE CREATE ON SCHEMA public FROM public (binary upgrade)' => {
+		regexp => qr/^
+			\QREVOKE ALL ON SCHEMA public FROM "regress_quoted  \E\\""\ role";
+			\n\QGRANT USAGE ON SCHEMA public TO PUBLIC;\E
+			/xm,
+		like => { binary_upgrade => 1, },
 	},
 
 	'REVOKE USAGE ON LANGUAGE plpgsql FROM public' => {

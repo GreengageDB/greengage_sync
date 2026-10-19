@@ -5289,6 +5289,7 @@ binary_upgrade_extension_member(PQExpBuffer upgrade_buffer,
 NamespaceInfo *
 getNamespaces(Archive *fout, int *numNamespaces)
 {
+	DumpOptions *dopt = fout->dopt;
 	PGresult   *res;
 	int			ntups;
 	int			i;
@@ -5367,8 +5368,13 @@ getNamespaces(Archive *fout, int *numNamespaces)
 		 * synthesize the value that nspacl will have after the restore's
 		 * ALTER SCHEMA OWNER.  (a7a7be1f2fa, in the shape of 0c9d84427f4;
 		 * the default ACL is the pre-v15 one.)
+		 *
+		 * GPDB: binary upgrade re-creates the public schema (see
+		 * binary_upgrade_set_namespace_oid()), so it starts with the
+		 * CREATE SCHEMA default ACL instead.  Leave initprivs unset, and
+		 * dumpACL() compares nspacl with acldefault, as for any other schema.
 		 */
-		if (strcmp(nsinfo[i].dobj.name, "public") == 0)
+		if (!dopt->binary_upgrade && strcmp(nsinfo[i].dobj.name, "public") == 0)
 		{
 			PQExpBuffer aclarray = createPQExpBuffer();
 			PQExpBuffer aclitem = createPQExpBuffer();
@@ -11352,20 +11358,6 @@ dumpNamespace(Archive *fout, const NamespaceInfo *nspinfo)
 			binary_upgrade_set_namespace_oid(fout, q, nspinfo->dobj.catId.oid);
 
 		appendPQExpBuffer(q, "CREATE SCHEMA %s;\n", qnspname);
-
-		/*
-		 * GPDB: binary upgrade re-creates the public schema (see
-		 * binary_upgrade_set_namespace_oid()), and CREATE SCHEMA leaves it
-		 * with no ACL.  getNamespaces() assumes that the destination's public
-		 * schema starts with the initdb-default ACL, as it does in a new
-		 * database, so restore that default here.  dumpACL() then applies
-		 * any differences, and the ALTER SCHEMA OWNER that follows carries
-		 * the grants over to the owner.  With --no-privileges no ACL is
-		 * dumped, so leave the schema with the CREATE SCHEMA default.
-		 */
-		if (dopt->binary_upgrade && !dopt->aclsSkip &&
-			strcmp(nspinfo->dobj.name, "public") == 0)
-			appendPQExpBufferStr(q, "GRANT ALL ON SCHEMA public TO PUBLIC;\n");
 	}
 	else
 	{
