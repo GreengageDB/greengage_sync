@@ -1566,6 +1566,7 @@ _readLockingClause(void)
 
 	READ_NODE_FIELD(lockedRels);
 	READ_ENUM_FIELD(strength, LockClauseStrength);
+	READ_ENUM_FIELD(waitPolicy, LockWaitPolicy);
 
 	READ_DONE();
 }
@@ -2398,6 +2399,24 @@ readNodeBinary(void)
 				break;
 			case T_WindowDef:
 				return_value = _readWindowDef();
+				break;
+			case T_RangeSubselect:
+				return_value = _readRangeSubselect();
+				break;
+			case T_RangeFunction:
+				return_value = _readRangeFunction();
+				break;
+			case T_RangeTableSample:
+				return_value = _readRangeTableSample();
+				break;
+			case T_RangeTableFunc:
+				return_value = _readRangeTableFunc();
+				break;
+			case T_RangeTableFuncCol:
+				return_value = _readRangeTableFuncCol();
+				break;
+			case T_XmlSerialize:
+				return_value = _readXmlSerialize();
 				break;
 			case T_TypeCast:
 				return_value = _readTypeCast();
