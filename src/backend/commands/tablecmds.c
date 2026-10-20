@@ -7862,7 +7862,7 @@ alter_table_type_to_string(AlterTableType cmdtype)
 		case AT_SetColumnEncoding:
 			return "ALTER COLUMN ... SET ENCODING";
 		case AT_SetDistributedBy:
-			return "SET DISTRIBUTED BY";
+			return "SET DISTRIBUTED ... or SET WITH (REORGANIZE)";
 		case AT_ExpandTable:
 			return "EXPAND TABLE";
 		case AT_ExpandPartitionTablePrepare:
@@ -20943,7 +20943,7 @@ RangeVarCallbackForAlterRelation(const RangeVar *rv, Oid relid, Oid oldrelid,
 				 relkind == RELKIND_AOVISIMAP)
 			ereport(ERROR,
 					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-					 errmsg("cannot change schema of append-only auxiliary table \"%s\"",
+					 errmsg("cannot change schema of append-optimized auxiliary table \"%s\"",
 							rv->relname)));
 	}
 
