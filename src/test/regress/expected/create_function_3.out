@@ -709,9 +709,6 @@ BEGIN ATOMIC
   SELECT a FROM functest_gp_t FOR UPDATE SKIP LOCKED;
 END;
 WARNING:  Upgrade the lockmode to ExclusiveLock on table(functest_gp_t) and ingore the wait policy.
-WARNING:  Upgrade the lockmode to ExclusiveLock on table(functest_gp_t) and ingore the wait policy.  (seg0 127.0.1.1:7002 pid=60986)
-WARNING:  Upgrade the lockmode to ExclusiveLock on table(functest_gp_t) and ingore the wait policy.  (seg1 127.0.1.1:7003 pid=60987)
-WARNING:  Upgrade the lockmode to ExclusiveLock on table(functest_gp_t) and ingore the wait policy.  (seg2 127.0.1.1:7004 pid=60988)
 -- OnConflictClause
 CREATE FUNCTION functest_gp_oc() RETURNS void LANGUAGE sql
 BEGIN ATOMIC
