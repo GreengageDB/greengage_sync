@@ -7364,7 +7364,14 @@ xact_redo_abort(xl_xact_parsed_abort *parsed, TransactionId xid,
 
 		DropRelationFiles(parsed->xnodes, parsed->nrels, true);
 	}
-	DropDatabaseDirectories(parsed->deldbs, parsed->ndeldbs, true);
+
+	if (parsed->ndeldbs > 0)
+	{
+		XLogFlush(lsn);
+
+		DropDatabaseDirectories(parsed->deldbs, parsed->ndeldbs, true);
+	}
+
 	DoTablespaceDeletionForRedoXlog(parsed->tablespace_oid_to_delete_on_abort);
 }
 
