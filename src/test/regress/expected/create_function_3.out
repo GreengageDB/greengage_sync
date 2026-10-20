@@ -791,7 +791,7 @@ SELECT * FROM functest_gp_t WHERE a = 1;
 -- Cleanup
 DROP SCHEMA temp_func_test CASCADE;
 <<<<<<< HEAD
-NOTICE:  drop cascades to 41 other objects
+NOTICE:  drop cascades to 32 other objects
 ||||||| e1c1c30f635
 NOTICE:  drop cascades to 30 other objects
 =======
