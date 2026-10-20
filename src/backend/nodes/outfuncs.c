@@ -5068,8 +5068,11 @@ _outWindowDef(StringInfo str, const WindowDef *node)
 	WRITE_LOCATION_FIELD(location);
 }
 
-#ifndef COMPILING_BINARY_FUNCS
-
+/*
+ * GPDB: the range nodes are part of the raw parse tree of a SQL-standard
+ * function body, which is dispatched to the segments, so they have binary
+ * serializers too.
+ */
 static void
 _outRangeSubselect(StringInfo str, const RangeSubselect *node)
 {
@@ -5092,9 +5095,7 @@ _outRangeFunction(StringInfo str, const RangeFunction *node)
 	WRITE_NODE_FIELD(alias);
 	WRITE_NODE_FIELD(coldeflist);
 }
-#endif
 
-#ifndef COMPILING_BINARY_FUNCS
 static void
 _outRangeTableSample(StringInfo str, const RangeTableSample *node)
 {
@@ -5134,7 +5135,6 @@ _outRangeTableFuncCol(StringInfo str, const RangeTableFuncCol *node)
 	WRITE_NODE_FIELD(coldefexpr);
 	WRITE_LOCATION_FIELD(location);
 }
-#endif /* COMPILING_BINARY_FUNCS */
 
 static void
 _outConstraint(StringInfo str, const Constraint *node)
