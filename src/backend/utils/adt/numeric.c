@@ -10638,7 +10638,7 @@ power_var(const NumericVar *base, const NumericVar *exp, NumericVar *result)
 		return;
 	}
 
-	init_var(&abs_base);
+	quick_init_var(&abs_base);
 	quick_init_var(&ln_base);
 	quick_init_var(&ln_num);
 
