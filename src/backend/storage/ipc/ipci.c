@@ -120,8 +120,6 @@ CalculateShmemSize(int *num_semaphores)
 	numSemas = ProcGlobalSemas();
 	numSemas += SpinlockSemas();
 
-	elog(DEBUG3, "reserving %d semaphores", numSemas);
-
 	/* Return the number of semaphores if requested by the caller */
 	if (num_semaphores)
 		*num_semaphores = numSemas;
