@@ -1567,6 +1567,12 @@ _outNode(StringInfo str, void *obj)
 			case T_RangeTableFuncCol:
 				_outRangeTableFuncCol(str, obj);
 				break;
+			case T_InferClause:
+				_outInferClause(str, obj);
+				break;
+			case T_OnConflictClause:
+				_outOnConflictClause(str, obj);
+				break;
 			case T_TypeCast:
 				_outTypeCast(str, obj);
 				break;

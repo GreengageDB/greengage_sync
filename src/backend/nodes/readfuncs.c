@@ -2416,6 +2416,33 @@ _readXmlSerialize(void)
 	READ_DONE();
 }
 
+static InferClause *
+_readInferClause(void)
+{
+	READ_LOCALS(InferClause);
+
+	READ_NODE_FIELD(indexElems);
+	READ_NODE_FIELD(whereClause);
+	READ_STRING_FIELD(conname);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static OnConflictClause *
+_readOnConflictClause(void)
+{
+	READ_LOCALS(OnConflictClause);
+
+	READ_ENUM_FIELD(action, OnConflictAction);
+	READ_NODE_FIELD(infer);
+	READ_NODE_FIELD(targetList);
+	READ_NODE_FIELD(whereClause);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
 static TypeCast *
 _readTypeCast(void)
 {
@@ -5155,6 +5182,10 @@ parseNodeString(void)
 		return_value = _readRangeTableFunc();
 	else if (MATCHX("RANGETABLEFUNCCOL"))
 		return_value = _readRangeTableFuncCol();
+	else if (MATCHX("INFERCLAUSE"))
+		return_value = _readInferClause();
+	else if (MATCHX("ONCONFLICTCLAUSE"))
+		return_value = _readOnConflictClause();
 	else if (MATCHX("XMLSERIALIZE"))
 		return_value = _readXmlSerialize();
 	else if (MATCHX("TABLEVALUEEXPR"))
