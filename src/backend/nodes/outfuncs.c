@@ -4195,8 +4195,10 @@ _outInsertStmt(StringInfo str, const InsertStmt *node)
 	WRITE_NODE_FIELD(relation);
 	WRITE_NODE_FIELD(cols);
 	WRITE_NODE_FIELD(selectStmt);
+	WRITE_NODE_FIELD(onConflictClause);
 	WRITE_NODE_FIELD(returningList);
 	WRITE_NODE_FIELD(withClause);
+	WRITE_ENUM_FIELD(override, OverridingKind);
 }
 
 static void
@@ -5133,6 +5135,29 @@ _outRangeTableFuncCol(StringInfo str, const RangeTableFuncCol *node)
 	WRITE_BOOL_FIELD(is_not_null);
 	WRITE_NODE_FIELD(colexpr);
 	WRITE_NODE_FIELD(coldefexpr);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outInferClause(StringInfo str, const InferClause *node)
+{
+	WRITE_NODE_TYPE("INFERCLAUSE");
+
+	WRITE_NODE_FIELD(indexElems);
+	WRITE_NODE_FIELD(whereClause);
+	WRITE_STRING_FIELD(conname);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outOnConflictClause(StringInfo str, const OnConflictClause *node)
+{
+	WRITE_NODE_TYPE("ONCONFLICTCLAUSE");
+
+	WRITE_ENUM_FIELD(action, OnConflictAction);
+	WRITE_NODE_FIELD(infer);
+	WRITE_NODE_FIELD(targetList);
+	WRITE_NODE_FIELD(whereClause);
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -6618,6 +6643,12 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_RangeTableFuncCol:
 				_outRangeTableFuncCol(str, obj);
+				break;
+			case T_InferClause:
+				_outInferClause(str, obj);
+				break;
+			case T_OnConflictClause:
+				_outOnConflictClause(str, obj);
 				break;
 			case T_Constraint:
 				_outConstraint(str, obj);

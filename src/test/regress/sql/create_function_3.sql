@@ -429,10 +429,15 @@ CREATE FUNCTION functest_gp_lock() RETURNS SETOF int LANGUAGE sql
 BEGIN ATOMIC
   SELECT a FROM functest_gp_t FOR UPDATE SKIP LOCKED;
 END;
--- OnConflictClause
+-- OnConflictClause, InferClause
 CREATE FUNCTION functest_gp_oc() RETURNS void LANGUAGE sql
 BEGIN ATOMIC
   INSERT INTO functest_gp_t VALUES (1, 1) ON CONFLICT (a) DO UPDATE SET b = 2;
+END;
+-- InsertStmt: OVERRIDING clause
+CREATE FUNCTION functest_gp_ov() RETURNS void LANGUAGE sql
+BEGIN ATOMIC
+  INSERT INTO functest_gp_t OVERRIDING SYSTEM VALUE VALUES (3, 3);
 END;
 
 SELECT * FROM functest_gp_win() ORDER BY 1;
@@ -444,6 +449,20 @@ SELECT functest_gp_xml();
 SELECT * FROM functest_gp_lock() ORDER BY 1;
 SELECT functest_gp_oc();
 SELECT * FROM functest_gp_t WHERE a = 1;
+
+-- The stored bodies must be identical on the coordinator and on the segments.
+-- The coordinator's text has to be computed on the coordinator (hence
+-- MATERIALIZED), otherwise both sides are evaluated against the segment's
+-- catalog and always match.
+WITH q AS MATERIALIZED
+    (SELECT proname, pg_get_functiondef(oid) AS def FROM pg_proc
+     WHERE pronamespace = 'temp_func_test'::regnamespace AND proname LIKE 'functest\_gp\_%')
+SELECT q.proname, s.gp_segment_id
+FROM q JOIN (SELECT proname, gp_segment_id, pg_get_functiondef(oid) AS def
+             FROM gp_dist_random('pg_proc')
+             WHERE pronamespace = 'temp_func_test'::regnamespace) s USING (proname)
+WHERE q.def <> s.def
+ORDER BY 1, 2;
 
 -- Cleanup
 DROP SCHEMA temp_func_test CASCADE;
