@@ -512,9 +512,8 @@ SELECT * FROM unbounded_syntax_test1a(2);
 SELECT * FROM unbounded_syntax_test1b(2);
 
 -- GPDB: UNBOUNDED is a reserved keyword in Greengage (unreserved upstream),
--- so it cannot be a function or parameter name: the functions below that
--- use it fail to parse and the statements using them fail too.
-CREATE FUNCTION unbounded_syntax_test2a(unbounded int) RETURNS TABLE (a int, b int, c int)
+-- so it is quoted wherever it is a parameter, function or alias name.
+CREATE FUNCTION unbounded_syntax_test2a("unbounded" int) RETURNS TABLE (a int, b int, c int)
 LANGUAGE SQL
 BEGIN ATOMIC
   SELECT sum(unique1) over (rows between unbounded preceding and unbounded following),
@@ -522,7 +521,7 @@ BEGIN ATOMIC
   FROM tenk1 WHERE unique1 < 10;
 END;
 
-CREATE FUNCTION unbounded_syntax_test2b(unbounded int) RETURNS TABLE (a int, b int, c int)
+CREATE FUNCTION unbounded_syntax_test2b("unbounded" int) RETURNS TABLE (a int, b int, c int)
 LANGUAGE SQL
 AS $$
   SELECT sum(unique1) over (rows between unbounded preceding and unbounded following),
@@ -534,27 +533,28 @@ $$;
 SELECT * FROM unbounded_syntax_test2a(2);
 SELECT * FROM unbounded_syntax_test2b(2);
 
--- GPDB: IF EXISTS, since the test2 functions could not be created (see above)
-DROP FUNCTION IF EXISTS unbounded_syntax_test1a, unbounded_syntax_test1b,
+DROP FUNCTION unbounded_syntax_test1a, unbounded_syntax_test1b,
               unbounded_syntax_test2a, unbounded_syntax_test2b;
 
 -- Other tests with token UNBOUNDED in potentially problematic position
-CREATE FUNCTION unbounded(x int) RETURNS int LANGUAGE SQL IMMUTABLE RETURN x;
+CREATE FUNCTION "unbounded"(x int) RETURNS int LANGUAGE SQL IMMUTABLE RETURN x;
 
 -- GPDB: ORDER BY in the frame for MPP determinism (see note above).
 SELECT sum(unique1) over (order by unique1 rows between 1 preceding and 1 following),
        unique1, four
 FROM tenk1 WHERE unique1 < 10;
 
-SELECT sum(unique1) over (order by unique1 rows between unbounded(1) preceding and unbounded(1) following),
+SELECT sum(unique1) over (order by unique1 rows between "unbounded"(1) preceding and "unbounded"(1) following),
        unique1, four
 FROM tenk1 WHERE unique1 < 10;
 
-SELECT sum(unique1) over (order by unique1 rows between unbounded.x preceding and unbounded.x following),
+-- GPDB: variables are allowed in frame offsets (see transformFrameOffset()),
+-- so this query does not fail as it does upstream.
+SELECT sum(unique1) over (order by unique1 rows between "unbounded".x preceding and "unbounded".x following),
        unique1, four
-FROM tenk1, (values (1)) as unbounded(x) WHERE unique1 < 10;
+FROM tenk1, (values (1)) as "unbounded"(x) WHERE unique1 < 10;
 
-DROP FUNCTION unbounded;
+DROP FUNCTION "unbounded";
 
 -- Check overflow behavior for various integer sizes
 

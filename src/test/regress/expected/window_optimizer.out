@@ -1926,47 +1926,56 @@ DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
 (10 rows)
 
 -- GPDB: UNBOUNDED is a reserved keyword in Greengage (unreserved upstream),
--- so it cannot be a function or parameter name: the functions below that
--- use it fail to parse and the statements using them fail too.
-CREATE FUNCTION unbounded_syntax_test2a(unbounded int) RETURNS TABLE (a int, b int, c int)
+-- so it is quoted wherever it is a parameter, function or alias name.
+CREATE FUNCTION unbounded_syntax_test2a("unbounded" int) RETURNS TABLE (a int, b int, c int)
 LANGUAGE SQL
 BEGIN ATOMIC
   SELECT sum(unique1) over (rows between unbounded preceding and unbounded following),
          unique1, four
   FROM tenk1 WHERE unique1 < 10;
 END;
-ERROR:  syntax error at or near "unbounded"
-LINE 1: CREATE FUNCTION unbounded_syntax_test2a(unbounded int) RETUR...
-                                                ^
-CREATE FUNCTION unbounded_syntax_test2b(unbounded int) RETURNS TABLE (a int, b int, c int)
+CREATE FUNCTION unbounded_syntax_test2b("unbounded" int) RETURNS TABLE (a int, b int, c int)
 LANGUAGE SQL
 AS $$
   SELECT sum(unique1) over (rows between unbounded preceding and unbounded following),
          unique1, four
   FROM tenk1 WHERE unique1 < 10;
 $$;
-ERROR:  syntax error at or near "unbounded"
-LINE 1: CREATE FUNCTION unbounded_syntax_test2b(unbounded int) RETUR...
-                                                ^
 -- These will not apply the argument but instead treat UNBOUNDED as a keyword.
 SELECT * FROM unbounded_syntax_test2a(2);
-ERROR:  function unbounded_syntax_test2a(integer) does not exist
-LINE 1: SELECT * FROM unbounded_syntax_test2a(2);
-                      ^
+ a  | b | c 
+----+---+---
+ 45 | 4 | 0
+ 45 | 2 | 2
+ 45 | 1 | 1
+ 45 | 6 | 2
+ 45 | 9 | 1
+ 45 | 8 | 0
+ 45 | 5 | 1
+ 45 | 3 | 3
+ 45 | 7 | 3
+ 45 | 0 | 0
+(10 rows)
+
 SELECT * FROM unbounded_syntax_test2b(2);
-ERROR:  function unbounded_syntax_test2b(integer) does not exist
-LINE 1: SELECT * FROM unbounded_syntax_test2b(2);
-                      ^
--- GPDB: IF EXISTS, since the test2 functions could not be created (see above)
-DROP FUNCTION IF EXISTS unbounded_syntax_test1a, unbounded_syntax_test1b,
+ a  | b | c 
+----+---+---
+ 45 | 4 | 0
+ 45 | 2 | 2
+ 45 | 1 | 1
+ 45 | 6 | 2
+ 45 | 9 | 1
+ 45 | 8 | 0
+ 45 | 5 | 1
+ 45 | 3 | 3
+ 45 | 7 | 3
+ 45 | 0 | 0
+(10 rows)
+
+DROP FUNCTION unbounded_syntax_test1a, unbounded_syntax_test1b,
               unbounded_syntax_test2a, unbounded_syntax_test2b;
-NOTICE:  function unbounded_syntax_test2a() does not exist, skipping
-NOTICE:  function unbounded_syntax_test2b() does not exist, skipping
 -- Other tests with token UNBOUNDED in potentially problematic position
-CREATE FUNCTION unbounded(x int) RETURNS int LANGUAGE SQL IMMUTABLE RETURN x;
-ERROR:  syntax error at or near "unbounded"
-LINE 1: CREATE FUNCTION unbounded(x int) RETURNS int LANGUAGE SQL IM...
-                        ^
+CREATE FUNCTION "unbounded"(x int) RETURNS int LANGUAGE SQL IMMUTABLE RETURN x;
 -- GPDB: ORDER BY in the frame for MPP determinism (see note above).
 SELECT sum(unique1) over (order by unique1 rows between 1 preceding and 1 following),
        unique1, four
@@ -1985,22 +1994,47 @@ FROM tenk1 WHERE unique1 < 10;
   17 |       9 |    1
 (10 rows)
 
-SELECT sum(unique1) over (order by unique1 rows between unbounded(1) preceding and unbounded(1) following),
+SELECT sum(unique1) over (order by unique1 rows between "unbounded"(1) preceding and "unbounded"(1) following),
        unique1, four
 FROM tenk1 WHERE unique1 < 10;
-ERROR:  syntax error at or near "("
-LINE 1: ...ue1) over (order by unique1 rows between unbounded(1) preced...
-                                                             ^
-SELECT sum(unique1) over (order by unique1 rows between unbounded.x preceding and unbounded.x following),
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
+ sum | unique1 | four 
+-----+---------+------
+   1 |       0 |    0
+   3 |       1 |    1
+   6 |       2 |    2
+   9 |       3 |    3
+  12 |       4 |    0
+  15 |       5 |    1
+  18 |       6 |    2
+  21 |       7 |    3
+  24 |       8 |    0
+  17 |       9 |    1
+(10 rows)
+
+-- GPDB: variables are allowed in frame offsets (see transformFrameOffset()),
+-- so this query does not fail as it does upstream.
+SELECT sum(unique1) over (order by unique1 rows between "unbounded".x preceding and "unbounded".x following),
        unique1, four
-FROM tenk1, (values (1)) as unbounded(x) WHERE unique1 < 10;
-ERROR:  syntax error at or near "."
-LINE 1: ...ue1) over (order by unique1 rows between unbounded.x precedi...
-                                                             ^
-DROP FUNCTION unbounded;
-ERROR:  syntax error at or near "unbounded"
-LINE 1: DROP FUNCTION unbounded;
-                      ^
+FROM tenk1, (values (1)) as "unbounded"(x) WHERE unique1 < 10;
+ sum | unique1 | four 
+-----+---------+------
+   1 |       0 |    0
+   3 |       1 |    1
+   6 |       2 |    2
+   9 |       3 |    3
+  12 |       4 |    0
+  15 |       5 |    1
+  18 |       6 |    2
+  21 |       7 |    3
+  24 |       8 |    0
+  17 |       9 |    1
+(10 rows)
+
+DROP FUNCTION "unbounded";
 -- Check overflow behavior for various integer sizes
 select x, last_value(x) over (order by x::smallint range between current row and 2147450884 following)
 from generate_series(32764, 32766) x;
