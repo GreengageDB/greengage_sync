@@ -511,9 +511,9 @@ $$;
 SELECT * FROM unbounded_syntax_test1a(2);
 SELECT * FROM unbounded_syntax_test1b(2);
 
--- GPDB: Greengage's legacy precedence rules for column aliases without AS
--- do not accept UNBOUNDED as a function or parameter name, so the functions
--- below that use it fail to parse and the statements using them fail too.
+-- GPDB: UNBOUNDED is a reserved keyword in Greengage (unreserved upstream),
+-- so it cannot be a function or parameter name: the functions below that
+-- use it fail to parse and the statements using them fail too.
 CREATE FUNCTION unbounded_syntax_test2a(unbounded int) RETURNS TABLE (a int, b int, c int)
 LANGUAGE SQL
 BEGIN ATOMIC
