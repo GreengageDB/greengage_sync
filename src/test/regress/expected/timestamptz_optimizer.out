@@ -760,14 +760,26 @@ SELECT d1 - timestamp with time zone '1997-01-02' AS diff
   WHERE d1 BETWEEN timestamp with time zone '1902-01-01' AND timestamp with time zone '2038-01-01';
                   diff                  
 ----------------------------------------
+ @ 9863 days 8 hours ago
+ @ 39 days 17 hours 32 mins 1 sec
+ @ 39 days 17 hours 32 mins 1 sec
+ @ 39 days 17 hours 32 mins 2 secs
+ @ 39 days 17 hours 32 mins 1.4 secs
+ @ 39 days 17 hours 32 mins 1.5 secs
+ @ 39 days 17 hours 32 mins 1.6 secs
+ @ 0
+ @ 3 hours 4 mins 5 secs
  @ 39 days 17 hours 32 mins 1 sec
  @ 39 days 17 hours 32 mins 1 sec
  @ 39 days 17 hours 32 mins 1 sec
  @ 39 days 17 hours 32 mins 1 sec
- @ 39 days 17 hours 32 mins 1 sec
- @ 39 days 17 hours 32 mins 1 sec
+ @ 159 days 16 hours 32 mins 1 sec
  @ 1724 days 17 hours 19 mins 20 secs
+ @ 1168 days 8 hours 14 mins 1 sec
+ @ 1168 days 4 hours 14 mins 2 secs
  @ 1168 days 2 hours 14 mins 3 secs
+ @ 1168 days 3 hours 14 mins 4 secs
+ @ 1168 days 1 hour 14 mins 5 secs
  @ 39 days 17 hours 32 mins 1 sec
  @ 39 days 17 hours 32 mins 1 sec
  @ 39 days 17 hours 32 mins
@@ -776,46 +788,34 @@ SELECT d1 - timestamp with time zone '1997-01-02' AS diff
  @ 39 days 17 hours 32 mins 1 sec
  @ 39 days 17 hours 32 mins 1 sec
  @ 39 days 17 hours 32 mins 1 sec
- @ 189 days 13 hours 32 mins 1 sec
- @ 39 days 17 hours 32 mins 1 sec
- @ 41 days 17 hours 32 mins 1 sec
- @ 308 days 6 hours 27 mins 59 secs ago
- @ 306 days 6 hours 27 mins 59 secs ago
- @ 6 hours 27 mins 59 secs ago
- @ 57 days 17 hours 32 mins 1 sec
- @ 58 days 17 hours 32 mins 1 sec
- @ 363 days 17 hours 32 mins 1 sec
- @ 1094 days 17 hours 32 mins 1 sec
- @ 39 days 17 hours 32 mins 1.5 secs
- @ 0
- @ 159 days 16 hours 32 mins 1 sec
- @ 1168 days 3 hours 14 mins 4 secs
- @ 40 days 17 hours 32 mins 1 sec
- @ 43 days 17 hours 32 mins 1 sec
- @ 45 days 17 hours 32 mins 1 sec
- @ 45 days 17 hours 32 mins 1 sec
- @ 307 days 6 hours 27 mins 59 secs ago
- @ 362 days 17 hours 32 mins 1 sec
- @ 1093 days 17 hours 32 mins 1 sec
- @ 1460 days 17 hours 32 mins 1 sec
- @ 9863 days 8 hours ago
- @ 39 days 17 hours 32 mins 2 secs
- @ 39 days 17 hours 32 mins 1.4 secs
- @ 39 days 17 hours 32 mins 1.6 secs
- @ 3 hours 4 mins 5 secs
- @ 1168 days 8 hours 14 mins 1 sec
- @ 1168 days 4 hours 14 mins 2 secs
- @ 1168 days 1 hour 14 mins 5 secs
  @ 39 days 9 hours 32 mins 1 sec
  @ 39 days 9 hours 32 mins 1 sec
  @ 39 days 9 hours 32 mins 1 sec
  @ 39 days 14 hours 32 mins 1 sec
+ @ 189 days 13 hours 32 mins 1 sec
  @ 159 days 17 hours 32 mins 1 sec
+ @ 39 days 17 hours 32 mins 1 sec
+ @ 40 days 17 hours 32 mins 1 sec
+ @ 41 days 17 hours 32 mins 1 sec
  @ 42 days 17 hours 32 mins 1 sec
+ @ 43 days 17 hours 32 mins 1 sec
  @ 44 days 17 hours 32 mins 1 sec
+ @ 45 days 17 hours 32 mins 1 sec
+ @ 45 days 17 hours 32 mins 1 sec
+ @ 308 days 6 hours 27 mins 59 secs ago
+ @ 307 days 6 hours 27 mins 59 secs ago
+ @ 306 days 6 hours 27 mins 59 secs ago
  @ 2 days 6 hours 27 mins 59 secs ago
  @ 1 day 6 hours 27 mins 59 secs ago
+ @ 6 hours 27 mins 59 secs ago
+ @ 57 days 17 hours 32 mins 1 sec
+ @ 58 days 17 hours 32 mins 1 sec
+ @ 362 days 17 hours 32 mins 1 sec
+ @ 363 days 17 hours 32 mins 1 sec
+ @ 1093 days 17 hours 32 mins 1 sec
+ @ 1094 days 17 hours 32 mins 1 sec
  @ 1459 days 17 hours 32 mins 1 sec
+ @ 1460 days 17 hours 32 mins 1 sec
 (56 rows)
 
 -- DATE_PART (timestamptz_part)
