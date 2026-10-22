@@ -171,8 +171,6 @@ select count(*) from date_tbl
 --
 begin;
 create table numeric_tbl (f1 numeric(18,3), f2 numeric);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'f1' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 create view numeric_view as
   select
     f1, f1::numeric(16,4) as f1164, f1::numeric as f1n,
@@ -204,7 +202,6 @@ explain (verbose, costs off) select * from numeric_view;
    Output: f1, ("numeric"(f1, 1048584)), ((f1)::numeric), f2, ("numeric"(f2, 1048584)), f2
    ->  Seq Scan on public.numeric_tbl
          Output: f1, "numeric"(f1, 1048584), f1, f2, "numeric"(f2, 1048584), f2
- Optimizer: Pivotal Optimizer (GPORCA)
 (5 rows)
 
 rollback;
