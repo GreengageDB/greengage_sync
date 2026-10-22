@@ -10521,8 +10521,8 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			tbinfo->inhNotNull[j] = false;
 
 			/* column storage attributes */
-			if (!PQgetisnull(res, r, PQfnumber(res, "attencoding")))
-				tbinfo->attencoding[j] = pg_strdup(PQgetvalue(res, r, PQfnumber(res, "attencoding")));
+			if (!PQgetisnull(res, r, i_attencoding))
+				tbinfo->attencoding[j] = pg_strdup(PQgetvalue(res, r, i_attencoding));
 			else
 				tbinfo->attencoding[j] = NULL;
 		}
