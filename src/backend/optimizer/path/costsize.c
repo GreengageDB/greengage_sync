@@ -138,16 +138,8 @@ bool		enable_hashagg = true;
 bool		enable_groupagg = true;
 bool		enable_nestloop = false;
 bool		enable_material = true;
-<<<<<<< HEAD
-bool		enable_resultcache = true;
-bool		enable_mergejoin = false;
-||||||| e1c1c30f635
-bool		enable_resultcache = true;
-bool		enable_mergejoin = true;
-=======
 bool		enable_memoize = true;
-bool		enable_mergejoin = true;
->>>>>>> 3b231596ccf
+bool		enable_mergejoin = false;
 bool		enable_hashjoin = true;
 bool		enable_gathermerge = true;
 bool		enable_partitionwise_join = false;
@@ -3263,8 +3255,8 @@ final_cost_nestloop(PlannerInfo *root, NestPath *path,
 	if (inner_path_rows <= 0)
 		inner_path_rows = 1;
 
-	if (CdbPathLocus_IsPartitioned(path->path.locus))
-		numsegments = CdbPathLocus_NumSegments(path->path.locus);
+	if (CdbPathLocus_IsPartitioned(path->jpath.path.locus))
+		numsegments = CdbPathLocus_NumSegments(path->jpath.path.locus);
 	else
 		numsegments = 1;
 
@@ -3272,14 +3264,8 @@ final_cost_nestloop(PlannerInfo *root, NestPath *path,
 	if (path->jpath.path.param_info)
 		path->jpath.path.rows = path->jpath.path.param_info->ppi_rows;
 	else
-<<<<<<< HEAD
-		path->path.rows = path->path.parent->rows;
-	path->path.rows /= numsegments;
-||||||| e1c1c30f635
-		path->path.rows = path->path.parent->rows;
-=======
 		path->jpath.path.rows = path->jpath.path.parent->rows;
->>>>>>> 3b231596ccf
+	path->jpath.path.rows /= numsegments;
 
 	/* For partial paths, scale row estimate. */
 	if (path->jpath.path.parallel_workers > 0)
@@ -4155,14 +4141,6 @@ final_cost_hashjoin(PlannerInfo *root, HashPath *path,
 	Cost		run_cost = workspace->run_cost;
 	int			numbuckets = workspace->numbuckets;
 	int			numbatches = workspace->numbatches;
-<<<<<<< HEAD
-	int			hash_mem;
-||||||| e1c1c30f635
-	int			hash_mem;
-	Cost		cpu_per_tuple;
-=======
-	Cost		cpu_per_tuple;
->>>>>>> 3b231596ccf
 	QualCost	hash_qual_cost;
 	QualCost	qp_qual_cost;
 	double		hashjointuples;
