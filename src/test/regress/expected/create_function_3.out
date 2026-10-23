@@ -813,7 +813,7 @@ ORDER BY 1, 2;
 
 -- Cleanup
 DROP SCHEMA temp_func_test CASCADE;
-NOTICE:  drop cascades to 31 other objects
+NOTICE:  drop cascades to 41 other objects
 DETAIL:  drop cascades to function functest_a_1(text,date)
 drop cascades to function functest_a_2(text[])
 drop cascades to function functest_a_3()
