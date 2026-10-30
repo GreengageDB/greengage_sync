@@ -124,13 +124,8 @@ static MemoryContext xloginsert_cxt;
 static XLogRecData *XLogRecordAssemble(RmgrId rmid, uint8 info,
 									   XLogRecPtr RedoRecPtr, bool doPageWrites,
 									   XLogRecPtr *fpw_lsn, int *num_fpi,
-<<<<<<< HEAD
-									   TransactionId overrideXid);
-||||||| 3b231596ccf
-									   XLogRecPtr *fpw_lsn, int *num_fpi);
-=======
+									   TransactionId overrideXid,
 									   bool *topxid_included);
->>>>>>> c4cc2850f4d
 static bool XLogCompressBackupBlock(char *page, uint16 hole_offset,
 									uint16 hole_length, char *dest, uint16 *dlen);
 static XLogRecPtr XLogInsert_Internal(RmgrId rmid, uint8 info, TransactionId
@@ -493,13 +488,8 @@ XLogInsert_Internal(RmgrId rmid, uint8 info, TransactionId headerXid)
 		GetFullPageWriteInfo(&RedoRecPtr, &doPageWrites);
 
 		rdt = XLogRecordAssemble(rmid, info, RedoRecPtr, doPageWrites,
-<<<<<<< HEAD
-								 &fpw_lsn, &num_fpi, headerXid);
-||||||| 3b231596ccf
-								 &fpw_lsn, &num_fpi);
-=======
-								 &fpw_lsn, &num_fpi, &topxid_included);
->>>>>>> c4cc2850f4d
+								 &fpw_lsn, &num_fpi, headerXid,
+								 &topxid_included);
 
 		EndPos = XLogInsertRecord(rdt, fpw_lsn, curinsert_flags, num_fpi,
 								  topxid_included);
@@ -528,14 +518,8 @@ XLogInsert_Internal(RmgrId rmid, uint8 info, TransactionId headerXid)
 static XLogRecData *
 XLogRecordAssemble(RmgrId rmid, uint8 info,
 				   XLogRecPtr RedoRecPtr, bool doPageWrites,
-<<<<<<< HEAD
 				   XLogRecPtr *fpw_lsn, int *num_fpi,
-				   TransactionId headerXid)
-||||||| 3b231596ccf
-				   XLogRecPtr *fpw_lsn, int *num_fpi)
-=======
-				   XLogRecPtr *fpw_lsn, int *num_fpi, bool *topxid_included)
->>>>>>> c4cc2850f4d
+				   TransactionId headerXid, bool *topxid_included)
 {
 	XLogRecData *rdt;
 	uint32		total_len = 0;

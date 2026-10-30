@@ -48,13 +48,6 @@ extern void AtPrepare_Notify(void);
 extern void HandleNotifyInterrupt(void);
 
 /* process interrupts */
-<<<<<<< HEAD
-extern void ProcessNotifyInterrupt(void);
-extern void NotifyMyFrontEnd(const char *channel, const char *payload, int32 srcPid);
-||||||| 3b231596ccf
-extern void ProcessNotifyInterrupt(void);
-=======
 extern void ProcessNotifyInterrupt(bool flush);
->>>>>>> c4cc2850f4d
 
 #endif							/* ASYNC_H */
