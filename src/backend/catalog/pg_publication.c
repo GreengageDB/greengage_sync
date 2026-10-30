@@ -322,20 +322,10 @@ publication_add_relation(Oid pubid, PublicationRelInfo *targetrel,
 	memset(values, 0, sizeof(values));
 	memset(nulls, false, sizeof(nulls));
 
-<<<<<<< HEAD
-	prrelid = GetNewOidForPublicationRel(rel, PublicationRelObjectIndexId,
-										 Anum_pg_publication_rel_oid,
-										 relid, pubid);
-	values[Anum_pg_publication_rel_oid - 1] = ObjectIdGetDatum(prrelid);
-||||||| 3b231596ccf
-	prrelid = GetNewOidWithIndex(rel, PublicationRelObjectIndexId,
-								 Anum_pg_publication_rel_oid);
-	values[Anum_pg_publication_rel_oid - 1] = ObjectIdGetDatum(prrelid);
-=======
-	pubreloid = GetNewOidWithIndex(rel, PublicationRelObjectIndexId,
-								   Anum_pg_publication_rel_oid);
+	pubreloid = GetNewOidForPublicationRel(rel, PublicationRelObjectIndexId,
+										   Anum_pg_publication_rel_oid,
+										   relid, pubid);
 	values[Anum_pg_publication_rel_oid - 1] = ObjectIdGetDatum(pubreloid);
->>>>>>> c4cc2850f4d
 	values[Anum_pg_publication_rel_prpubid - 1] =
 		ObjectIdGetDatum(pubid);
 	values[Anum_pg_publication_rel_prrelid - 1] =
@@ -421,8 +411,9 @@ publication_add_schema(Oid pubid, Oid schemaid, bool if_not_exists)
 	memset(values, 0, sizeof(values));
 	memset(nulls, false, sizeof(nulls));
 
-	psschid = GetNewOidWithIndex(rel, PublicationNamespaceObjectIndexId,
-								 Anum_pg_publication_namespace_oid);
+	psschid = GetNewOidForPublicationNamespace(rel, PublicationNamespaceObjectIndexId,
+											   Anum_pg_publication_namespace_oid,
+											   schemaid, pubid);
 	values[Anum_pg_publication_namespace_oid - 1] = ObjectIdGetDatum(psschid);
 	values[Anum_pg_publication_namespace_pnpubid - 1] =
 		ObjectIdGetDatum(pubid);
