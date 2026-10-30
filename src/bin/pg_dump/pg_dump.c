@@ -825,10 +825,11 @@ main(int argc, char **argv)
 
 
 	/*
-	 * We allow the server to be back to 8.3, and up to any minor release of
-	 * our own major version.  (See also version check in pg_dumpall.c.)
+	 * We allow the server to be back to Greenplum 6 (9.4), and up to any minor
+	 * release of our own major version.  (See also version check in
+	 * pg_dumpall.c.)
 	 */
-	fout->minRemoteVersion = GPDB5_MAJOR_PGVERSION;	/* we can handle back to 8.3 */
+	fout->minRemoteVersion = GPDB6_MAJOR_PGVERSION;	/* we can handle back to 9.4 */
 	fout->maxRemoteVersion = (PG_VERSION_NUM / 100) * 100 + 99;
 
 	fout->numWorkers = numWorkers;

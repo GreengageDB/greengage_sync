@@ -2147,11 +2147,12 @@ connectDatabase(const char *dbname, const char *connection_string,
 	my_version = PG_VERSION_NUM;
 
 	/*
-	 * We allow the server to be back to 8.3, and up to any minor release of
-	 * our own major version.  (See also version check in pg_dump.c.)
+	 * We allow the server to be back to Greenplum 6 (9.4), and up to any minor
+	 * release of our own major version.  (See also version check in
+	 * pg_dump.c.)
 	 */
 	if (my_version != server_version
-		&& (server_version < GPDB5_MAJOR_PGVERSION ||		/* we can handle back to 8.3 */
+		&& (server_version < GPDB6_MAJOR_PGVERSION ||		/* we can handle back to 9.4 */
 			(server_version / 100) > (my_version / 100)))
 	{
 		pg_log_error("server version: %s; %s version: %s",
