@@ -297,7 +297,6 @@ typedef struct VacuumParams
 	bool		auto_stats;		/* invoked via automatic statistic collection */
 } VacuumParams;
 
-<<<<<<< HEAD
 typedef struct
 {
 	/* Table being sampled */
@@ -325,8 +324,7 @@ typedef struct
 	int			index;
 	bool		summary_sent;
 } gp_acquire_sample_rows_context;
-||||||| 3b231596ccf
-=======
+
 /*
  * VacDeadItems stores TIDs whose index tuples are deleted by index vacuuming.
  */
@@ -341,7 +339,6 @@ typedef struct VacDeadItems
 
 #define MAXDEADITEMS(avail_mem) \
 	(((avail_mem) - offsetof(VacDeadItems, items)) / sizeof(ItemPointerData))
->>>>>>> c4cc2850f4d
 
 /* GUC parameters */
 extern PGDLLIMPORT int default_statistics_target;	/* PGDLLIMPORT for PostGIS */
