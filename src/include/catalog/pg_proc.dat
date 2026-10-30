@@ -11822,7 +11822,7 @@
 { oid => 7135, descr => 'implementation of / operator',
    proname => 'interval_interval_div', prorettype => 'float8', proargtypes => 'interval interval', prosrc => 'interval_interval_div' },
 
-{ oid => 6116, descr => 'implementation of % operator',
+{ oid => 7014, descr => 'implementation of % operator',
    proname => 'interval_interval_mod', prorettype => 'interval', proargtypes => 'interval interval', prosrc => 'interval_interval_mod' },
 
 { oid => 6997, descr => 'decrement by one',
