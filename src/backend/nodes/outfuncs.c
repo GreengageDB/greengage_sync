@@ -4931,14 +4931,6 @@ _outBitString(StringInfo str, const BitString *node)
 }
 #endif /* COMPILING_BINARY_FUNCS */
 
-#ifndef COMPILING_BINARY_FUNCS
-static void
-_outNull(StringInfo str, const Node *n pg_attribute_unused())
-{
-	WRITE_NODE_TYPE("NULL");
-}
-#endif /* COMPILING_BINARY_FUNCS */
-
 static void
 _outColumnRef(StringInfo str, const ColumnRef *node)
 {
@@ -6537,9 +6529,6 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_UpdateStmt:
 				_outUpdateStmt(str, obj);
-				break;
-			case T_Null:
-				_outNull(str, obj);
 				break;
 			case T_ReturnStmt:
 				_outReturnStmt(str, obj);

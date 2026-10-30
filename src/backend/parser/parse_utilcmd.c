@@ -2557,7 +2557,7 @@ transformDistributedBy(ParseState *pstate,
 				 */
 				foreach(ip, constraint->keys)
 				{
-					Value	   *v = lfirst(ip);
+					String	   *v = lfirst(ip);
 					ListCell   *dkcell;
 
 					foreach(dkcell, distrkeys)
@@ -2587,7 +2587,7 @@ transformDistributedBy(ParseState *pstate,
 				new_distrkeys = NIL;
 				foreach(ip, constraint->keys)
 				{
-					Value	   *v = lfirst(ip);
+					String	   *v = lfirst(ip);
 					DistributionKeyElem  *dk = makeNode(DistributionKeyElem);
 
 					dk->name = strVal(v);
