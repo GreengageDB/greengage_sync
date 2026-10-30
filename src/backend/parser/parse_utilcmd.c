@@ -2528,10 +2528,10 @@ transformDistributedBy(ParseState *pstate,
 
 				if (iparam && iparam->name != 0)
 				{
-					IndexElem *distrkey = makeNode(IndexElem);
+					DistributionKeyElem *distrkey = makeNode(DistributionKeyElem);
 
 					distrkey->name = iparam->name;
-					distrkey->opclass = NULL;
+					distrkey->opclass = NIL;
 
 					distrkeys = lappend(distrkeys, distrkey);
 				}
@@ -3045,7 +3045,7 @@ transformDistributedBy(ParseState *pstate,
 
 		foreach(dk, distrkeys)
 		{
-			char	   *distcolname = strVal(lfirst(dk));
+			char	   *distcolname = ((DistributionKeyElem *) lfirst(dk))->name;
 			ListCell   *ip;
 			bool		found = false;
 
@@ -3085,7 +3085,7 @@ transformDistributedBy(ParseState *pstate,
 
 		foreach(dk, distrkeys)
 		{
-			char	   *distcolname = strVal(lfirst(dk));
+			char	   *distcolname = ((DistributionKeyElem *) lfirst(dk))->name;
 			ListCell   *ip;
 			bool		found = false;
 
