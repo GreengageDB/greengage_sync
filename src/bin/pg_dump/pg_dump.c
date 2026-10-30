@@ -4,15 +4,9 @@
  *	  pg_dump is a utility for dumping out a postgres database
  *	  into a script file.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *	pg_dump will read the system catalogs in a database and dump out a
@@ -111,23 +105,6 @@ typedef enum OidOptions
 /* global decls */
 static bool dosync = true;		/* Issue fsync() to make dump durable on disk. */
 
-<<<<<<< HEAD
-/* END MPP ADDITION */
-
-/*
- * For 8.0 and earlier servers, pulled from pg_database, for 8.1+ we use
- * FirstNormalObjectId - 1.
- */
-||||||| 3b231596ccf
-/* subquery used to convert user ID (eg, datdba) to user name */
-static const char *username_subquery;
-
-/*
- * For 8.0 and earlier servers, pulled from pg_database, for 8.1+ we use
- * FirstNormalObjectId - 1.
- */
-=======
->>>>>>> c4cc2850f4d
 static Oid	g_last_builtin_oid; /* value of the last builtin oid */
 
 /* The specified names/patterns should to match at least one entity */
@@ -221,12 +198,6 @@ static void expand_table_name_patterns(Archive *fout,
 static NamespaceInfo *findNamespace(Oid nsoid);
 static void dumpTableData(Archive *fout, const TableDataInfo *tdinfo);
 static void refreshMatViewData(Archive *fout, const TableDataInfo *tdinfo);
-<<<<<<< HEAD
-static void guessConstraintInheritance(TableInfo *tblinfo, int numTables);
-||||||| 3b231596ccf
-static void guessConstraintInheritance(TableInfo *tblinfo, int numTables);
-=======
->>>>>>> c4cc2850f4d
 static const char *getRoleName(const char *roleoid_str);
 static void collectRoleNames(Archive *fout);
 static void getAdditionalACLs(Archive *fout);
@@ -239,31 +210,12 @@ static inline void dumpComment(Archive *fout, const char *type,
 							   const char *name, const char *namespace,
 							   const char *owner, CatalogId catalogId,
 							   int subid, DumpId dumpId);
-<<<<<<< HEAD
-static int	findComments(Archive *fout, Oid classoid, Oid objoid,
-						 CommentItem **items);
-||||||| 3b231596ccf
-static int	findComments(Archive *fout, Oid classoid, Oid objoid,
-						 CommentItem **items);
-static int	collectComments(Archive *fout, CommentItem **items);
-=======
 static int	findComments(Oid classoid, Oid objoid, CommentItem **items);
->>>>>>> c4cc2850f4d
 static void collectComments(Archive *fout);
 static void dumpSecLabel(Archive *fout, const char *type, const char *name,
 						 const char *namespace, const char *owner,
 						 CatalogId catalogId, int subid, DumpId dumpId);
-<<<<<<< HEAD
-static int	findSecLabels(Archive *fout, Oid classoid, Oid objoid,
-						  SecLabelItem **items);
-||||||| 3b231596ccf
-static int	findSecLabels(Archive *fout, Oid classoid, Oid objoid,
-						  SecLabelItem **items);
-static int	collectSecLabels(Archive *fout, SecLabelItem **items);
-static void dumpDumpableObject(Archive *fout, const DumpableObject *dobj);
-=======
 static int	findSecLabels(Oid classoid, Oid objoid, SecLabelItem **items);
->>>>>>> c4cc2850f4d
 static void collectSecLabels(Archive *fout);
 static void dumpDumpableObject(Archive *fout, DumpableObject *dobj);
 static void dumpNamespace(Archive *fout, const NamespaceInfo *nspinfo);
@@ -364,16 +316,8 @@ static void binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 													 bool force_array_type,
 													 bool include_multirange_type);
 static void binary_upgrade_set_type_oids_by_rel(Archive *fout,
-<<<<<<< HEAD
-													PQExpBuffer upgrade_buffer,
-													const TableInfo *tblinfo);
-||||||| 3b231596ccf
-static void binary_upgrade_set_type_oids_by_rel_oid(Archive *fout,
-													PQExpBuffer upgrade_buffer, Oid pg_rel_oid);
-=======
 												PQExpBuffer upgrade_buffer,
 												const TableInfo *tbinfo);
->>>>>>> c4cc2850f4d
 static void binary_upgrade_set_pg_class_oids(Archive *fout,
 											 PQExpBuffer upgrade_buffer,
 											 Oid pg_class_oid, bool is_index);
@@ -407,14 +351,9 @@ static void dumpTypeStorageOptions(Archive *fout, const TypeInfo *tyinfo);
 static void dumpPreassignedOidArchiveEntry(Archive *fout, BinaryUpgradeInfo *binfo);
 static void dumpPreassignedOidDefinition(Archive *fout, BinaryUpgradeInfo *binfo);
 static void setExtPartDependency(TableInfo *tblinfo, int numTables);
-static char *format_table_function_columns(Archive *fout, const FuncInfo *finfo, int nallargs,
-							  char **allargtypes,
-							  char **argmodes,
-							  char **argnames);
 static void expand_oid_patterns(SimpleStringList *patterns,
 						   SimpleOidList *oids);
 
-static bool is_returns_table_function(int nallargs, char **argmodes);
 static void testGPbackend(Archive *fout);
 
 static char *nextToken(register char **stringp, register const char *delim);
@@ -886,22 +825,10 @@ main(int argc, char **argv)
 
 
 	/*
-<<<<<<< HEAD
 	 * We allow the server to be back to 8.3, and up to any minor release of
-||||||| 3b231596ccf
-	 * We allow the server to be back to 8.0, and up to any minor release of
-=======
-	 * We allow the server to be back to 9.2, and up to any minor release of
->>>>>>> c4cc2850f4d
 	 * our own major version.  (See also version check in pg_dumpall.c.)
 	 */
-<<<<<<< HEAD
 	fout->minRemoteVersion = GPDB5_MAJOR_PGVERSION;	/* we can handle back to 8.3 */
-||||||| 3b231596ccf
-	fout->minRemoteVersion = 80000;
-=======
-	fout->minRemoteVersion = 90200;
->>>>>>> c4cc2850f4d
 	fout->maxRemoteVersion = (PG_VERSION_NUM / 100) * 100 + 99;
 
 	fout->numWorkers = numWorkers;
@@ -914,7 +841,6 @@ main(int argc, char **argv)
 	setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
 
 	/*
-<<<<<<< HEAD
 	 * Determine whether or not we're interacting with a GP backend.
 	 */
 	testGPbackend(fout);
@@ -939,75 +865,17 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * Disable security label support if server version < v9.1.x (prevents
-	 * access to nonexistent pg_seclabel catalog)
-	 */
-	if (fout->remoteVersion < 90100)
-		dopt.no_security_labels = 1;
-
-	/*
-||||||| 3b231596ccf
-	 * Disable security label support if server version < v9.1.x (prevents
-	 * access to nonexistent pg_seclabel catalog)
-	 */
-	if (fout->remoteVersion < 90100)
-		dopt.no_security_labels = 1;
-
-	/*
-=======
->>>>>>> c4cc2850f4d
 	 * On hot standbys, never try to dump unlogged table data, since it will
 	 * just throw an error.
 	 */
 	if (fout->isStandby)
 		dopt.no_unlogged_table_data = true;
 
-<<<<<<< HEAD
-	/* check the version for the synchronized snapshots feature */
-	if (numWorkers > 1 && fout->remoteVersion < 90200
-		&& !dopt.no_synchronized_snapshots)
-		fatal("Synchronized snapshots are not supported by this server version.\n"
-			  "Run with --no-synchronized-snapshots instead if you do not need\n"
-			  "synchronized snapshots.");
-
-	/* check the version when a snapshot is explicitly specified by user */
-	if (dumpsnapshot && fout->remoteVersion < 90200)
-		fatal("Exported snapshots are not supported by this server version.");
-
-||||||| 3b231596ccf
-	/* Select the appropriate subquery to convert user IDs to names */
-	if (fout->remoteVersion >= 80100)
-		username_subquery = "SELECT rolname FROM pg_catalog.pg_roles WHERE oid =";
-	else
-		username_subquery = "SELECT usename FROM pg_catalog.pg_user WHERE usesysid =";
-
-	/* check the version for the synchronized snapshots feature */
-	if (numWorkers > 1 && fout->remoteVersion < 90200
-		&& !dopt.no_synchronized_snapshots)
-		fatal("Synchronized snapshots are not supported by this server version.\n"
-			  "Run with --no-synchronized-snapshots instead if you do not need\n"
-			  "synchronized snapshots.");
-
-	/* check the version when a snapshot is explicitly specified by user */
-	if (dumpsnapshot && fout->remoteVersion < 90200)
-		fatal("Exported snapshots are not supported by this server version.");
-
 	/*
 	 * Find the last built-in OID, if needed (prior to 8.1)
 	 *
 	 * With 8.1 and above, we can just use FirstNormalObjectId - 1.
 	 */
-	if (fout->remoteVersion < 80100)
-		g_last_builtin_oid = findLastBuiltinOid_V71(fout);
-	else
-		g_last_builtin_oid = FirstNormalObjectId - 1;
-=======
-	/*
-	 * Find the last built-in OID, if needed (prior to 8.1)
-	 *
-	 * With 8.1 and above, we can just use FirstNormalObjectId - 1.
-	 */
->>>>>>> c4cc2850f4d
 	g_last_builtin_oid = FirstNormalObjectId - 1;
 
 	pg_log_info("last built-in OID is %u", g_last_builtin_oid);
@@ -1112,12 +980,8 @@ main(int argc, char **argv)
 	 */
 	getDependencies(fout);
 
-<<<<<<< HEAD
 	setExtPartDependency(tblinfo, numTables);
 
-||||||| 3b231596ccf
-=======
->>>>>>> c4cc2850f4d
 	/*
 	 * Collect ACLs, comments, and security labels, if wanted.
 	 */
@@ -1419,30 +1283,16 @@ setup_connection(Archive *AH, const char *dumpencoding,
 		ExecuteSqlStatement(AH, "SET extra_float_digits TO 3");
 
 	/*
-<<<<<<< HEAD
-	 * Disable synchronized scanning to prevent unpredictable
-	 * changes in row ordering across a dump and reload.
-||||||| 3b231596ccf
-	 * If synchronized scanning is supported, disable it, to prevent
-	 * unpredictable changes in row ordering across a dump and reload.
-=======
 	 * Disable synchronized scanning, to prevent unpredictable changes in row
 	 * ordering across a dump and reload.
->>>>>>> c4cc2850f4d
 	 */
 	ExecuteSqlStatement(AH, "SET synchronize_seqscans TO off");
-<<<<<<< HEAD
 
 	/*
 	 * The default for enable_nestloop is off in GPDB. However, many of the queries
 	 * that we issue best run with nested loop joins, so enable it.
 	 */
 	ExecuteSqlStatement(AH, "SET enable_nestloop TO on");
-||||||| 3b231596ccf
-	if (AH->remoteVersion >= 80300)
-		ExecuteSqlStatement(AH, "SET synchronize_seqscans TO off");
-=======
->>>>>>> c4cc2850f4d
 
 	/*
 	 * Disable timeouts if supported.
@@ -1934,40 +1784,22 @@ selectDumpableNamespace(NamespaceInfo *nsinfo, Archive *fout)
 		 * no-mans-land between being a system object and a user object.
 		 * CREATE SCHEMA would fail, so its DUMP_COMPONENT_DEFINITION is just
 		 * a comment and an indication of ownership.  If the owner is the
-<<<<<<< HEAD
-		 * default, that DUMP_COMPONENT_DEFINITION is superfluous.
+		 * default, omit that superfluous DUMP_COMPONENT_DEFINITION.  Before
+		 * v15, the default owner was BOOTSTRAP_SUPERUSERID.
 		 *
 		 * In Greenplum binary upgrades, we need to dump the public schema
 		 * (i.e. DROP and re-CREATE it) in order to maintain its Oid; see
 		 * binary_upgrade_set_namespace_oid().
-||||||| 3b231596ccf
-		 * default, that DUMP_COMPONENT_DEFINITION is superfluous.
-=======
-		 * default, omit that superfluous DUMP_COMPONENT_DEFINITION.  Before
-		 * v15, the default owner was BOOTSTRAP_SUPERUSERID.
->>>>>>> c4cc2850f4d
 		 */
-<<<<<<< HEAD
 		if (dopt->binary_upgrade)
 			nsinfo->dobj.dump = DUMP_COMPONENT_ALL;
 		else
 		{
 			nsinfo->create = false;
 			nsinfo->dobj.dump = DUMP_COMPONENT_ALL;
-			if (nsinfo->nspowner == BOOTSTRAP_SUPERUSERID)
+			if (nsinfo->nspowner == ROLE_PG_DATABASE_OWNER)
 				nsinfo->dobj.dump &= ~DUMP_COMPONENT_DEFINITION;
 		}
-||||||| 3b231596ccf
-		nsinfo->create = false;
-		nsinfo->dobj.dump = DUMP_COMPONENT_ALL;
-		if (nsinfo->nspowner == BOOTSTRAP_SUPERUSERID)
-			nsinfo->dobj.dump &= ~DUMP_COMPONENT_DEFINITION;
-=======
-		nsinfo->create = false;
-		nsinfo->dobj.dump = DUMP_COMPONENT_ALL;
-		if (nsinfo->nspowner == ROLE_PG_DATABASE_OWNER)
-			nsinfo->dobj.dump &= ~DUMP_COMPONENT_DEFINITION;
->>>>>>> c4cc2850f4d
 		nsinfo->dobj.dump_contains = DUMP_COMPONENT_ALL;
 
 		/*
@@ -3116,82 +2948,6 @@ getTableDataFKConstraints(void)
 }
 
 
-/*
-<<<<<<< HEAD
- * guessConstraintInheritance:
- *	In pre-8.4 databases, we can't tell for certain which constraints
- *	are inherited.  We assume a CHECK constraint is inherited if its name
- *	matches the name of any constraint in the parent.  Originally this code
- *	tried to compare the expression texts, but that can fail for various
- *	reasons --- for example, if the parent and child tables are in different
- *	schemas, reverse-listing of function calls may produce different text
- *	(schema-qualified or not) depending on search path.
- *
- *	In 8.4 and up we can rely on the conislocal field to decide which
- *	constraints must be dumped; much safer.
- *
- *	This function assumes all conislocal flags were initialized to true.
- *	It clears the flag on anything that seems to be inherited.
- */
-static void
-guessConstraintInheritance(TableInfo *tblinfo, int numTables)
-{
-	int			i,
-				j,
-				k;
-
-	for (i = 0; i < numTables; i++)
-	{
-		TableInfo  *tbinfo = &(tblinfo[i]);
-		int			numParents;
-		TableInfo **parents;
-		TableInfo  *parent;
-
-		/* Some kinds never have parents */
-		if (tbinfo->relkind == RELKIND_SEQUENCE ||
-			tbinfo->relkind == RELKIND_VIEW ||
-			tbinfo->relkind == RELKIND_MATVIEW)
-			continue;
-
-		/* Don't bother computing anything for non-target tables, either */
-		if (!(tbinfo->dobj.dump & DUMP_COMPONENT_DEFINITION))
-			continue;
-
-		numParents = tbinfo->numParents;
-		parents = tbinfo->parents;
-
-		if (numParents == 0)
-			continue;			/* nothing to see here, move along */
-
-		/* scan for inherited CHECK constraints */
-		for (j = 0; j < tbinfo->ncheck; j++)
-		{
-			ConstraintInfo *constr;
-
-			constr = &(tbinfo->checkexprs[j]);
-
-			for (k = 0; k < numParents; k++)
-			{
-				int			l;
-
-				parent = parents[k];
-				for (l = 0; l < parent->ncheck; l++)
-				{
-					ConstraintInfo *pconstr = &(parent->checkexprs[l]);
-
-					if (strcmp(pconstr->dobj.name, constr->dobj.name) == 0)
-					{
-						constr->conislocal = false;
-						break;
-					}
-				}
-				if (!constr->conislocal)
-					break;
-			}
-		}
-	}
-}
-
 static void
 dumpPreassignedOidArchiveEntry(Archive *fout, BinaryUpgradeInfo *binfo)
 {
@@ -3241,84 +2997,6 @@ dumpPreassignedOidDefinition(Archive *fout, BinaryUpgradeInfo *binfo)
 }
 
 /*
-||||||| 3b231596ccf
- * guessConstraintInheritance:
- *	In pre-8.4 databases, we can't tell for certain which constraints
- *	are inherited.  We assume a CHECK constraint is inherited if its name
- *	matches the name of any constraint in the parent.  Originally this code
- *	tried to compare the expression texts, but that can fail for various
- *	reasons --- for example, if the parent and child tables are in different
- *	schemas, reverse-listing of function calls may produce different text
- *	(schema-qualified or not) depending on search path.
- *
- *	In 8.4 and up we can rely on the conislocal field to decide which
- *	constraints must be dumped; much safer.
- *
- *	This function assumes all conislocal flags were initialized to true.
- *	It clears the flag on anything that seems to be inherited.
- */
-static void
-guessConstraintInheritance(TableInfo *tblinfo, int numTables)
-{
-	int			i,
-				j,
-				k;
-
-	for (i = 0; i < numTables; i++)
-	{
-		TableInfo  *tbinfo = &(tblinfo[i]);
-		int			numParents;
-		TableInfo **parents;
-		TableInfo  *parent;
-
-		/* Sequences and views never have parents */
-		if (tbinfo->relkind == RELKIND_SEQUENCE ||
-			tbinfo->relkind == RELKIND_VIEW)
-			continue;
-
-		/* Don't bother computing anything for non-target tables, either */
-		if (!(tbinfo->dobj.dump & DUMP_COMPONENT_DEFINITION))
-			continue;
-
-		numParents = tbinfo->numParents;
-		parents = tbinfo->parents;
-
-		if (numParents == 0)
-			continue;			/* nothing to see here, move along */
-
-		/* scan for inherited CHECK constraints */
-		for (j = 0; j < tbinfo->ncheck; j++)
-		{
-			ConstraintInfo *constr;
-
-			constr = &(tbinfo->checkexprs[j]);
-
-			for (k = 0; k < numParents; k++)
-			{
-				int			l;
-
-				parent = parents[k];
-				for (l = 0; l < parent->ncheck; l++)
-				{
-					ConstraintInfo *pconstr = &(parent->checkexprs[l]);
-
-					if (strcmp(pconstr->dobj.name, constr->dobj.name) == 0)
-					{
-						constr->conislocal = false;
-						break;
-					}
-				}
-				if (!constr->conislocal)
-					break;
-			}
-		}
-	}
-}
-
-
-/*
-=======
->>>>>>> c4cc2850f4d
  * dumpDatabase:
  *	dump the database definition
  */
@@ -3366,127 +3044,6 @@ dumpDatabase(Archive *fout)
 	/*
 	 * Fetch the database-level properties for this database.
 	 */
-<<<<<<< HEAD
-	if (fout->remoteVersion >= 90300)
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "datdba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "datcollate, datctype, datfrozenxid, datminmxid, "
-						  "datacl, acldefault('d', datdba) AS acldefault, "
-						  "datistemplate, datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
-						  "shobj_description(oid, 'pg_database') AS description "
-
-						  "FROM pg_database "
-						  "WHERE datname = current_database()");
-	}
-	else if (fout->remoteVersion >= 90200)
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "datdba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "datcollate, datctype, datfrozenxid, 0 AS datminmxid, "
-						  "datacl, acldefault('d', datdba) AS acldefault, "
-						  "datistemplate, datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
-						  "shobj_description(oid, 'pg_database') AS description "
-
-						  "FROM pg_database "
-						  "WHERE datname = current_database()");
-	}
-	else if (fout->remoteVersion >= 80400)
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "datdba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "datcollate, datctype, datfrozenxid, 0 AS datminmxid, "
-						  "datacl, NULL AS acldefault, "
-						  "datistemplate, datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
-						  "shobj_description(oid, 'pg_database') AS description "
-
-						  "FROM pg_database "
-						  "WHERE datname = current_database()");
-	}
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90600)
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "(%s datdba) AS dba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "datcollate, datctype, datfrozenxid, datminmxid, "
-						  "(SELECT array_agg(acl ORDER BY row_n) FROM "
-						  "  (SELECT acl, row_n FROM "
-						  "     unnest(coalesce(datacl,acldefault('d',datdba))) "
-						  "     WITH ORDINALITY AS perm(acl,row_n) "
-						  "   WHERE NOT EXISTS ( "
-						  "     SELECT 1 "
-						  "     FROM unnest(acldefault('d',datdba)) "
-						  "       AS init(init_acl) "
-						  "     WHERE acl = init_acl)) AS datacls) "
-						  " AS datacl, "
-						  "(SELECT array_agg(acl ORDER BY row_n) FROM "
-						  "  (SELECT acl, row_n FROM "
-						  "     unnest(acldefault('d',datdba)) "
-						  "     WITH ORDINALITY AS initp(acl,row_n) "
-						  "   WHERE NOT EXISTS ( "
-						  "     SELECT 1 "
-						  "     FROM unnest(coalesce(datacl,acldefault('d',datdba))) "
-						  "       AS permp(orig_acl) "
-						  "     WHERE acl = orig_acl)) AS rdatacls) "
-						  " AS rdatacl, "
-						  "datistemplate, datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
-						  "shobj_description(oid, 'pg_database') AS description "
-
-						  "FROM pg_database "
-						  "WHERE datname = current_database()",
-						  username_subquery);
-	}
-	else if (fout->remoteVersion >= 90300)
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "(%s datdba) AS dba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "datcollate, datctype, datfrozenxid, datminmxid, "
-						  "datacl, '' as rdatacl, datistemplate, datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
-						  "shobj_description(oid, 'pg_database') AS description "
-
-						  "FROM pg_database "
-						  "WHERE datname = current_database()",
-						  username_subquery);
-	}
-	else if (fout->remoteVersion >= 80400)
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "(%s datdba) AS dba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "datcollate, datctype, datfrozenxid, 0 AS datminmxid, "
-						  "datacl, '' as rdatacl, datistemplate, datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
-						  "shobj_description(oid, 'pg_database') AS description "
-
-						  "FROM pg_database "
-						  "WHERE datname = current_database()",
-						  username_subquery);
-	}
-	else if (fout->remoteVersion >= 80200)
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "(%s datdba) AS dba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "NULL AS datcollate, NULL AS datctype, datfrozenxid, 0 AS datminmxid, "
-						  "datacl, '' as rdatacl, datistemplate, datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
-						  "shobj_description(oid, 'pg_database') AS description "
-
-						  "FROM pg_database "
-						  "WHERE datname = current_database()",
-						  username_subquery);
-	}
-=======
 	appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
 					  "datdba, "
 					  "pg_encoding_to_char(encoding) AS encoding, "
@@ -3495,43 +3052,13 @@ dumpDatabase(Archive *fout)
 					  "datistemplate, datconnlimit, ");
 	if (fout->remoteVersion >= 90300)
 		appendPQExpBuffer(dbQry, "datminmxid, ");
->>>>>>> c4cc2850f4d
 	else
-<<<<<<< HEAD
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "datdba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "NULL AS datcollate, NULL AS datctype, datfrozenxid, 0 AS datminmxid, "
-						  "datacl, NULL AS acldefault, "
-						  "datistemplate, datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
-						  "shobj_description(oid, 'pg_database') AS description "
-
-						  "FROM pg_database "
-						  "WHERE datname = current_database()");
-	}
-||||||| 3b231596ccf
-	{
-		appendPQExpBuffer(dbQry, "SELECT tableoid, oid, datname, "
-						  "(%s datdba) AS dba, "
-						  "pg_encoding_to_char(encoding) AS encoding, "
-						  "NULL AS datcollate, NULL AS datctype, datfrozenxid, 0 AS datminmxid, "
-						  "datacl, '' as rdatacl, datistemplate, "
-						  "-1 as datconnlimit, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace "
-						  "FROM pg_database "
-						  "WHERE datname = current_database()",
-						  username_subquery);
-	}
-=======
 		appendPQExpBuffer(dbQry, "0 AS datminmxid, ");
 	appendPQExpBuffer(dbQry,
 					  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
 					  "shobj_description(oid, 'pg_database') AS description "
 					  "FROM pg_database "
 					  "WHERE datname = current_database()");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQueryForSingleRow(fout, dbQry->data);
 
@@ -3631,37 +3158,15 @@ dumpDatabase(Archive *fout)
 	/* Compute correct tag for archive entry */
 	appendPQExpBuffer(labelq, "DATABASE %s", qdatname);
 
-<<<<<<< HEAD
-	char	   *comment = PQgetvalue(res, 0, PQfnumber(res, "description"));
-
-	if (comment && *comment && !dopt->no_comments)
-||||||| 3b231596ccf
 	/* Dump DB comment if any */
-	if (fout->remoteVersion >= 80200)
-=======
-	/* Dump DB comment if any */
->>>>>>> c4cc2850f4d
 	{
-		resetPQExpBuffer(dbQry);
-
 		/*
-			* Generates warning when loaded into a differently-named
-			* database.
-			*/
-		appendPQExpBuffer(dbQry, "COMMENT ON DATABASE %s IS ", qdatname);
-		appendStringLiteralAH(dbQry, comment, fout);
-		appendPQExpBufferStr(dbQry, ";\n");
+		 * 8.2 and up keep comments on shared objects in a shared table, so we
+		 * cannot use the dumpComment() code used for other database objects.
+		 * Be careful that the ArchiveEntry parameters match that function.
+		 */
+		char	   *comment = PQgetvalue(res, 0, PQfnumber(res, "description"));
 
-<<<<<<< HEAD
-		ArchiveEntry(fout, nilCatalogId, createDumpId(),
-						ARCHIVE_OPTS(.tag = labelq->data,
-									.owner = dba,
-									.description = "COMMENT",
-									.section = SECTION_NONE,
-									.createStmt = dbQry->data,
-									.deps = &dbDumpId,
-									.nDeps = 1));
-||||||| 3b231596ccf
 		if (comment && *comment && !dopt->no_comments)
 		{
 			resetPQExpBuffer(dbQry);
@@ -3683,35 +3188,6 @@ dumpDatabase(Archive *fout)
 									  .deps = &dbDumpId,
 									  .nDeps = 1));
 		}
-	}
-	else
-	{
-		dumpComment(fout, "DATABASE", qdatname, NULL, dba,
-					dbCatId, 0, dbDumpId);
-	}
-=======
-		if (comment && *comment && !dopt->no_comments)
-		{
-			resetPQExpBuffer(dbQry);
-
-			/*
-			 * Generates warning when loaded into a differently-named
-			 * database.
-			 */
-			appendPQExpBuffer(dbQry, "COMMENT ON DATABASE %s IS ", qdatname);
-			appendStringLiteralAH(dbQry, comment, fout);
-			appendPQExpBufferStr(dbQry, ";\n");
-
-			ArchiveEntry(fout, nilCatalogId, createDumpId(),
-						 ARCHIVE_OPTS(.tag = labelq->data,
-									  .owner = dba,
-									  .description = "COMMENT",
-									  .section = SECTION_NONE,
-									  .createStmt = dbQry->data,
-									  .deps = &dbDumpId,
-									  .nDeps = 1));
-		}
->>>>>>> c4cc2850f4d
 	}
 
 	/* Dump DB security label, if enabled */
@@ -4064,82 +3540,11 @@ getBlobs(Archive *fout)
 
 	pg_log_info("reading large objects");
 
-<<<<<<< HEAD
-	/* Fetch BLOB OIDs, and owner/ACL data if >= 9.0 */
-	if (fout->remoteVersion >= 90200)
-	{
-		appendPQExpBuffer(blobQry,
-						  "SELECT oid, lomowner, lomacl, "
-						  "acldefault('L', lomowner) AS acldefault "
-						  "FROM pg_largeobject_metadata");
-	}
-	else if (fout->remoteVersion >= 90000)
-		appendPQExpBuffer(blobQry,
-						  "SELECT oid, lomowner, lomacl, "
-						  "NULL AS acldefault "
-						  "FROM pg_largeobject_metadata");
-	else
-		appendPQExpBufferStr(blobQry,
-							 "SELECT DISTINCT loid AS oid, "
-							 "NULL::name AS rolname, NULL::oid AS lomacl, "
-							 "NULL::oid AS acldefault "
-							 " FROM pg_largeobject");
-||||||| 3b231596ccf
-	/* Fetch BLOB OIDs, and owner/ACL data if >= 9.0 */
-	if (fout->remoteVersion >= 90600)
-	{
-		PQExpBuffer acl_subquery = createPQExpBuffer();
-		PQExpBuffer racl_subquery = createPQExpBuffer();
-		PQExpBuffer init_acl_subquery = createPQExpBuffer();
-		PQExpBuffer init_racl_subquery = createPQExpBuffer();
-
-		buildACLQueries(acl_subquery, racl_subquery, init_acl_subquery,
-						init_racl_subquery, "l.lomacl", "l.lomowner",
-						"pip.initprivs", "'L'", dopt->binary_upgrade);
-
-		appendPQExpBuffer(blobQry,
-						  "SELECT l.oid, (%s l.lomowner) AS rolname, "
-						  "%s AS lomacl, "
-						  "%s AS rlomacl, "
-						  "%s AS initlomacl, "
-						  "%s AS initrlomacl "
-						  "FROM pg_largeobject_metadata l "
-						  "LEFT JOIN pg_init_privs pip ON "
-						  "(l.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_largeobject'::regclass "
-						  "AND pip.objsubid = 0) ",
-						  username_subquery,
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  init_acl_subquery->data,
-						  init_racl_subquery->data);
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(init_acl_subquery);
-		destroyPQExpBuffer(init_racl_subquery);
-	}
-	else if (fout->remoteVersion >= 90000)
-		appendPQExpBuffer(blobQry,
-						  "SELECT oid, (%s lomowner) AS rolname, lomacl, "
-						  "NULL AS rlomacl, NULL AS initlomacl, "
-						  "NULL AS initrlomacl "
-						  " FROM pg_largeobject_metadata",
-						  username_subquery);
-	else
-		appendPQExpBufferStr(blobQry,
-							 "SELECT DISTINCT loid AS oid, "
-							 "NULL::name AS rolname, NULL::oid AS lomacl, "
-							 "NULL::oid AS rlomacl, NULL::oid AS initlomacl, "
-							 "NULL::oid AS initrlomacl "
-							 " FROM pg_largeobject");
-=======
 	/* Fetch BLOB OIDs, and owner/ACL data */
 	appendPQExpBuffer(blobQry,
 					  "SELECT oid, lomowner, lomacl, "
 					  "acldefault('L', lomowner) AS acldefault "
 					  "FROM pg_largeobject_metadata");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, blobQry->data, PGRES_TUPLES_OK);
 
@@ -4459,8 +3864,6 @@ getPolicies(Archive *fout, TableInfo tblinfo[], int numTables)
 
 			tbinfo->dobj.components |= DUMP_COMPONENT_POLICY;
 
-			tbinfo->dobj.components |= DUMP_COMPONENT_POLICY;
-
 			polinfo[j].dobj.objType = DO_POLICY;
 			polinfo[j].dobj.catId.tableoid =
 				atooid(PQgetvalue(res, j, i_tableoid));
@@ -4736,17 +4139,10 @@ dumpPublication(Archive *fout, const PublicationInfo *pubinfo)
 	char	   *qpubname;
 	bool		first = true;
 
-<<<<<<< HEAD
-||||||| 3b231596ccf
-	if (!(pubinfo->dobj.dump & DUMP_COMPONENT_DEFINITION))
-		return;
-
-=======
 	/* Do nothing in data-only dump */
 	if (dopt->dataOnly)
 		return;
 
->>>>>>> c4cc2850f4d
 	delq = createPQExpBuffer();
 	query = createPQExpBuffer();
 
@@ -5157,20 +4553,9 @@ getSubscriptions(Archive *fout)
 	/* Get the subscriptions in current database. */
 	appendPQExpBuffer(query,
 					  "SELECT s.tableoid, s.oid, s.subname,\n"
-<<<<<<< HEAD
-					  "s.subowner,\n"
-					  "s.subconninfo, s.subslotname, s.subsynccommit,\n"
-					  "s.subpublications,\n");
-||||||| 3b231596ccf
-					  " (%s s.subowner) AS rolname,\n"
-					  " s.subconninfo, s.subslotname, s.subsynccommit,\n"
-					  " s.subpublications,\n",
-					  username_subquery);
-=======
 					  " s.subowner,\n"
 					  " s.subconninfo, s.subslotname, s.subsynccommit,\n"
 					  " s.subpublications,\n");
->>>>>>> c4cc2850f4d
 
 	if (fout->remoteVersion >= 140000)
 		appendPQExpBufferStr(query, " s.subbinary,\n");
@@ -5262,17 +4647,10 @@ dumpSubscription(Archive *fout, const SubscriptionInfo *subinfo)
 	int			i;
 	char		two_phase_disabled[] = {LOGICALREP_TWOPHASE_STATE_DISABLED, '\0'};
 
-<<<<<<< HEAD
-||||||| 3b231596ccf
-	if (!(subinfo->dobj.dump & DUMP_COMPONENT_DEFINITION))
-		return;
-
-=======
 	/* Do nothing in data-only dump */
 	if (dopt->dataOnly)
 		return;
 
->>>>>>> c4cc2850f4d
 	delq = createPQExpBuffer();
 	query = createPQExpBuffer();
 
@@ -5483,42 +4861,9 @@ binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 	simple_oid_list_append(&preassigned_oids, tyinfo->dobj.catId.oid);
 	appendPQExpBufferStr(upgrade_buffer, "\n-- For binary upgrade, must preserve pg_type oid\n");
 	appendPQExpBuffer(upgrade_buffer,
-<<<<<<< HEAD
 						"SELECT pg_catalog.binary_upgrade_set_next_pg_type_oid('%u'::pg_catalog.oid, "
 						"'%u'::pg_catalog.oid, $$%s$$::text);\n\n",
 						tyinfo->dobj.catId.oid, tyinfo->dobj.namespace->dobj.catId.oid, tyinfo->dobj.name);
-||||||| 3b231596ccf
-					  "SELECT pg_catalog.binary_upgrade_set_next_pg_type_oid('%u'::pg_catalog.oid);\n\n",
-					  pg_type_oid);
-
-	/* we only support old >= 8.3 for binary upgrades */
-	appendPQExpBuffer(upgrade_query,
-					  "SELECT typarray "
-					  "FROM pg_catalog.pg_type "
-					  "WHERE oid = '%u'::pg_catalog.oid;",
-					  pg_type_oid);
-
-	res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
-
-	pg_type_array_oid = atooid(PQgetvalue(res, 0, PQfnumber(res, "typarray")));
-
-	PQclear(res);
-=======
-					  "SELECT pg_catalog.binary_upgrade_set_next_pg_type_oid('%u'::pg_catalog.oid);\n\n",
-					  pg_type_oid);
-
-	appendPQExpBuffer(upgrade_query,
-					  "SELECT typarray "
-					  "FROM pg_catalog.pg_type "
-					  "WHERE oid = '%u'::pg_catalog.oid;",
-					  pg_type_oid);
-
-	res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
-
-	pg_type_array_oid = atooid(PQgetvalue(res, 0, PQfnumber(res, "typarray")));
-
-	PQclear(res);
->>>>>>> c4cc2850f4d
 
 	if (!OidIsValid(pg_type_array_oid) && force_array_type)
 	{
@@ -5598,50 +4943,12 @@ binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 
 static void
 binary_upgrade_set_type_oids_by_rel(Archive *fout,
-<<<<<<< HEAD
-										PQExpBuffer upgrade_buffer,
-										const TableInfo *tblinfo)
-||||||| 3b231596ccf
-binary_upgrade_set_type_oids_by_rel_oid(Archive *fout,
-										PQExpBuffer upgrade_buffer,
-										Oid pg_rel_oid)
-=======
 									PQExpBuffer upgrade_buffer,
 									const TableInfo *tbinfo)
->>>>>>> c4cc2850f4d
 {
-<<<<<<< HEAD
-	TypeInfo *typinfo = findTypeByOid(tblinfo->reltype);
+	TypeInfo *typinfo = findTypeByOid(tbinfo->reltype);
 	binary_upgrade_set_type_oids_by_type_oid(fout, upgrade_buffer,
 											 typinfo, false, false);
-||||||| 3b231596ccf
-	PQExpBuffer upgrade_query = createPQExpBuffer();
-	PGresult   *upgrade_res;
-	Oid			pg_type_oid;
-
-	appendPQExpBuffer(upgrade_query,
-					  "SELECT c.reltype AS crel "
-					  "FROM pg_catalog.pg_class c "
-					  "WHERE c.oid = '%u'::pg_catalog.oid;",
-					  pg_rel_oid);
-
-	upgrade_res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
-
-	pg_type_oid = atooid(PQgetvalue(upgrade_res, 0, PQfnumber(upgrade_res, "crel")));
-
-	if (OidIsValid(pg_type_oid))
-		binary_upgrade_set_type_oids_by_type_oid(fout, upgrade_buffer,
-												 pg_type_oid, false, false);
-
-	PQclear(upgrade_res);
-	destroyPQExpBuffer(upgrade_query);
-=======
-	Oid			pg_type_oid = tbinfo->reltype;
-
-	if (OidIsValid(pg_type_oid))
-		binary_upgrade_set_type_oids_by_type_oid(fout, upgrade_buffer,
-												 pg_type_oid, false, false);
->>>>>>> c4cc2850f4d
 }
 
 static void
@@ -5909,6 +5216,7 @@ binary_upgrade_extension_member(PQExpBuffer upgrade_buffer,
 NamespaceInfo *
 getNamespaces(Archive *fout, int *numNamespaces)
 {
+	DumpOptions *dopt = fout->dopt;
 	PGresult   *res;
 	int			ntups;
 	int			i;
@@ -5927,84 +5235,11 @@ getNamespaces(Archive *fout, int *numNamespaces)
 	 * we fetch all namespaces including system ones, so that every object we
 	 * read in can be linked to a containing namespace.
 	 */
-<<<<<<< HEAD
-	if (fout->remoteVersion >= 90200)
-		appendPQExpBuffer(query, "SELECT n.tableoid, n.oid, n.nspname, "
-						  "n.nspowner, "
-						  "n.nspacl, "
-						  "acldefault('n', n.nspowner) AS acldefault "
-						  "FROM pg_namespace n");
-	else
-		appendPQExpBuffer(query, "SELECT n.tableoid, n.oid, n.nspname, "
-						  "n.nspowner, "
-						  "n.nspacl, NULL AS acldefault "
-						  "FROM pg_namespace n");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90600)
-	{
-		PQExpBuffer acl_subquery = createPQExpBuffer();
-		PQExpBuffer racl_subquery = createPQExpBuffer();
-		PQExpBuffer init_acl_subquery = createPQExpBuffer();
-		PQExpBuffer init_racl_subquery = createPQExpBuffer();
-
-		/*
-		 * Bypass pg_init_privs.initprivs for the public schema.  Dropping and
-		 * recreating the schema detaches it from its pg_init_privs row, but
-		 * an empty destination database starts with this ACL nonetheless.
-		 * Also, we support dump/reload of public schema ownership changes.
-		 * ALTER SCHEMA OWNER filters nspacl through aclnewowner(), but
-		 * initprivs continues to reflect the initial owner (the bootstrap
-		 * superuser).  Hence, synthesize the value that nspacl will have
-		 * after the restore's ALTER SCHEMA OWNER.
-		 */
-		buildACLQueries(acl_subquery, racl_subquery, init_acl_subquery,
-						init_racl_subquery, "n.nspacl", "n.nspowner",
-						"CASE WHEN n.nspname = 'public' THEN array["
-						"  format('%s=UC/%s', "
-						"         n.nspowner::regrole, n.nspowner::regrole),"
-						"  format('=UC/%s', n.nspowner::regrole)]::aclitem[] "
-						"ELSE pip.initprivs END",
-						"'n'", dopt->binary_upgrade);
-
-		appendPQExpBuffer(query, "SELECT n.tableoid, n.oid, n.nspname, "
-						  "n.nspowner, "
-						  "(%s nspowner) AS rolname, "
-						  "%s as nspacl, "
-						  "%s as rnspacl, "
-						  "%s as initnspacl, "
-						  "%s as initrnspacl "
-						  "FROM pg_namespace n "
-						  "LEFT JOIN pg_init_privs pip "
-						  "ON (n.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_namespace'::regclass "
-						  "AND pip.objsubid = 0",
-						  username_subquery,
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  init_acl_subquery->data,
-						  init_racl_subquery->data);
-
-		appendPQExpBufferStr(query, ") ");
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(init_acl_subquery);
-		destroyPQExpBuffer(init_racl_subquery);
-	}
-	else
-		appendPQExpBuffer(query, "SELECT tableoid, oid, nspname, nspowner, "
-						  "(%s nspowner) AS rolname, "
-						  "nspacl, NULL as rnspacl, "
-						  "NULL AS initnspacl, NULL as initrnspacl "
-						  "FROM pg_namespace",
-						  username_subquery);
-=======
 	appendPQExpBuffer(query, "SELECT n.tableoid, n.oid, n.nspname, "
 					  "n.nspowner, "
 					  "n.nspacl, "
 					  "acldefault('n', n.nspowner) AS acldefault "
 					  "FROM pg_namespace n");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -6045,40 +5280,6 @@ getNamespaces(Archive *fout, int *numNamespaces)
 
 		/*
 		 * We ignore any pg_init_privs.initprivs entry for the public schema
-<<<<<<< HEAD
-		 * and assume a predetermined default, for two reasons.  First,
-		 * dropping and recreating the schema removes its pg_init_privs entry,
-		 * but an empty destination database starts with this ACL nonetheless.
-		 * Second, we support dump/reload of public schema ownership changes.
-		 * ALTER SCHEMA OWNER filters nspacl through aclnewowner(), but
-		 * initprivs continues to reflect the initial owner.  Hence,
-		 * synthesize the value that nspacl will have after the restore's
-		 * ALTER SCHEMA OWNER.  (a7a7be1f2fa, in the shape of 0c9d84427f4;
-		 * the default ACL is the pre-v15 one.)
-		 *
-		 * GPDB: binary upgrade re-creates the public schema (see
-		 * binary_upgrade_set_namespace_oid()), so it starts with the
-		 * CREATE SCHEMA default ACL instead.  Leave initprivs unset, and
-		 * dumpACL() compares nspacl with acldefault, as for any other schema.
-		 */
-		if (!dopt->binary_upgrade && strcmp(nsinfo[i].dobj.name, "public") == 0)
-		{
-			PQExpBuffer aclarray = createPQExpBuffer();
-			PQExpBuffer aclitem = createPQExpBuffer();
-
-			/* Standard ACL is {owner=UC/owner,=UC/owner} */
-			appendPQExpBufferChar(aclarray, '{');
-			quoteAclUserName(aclitem, nsinfo[i].rolname);
-			appendPQExpBufferStr(aclitem, "=UC/");
-			quoteAclUserName(aclitem, nsinfo[i].rolname);
-			appendPGArray(aclarray, aclitem->data);
-			resetPQExpBuffer(aclitem);
-			appendPQExpBufferStr(aclitem, "=UC/");
-||||||| 3b231596ccf
-		if (strlen(nsinfo[i].rolname) == 0)
-			pg_log_warning("owner of schema \"%s\" appears to be invalid",
-						   nsinfo[i].dobj.name);
-=======
 		 * and assume a predetermined default, for several reasons.  First,
 		 * dropping and recreating the schema removes its pg_init_privs entry,
 		 * but an empty destination database starts with this ACL nonetheless.
@@ -6092,8 +5293,13 @@ getNamespaces(Archive *fout, int *numNamespaces)
 		 * system object ACLs that the DBA had not customized.  We've made the
 		 * public schema depart from that, because changing its ACL so easily
 		 * breaks applications.
+		 *
+		 * GPDB: binary upgrade re-creates the public schema (see
+		 * binary_upgrade_set_namespace_oid()), so it starts with the
+		 * CREATE SCHEMA default ACL instead.  Leave initprivs unset, and
+		 * dumpACL() compares nspacl with acldefault, as for any other schema.
 		 */
-		if (strcmp(nsinfo[i].dobj.name, "public") == 0)
+		if (!dopt->binary_upgrade && strcmp(nsinfo[i].dobj.name, "public") == 0)
 		{
 			PQExpBuffer aclarray = createPQExpBuffer();
 			PQExpBuffer aclitem = createPQExpBuffer();
@@ -6106,7 +5312,6 @@ getNamespaces(Archive *fout, int *numNamespaces)
 			appendPGArray(aclarray, aclitem->data);
 			resetPQExpBuffer(aclitem);
 			appendPQExpBufferStr(aclitem, "=U/");
->>>>>>> c4cc2850f4d
 			quoteAclUserName(aclitem, nsinfo[i].rolname);
 			appendPGArray(aclarray, aclitem->data);
 			appendPQExpBufferChar(aclarray, '}');
@@ -6242,6 +5447,7 @@ getBinaryUpgradeObjects(void)
 TypeInfo *
 getTypes(Archive *fout, int *numTypes)
 {
+	DumpOptions *dopt = fout->dopt;
 	PGresult   *res;
 	int			ntups;
 	int			i;
@@ -6282,33 +5488,16 @@ getTypes(Archive *fout, int *numTypes)
 	 * be revisited if the backend ever allows renaming of array types.
 	 *
 	 */
-<<<<<<< HEAD
-	if (fout->remoteVersion >= 90200)
-	{
-		appendPQExpBuffer(query, "SELECT t.tableoid, t.oid, t.typname, "
-						  "t.typnamespace, t.typacl, "
-						  "acldefault('T', t.typowner) AS acldefault, "
-						  "t.typowner, "
-						  "t.typelem, t.typrelid, "
-						  "CASE WHEN t.typrelid = 0 THEN ' '::\"char\" "
-						  "ELSE (SELECT relkind FROM pg_class WHERE oid = t.typrelid) END AS typrelkind, "
-						  "t.typtype, t.typisdefined, "
-						  "t.typname[0] = '_' AND t.typelem != 0 AND "
-						  "(SELECT typarray FROM pg_type te WHERE oid = t.typelem) = t.oid AS isarray, ");
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT t.tableoid, t.oid, t.typname, "
-						  "t.typnamespace, NULL AS typacl, "
-						  "NULL AS acldefault, "
-						  "t.typowner, "
-						  "t.typelem, t.typrelid, "
-						  "CASE WHEN t.typrelid = 0 THEN ' '::\"char\" "
-						  "ELSE (SELECT relkind FROM pg_class WHERE oid = t.typrelid) END AS typrelkind, "
-						  "t.typtype, t.typisdefined, "
-						  "t.typname[0] = '_' AND t.typelem != 0 AND "
-						  "(SELECT typarray FROM pg_type te WHERE oid = t.typelem) = t.oid AS isarray, ");
-	}
+	appendPQExpBuffer(query, "SELECT t.tableoid, t.oid, t.typname, "
+					  "t.typnamespace, t.typacl, "
+					  "acldefault('T', t.typowner) AS acldefault, "
+					  "t.typowner, "
+					  "t.typelem, t.typrelid, "
+					  "CASE WHEN t.typrelid = 0 THEN ' '::\"char\" "
+					  "ELSE (SELECT relkind FROM pg_class WHERE oid = t.typrelid) END AS typrelkind, "
+					  "t.typtype, t.typisdefined, "
+					  "t.typname[0] = '_' AND t.typelem != 0 AND "
+					  "(SELECT typarray FROM pg_type te WHERE oid = t.typelem) = t.oid AS isarray, ");
 	if (dopt->binary_upgrade)
 		appendPQExpBuffer(query,
 							"coalesce(t.typarray, 0) AS typarrayoid, "
@@ -6323,105 +5512,6 @@ getTypes(Archive *fout, int *numTypes)
 							"coalesce(array_to_string(e.typoptions, ', '), '') AS typstorage "
 							"FROM pg_type t "
 							"LEFT JOIN pg_type_encoding e ON t.oid = e.typid ");
-||||||| 3b231596ccf
-
-	if (fout->remoteVersion >= 90600)
-	{
-		PQExpBuffer acl_subquery = createPQExpBuffer();
-		PQExpBuffer racl_subquery = createPQExpBuffer();
-		PQExpBuffer initacl_subquery = createPQExpBuffer();
-		PQExpBuffer initracl_subquery = createPQExpBuffer();
-
-		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
-						initracl_subquery, "t.typacl", "t.typowner",
-						"pip.initprivs", "'T'", dopt->binary_upgrade);
-
-		appendPQExpBuffer(query, "SELECT t.tableoid, t.oid, t.typname, "
-						  "t.typnamespace, "
-						  "%s AS typacl, "
-						  "%s AS rtypacl, "
-						  "%s AS inittypacl, "
-						  "%s AS initrtypacl, "
-						  "(%s t.typowner) AS rolname, "
-						  "t.typelem, t.typrelid, "
-						  "CASE WHEN t.typrelid = 0 THEN ' '::\"char\" "
-						  "ELSE (SELECT relkind FROM pg_class WHERE oid = t.typrelid) END AS typrelkind, "
-						  "t.typtype, t.typisdefined, "
-						  "t.typname[0] = '_' AND t.typelem != 0 AND "
-						  "(SELECT typarray FROM pg_type te WHERE oid = t.typelem) = t.oid AS isarray "
-						  "FROM pg_type t "
-						  "LEFT JOIN pg_init_privs pip ON "
-						  "(t.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_type'::regclass "
-						  "AND pip.objsubid = 0) ",
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  initacl_subquery->data,
-						  initracl_subquery->data,
-						  username_subquery);
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(initacl_subquery);
-		destroyPQExpBuffer(initracl_subquery);
-	}
-	else if (fout->remoteVersion >= 90200)
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, typname, "
-						  "typnamespace, typacl, NULL as rtypacl, "
-						  "NULL AS inittypacl, NULL AS initrtypacl, "
-						  "(%s typowner) AS rolname, "
-						  "typelem, typrelid, "
-						  "CASE WHEN typrelid = 0 THEN ' '::\"char\" "
-						  "ELSE (SELECT relkind FROM pg_class WHERE oid = typrelid) END AS typrelkind, "
-						  "typtype, typisdefined, "
-						  "typname[0] = '_' AND typelem != 0 AND "
-						  "(SELECT typarray FROM pg_type te WHERE oid = pg_type.typelem) = oid AS isarray "
-						  "FROM pg_type",
-						  username_subquery);
-	}
-	else if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, typname, "
-						  "typnamespace, NULL AS typacl, NULL as rtypacl, "
-						  "NULL AS inittypacl, NULL AS initrtypacl, "
-						  "(%s typowner) AS rolname, "
-						  "typelem, typrelid, "
-						  "CASE WHEN typrelid = 0 THEN ' '::\"char\" "
-						  "ELSE (SELECT relkind FROM pg_class WHERE oid = typrelid) END AS typrelkind, "
-						  "typtype, typisdefined, "
-						  "typname[0] = '_' AND typelem != 0 AND "
-						  "(SELECT typarray FROM pg_type te WHERE oid = pg_type.typelem) = oid AS isarray "
-						  "FROM pg_type",
-						  username_subquery);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, typname, "
-						  "typnamespace, NULL AS typacl, NULL as rtypacl, "
-						  "NULL AS inittypacl, NULL AS initrtypacl, "
-						  "(%s typowner) AS rolname, "
-						  "typelem, typrelid, "
-						  "CASE WHEN typrelid = 0 THEN ' '::\"char\" "
-						  "ELSE (SELECT relkind FROM pg_class WHERE oid = typrelid) END AS typrelkind, "
-						  "typtype, typisdefined, "
-						  "typname[0] = '_' AND typelem != 0 AS isarray "
-						  "FROM pg_type",
-						  username_subquery);
-	}
-=======
-	appendPQExpBuffer(query, "SELECT tableoid, oid, typname, "
-					  "typnamespace, typacl, "
-					  "acldefault('T', typowner) AS acldefault, "
-					  "typowner, "
-					  "typelem, typrelid, "
-					  "CASE WHEN typrelid = 0 THEN ' '::\"char\" "
-					  "ELSE (SELECT relkind FROM pg_class WHERE oid = typrelid) END AS typrelkind, "
-					  "typtype, typisdefined, "
-					  "typname[0] = '_' AND typelem != 0 AND "
-					  "(SELECT typarray FROM pg_type te WHERE oid = pg_type.typelem) = oid AS isarray "
-					  "FROM pg_type");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -6643,25 +5733,6 @@ getCollations(Archive *fout, int *numCollations)
 	int			i_collname;
 	int			i_collnamespace;
 	int			i_collowner;
-<<<<<<< HEAD
-
-	/* Collations didn't exist pre-9.1 */
-	if (fout->remoteVersion < 90100)
-	{
-		*numCollations = 0;
-		return NULL;
-	}
-||||||| 3b231596ccf
-	int			i_rolname;
-
-	/* Collations didn't exist pre-9.1 */
-	if (fout->remoteVersion < 90100)
-	{
-		*numCollations = 0;
-		return NULL;
-	}
-=======
->>>>>>> c4cc2850f4d
 
 	query = createPQExpBuffer();
 
@@ -7046,61 +6117,6 @@ getAggregates(Archive *fout, int *numAggs)
 								 "refclassid = 'pg_extension'::regclass AND "
 								 "deptype = 'e')");
 		appendPQExpBufferChar(query, ')');
-<<<<<<< HEAD
-	}
-	else if (fout->remoteVersion >= 90200)
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, proname AS aggname, "
-						  "pronamespace AS aggnamespace, "
-						  "pronargs, proargtypes, "
-						  "proowner, "
-						  "proacl AS aggacl, "
-						  "acldefault('f', proowner) AS acldefault "
-						  "FROM pg_proc p "
-						  "WHERE proisagg AND ("
-						  "pronamespace != "
-						  "(SELECT oid FROM pg_namespace "
-						  "WHERE nspname = 'pg_catalog')");
-		if (dopt->binary_upgrade)
-			appendPQExpBufferStr(query,
-								 " OR EXISTS(SELECT 1 FROM pg_depend WHERE "
-								 "classid = 'pg_proc'::regclass AND "
-								 "objid = p.oid AND "
-								 "refclassid = 'pg_extension'::regclass AND "
-								 "deptype = 'e')");
-		appendPQExpBufferChar(query, ')');
-||||||| 3b231596ccf
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(initacl_subquery);
-		destroyPQExpBuffer(initracl_subquery);
-	}
-	else if (fout->remoteVersion >= 80200)
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, proname AS aggname, "
-						  "pronamespace AS aggnamespace, "
-						  "pronargs, proargtypes, "
-						  "(%s proowner) AS rolname, "
-						  "proacl AS aggacl, "
-						  "NULL AS raggacl, "
-						  "NULL AS initaggacl, NULL AS initraggacl "
-						  "FROM pg_proc p "
-						  "WHERE proisagg AND ("
-						  "pronamespace != "
-						  "(SELECT oid FROM pg_namespace "
-						  "WHERE nspname = 'pg_catalog')",
-						  username_subquery);
-		if (dopt->binary_upgrade && fout->remoteVersion >= 90100)
-			appendPQExpBufferStr(query,
-								 " OR EXISTS(SELECT 1 FROM pg_depend WHERE "
-								 "classid = 'pg_proc'::regclass AND "
-								 "objid = p.oid AND "
-								 "refclassid = 'pg_extension'::regclass AND "
-								 "deptype = 'e')");
-		appendPQExpBufferChar(query, ')');
-=======
->>>>>>> c4cc2850f4d
 	}
 	else
 	{
@@ -7109,23 +6125,6 @@ getAggregates(Archive *fout, int *numAggs)
 						  "pronargs, proargtypes, "
 						  "proowner, "
 						  "proacl AS aggacl, "
-<<<<<<< HEAD
-						  "NULL AS acldefault "
-						  "FROM pg_proc p "
-						  "WHERE proisagg AND ("
-						  "pronamespace != "
-						  "(SELECT oid FROM pg_namespace "
-						  "WHERE nspname = 'pg_catalog')");
-		if (dopt->binary_upgrade && fout->remoteVersion >= 90100)
-||||||| 3b231596ccf
-						  "NULL AS raggacl, "
-						  "NULL AS initaggacl, NULL AS initraggacl "
-						  "FROM pg_proc "
-						  "WHERE proisagg "
-						  "AND pronamespace != "
-						  "(SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog')",
-						  username_subquery);
-=======
 						  "acldefault('f', proowner) AS acldefault "
 						  "FROM pg_proc p "
 						  "WHERE proisagg AND ("
@@ -7133,7 +6132,6 @@ getAggregates(Archive *fout, int *numAggs)
 						  "(SELECT oid FROM pg_namespace "
 						  "WHERE nspname = 'pg_catalog')");
 		if (dopt->binary_upgrade)
->>>>>>> c4cc2850f4d
 			appendPQExpBufferStr(query,
 								 " OR EXISTS(SELECT 1 FROM pg_depend WHERE "
 								 "classid = 'pg_proc'::regclass AND "
@@ -7422,49 +6420,17 @@ getFuncs(Archive *fout, int *numFuncs)
 	}
 	else
 	{
-		const char *acldefault_call;
-
-		acldefault_call = (fout->remoteVersion >= 90200 ?
-						   "acldefault('f', proowner)" : "NULL");
-
 		appendPQExpBuffer(query,
 						  "SELECT tableoid, oid, proname, prolang, "
 						  "pronargs, proargtypes, prorettype, proacl, "
-<<<<<<< HEAD
-						  "%s AS acldefault, "
-||||||| 3b231596ccf
-						  "NULL as rproacl, "
-						  "NULL as initproacl, NULL AS initrproacl, "
-=======
 						  "acldefault('f', proowner) AS acldefault, "
->>>>>>> c4cc2850f4d
 						  "pronamespace, "
 						  "proowner "
 						  "FROM pg_proc p "
-<<<<<<< HEAD
-						  "WHERE NOT proisagg",
-						  acldefault_call);
-		if (fout->remoteVersion >= 90200)
-			appendPQExpBufferStr(query,
-								 "\n  AND NOT EXISTS (SELECT 1 FROM pg_depend "
-								 "WHERE classid = 'pg_proc'::regclass AND "
-								 "objid = p.oid AND deptype = 'i')");
-		appendPQExpBuffer(query,
-||||||| 3b231596ccf
-						  "WHERE NOT proisagg",
-						  username_subquery);
-		if (fout->remoteVersion >= 90200)
-			appendPQExpBufferStr(query,
-								 "\n  AND NOT EXISTS (SELECT 1 FROM pg_depend "
-								 "WHERE classid = 'pg_proc'::regclass AND "
-								 "objid = p.oid AND deptype = 'i')");
-		appendPQExpBuffer(query,
-=======
 						  "WHERE NOT proisagg"
 						  "\n  AND NOT EXISTS (SELECT 1 FROM pg_depend "
 						  "WHERE classid = 'pg_proc'::regclass AND "
 						  "objid = p.oid AND deptype = 'i')"
->>>>>>> c4cc2850f4d
 						  "\n  AND ("
 						  "\n  pronamespace != "
 						  "(SELECT oid FROM pg_namespace "
@@ -7482,15 +6448,6 @@ getFuncs(Archive *fout, int *numFuncs)
 							  "\n  OR p.oid = pg_transform.trftosql))",
 							  g_last_builtin_oid);
 
-<<<<<<< HEAD
-/*
- * GPDB: Much of the extension machinery was backported into GPDB 5 from higher
- * major versions, so include the clause.
- */
-||||||| 3b231596ccf
-		if (dopt->binary_upgrade && fout->remoteVersion >= 90100)
-=======
->>>>>>> c4cc2850f4d
 		if (dopt->binary_upgrade)
 			appendPQExpBufferStr(query,
 								 "\n  OR EXISTS(SELECT 1 FROM pg_depend WHERE "
@@ -7612,23 +6569,11 @@ getTables(Archive *fout, int *numTables)
 	int			i_toastreloptions;
 	int			i_reloftype;
 	int			i_foreignserver;
-<<<<<<< HEAD
+	int			i_amname;
 	int			i_is_identity_sequence;
 	int			i_relacl;
 	int			i_acldefault;
-	int			i_partkeydef;
 	int			i_ispartition;
-	int			i_partbound;
-||||||| 3b231596ccf
-	int			i_is_identity_sequence;
-	int			i_changed_acl;
-	int			i_partkeydef;
-	int			i_ispartition;
-	int			i_partbound;
-=======
->>>>>>> c4cc2850f4d
-	int			i_amname;
-<<<<<<< HEAD
 	int			i_relstorage;
 	int			i_parrelid;
 	int			i_parlevel;
@@ -7637,13 +6582,6 @@ getTables(Archive *fout, int *numTables)
 	int			i_distclause;
 	int			i_partclause;
 	int			i_parttemplate;
-||||||| 3b231596ccf
-=======
-	int			i_is_identity_sequence;
-	int			i_relacl;
-	int			i_acldefault;
-	int			i_ispartition;
->>>>>>> c4cc2850f4d
 
 	/*
 	 * Find all the tables and table-like objects.
@@ -7684,6 +6622,13 @@ getTables(Archive *fout, int *numTables)
 					  "d.refobjid AS owning_tab, "
 					  "d.refobjsubid AS owning_col, "
 					  "tsp.spcname AS reltablespace, ");
+
+	if (fout->remoteVersion >= 90600)
+		appendPQExpBufferStr(query,
+						  "'' AS relstorage, ");
+	else
+		appendPQExpBufferStr(query,
+						  "c.relstorage, ");
 
 	if (fout->remoteVersion >= 120000)
 		appendPQExpBufferStr(query,
@@ -7744,6 +6689,44 @@ getTables(Archive *fout, int *numTables)
 		appendPQExpBufferStr(query,
 							 "false AS is_identity_sequence, ");
 
+	if (fout->remoteVersion >= 90600)
+		appendPQExpBufferStr(query,
+						  "0 as parrelid, "
+						  "0 as parlevel, ");
+	else
+		appendPQExpBufferStr(query,
+						  "p.parrelid as parrelid, "
+						  "pl.parlevel as parlevel, ");
+
+	if (dopt->binary_upgrade)
+		appendPQExpBufferStr(query,
+							"tc.reltype AS toast_type_oid, "
+							"i.indexrelid as toast_index_oid, ");
+
+	/* GPDB5: We expect either an empty policy entry, or exactly
+	 * 1 policy entry in gp_distribution_policy for a given table.
+	 * If there is more than 1 entry in the policy table for an
+	 * oid the scalar subquery will fail as intended.
+	 */
+	if (fout->remoteVersion >= GPDB6_MAJOR_PGVERSION)
+	 		appendPQExpBufferStr(query,
+							"pg_catalog.pg_get_table_distributedby(c.oid) as distclause, ");
+	else
+			appendPQExpBufferStr(query,
+							"(SELECT attrnums FROM pg_catalog.gp_distribution_policy p "
+					  	"WHERE p.localoid = c.oid) as distclause, ");
+
+	if (fout->remoteVersion >= 100000)
+		appendPQExpBufferStr(query,
+							"NULL as partclause, "
+							"NULL as parttemplate, ");
+	else
+		appendPQExpBufferStr(query,
+							"CASE WHEN pl.parlevel = 0 THEN "
+							"(SELECT pg_get_partition_def(c.oid, true, true)) END AS partclause, "
+							"CASE WHEN pl.parlevel = 0 THEN "
+							"(SELECT pg_get_partition_template_def(c.oid, true, true)) END as parttemplate, ");
+
 	if (fout->remoteVersion >= 100000)
 		appendPQExpBufferStr(query,
 							 "c.relispartition AS ispartition ");
@@ -7783,242 +6766,6 @@ getTables(Archive *fout, int *numTables)
 						 " AND tc.relkind = " CppAsString2(RELKIND_TOASTVALUE)
 						 " AND c.relkind <> " CppAsString2(RELKIND_PARTITIONED_TABLE) ")\n");
 
-	/*
-	 * Restrict to interesting relkinds (in particular, not indexes).  Not all
-	 * relkinds are possible in older servers, but it's not worth the trouble
-	 * to emit a version-dependent list.
-	 *
-	 * Composite-type table entries won't be dumped as such, but we have to
-	 * make a DumpableObject for them so that we can track dependencies of the
-	 * composite type (pg_depend entries for columns of the composite type
-	 * link to the pg_class entry not the pg_type entry).
-<<<<<<< HEAD
-	 *
-	 * Note: in this phase we should collect only a minimal amount of
-	 * information about each table, basically just enough to decide if it is
-	 * interesting. We must fetch all tables in this phase because otherwise
-	 * we cannot correctly identify inherited columns, owned sequences, etc.
-||||||| 3b231596ccf
-	 *
-	 * Note: in this phase we should collect only a minimal amount of
-	 * information about each table, basically just enough to decide if it is
-	 * interesting. We must fetch all tables in this phase because otherwise
-	 * we cannot correctly identify inherited columns, owned sequences, etc.
-	 *
-	 * We purposefully ignore toast OIDs for partitioned tables; the reason is
-	 * that versions 10 and 11 have them, but 12 does not, so emitting them
-	 * causes the upgrade to fail.
-=======
->>>>>>> c4cc2850f4d
-	 */
-<<<<<<< HEAD
-
-	appendPQExpBuffer(query,
-					  "SELECT c.tableoid, c.oid, c.relname, "
-					  "c.relnamespace, c.relkind, c.reltype, "
-					  "c.relowner, "
-					  "c.relchecks, "
-					  "c.relhasindex, c.relhasrules, c.relpages, "
-					  "d.refobjid AS owning_tab, "
-					  "d.refobjsubid AS owning_col, "
-					  "tsp.spcname AS reltablespace, "
-						"c.relfrozenxid, tc.relfrozenxid AS tfrozenxid, "
-						"tc.oid AS toid, ");
-
-	if (fout->remoteVersion >= 90600)
-		appendPQExpBufferStr(query,
-						  "'' AS relstorage, ");
-	else
-		appendPQExpBufferStr(query,
-						  "c.relstorage, ");
-
-	if (fout->remoteVersion >= 120000)
-		appendPQExpBufferStr(query,
-						  "false AS relhasoids, ");
-	else
-		appendPQExpBufferStr(query,
-						  "c.relhasoids, ");
-
-	if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-						  "c.relhastriggers, ");
-	else
-		appendPQExpBufferStr(query,
-						  "(c.reltriggers <> 0) AS relhastriggers, ");
-
-	if (fout->remoteVersion >= 90100)
-		appendPQExpBufferStr(query,
-						  "c.relpersistence, ");
-	else
-		appendPQExpBufferStr(query,
-						  "'p' AS relpersistence, ");
-
-	if (fout->remoteVersion >= 90300)
-		appendPQExpBufferStr(query,
-						  "c.relispopulated, ");
-	else
-		appendPQExpBufferStr(query,
-						  "'t' as relispopulated, ");
-
-	if (fout->remoteVersion >= 90400)
-		appendPQExpBufferStr(query,
-						  "c.relreplident, ");
-	else
-		appendPQExpBufferStr(query,
-						  "'d' AS relreplident, ");
-
-	if (fout->remoteVersion >= 90500)
-		appendPQExpBufferStr(query,
-						  "c.relrowsecurity, c.relforcerowsecurity, ");
-	else
-		appendPQExpBufferStr(query,
-						  "false AS relrowsecurity, "
-						  "false AS relforcerowsecurity, ");
-
-	if (fout->remoteVersion >= 90300)
-		appendPQExpBufferStr(query,
-						  "c.relminmxid, tc.relminmxid AS tminmxid, ");
-	else
-		appendPQExpBufferStr(query,
-						  "0 AS relminmxid, 0 AS tminmxid, ");
-
-	if (fout->remoteVersion >= 90300)
-		appendPQExpBufferStr(query,
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
-						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
-						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, ");
-	else
-		appendPQExpBufferStr(query,
-						  "c.reloptions, NULL AS checkoption, ");
-
-	if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-						  "tc.reloptions AS toast_reloptions, ");
-	else
-		appendPQExpBufferStr(query,
-						  "NULL AS toast_reloptions, ");
-
-	if (fout->remoteVersion >= 90000)
-		appendPQExpBufferStr(query,
-						  "CASE WHEN c.reloftype <> 0 THEN c.reloftype::pg_catalog.regtype ELSE NULL END AS reloftype, ");
-	else
-		appendPQExpBufferStr(query,
-						  "NULL AS reloftype, ");
-
-	if (fout->remoteVersion >= 90100)
-		appendPQExpBufferStr(query,
-							 "CASE WHEN c.relkind = " CppAsString2(RELKIND_FOREIGN_TABLE) " THEN "
-							 "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
-							 "ELSE 0 END AS foreignserver, ");
-	else
-		appendPQExpBufferStr(query,
-							 "0 AS foreignserver, ");
-
-	if (fout->remoteVersion >= 90600)
-		appendPQExpBufferStr(query,
-						  "am.amname, ");
-	else
-		appendPQExpBufferStr(query,
-						  "NULL AS amname, ");
-
-	if (fout->remoteVersion >= 90600)
-		appendPQExpBufferStr(query,
-						  "c.relkind = " CppAsString2(RELKIND_SEQUENCE)
-						  "AND EXISTS (SELECT 1 FROM pg_depend "
-						  "WHERE classid = 'pg_class'::regclass AND "
-						  "objid = c.oid AND objsubid = 0 AND "
-						  "refclassid = 'pg_class'::regclass AND "
-						  "deptype = 'i') AS is_identity_sequence, ");
-	else
-		appendPQExpBufferStr(query,
-						  "false AS is_identity_sequence, ");
-
-	if (fout->remoteVersion >= 90600)
-		appendPQExpBufferStr(query,
-						  "0 as parrelid, "
-						  "0 as parlevel, ");
-	else
-		appendPQExpBufferStr(query,
-						  "p.parrelid as parrelid, "
-						  "pl.parlevel as parlevel, ");
-
-	if (fout->remoteVersion >= 90200)
-		appendPQExpBufferStr(query,
-							 "c.relacl, "
-							 "acldefault(CASE WHEN c.relkind = " CppAsString2(RELKIND_SEQUENCE)
-							 " THEN 's'::\"char\" ELSE 'r'::\"char\" END, c.relowner) AS acldefault, ");
-	else
-		appendPQExpBufferStr(query,
-							 "c.relacl, NULL AS acldefault, ");
-
-	if (dopt->binary_upgrade)
-		appendPQExpBufferStr(query,
-							"tc.reltype AS toast_type_oid, "
-							"i.indexrelid as toast_index_oid, ");
-
-	/* GPDB5: We expect either an empty policy entry, or exactly
-	 * 1 policy entry in gp_distribution_policy for a given table.
-	 * If there is more than 1 entry in the policy table for an
-	 * oid the scalar subquery will fail as intended.
-	 */
-	if (fout->remoteVersion >= GPDB6_MAJOR_PGVERSION)
-	 		appendPQExpBufferStr(query,
-							"pg_catalog.pg_get_table_distributedby(c.oid) as distclause, ");
-	else
-			appendPQExpBufferStr(query,
-							"(SELECT attrnums FROM pg_catalog.gp_distribution_policy p "
-					  	"WHERE p.localoid = c.oid) as distclause, ");
-
-	if (fout->remoteVersion >= 100000)
-		appendPQExpBufferStr(query,
-						  "pg_get_partkeydef(c.oid) AS partkeydef, "
-						  "c.relispartition AS ispartition, "
-						  "pg_get_expr(c.relpartbound, c.oid) AS partbound, "
-							"NULL as partclause, "
-							"NULL as parttemplate");
-	else
-		appendPQExpBufferStr(query,
-						  "NULL AS partkeydef, "
-						  "0 AS ispartition,"
-						  "NULL AS partbound, "
-							"CASE WHEN pl.parlevel = 0 THEN "
-							"(SELECT pg_get_partition_def(c.oid, true, true)) END AS partclause, "
-							"CASE WHEN pl.parlevel = 0 THEN "
-							"(SELECT pg_get_partition_template_def(c.oid, true, true)) END as parttemplate ");
-
-	/*
-	 * Left join to pg_depend to pick up dependency info linking sequences to
-	 * their owning column, if any (note this dependency is AUTO as of 8.2).
-	 * Also join to pg_tablespace to collect the spcname.
-	 */
-	appendPQExpBufferStr(query,
-						 "\nFROM pg_class c\n"
-						 "LEFT JOIN pg_depend d ON "
-						 "(c.relkind = " CppAsString2(RELKIND_SEQUENCE) " AND "
-						 "d.classid = 'pg_class'::regclass AND d.objid = c.oid AND "
-						 "d.objsubid = 0 AND "
-						 "d.refclassid = 'pg_class'::regclass AND d.deptype IN ('a', 'i'))\n"
-						 "LEFT JOIN pg_tablespace tsp ON (tsp.oid = c.reltablespace)\n");
-
-	/*
-	 * In 9.6 and up, left join to pg_am to pick up the amname.
-	 */
-	if (fout->remoteVersion >= 90600)
-		appendPQExpBufferStr(query,
-							 "LEFT JOIN pg_am am ON (c.relam = am.oid)\n");
-
-	/*
-	 *
-	 * We purposefully ignore toast OIDs for partitioned tables; the reason is
-	 * that versions 10 and 11 have them, but later versions do not, so
-	 * emitting them causes the upgrade to fail.
-	 */
-
-	appendPQExpBufferStr(query,
-					"LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid"
-					" AND tc.relkind = " CppAsString2(RELKIND_TOASTVALUE)
-					" AND c.relkind <> " CppAsString2(RELKIND_PARTITIONED_TABLE) ")\n");
-
 	if (fout->remoteVersion < GPDB7_MAJOR_PGVERSION)
 		appendPQExpBufferStr(query,
 						  "LEFT JOIN pg_partition_rule pr ON c.oid = pr.parchildrelid\n"
@@ -8030,6 +6777,7 @@ getTables(Archive *fout, int *numTables)
 		appendPQExpBuffer(query,
 						"LEFT JOIN pg_catalog.pg_index i ON (c.reltoastrelid = i.indrelid AND i.indisvalid)\n"
 					  "LEFT JOIN pg_catalog.pg_class ti ON (i.indexrelid = ti.oid)\n");
+
 	/*
 	 * Restrict to interesting relkinds (in particular, not indexes).  Not all
 	 * relkinds are possible in older servers, but it's not worth the trouble
@@ -8041,15 +6789,14 @@ getTables(Archive *fout, int *numTables)
 	 * link to the pg_class entry not the pg_type entry).
 	 */
 	appendPQExpBufferStr(query,
-						  "WHERE c.relkind IN ("
-						  CppAsString2(RELKIND_RELATION) ", "
-						  CppAsString2(RELKIND_SEQUENCE) ", "
-						  CppAsString2(RELKIND_VIEW) ", "
-						  CppAsString2(RELKIND_COMPOSITE_TYPE) ", "
-						  CppAsString2(RELKIND_MATVIEW) ", "
-						  CppAsString2(RELKIND_FOREIGN_TABLE) ", "
-						  CppAsString2(RELKIND_PARTITIONED_TABLE) ")\n");
-
+						 "WHERE c.relkind IN ("
+						 CppAsString2(RELKIND_RELATION) ", "
+						 CppAsString2(RELKIND_SEQUENCE) ", "
+						 CppAsString2(RELKIND_VIEW) ", "
+						 CppAsString2(RELKIND_COMPOSITE_TYPE) ", "
+						 CppAsString2(RELKIND_MATVIEW) ", "
+						 CppAsString2(RELKIND_FOREIGN_TABLE) ", "
+						 CppAsString2(RELKIND_PARTITIONED_TABLE) ")\n");
 
 	if (fout->remoteVersion >= 80400)
 		appendPQExpBufferStr(query,
@@ -8060,556 +6807,6 @@ getTables(Archive *fout, int *numTables)
 
 	appendPQExpBufferStr(query,
 						"ORDER BY c.oid");
-||||||| 3b231596ccf
-
-	if (fout->remoteVersion >= 90600)
-	{
-		char	   *partkeydef = "NULL";
-		char	   *ispartition = "false";
-		char	   *partbound = "NULL";
-		char	   *relhasoids = "c.relhasoids";
-
-		PQExpBuffer acl_subquery = createPQExpBuffer();
-		PQExpBuffer racl_subquery = createPQExpBuffer();
-		PQExpBuffer initacl_subquery = createPQExpBuffer();
-		PQExpBuffer initracl_subquery = createPQExpBuffer();
-
-		PQExpBuffer attacl_subquery = createPQExpBuffer();
-		PQExpBuffer attracl_subquery = createPQExpBuffer();
-		PQExpBuffer attinitacl_subquery = createPQExpBuffer();
-		PQExpBuffer attinitracl_subquery = createPQExpBuffer();
-
-		/*
-		 * Collect the information about any partitioned tables, which were
-		 * added in PG10.
-		 */
-
-		if (fout->remoteVersion >= 100000)
-		{
-			partkeydef = "pg_get_partkeydef(c.oid)";
-			ispartition = "c.relispartition";
-			partbound = "pg_get_expr(c.relpartbound, c.oid)";
-		}
-
-		/* In PG12 upwards WITH OIDS does not exist anymore. */
-		if (fout->remoteVersion >= 120000)
-			relhasoids = "'f'::bool";
-
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any (note this dependency is AUTO as of 8.2)
-		 *
-		 * Left join to detect if any privileges are still as-set-at-init, in
-		 * which case we won't dump out ACL commands for those.
-		 */
-
-		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
-						initracl_subquery, "c.relacl", "c.relowner",
-						"pip.initprivs",
-						"CASE WHEN c.relkind = " CppAsString2(RELKIND_SEQUENCE)
-						" THEN 's' ELSE 'r' END::\"char\"",
-						dopt->binary_upgrade);
-
-		buildACLQueries(attacl_subquery, attracl_subquery, attinitacl_subquery,
-						attinitracl_subquery, "at.attacl", "c.relowner",
-						"pip.initprivs", "'c'", dopt->binary_upgrade);
-
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "%s AS relacl, %s as rrelacl, "
-						  "%s AS initrelacl, %s as initrrelacl, "
-						  "c.relkind, c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, %s AS relhasoids, "
-						  "c.relrowsecurity, c.relforcerowsecurity, "
-						  "c.relfrozenxid, c.relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "tc.relminmxid AS tminmxid, "
-						  "c.relpersistence, c.relispopulated, "
-						  "c.relreplident, c.relpages, am.amname, "
-						  "CASE WHEN c.relkind = 'f' THEN "
-						  "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
-						  "ELSE 0 END AS foreignserver, "
-						  "CASE WHEN c.reloftype <> 0 THEN c.reloftype::pg_catalog.regtype ELSE NULL END AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
-						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
-						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
-						  "tc.reloptions AS toast_reloptions, "
-						  "c.relkind = '%c' AND EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_class'::regclass AND objid = c.oid AND objsubid = 0 AND refclassid = 'pg_class'::regclass AND deptype = 'i') AS is_identity_sequence, "
-						  "EXISTS (SELECT 1 FROM pg_attribute at LEFT JOIN pg_init_privs pip ON "
-						  "(c.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_class'::regclass "
-						  "AND pip.objsubid = at.attnum)"
-						  "WHERE at.attrelid = c.oid AND ("
-						  "%s IS NOT NULL "
-						  "OR %s IS NOT NULL "
-						  "OR %s IS NOT NULL "
-						  "OR %s IS NOT NULL"
-						  "))"
-						  "AS changed_acl, "
-						  "%s AS partkeydef, "
-						  "%s AS ispartition, "
-						  "%s AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype IN ('a', 'i')) "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND c.relkind <> '%c') "
-						  "LEFT JOIN pg_am am ON (c.relam = am.oid) "
-						  "LEFT JOIN pg_init_privs pip ON "
-						  "(c.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_class'::regclass "
-						  "AND pip.objsubid = 0) "
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  initacl_subquery->data,
-						  initracl_subquery->data,
-						  username_subquery,
-						  relhasoids,
-						  RELKIND_SEQUENCE,
-						  attacl_subquery->data,
-						  attracl_subquery->data,
-						  attinitacl_subquery->data,
-						  attinitracl_subquery->data,
-						  partkeydef,
-						  ispartition,
-						  partbound,
-						  RELKIND_SEQUENCE,
-						  RELKIND_PARTITIONED_TABLE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
-						  RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE,
-						  RELKIND_PARTITIONED_TABLE);
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(initacl_subquery);
-		destroyPQExpBuffer(initracl_subquery);
-
-		destroyPQExpBuffer(attacl_subquery);
-		destroyPQExpBuffer(attracl_subquery);
-		destroyPQExpBuffer(attinitacl_subquery);
-		destroyPQExpBuffer(attinitracl_subquery);
-	}
-	else if (fout->remoteVersion >= 90500)
-	{
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any (note this dependency is AUTO as of 8.2)
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "c.relacl, NULL as rrelacl, "
-						  "NULL AS initrelacl, NULL AS initrrelacl, "
-						  "c.relkind, "
-						  "c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, c.relhasoids, "
-						  "c.relrowsecurity, c.relforcerowsecurity, "
-						  "c.relfrozenxid, c.relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "tc.relminmxid AS tminmxid, "
-						  "c.relpersistence, c.relispopulated, "
-						  "c.relreplident, c.relpages, "
-						  "NULL AS amname, "
-						  "CASE WHEN c.relkind = 'f' THEN "
-						  "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
-						  "ELSE 0 END AS foreignserver, "
-						  "CASE WHEN c.reloftype <> 0 THEN c.reloftype::pg_catalog.regtype ELSE NULL END AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
-						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
-						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
-						  "tc.reloptions AS toast_reloptions, "
-						  "NULL AS changed_acl, "
-						  "NULL AS partkeydef, "
-						  "false AS ispartition, "
-						  "NULL AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype = 'a') "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid) "
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  username_subquery,
-						  RELKIND_SEQUENCE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
-						  RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE);
-	}
-	else if (fout->remoteVersion >= 90400)
-	{
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any (note this dependency is AUTO as of 8.2)
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "c.relacl, NULL as rrelacl, "
-						  "NULL AS initrelacl, NULL AS initrrelacl, "
-						  "c.relkind, "
-						  "c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, c.relhasoids, "
-						  "'f'::bool AS relrowsecurity, "
-						  "'f'::bool AS relforcerowsecurity, "
-						  "c.relfrozenxid, c.relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "tc.relminmxid AS tminmxid, "
-						  "c.relpersistence, c.relispopulated, "
-						  "c.relreplident, c.relpages, "
-						  "NULL AS amname, "
-						  "CASE WHEN c.relkind = 'f' THEN "
-						  "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
-						  "ELSE 0 END AS foreignserver, "
-						  "CASE WHEN c.reloftype <> 0 THEN c.reloftype::pg_catalog.regtype ELSE NULL END AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
-						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
-						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
-						  "tc.reloptions AS toast_reloptions, "
-						  "NULL AS changed_acl, "
-						  "NULL AS partkeydef, "
-						  "false AS ispartition, "
-						  "NULL AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype = 'a') "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid) "
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  username_subquery,
-						  RELKIND_SEQUENCE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
-						  RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE);
-	}
-	else if (fout->remoteVersion >= 90300)
-	{
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any (note this dependency is AUTO as of 8.2)
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "c.relacl, NULL as rrelacl, "
-						  "NULL AS initrelacl, NULL AS initrrelacl, "
-						  "c.relkind, "
-						  "c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, c.relhasoids, "
-						  "'f'::bool AS relrowsecurity, "
-						  "'f'::bool AS relforcerowsecurity, "
-						  "c.relfrozenxid, c.relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "tc.relminmxid AS tminmxid, "
-						  "c.relpersistence, c.relispopulated, "
-						  "'d' AS relreplident, c.relpages, "
-						  "NULL AS amname, "
-						  "CASE WHEN c.relkind = 'f' THEN "
-						  "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
-						  "ELSE 0 END AS foreignserver, "
-						  "CASE WHEN c.reloftype <> 0 THEN c.reloftype::pg_catalog.regtype ELSE NULL END AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
-						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
-						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
-						  "tc.reloptions AS toast_reloptions, "
-						  "NULL AS changed_acl, "
-						  "NULL AS partkeydef, "
-						  "false AS ispartition, "
-						  "NULL AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype = 'a') "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid) "
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  username_subquery,
-						  RELKIND_SEQUENCE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
-						  RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE);
-	}
-	else if (fout->remoteVersion >= 90100)
-	{
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any (note this dependency is AUTO as of 8.2)
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "c.relacl, NULL as rrelacl, "
-						  "NULL AS initrelacl, NULL AS initrrelacl, "
-						  "c.relkind, "
-						  "c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, c.relhasoids, "
-						  "'f'::bool AS relrowsecurity, "
-						  "'f'::bool AS relforcerowsecurity, "
-						  "c.relfrozenxid, 0 AS relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "0 AS tminmxid, "
-						  "c.relpersistence, 't' as relispopulated, "
-						  "'d' AS relreplident, c.relpages, "
-						  "NULL AS amname, "
-						  "CASE WHEN c.relkind = 'f' THEN "
-						  "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
-						  "ELSE 0 END AS foreignserver, "
-						  "CASE WHEN c.reloftype <> 0 THEN c.reloftype::pg_catalog.regtype ELSE NULL END AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "c.reloptions AS reloptions, "
-						  "tc.reloptions AS toast_reloptions, "
-						  "NULL AS changed_acl, "
-						  "NULL AS partkeydef, "
-						  "false AS ispartition, "
-						  "NULL AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype = 'a') "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid) "
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  username_subquery,
-						  RELKIND_SEQUENCE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
-						  RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE);
-	}
-	else if (fout->remoteVersion >= 90000)
-	{
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any (note this dependency is AUTO as of 8.2)
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "c.relacl, NULL as rrelacl, "
-						  "NULL AS initrelacl, NULL AS initrrelacl, "
-						  "c.relkind, "
-						  "c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, c.relhasoids, "
-						  "'f'::bool AS relrowsecurity, "
-						  "'f'::bool AS relforcerowsecurity, "
-						  "c.relfrozenxid, 0 AS relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "0 AS tminmxid, "
-						  "'p' AS relpersistence, 't' as relispopulated, "
-						  "'d' AS relreplident, c.relpages, "
-						  "NULL AS amname, "
-						  "NULL AS foreignserver, "
-						  "CASE WHEN c.reloftype <> 0 THEN c.reloftype::pg_catalog.regtype ELSE NULL END AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "c.reloptions AS reloptions, "
-						  "tc.reloptions AS toast_reloptions, "
-						  "NULL AS changed_acl, "
-						  "NULL AS partkeydef, "
-						  "false AS ispartition, "
-						  "NULL AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype = 'a') "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid) "
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  username_subquery,
-						  RELKIND_SEQUENCE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE);
-	}
-	else if (fout->remoteVersion >= 80400)
-	{
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any (note this dependency is AUTO as of 8.2)
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "c.relacl, NULL as rrelacl, "
-						  "NULL AS initrelacl, NULL AS initrrelacl, "
-						  "c.relkind, "
-						  "c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, c.relhasoids, "
-						  "'f'::bool AS relrowsecurity, "
-						  "'f'::bool AS relforcerowsecurity, "
-						  "c.relfrozenxid, 0 AS relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "0 AS tminmxid, "
-						  "'p' AS relpersistence, 't' as relispopulated, "
-						  "'d' AS relreplident, c.relpages, "
-						  "NULL AS amname, "
-						  "NULL AS foreignserver, "
-						  "NULL AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "c.reloptions AS reloptions, "
-						  "tc.reloptions AS toast_reloptions, "
-						  "NULL AS changed_acl, "
-						  "NULL AS partkeydef, "
-						  "false AS ispartition, "
-						  "NULL AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype = 'a') "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid) "
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  username_subquery,
-						  RELKIND_SEQUENCE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE);
-	}
-	else if (fout->remoteVersion >= 80200)
-	{
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any (note this dependency is AUTO as of 8.2)
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "c.relacl, NULL as rrelacl, "
-						  "NULL AS initrelacl, NULL AS initrrelacl, "
-						  "c.relkind, "
-						  "c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, (c.reltriggers <> 0) AS relhastriggers, "
-						  "c.relhasindex, c.relhasrules, c.relhasoids, "
-						  "'f'::bool AS relrowsecurity, "
-						  "'f'::bool AS relforcerowsecurity, "
-						  "c.relfrozenxid, 0 AS relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "0 AS tminmxid, "
-						  "'p' AS relpersistence, 't' as relispopulated, "
-						  "'d' AS relreplident, c.relpages, "
-						  "NULL AS amname, "
-						  "NULL AS foreignserver, "
-						  "NULL AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "c.reloptions AS reloptions, "
-						  "NULL AS toast_reloptions, "
-						  "NULL AS changed_acl, "
-						  "NULL AS partkeydef, "
-						  "false AS ispartition, "
-						  "NULL AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype = 'a') "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid) "
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  username_subquery,
-						  RELKIND_SEQUENCE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE);
-	}
-	else
-	{
-		/*
-		 * Left join to pick up dependency info linking sequences to their
-		 * owning column, if any
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, relname, "
-						  "relacl, NULL as rrelacl, "
-						  "NULL AS initrelacl, NULL AS initrrelacl, "
-						  "relkind, relnamespace, "
-						  "(%s relowner) AS rolname, "
-						  "relchecks, (reltriggers <> 0) AS relhastriggers, "
-						  "relhasindex, relhasrules, relhasoids, "
-						  "'f'::bool AS relrowsecurity, "
-						  "'f'::bool AS relforcerowsecurity, "
-						  "0 AS relfrozenxid, 0 AS relminmxid,"
-						  "0 AS toid, "
-						  "0 AS tfrozenxid, 0 AS tminmxid,"
-						  "'p' AS relpersistence, 't' as relispopulated, "
-						  "'d' AS relreplident, relpages, "
-						  "NULL AS amname, "
-						  "NULL AS foreignserver, "
-						  "NULL AS reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "NULL AS reloptions, "
-						  "NULL AS toast_reloptions, "
-						  "NULL AS changed_acl, "
-						  "NULL AS partkeydef, "
-						  "false AS ispartition, "
-						  "NULL AS partbound "
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype = 'i') "
-						  "WHERE relkind in ('%c', '%c', '%c', '%c') "
-						  "ORDER BY c.oid",
-						  username_subquery,
-						  RELKIND_SEQUENCE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE);
-	}
-=======
-	appendPQExpBufferStr(query,
-						 "WHERE c.relkind IN ("
-						 CppAsString2(RELKIND_RELATION) ", "
-						 CppAsString2(RELKIND_SEQUENCE) ", "
-						 CppAsString2(RELKIND_VIEW) ", "
-						 CppAsString2(RELKIND_COMPOSITE_TYPE) ", "
-						 CppAsString2(RELKIND_MATVIEW) ", "
-						 CppAsString2(RELKIND_FOREIGN_TABLE) ", "
-						 CppAsString2(RELKIND_PARTITIONED_TABLE) ")\n"
-						 "ORDER BY c.oid");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -8659,14 +6856,12 @@ getTables(Archive *fout, int *numTables)
 	i_checkoption = PQfnumber(res, "checkoption");
 	i_toastreloptions = PQfnumber(res, "toast_reloptions");
 	i_reloftype = PQfnumber(res, "reloftype");
-<<<<<<< HEAD
+	i_foreignserver = PQfnumber(res, "foreignserver");
 	i_amname = PQfnumber(res, "amname");
 	i_is_identity_sequence = PQfnumber(res, "is_identity_sequence");
 	i_relacl = PQfnumber(res, "relacl");
 	i_acldefault = PQfnumber(res, "acldefault");
-	i_partkeydef = PQfnumber(res, "partkeydef");
 	i_ispartition = PQfnumber(res, "ispartition");
-	i_partbound = PQfnumber(res, "partbound");
 	i_relstorage = PQfnumber(res, "relstorage");
 	i_parrelid = PQfnumber(res, "parrelid");
 	i_parlevel = PQfnumber(res, "parlevel");
@@ -8675,21 +6870,6 @@ getTables(Archive *fout, int *numTables)
 	i_distclause = PQfnumber(res, "distclause");
 	i_partclause = PQfnumber(res, "partclause");
 	i_parttemplate = PQfnumber(res, "parttemplate");
-||||||| 3b231596ccf
-	i_is_identity_sequence = PQfnumber(res, "is_identity_sequence");
-	i_changed_acl = PQfnumber(res, "changed_acl");
-	i_partkeydef = PQfnumber(res, "partkeydef");
-	i_ispartition = PQfnumber(res, "ispartition");
-	i_partbound = PQfnumber(res, "partbound");
-	i_amname = PQfnumber(res, "amname");
-=======
-	i_foreignserver = PQfnumber(res, "foreignserver");
-	i_amname = PQfnumber(res, "amname");
-	i_is_identity_sequence = PQfnumber(res, "is_identity_sequence");
-	i_relacl = PQfnumber(res, "relacl");
-	i_acldefault = PQfnumber(res, "acldefault");
-	i_ispartition = PQfnumber(res, "ispartition");
->>>>>>> c4cc2850f4d
 
 	if (dopt->lockWaitTimeout)
 	{
@@ -8728,24 +6908,10 @@ getTables(Archive *fout, int *numTables)
 		tblinfo[i].hasindex = (strcmp(PQgetvalue(res, i, i_relhasindex), "t") == 0);
 		tblinfo[i].hasrules = (strcmp(PQgetvalue(res, i, i_relhasrules), "t") == 0);
 		tblinfo[i].relpages = atoi(PQgetvalue(res, i, i_relpages));
-<<<<<<< HEAD
-||||||| 3b231596ccf
-		tblinfo[i].frozenxid = atooid(PQgetvalue(res, i, i_relfrozenxid));
-		tblinfo[i].minmxid = atooid(PQgetvalue(res, i, i_relminmxid));
-		tblinfo[i].toast_oid = atooid(PQgetvalue(res, i, i_toastoid));
-		tblinfo[i].toast_frozenxid = atooid(PQgetvalue(res, i, i_toastfrozenxid));
-		tblinfo[i].toast_minmxid = atooid(PQgetvalue(res, i, i_toastminmxid));
-		if (PQgetisnull(res, i, i_reloftype))
-			tblinfo[i].reloftype = NULL;
-		else
-			tblinfo[i].reloftype = pg_strdup(PQgetvalue(res, i, i_reloftype));
-		tblinfo[i].ncheck = atoi(PQgetvalue(res, i, i_relchecks));
-=======
 		if (PQgetisnull(res, i, i_toastpages))
 			tblinfo[i].toastpages = 0;
 		else
 			tblinfo[i].toastpages = atoi(PQgetvalue(res, i, i_toastpages));
->>>>>>> c4cc2850f4d
 		if (PQgetisnull(res, i, i_owning_tab))
 		{
 			tblinfo[i].owning_tab = InvalidOid;
@@ -8775,26 +6941,15 @@ getTables(Archive *fout, int *numTables)
 		else
 			tblinfo[i].checkoption = pg_strdup(PQgetvalue(res, i, i_checkoption));
 		tblinfo[i].toast_reloptions = pg_strdup(PQgetvalue(res, i, i_toastreloptions));
-<<<<<<< HEAD
 		tblinfo[i].parrelid = atooid(PQgetvalue(res, i, i_parrelid));
-		if (PQgetisnull(res, i, i_reloftype))
-			tblinfo[i].reloftype = NULL;
-		else
-			tblinfo[i].reloftype = pg_strdup(PQgetvalue(res, i, i_reloftype));
-||||||| 3b231596ccf
-=======
 		tblinfo[i].reloftype = atooid(PQgetvalue(res, i, i_reloftype));
 		tblinfo[i].foreign_server = atooid(PQgetvalue(res, i, i_foreignserver));
->>>>>>> c4cc2850f4d
 		if (PQgetisnull(res, i, i_amname))
 			tblinfo[i].amname = NULL;
 		else
 			tblinfo[i].amname = pg_strdup(PQgetvalue(res, i, i_amname));
 		tblinfo[i].is_identity_sequence = (strcmp(PQgetvalue(res, i, i_is_identity_sequence), "t") == 0);
-<<<<<<< HEAD
-		tblinfo[i].partkeydef = pg_strdup(PQgetvalue(res, i, i_partkeydef));
 		tblinfo[i].ispartition = (strcmp(PQgetvalue(res, i, i_ispartition), "t") == 0);
-		tblinfo[i].partbound = pg_strdup(PQgetvalue(res, i, i_partbound));
 
 		tblinfo[i].relstorage = *(PQgetvalue(res, i, i_relstorage));
 		tblinfo[i].distclause = pg_strdup(PQgetvalue(res, i, i_distclause));
@@ -8827,14 +6982,12 @@ getTables(Archive *fout, int *numTables)
 			tblinfo[i].toast_index = atooid(PQgetvalue(res, i, i_toast_index_oid));
 			tblinfo[i].toast_type = atooid(PQgetvalue(res, i, i_toast_type_oid));
 		}
-||||||| 3b231596ccf
-=======
-		tblinfo[i].ispartition = (strcmp(PQgetvalue(res, i, i_ispartition), "t") == 0);
->>>>>>> c4cc2850f4d
 
 		/* other fields were zeroed above */
 
 		/*
+		 * Decide whether we want to dump this table.
+		 *
 		 * GPDB5/6: To gather binary upgrade information for GP partition children,
 		 * they need to exist in the tblinfo array for findTableByOid.
 		 * This requires the getTable query to also collect all
@@ -8871,20 +7024,6 @@ getTables(Archive *fout, int *numTables)
 		if (!PQgetisnull(res, i, i_relacl))
 			tblinfo[i].dobj.components |= DUMP_COMPONENT_ACL;
 		tblinfo[i].hascolumnACLs = false;	/* may get set later */
-<<<<<<< HEAD
-
-		/* foreign server */
-		tblinfo[i].foreign_server = atooid(PQgetvalue(res, i, i_foreignserver));
-||||||| 3b231596ccf
-		/* Partition key string or NULL */
-		tblinfo[i].partkeydef = pg_strdup(PQgetvalue(res, i, i_partkeydef));
-		tblinfo[i].ispartition = (strcmp(PQgetvalue(res, i, i_ispartition), "t") == 0);
-		tblinfo[i].partbound = pg_strdup(PQgetvalue(res, i, i_partbound));
-
-		/* foreign server */
-		tblinfo[i].foreign_server = atooid(PQgetvalue(res, i, i_foreignserver));
-=======
->>>>>>> c4cc2850f4d
 
 		/*
 		 * Read-lock target tables to make sure they aren't DROPPED or altered
@@ -8898,13 +7037,14 @@ getTables(Archive *fout, int *numTables)
 		 * plain or partitioned tables, but the backend doesn't presently
 		 * allow that.
 		 *
+		 * We only need to lock the table for certain components; see
+		 * pg_dump.h
+		 *
 		 * GPDB: Build a single LOCK TABLE statement to lock all interesting tables.
 		 * This is more performant than issuing a separate LOCK TABLE statement for each table,
 		 * with considerable savings in FE/BE overhead. It does come at the cost of some increased
 		 * memory usage in both FE and BE, which we will be able to tolerate.
 		 */
-<<<<<<< HEAD
-
 		if ((tblinfo[i].dobj.dump & DUMP_COMPONENTS_REQUIRING_LOCK) &&
 			(tblinfo[i].relkind == RELKIND_RELATION ||
 			 tblinfo[i].relkind == RELKIND_PARTITIONED_TABLE))
@@ -8926,35 +7066,6 @@ getTables(Archive *fout, int *numTables)
 	appendPQExpBuffer(query,
 			"IN ACCESS SHARE MODE");
 	ExecuteSqlStatement(fout, query->data);
-||||||| 3b231596ccf
-		if (tblinfo[i].dobj.dump &&
-			(tblinfo[i].relkind == RELKIND_RELATION ||
-			 tblinfo->relkind == RELKIND_PARTITIONED_TABLE) &&
-			(tblinfo[i].dobj.dump & DUMP_COMPONENTS_REQUIRING_LOCK))
-		{
-			resetPQExpBuffer(query);
-			appendPQExpBuffer(query,
-							  "LOCK TABLE %s IN ACCESS SHARE MODE",
-							  fmtQualifiedDumpable(&tblinfo[i]));
-			ExecuteSqlStatement(fout, query->data);
-		}
-
-		/* Emit notice if join for owner failed */
-		if (strlen(tblinfo[i].rolname) == 0)
-			pg_log_warning("owner of table \"%s\" appears to be invalid",
-						   tblinfo[i].dobj.name);
-=======
-		if ((tblinfo[i].dobj.dump & DUMP_COMPONENTS_REQUIRING_LOCK) &&
-			(tblinfo[i].relkind == RELKIND_RELATION ||
-			 tblinfo[i].relkind == RELKIND_PARTITIONED_TABLE))
-		{
-			resetPQExpBuffer(query);
-			appendPQExpBuffer(query,
-							  "LOCK TABLE %s IN ACCESS SHARE MODE",
-							  fmtQualifiedDumpable(&tblinfo[i]));
-			ExecuteSqlStatement(fout, query->data);
-		}
->>>>>>> c4cc2850f4d
 	}
 
 	if (dopt->lockWaitTimeout)
@@ -9324,67 +7435,6 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 						  "'' AS indstatcols, "
 						  "'' AS indstatvals ");
 
-<<<<<<< HEAD
-	appendPQExpBuffer(query,
-							"FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
-							"JOIN pg_catalog.pg_index i ON (src.tbloid = i.indrelid) "
-							"JOIN pg_catalog.pg_class t ON (t.oid = i.indexrelid) ",
-							tbloids->data);
-	/*
-	 * The point of the messy-looking outer join is to find a constraint that
-	 * is related by an internal dependency link to the index. If we find one,
-	 * create a CONSTRAINT entry linked to the INDEX entry.  We assume an
-	 * index won't have more than one internal dependency.
-	 *
-	 * As of 9.0 we don't need to look at pg_depend but can check for a match
-	 * to pg_constraint.conindid.  The check on conrelid is redundant but
-	 * useful because that column is indexed while conindid is not.
-	 */
-	if (fout->remoteVersion >= 110000)
-	{
-		appendPQExpBuffer(query,
-						  "JOIN pg_catalog.pg_class t2 ON (t2.oid = i.indrelid) "
-						  "LEFT JOIN pg_catalog.pg_constraint c "
-						  "ON (i.indrelid = c.conrelid AND "
-						  "i.indexrelid = c.conindid AND "
-						  "c.contype IN ('p','u','x')) "
-						  "LEFT JOIN pg_catalog.pg_inherits inh "
-						  "ON (inh.inhrelid = indexrelid) "
-						  "WHERE (i.indisvalid OR t2.relkind = 'p') "
-						  "AND i.indisready "
-						  "ORDER BY i.indrelid, indexname");
-	}
-	else if (fout->remoteVersion >= 90400)
-	{
-		/*
-		 * the test on indisready is necessary in 9.2, and harmless in
-		 * earlier/later versions
-		 */
-		appendPQExpBuffer(query,
-						  "LEFT JOIN pg_catalog.pg_constraint c "
-						  "ON (i.indrelid = c.conrelid AND "
-						  "i.indexrelid = c.conindid AND "
-						  "c.contype IN ('p','u','x')) "
-						  "WHERE i.indisvalid AND i.indisready "
-						  "ORDER BY i.indrelid, indexname");
-	}
-	else
-	{
-		appendPQExpBuffer(query,
-						  "LEFT JOIN pg_catalog.pg_depend d "
-						  "ON (d.classid = t.tableoid "
-						  "AND d.objid = t.oid "
-						  "AND d.deptype = 'i') "
-						  "LEFT JOIN pg_catalog.pg_constraint c "
-						  "ON (d.refclassid = c.tableoid "
-						  "AND d.refobjid = c.oid) "
-						  "WHERE i.indisvalid "
-						  "ORDER BY i.indrelid, indexname");
-||||||| 3b231596ccf
-		pg_log_info("reading indexes for table \"%s.%s\"",
-					tbinfo->dobj.namespace->dobj.name,
-					tbinfo->dobj.name);
-=======
 	/*
 	 * The point of the messy-looking outer join is to find a constraint that
 	 * is related by an internal dependency link to the index. If we find one,
@@ -9429,7 +7479,6 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 						  "WHERE i.indisvalid AND i.indisready "
 						  "ORDER BY i.indrelid, indexname",
 						  tbloids->data);
->>>>>>> c4cc2850f4d
 	}
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
@@ -9864,11 +7913,6 @@ getDomainConstraints(Archive *fout, TypeInfo *tyinfo)
 	{
 		/* Set up query for constraint-specific details */
 		appendPQExpBufferStr(query,
-<<<<<<< HEAD
-							 "PREPARE getDomainConstraints(pg_catalog.oid) AS\n");
-||||||| 3b231596ccf
-	query = createPQExpBuffer();
-=======
 							 "PREPARE getDomainConstraints(pg_catalog.oid) AS\n"
 							 "SELECT tableoid, oid, conname, "
 							 "pg_catalog.pg_get_constraintdef(oid) AS consrc, "
@@ -9876,50 +7920,9 @@ getDomainConstraints(Archive *fout, TypeInfo *tyinfo)
 							 "FROM pg_catalog.pg_constraint "
 							 "WHERE contypid = $1 "
 							 "ORDER BY conname");
->>>>>>> c4cc2850f4d
 
-<<<<<<< HEAD
-		if (fout->remoteVersion >= 90100)
-			appendPQExpBufferStr(query, "SELECT tableoid, oid, conname, "
-								 "pg_catalog.pg_get_constraintdef(oid) AS consrc, "
-								 "convalidated "
-								 "FROM pg_catalog.pg_constraint "
-								 "WHERE contypid = $1 "
-								 "ORDER BY conname");
-		else
-			appendPQExpBufferStr(query, "SELECT tableoid, oid, conname, "
-								 "pg_catalog.pg_get_constraintdef(oid) AS consrc, "
-								 "true as convalidated "
-								 "FROM pg_catalog.pg_constraint "
-								 "WHERE contypid = $1 "
-								 "ORDER BY conname");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90100)
-		appendPQExpBuffer(query, "SELECT tableoid, oid, conname, "
-						  "pg_catalog.pg_get_constraintdef(oid) AS consrc, "
-						  "convalidated "
-						  "FROM pg_catalog.pg_constraint "
-						  "WHERE contypid = '%u'::pg_catalog.oid "
-						  "ORDER BY conname",
-						  tyinfo->dobj.catId.oid);
-=======
-		ExecuteSqlStatement(fout, query->data);
->>>>>>> c4cc2850f4d
-
-<<<<<<< HEAD
 		ExecuteSqlStatement(fout, query->data);
 
-||||||| 3b231596ccf
-	else
-		appendPQExpBuffer(query, "SELECT tableoid, oid, conname, "
-						  "pg_catalog.pg_get_constraintdef(oid) AS consrc, "
-						  "true as convalidated "
-						  "FROM pg_catalog.pg_constraint "
-						  "WHERE contypid = '%u'::pg_catalog.oid "
-						  "ORDER BY conname",
-						  tyinfo->dobj.catId.oid);
-=======
->>>>>>> c4cc2850f4d
 		fout->is_prepared[PREPQUERY_GETDOMAINCONSTRAINTS] = true;
 	}
 
@@ -10002,38 +8005,11 @@ getRules(Archive *fout, int *numRules)
 	int			i_ev_enabled;
 
 	appendPQExpBufferStr(query, "SELECT "
-<<<<<<< HEAD
-							"tableoid, oid, rulename, "
-							"ev_class AS ruletable, ev_type, is_instead, "
-							"ev_enabled "
-							"FROM pg_rewrite "
-							"ORDER BY oid");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBufferStr(query, "SELECT "
-							 "tableoid, oid, rulename, "
-							 "ev_class AS ruletable, ev_type, is_instead, "
-							 "ev_enabled "
-							 "FROM pg_rewrite "
-							 "ORDER BY oid");
-	}
-	else
-	{
-		appendPQExpBufferStr(query, "SELECT "
-							 "tableoid, oid, rulename, "
-							 "ev_class AS ruletable, ev_type, is_instead, "
-							 "'O'::char AS ev_enabled "
-							 "FROM pg_rewrite "
-							 "ORDER BY oid");
-	}
-=======
 						 "tableoid, oid, rulename, "
 						 "ev_class AS ruletable, ev_type, is_instead, "
 						 "ev_enabled "
 						 "FROM pg_rewrite "
 						 "ORDER BY oid");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -10164,112 +8140,6 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 	}
 	appendPQExpBufferChar(tbloids, '}');
 
-<<<<<<< HEAD
-	resetPQExpBuffer(query);
-	if (fout->remoteVersion >= 130000)
-	{
-		/*
-		 * NB: think not to use pretty=true in pg_get_triggerdef.  It could
-		 * result in non-forward-compatible dumps of WHEN clauses due to
-		 * under-parenthesization.
-		 *
-		 * NB: We need to see tgisinternal triggers in partitions, in case the
-		 * tgenabled flag has been changed from the parent.
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT t.tgrelid, t.tgname, "
-						  "t.tgfoid::pg_catalog.regproc AS tgfname, "
-						  "pg_catalog.pg_get_triggerdef(t.oid, false) AS tgdef, "
-						  "t.tgenabled, t.tableoid, t.oid, t.tgisinternal\n"
-						  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
-						  "JOIN pg_catalog.pg_trigger t ON (src.tbloid = t.tgrelid) "
-						  "LEFT JOIN pg_catalog.pg_trigger u ON (u.oid = t.tgparentid) "
-						  "WHERE (NOT t.tgisinternal OR t.tgenabled != u.tgenabled) "
-						  "ORDER BY t.tgrelid, t.tgname",
-						  tbloids->data);
-	}
-	else if (fout->remoteVersion >= 110000)
-	{
-		/*
-		 * NB: We need to see tgisinternal triggers in partitions, in case the
-		 * tgenabled flag has been changed from the parent. No tgparentid in
-		 * version 11-12, so we have to match them via pg_depend.
-		 *
-		 * See above about pretty=true in pg_get_triggerdef.
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT t.tgrelid, t.tgname, "
-						  "t.tgfoid::pg_catalog.regproc AS tgfname, "
-						  "pg_catalog.pg_get_triggerdef(t.oid, false) AS tgdef, "
-						  "t.tgenabled, t.tableoid, t.oid, t.tgisinternal "
-						  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
-						  "JOIN pg_catalog.pg_trigger t ON (src.tbloid = t.tgrelid) "
-						  "LEFT JOIN pg_catalog.pg_depend AS d ON "
-						  " d.classid = 'pg_catalog.pg_trigger'::pg_catalog.regclass AND "
-						  " d.refclassid = 'pg_catalog.pg_trigger'::pg_catalog.regclass AND "
-						  " d.objid = t.oid "
-						  "LEFT JOIN pg_catalog.pg_trigger AS pt ON pt.oid = refobjid "
-						  "WHERE (NOT t.tgisinternal OR t.tgenabled != pt.tgenabled) "
-						  "ORDER BY t.tgrelid, t.tgname",
-						  tbloids->data);
-	}
-	else if (fout->remoteVersion >= 90000)
-	{
-		/* See above about pretty=true in pg_get_triggerdef */
-		appendPQExpBuffer(query,
-						  "SELECT t.tgrelid, t.tgname, "
-						  "t.tgfoid::pg_catalog.regproc AS tgfname, "
-						  "pg_catalog.pg_get_triggerdef(t.oid, false) AS tgdef, "
-						  "t.tgenabled, false as tgisinternal, "
-						  "t.tableoid, t.oid "
-						  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
-						  "JOIN pg_catalog.pg_trigger t ON (src.tbloid = t.tgrelid) "
-						  "WHERE NOT t.tgisinternal "
-						  "ORDER BY t.tgrelid, t.tgname",
-						  tbloids->data);
-	}
-	else
-	{
-		/*
-		 * We ignore triggers that are tied to a foreign-key constraint
-		 */
-		appendPQExpBuffer(query,
-						  "SELECT t.tgrelid, tgname, "
-						  "tgfoid::pg_catalog.regproc AS tgfname, "
-						  "tgtype, tgnargs, tgargs, tgenabled, "
-						  "false as tgisinternal, "
-						  "tgisconstraint, tgconstrname, tgdeferrable, "
-						  "tgconstrrelid, tginitdeferred, t.tableoid, t.oid, "
-						  "tgconstrrelid::pg_catalog.regclass AS tgconstrrelname "
-						  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
-						  "JOIN pg_catalog.pg_trigger t ON (src.tbloid = t.tgrelid) "
-						  "WHERE tgconstraint = 0 "
-						  "ORDER BY t.tgrelid, t.tgname",
-							tbloids->data);
-	}
-
-	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
-
-	ntups = PQntuples(res);
-
-	i_tableoid = PQfnumber(res, "tableoid");
-	i_oid = PQfnumber(res, "oid");
-	i_tgrelid = PQfnumber(res, "tgrelid");
-	i_tgname = PQfnumber(res, "tgname");
-	i_tgfname = PQfnumber(res, "tgfname");
-	i_tgtype = PQfnumber(res, "tgtype");
-	i_tgnargs = PQfnumber(res, "tgnargs");
-	i_tgargs = PQfnumber(res, "tgargs");
-	i_tgisconstraint = PQfnumber(res, "tgisconstraint");
-	i_tgconstrname = PQfnumber(res, "tgconstrname");
-	i_tgconstrrelid = PQfnumber(res, "tgconstrrelid");
-	i_tgconstrrelname = PQfnumber(res, "tgconstrrelname");
-	i_tgenabled = PQfnumber(res, "tgenabled");
-	i_tgisinternal = PQfnumber(res, "tgisinternal");
-||||||| 3b231596ccf
-		resetPQExpBuffer(query);
-		if (fout->remoteVersion >= 130000)
-=======
 	if (fout->remoteVersion >= 150000)
 	{
 		/*
@@ -10375,7 +8245,6 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 	i_tgconstrrelname = PQfnumber(res, "tgconstrrelname");
 	i_tgenabled = PQfnumber(res, "tgenabled");
 	i_tgispartition = PQfnumber(res, "tgispartition");
->>>>>>> c4cc2850f4d
 	i_tgdeferrable = PQfnumber(res, "tgdeferrable");
 	i_tginitdeferred = PQfnumber(res, "tginitdeferred");
 	i_tgdef = PQfnumber(res, "tgdef");
@@ -10596,146 +8465,6 @@ getProcLangs(Archive *fout, int *numProcLangs)
 	int			i_acldefault;
 	int			i_lanowner;
 
-<<<<<<< HEAD
-	/*
-	 * The laninline column was added in upstream 90000 but was backported to
-	 * Greenplum 5, so the check needs to go further back than 90000.
-	 */
-
-	if (fout->remoteVersion >= 90200)
-	{
-		/* acldefault() exists */
-		appendPQExpBuffer(query, "SELECT tableoid, oid, "
-						  "lanname, lanpltrusted, lanplcallfoid, "
-						  "laninline, lanvalidator, "
-						  "lanacl, "
-						  "acldefault('l', lanowner) AS acldefault, "
-						  "lanowner "
-						  "FROM pg_language "
-						  "WHERE lanispl "
-						  "ORDER BY oid");
-	}
-	else if (fout->remoteVersion >= 90000)
-	{
-		/* pg_language has a laninline column */
-		appendPQExpBuffer(query, "SELECT tableoid, oid, "
-						  "lanname, lanpltrusted, lanplcallfoid, "
-						  "laninline, lanvalidator, "
-						  "lanacl, NULL AS acldefault, "
-						  "lanowner "
-						  "FROM pg_language "
-						  "WHERE lanispl "
-						  "ORDER BY oid");
-	}
-	else /* GPDB5 */
-	{
-		/* pg_language has a laninline column */
-		/* pg_language has a lanowner column */
-		appendPQExpBuffer(query, "SELECT tableoid, oid, "
-						  "lanname, lanpltrusted, lanplcallfoid, "
-						  "laninline, lanvalidator, lanacl, "
-						  "0 AS laninline, lanvalidator, lanacl, "
-						  "NULL AS acldefault, "
-						  "lanowner "
-						  "FROM pg_language "
-						  "WHERE lanispl "
-						  "ORDER BY oid");
-	}
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90600)
-	{
-		PQExpBuffer acl_subquery = createPQExpBuffer();
-		PQExpBuffer racl_subquery = createPQExpBuffer();
-		PQExpBuffer initacl_subquery = createPQExpBuffer();
-		PQExpBuffer initracl_subquery = createPQExpBuffer();
-
-		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
-						initracl_subquery, "l.lanacl", "l.lanowner",
-						"pip.initprivs", "'l'", dopt->binary_upgrade);
-
-		/* pg_language has a laninline column */
-		appendPQExpBuffer(query, "SELECT l.tableoid, l.oid, "
-						  "l.lanname, l.lanpltrusted, l.lanplcallfoid, "
-						  "l.laninline, l.lanvalidator, "
-						  "%s AS lanacl, "
-						  "%s AS rlanacl, "
-						  "%s AS initlanacl, "
-						  "%s AS initrlanacl, "
-						  "(%s l.lanowner) AS lanowner "
-						  "FROM pg_language l "
-						  "LEFT JOIN pg_init_privs pip ON "
-						  "(l.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_language'::regclass "
-						  "AND pip.objsubid = 0) "
-						  "WHERE l.lanispl "
-						  "ORDER BY l.oid",
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  initacl_subquery->data,
-						  initracl_subquery->data,
-						  username_subquery);
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(initacl_subquery);
-		destroyPQExpBuffer(initracl_subquery);
-	}
-	else if (fout->remoteVersion >= 90000)
-	{
-		/* pg_language has a laninline column */
-		appendPQExpBuffer(query, "SELECT tableoid, oid, "
-						  "lanname, lanpltrusted, lanplcallfoid, "
-						  "laninline, lanvalidator, lanacl, NULL AS rlanacl, "
-						  "NULL AS initlanacl, NULL AS initrlanacl, "
-						  "(%s lanowner) AS lanowner "
-						  "FROM pg_language "
-						  "WHERE lanispl "
-						  "ORDER BY oid",
-						  username_subquery);
-	}
-	else if (fout->remoteVersion >= 80300)
-	{
-		/* pg_language has a lanowner column */
-		appendPQExpBuffer(query, "SELECT tableoid, oid, "
-						  "lanname, lanpltrusted, lanplcallfoid, "
-						  "0 AS laninline, lanvalidator, lanacl, "
-						  "NULL AS rlanacl, "
-						  "NULL AS initlanacl, NULL AS initrlanacl, "
-						  "(%s lanowner) AS lanowner "
-						  "FROM pg_language "
-						  "WHERE lanispl "
-						  "ORDER BY oid",
-						  username_subquery);
-	}
-	else if (fout->remoteVersion >= 80100)
-	{
-		/* Languages are owned by the bootstrap superuser, OID 10 */
-		appendPQExpBuffer(query, "SELECT tableoid, oid, "
-						  "lanname, lanpltrusted, lanplcallfoid, "
-						  "0 AS laninline, lanvalidator, lanacl, "
-						  "NULL AS rlanacl, "
-						  "NULL AS initlanacl, NULL AS initrlanacl, "
-						  "(%s '10') AS lanowner "
-						  "FROM pg_language "
-						  "WHERE lanispl "
-						  "ORDER BY oid",
-						  username_subquery);
-	}
-	else
-	{
-		/* Languages are owned by the bootstrap superuser, sysid 1 */
-		appendPQExpBuffer(query, "SELECT tableoid, oid, "
-						  "lanname, lanpltrusted, lanplcallfoid, "
-						  "0 AS laninline, lanvalidator, lanacl, "
-						  "NULL AS rlanacl, "
-						  "NULL AS initlanacl, NULL AS initrlanacl, "
-						  "(%s '1') AS lanowner "
-						  "FROM pg_language "
-						  "WHERE lanispl "
-						  "ORDER BY oid",
-						  username_subquery);
-	}
-=======
 	appendPQExpBuffer(query, "SELECT tableoid, oid, "
 					  "lanname, lanpltrusted, lanplcallfoid, "
 					  "laninline, lanvalidator, "
@@ -10745,7 +8474,6 @@ getProcLangs(Archive *fout, int *numProcLangs)
 					  "FROM pg_language "
 					  "WHERE lanispl "
 					  "ORDER BY oid");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -11060,19 +8788,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	 */
 	appendPQExpBufferChar(tbloids, '{');
 	appendPQExpBufferChar(checkoids, '{');
-
-	/*
-	 * We want to perform just one query against pg_attribute, and then just
-	 * one against pg_attrdef (for DEFAULTs) and one against pg_constraint
-	 * (for CHECK constraints).  However, we mustn't try to select every row
-	 * of those catalogs and then sort it out on the client side, because some
-	 * of the server-side functions we need would be unsafe to apply to tables
-	 * we don't have lock on.  Hence, we build an array of the OIDs of tables
-	 * we care about (and now have lock on!), and use a WHERE clause to
-	 * constrain which rows are selected.
-	 */
-	appendPQExpBufferChar(tbloids, '{');
-	appendPQExpBufferChar(checkoids, '{');
 	for (int i = 0; i < numTables; i++)
 	{
 		TableInfo  *tbinfo = &tblinfo[i];
@@ -11101,8 +8816,13 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	appendPQExpBufferChar(tbloids, '}');
 	appendPQExpBufferChar(checkoids, '}');
 
-<<<<<<< HEAD
-	/* find all the user attributes and their types */
+	/*
+	 * Find all the user attributes and their types.
+	 *
+	 * Since we only want to dump COLLATE clauses for attributes whose
+	 * collation is different from their type's default, we use a CASE here to
+	 * suppress uninteresting attcollations cheaply.
+	 */
 	appendPQExpBufferStr(q,
 						 "SELECT\n"
 						 "a.attrelid,\n"
@@ -11119,29 +8839,16 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 						 "a.attalign,\n"
 						 "a.attislocal,\n"
 						 "pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,\n"
-						 "pg_catalog.array_to_string(e.attoptions, ',') AS attencoding,\n");
-
-	if (fout->remoteVersion >= 90000)
-		appendPQExpBufferStr(q,
-							 "array_to_string(a.attoptions, ', ') AS attoptions,\n");
-	else
-		appendPQExpBufferStr(q,
-							 "'' AS attoptions,\n");
-
-	if (fout->remoteVersion >= 90100)
-	{
-		/*
-		 * Since we only want to dump COLLATE clauses for attributes whose
-		 * collation is different from their type's default, we use a CASE
-		 * here to suppress uninteresting attcollations cheaply.
-		 */
-		appendPQExpBufferStr(q,
-							 "CASE WHEN a.attcollation <> t.typcollation "
-							 "THEN a.attcollation ELSE 0 END AS attcollation,\n");
-	}
-	else
-		appendPQExpBufferStr(q,
-							 "0 AS attcollation,\n");
+						 "pg_catalog.array_to_string(e.attoptions, ',') AS attencoding,\n"
+						 "array_to_string(a.attoptions, ', ') AS attoptions,\n"
+						 "CASE WHEN a.attcollation <> t.typcollation "
+						 "THEN a.attcollation ELSE 0 END AS attcollation,\n"
+						 "pg_catalog.array_to_string(ARRAY("
+						 "SELECT pg_catalog.quote_ident(option_name) || "
+						 "' ' || pg_catalog.quote_literal(option_value) "
+						 "FROM pg_catalog.pg_options_to_table(attfdwoptions) "
+						 "ORDER BY option_name"
+						 "), E',\n    ') AS attfdwoptions,\n");
 
 	if (fout->remoteVersion >= 140000)
 		appendPQExpBufferStr(q,
@@ -11149,18 +8856,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	else
 		appendPQExpBufferStr(q,
 							 "'' AS attcompression,\n");
-
-	if (fout->remoteVersion >= 90200)
-		appendPQExpBufferStr(q,
-							 "pg_catalog.array_to_string(ARRAY("
-							 "SELECT pg_catalog.quote_ident(option_name) || "
-							 "' ' || pg_catalog.quote_literal(option_value) "
-							 "FROM pg_catalog.pg_options_to_table(attfdwoptions) "
-							 "ORDER BY option_name"
-							 "), E',\n    ') AS attfdwoptions,\n");
-	else
-		appendPQExpBufferStr(q,
-							 "'' AS attfdwoptions,\n");
 
 	if (fout->remoteVersion >= 100000)
 		appendPQExpBufferStr(q,
@@ -11222,107 +8917,6 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 	i_attmissingval = PQfnumber(res, "attmissingval");
 	i_atthasdef = PQfnumber(res, "atthasdef");
 	i_attencoding = PQfnumber(res, "attencoding");
-||||||| 3b231596ccf
-		/* find all the user attributes and their types */
-=======
-	/*
-	 * Find all the user attributes and their types.
-	 *
-	 * Since we only want to dump COLLATE clauses for attributes whose
-	 * collation is different from their type's default, we use a CASE here to
-	 * suppress uninteresting attcollations cheaply.
-	 */
-	appendPQExpBufferStr(q,
-						 "SELECT\n"
-						 "a.attrelid,\n"
-						 "a.attnum,\n"
-						 "a.attname,\n"
-						 "a.atttypmod,\n"
-						 "a.attstattarget,\n"
-						 "a.attstorage,\n"
-						 "t.typstorage,\n"
-						 "a.attnotnull,\n"
-						 "a.atthasdef,\n"
-						 "a.attisdropped,\n"
-						 "a.attlen,\n"
-						 "a.attalign,\n"
-						 "a.attislocal,\n"
-						 "pg_catalog.format_type(t.oid, a.atttypmod) AS atttypname,\n"
-						 "array_to_string(a.attoptions, ', ') AS attoptions,\n"
-						 "CASE WHEN a.attcollation <> t.typcollation "
-						 "THEN a.attcollation ELSE 0 END AS attcollation,\n"
-						 "pg_catalog.array_to_string(ARRAY("
-						 "SELECT pg_catalog.quote_ident(option_name) || "
-						 "' ' || pg_catalog.quote_literal(option_value) "
-						 "FROM pg_catalog.pg_options_to_table(attfdwoptions) "
-						 "ORDER BY option_name"
-						 "), E',\n    ') AS attfdwoptions,\n");
-
-	if (fout->remoteVersion >= 140000)
-		appendPQExpBufferStr(q,
-							 "a.attcompression AS attcompression,\n");
-	else
-		appendPQExpBufferStr(q,
-							 "'' AS attcompression,\n");
-
-	if (fout->remoteVersion >= 100000)
-		appendPQExpBufferStr(q,
-							 "a.attidentity,\n");
-	else
-		appendPQExpBufferStr(q,
-							 "'' AS attidentity,\n");
-
-	if (fout->remoteVersion >= 110000)
-		appendPQExpBufferStr(q,
-							 "CASE WHEN a.atthasmissing AND NOT a.attisdropped "
-							 "THEN a.attmissingval ELSE null END AS attmissingval,\n");
-	else
-		appendPQExpBufferStr(q,
-							 "NULL AS attmissingval,\n");
-
-	if (fout->remoteVersion >= 120000)
-		appendPQExpBufferStr(q,
-							 "a.attgenerated\n");
-	else
-		appendPQExpBufferStr(q,
-							 "'' AS attgenerated\n");
-
-	/* need left join to pg_type to not fail on dropped columns ... */
-	appendPQExpBuffer(q,
-					  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
-					  "JOIN pg_catalog.pg_attribute a ON (src.tbloid = a.attrelid) "
-					  "LEFT JOIN pg_catalog.pg_type t "
-					  "ON (a.atttypid = t.oid)\n"
-					  "WHERE a.attnum > 0::pg_catalog.int2\n"
-					  "ORDER BY a.attrelid, a.attnum",
-					  tbloids->data);
-
-	res = ExecuteSqlQuery(fout, q->data, PGRES_TUPLES_OK);
-
-	ntups = PQntuples(res);
-
-	i_attrelid = PQfnumber(res, "attrelid");
-	i_attnum = PQfnumber(res, "attnum");
-	i_attname = PQfnumber(res, "attname");
-	i_atttypname = PQfnumber(res, "atttypname");
-	i_atttypmod = PQfnumber(res, "atttypmod");
-	i_attstattarget = PQfnumber(res, "attstattarget");
-	i_attstorage = PQfnumber(res, "attstorage");
-	i_typstorage = PQfnumber(res, "typstorage");
-	i_attidentity = PQfnumber(res, "attidentity");
-	i_attgenerated = PQfnumber(res, "attgenerated");
-	i_attisdropped = PQfnumber(res, "attisdropped");
-	i_attlen = PQfnumber(res, "attlen");
-	i_attalign = PQfnumber(res, "attalign");
-	i_attislocal = PQfnumber(res, "attislocal");
-	i_attnotnull = PQfnumber(res, "attnotnull");
-	i_attoptions = PQfnumber(res, "attoptions");
-	i_attcollation = PQfnumber(res, "attcollation");
-	i_attcompression = PQfnumber(res, "attcompression");
-	i_attfdwoptions = PQfnumber(res, "attfdwoptions");
-	i_attmissingval = PQfnumber(res, "attmissingval");
-	i_atthasdef = PQfnumber(res, "atthasdef");
->>>>>>> c4cc2850f4d
 
 	/* Within the next loop, we'll accumulate OIDs of tables with defaults */
 	resetPQExpBuffer(tbloids);
@@ -11385,86 +8979,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		tbinfo->notnull = (bool *) pg_malloc(numatts * sizeof(bool));
 		tbinfo->inhNotNull = (bool *) pg_malloc(numatts * sizeof(bool));
 		tbinfo->attrdefs = (AttrDefInfo **) pg_malloc(numatts * sizeof(AttrDefInfo *));
-<<<<<<< HEAD
 		tbinfo->attencoding = (char **) pg_malloc(numatts * sizeof(char*));
-||||||| 3b231596ccf
-		if (fout->remoteVersion >= 140000)
-			appendPQExpBuffer(q,
-							  "a.attcompression AS attcompression,\n");
-		else
-			appendPQExpBuffer(q,
-							  "'' AS attcompression,\n");
-
-		if (fout->remoteVersion >= 90200)
-			appendPQExpBufferStr(q,
-								 "pg_catalog.array_to_string(ARRAY("
-								 "SELECT pg_catalog.quote_ident(option_name) || "
-								 "' ' || pg_catalog.quote_literal(option_value) "
-								 "FROM pg_catalog.pg_options_to_table(attfdwoptions) "
-								 "ORDER BY option_name"
-								 "), E',\n    ') AS attfdwoptions,\n");
-		else
-			appendPQExpBufferStr(q,
-								 "'' AS attfdwoptions,\n");
-
-		if (fout->remoteVersion >= 100000)
-			appendPQExpBufferStr(q,
-								 "a.attidentity,\n");
-		else
-			appendPQExpBufferStr(q,
-								 "'' AS attidentity,\n");
-
-		if (fout->remoteVersion >= 110000)
-			appendPQExpBufferStr(q,
-								 "CASE WHEN a.atthasmissing AND NOT a.attisdropped "
-								 "THEN a.attmissingval ELSE null END AS attmissingval,\n");
-		else
-			appendPQExpBufferStr(q,
-								 "NULL AS attmissingval,\n");
-
-		if (fout->remoteVersion >= 120000)
-			appendPQExpBufferStr(q,
-								 "a.attgenerated\n");
-		else
-			appendPQExpBufferStr(q,
-								 "'' AS attgenerated\n");
-
-		/* need left join here to not fail on dropped columns ... */
-		appendPQExpBuffer(q,
-						  "FROM pg_catalog.pg_attribute a LEFT JOIN pg_catalog.pg_type t "
-						  "ON a.atttypid = t.oid\n"
-						  "WHERE a.attrelid = '%u'::pg_catalog.oid "
-						  "AND a.attnum > 0::pg_catalog.int2\n"
-						  "ORDER BY a.attnum",
-						  tbinfo->dobj.catId.oid);
-
-		res = ExecuteSqlQuery(fout, q->data, PGRES_TUPLES_OK);
-
-		ntups = PQntuples(res);
-
-		tbinfo->numatts = ntups;
-		tbinfo->attnames = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->atttypnames = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->atttypmod = (int *) pg_malloc(ntups * sizeof(int));
-		tbinfo->attstattarget = (int *) pg_malloc(ntups * sizeof(int));
-		tbinfo->attstorage = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->typstorage = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attidentity = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attgenerated = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attisdropped = (bool *) pg_malloc(ntups * sizeof(bool));
-		tbinfo->attlen = (int *) pg_malloc(ntups * sizeof(int));
-		tbinfo->attalign = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attislocal = (bool *) pg_malloc(ntups * sizeof(bool));
-		tbinfo->attoptions = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->attcollation = (Oid *) pg_malloc(ntups * sizeof(Oid));
-		tbinfo->attcompression = (char *) pg_malloc(ntups * sizeof(char));
-		tbinfo->attfdwoptions = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->attmissingval = (char **) pg_malloc(ntups * sizeof(char *));
-		tbinfo->notnull = (bool *) pg_malloc(ntups * sizeof(bool));
-		tbinfo->inhNotNull = (bool *) pg_malloc(ntups * sizeof(bool));
-		tbinfo->attrdefs = (AttrDefInfo **) pg_malloc(ntups * sizeof(AttrDefInfo *));
-=======
->>>>>>> c4cc2850f4d
 		hasdefaults = false;
 
 		for (int j = 0; j < numatts; j++, r++)
@@ -11670,40 +9185,10 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		pg_log_info("finding table check constraints");
 
 		resetPQExpBuffer(q);
-<<<<<<< HEAD
-		appendPQExpBufferStr(q,
-							 "SELECT c.tableoid, c.oid, conrelid, conname, "
-							 "pg_catalog.pg_get_constraintdef(c.oid) AS consrc, ");
-		if (fout->remoteVersion >= 90200)
-		{
-			/*
-			 * convalidated is new in 9.2 (actually, it is there in 9.1, but
-			 * it wasn't ever false for check constraints until 9.2).
-			 */
-			appendPQExpBufferStr(q,
-								 "conislocal, convalidated ");
-		}
-		else if (fout->remoteVersion >= 80400)
-		{
-			/* conislocal is new in 8.4 */
-			appendPQExpBufferStr(q,
-								 "conislocal, true AS convalidated ");
-		}
-		else
-		{
-			appendPQExpBufferStr(q,
-								 "true AS conislocal, true AS convalidated ");
-		}
-		appendPQExpBuffer(q,
-||||||| 3b231596ccf
-			numConstrs = PQntuples(res);
-			if (numConstrs != tbinfo->ncheck)
-=======
 		appendPQExpBuffer(q,
 						  "SELECT c.tableoid, c.oid, conrelid, conname, "
 						  "pg_catalog.pg_get_constraintdef(c.oid) AS consrc, "
 						  "conislocal, convalidated "
->>>>>>> c4cc2850f4d
 						  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
 						  "JOIN pg_catalog.pg_constraint c ON (src.tbloid = c.conrelid)\n"
 						  "WHERE contype = 'c' "
@@ -12155,130 +9640,6 @@ getForeignDataWrappers(Archive *fout, int *numForeignDataWrappers)
 
 	query = createPQExpBuffer();
 
-<<<<<<< HEAD
-	if (fout->remoteVersion >= 90200)
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, fdwname, "
-						  "fdwowner, "
-						  "fdwhandler::pg_catalog.regproc, "
-						  "fdwvalidator::pg_catalog.regproc, "
-						  "fdwacl, "
-						  "acldefault('F', fdwowner) AS acldefault, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(fdwoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS fdwoptions "
-						  "FROM pg_foreign_data_wrapper");
-	}
-	else if (fout->remoteVersion >= 90100)
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, fdwname, "
-						  "fdwowner, "
-						  "fdwhandler::pg_catalog.regproc, "
-						  "fdwvalidator::pg_catalog.regproc, fdwacl, "
-						  "NULL AS acldefault, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(fdwoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS fdwoptions "
-						  "FROM pg_foreign_data_wrapper");
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, fdwname, "
-						  "fdwowner, "
-						  "'-' AS fdwhandler, "
-						  "fdwvalidator::pg_catalog.regproc, fdwacl, "
-						  "NULL AS acldefault, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(fdwoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS fdwoptions "
-						  "FROM pg_foreign_data_wrapper");
-	}
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90600)
-	{
-		PQExpBuffer acl_subquery = createPQExpBuffer();
-		PQExpBuffer racl_subquery = createPQExpBuffer();
-		PQExpBuffer initacl_subquery = createPQExpBuffer();
-		PQExpBuffer initracl_subquery = createPQExpBuffer();
-
-		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
-						initracl_subquery, "f.fdwacl", "f.fdwowner",
-						"pip.initprivs", "'F'", dopt->binary_upgrade);
-
-		appendPQExpBuffer(query, "SELECT f.tableoid, f.oid, f.fdwname, "
-						  "(%s f.fdwowner) AS rolname, "
-						  "f.fdwhandler::pg_catalog.regproc, "
-						  "f.fdwvalidator::pg_catalog.regproc, "
-						  "%s AS fdwacl, "
-						  "%s AS rfdwacl, "
-						  "%s AS initfdwacl, "
-						  "%s AS initrfdwacl, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(f.fdwoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS fdwoptions "
-						  "FROM pg_foreign_data_wrapper f "
-						  "LEFT JOIN pg_init_privs pip ON "
-						  "(f.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_foreign_data_wrapper'::regclass "
-						  "AND pip.objsubid = 0) ",
-						  username_subquery,
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  initacl_subquery->data,
-						  initracl_subquery->data);
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(initacl_subquery);
-		destroyPQExpBuffer(initracl_subquery);
-	}
-	else if (fout->remoteVersion >= 90100)
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, fdwname, "
-						  "(%s fdwowner) AS rolname, "
-						  "fdwhandler::pg_catalog.regproc, "
-						  "fdwvalidator::pg_catalog.regproc, fdwacl, "
-						  "NULL as rfdwacl, "
-						  "NULL as initfdwacl, NULL AS initrfdwacl, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(fdwoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS fdwoptions "
-						  "FROM pg_foreign_data_wrapper",
-						  username_subquery);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, fdwname, "
-						  "(%s fdwowner) AS rolname, "
-						  "'-' AS fdwhandler, "
-						  "fdwvalidator::pg_catalog.regproc, fdwacl, "
-						  "NULL as rfdwacl, "
-						  "NULL as initfdwacl, NULL AS initrfdwacl, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(fdwoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS fdwoptions "
-						  "FROM pg_foreign_data_wrapper",
-						  username_subquery);
-	}
-=======
 	appendPQExpBuffer(query, "SELECT tableoid, oid, fdwname, "
 					  "fdwowner, "
 					  "fdwhandler::pg_catalog.regproc, "
@@ -12292,7 +9653,6 @@ getForeignDataWrappers(Archive *fout, int *numForeignDataWrappers)
 					  "ORDER BY option_name"
 					  "), E',\n    ') AS fdwoptions "
 					  "FROM pg_foreign_data_wrapper");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -12331,19 +9691,10 @@ getForeignDataWrappers(Archive *fout, int *numForeignDataWrappers)
 		/* Decide whether we want to dump it */
 		selectDumpableObject(&(fdwinfo[i].dobj), fout);
 
-<<<<<<< HEAD
 		/* Leave out the built-in gp_exttable_fdw */
 		if (fdwinfo[i].dobj.catId.oid < (Oid) FirstNormalObjectId)
 			fdwinfo[i].dobj.dump = DUMP_COMPONENT_NONE;
 
-||||||| 3b231596ccf
-		/* Do not try to dump ACL if no ACL exists. */
-		if (PQgetisnull(res, i, i_fdwacl) && PQgetisnull(res, i, i_rfdwacl) &&
-			PQgetisnull(res, i, i_initfdwacl) &&
-			PQgetisnull(res, i, i_initrfdwacl))
-			fdwinfo[i].dobj.dump &= ~DUMP_COMPONENT_ACL;
-=======
->>>>>>> c4cc2850f4d
 		/* Mark whether FDW has an ACL */
 		if (!PQgetisnull(res, i, i_fdwacl))
 			fdwinfo[i].dobj.components |= DUMP_COMPONENT_ACL;
@@ -12384,93 +9735,6 @@ getForeignServers(Archive *fout, int *numForeignServers)
 
 	query = createPQExpBuffer();
 
-<<<<<<< HEAD
-	if (fout->remoteVersion >= 90200)
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, srvname, "
-						  "srvowner, "
-						  "srvfdw, srvtype, srvversion, srvacl, "
-						  "acldefault('S', srvowner) AS acldefault, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(srvoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS srvoptions "
-						  "FROM pg_foreign_server");
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, srvname, "
-						  "srvowner, "
-						  "srvfdw, srvtype, srvversion, srvacl, "
-						  "NULL AS acldefault, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(srvoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS srvoptions "
-						  "FROM pg_foreign_server");
-	}
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90600)
-	{
-		PQExpBuffer acl_subquery = createPQExpBuffer();
-		PQExpBuffer racl_subquery = createPQExpBuffer();
-		PQExpBuffer initacl_subquery = createPQExpBuffer();
-		PQExpBuffer initracl_subquery = createPQExpBuffer();
-
-		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
-						initracl_subquery, "f.srvacl", "f.srvowner",
-						"pip.initprivs", "'S'", dopt->binary_upgrade);
-
-		appendPQExpBuffer(query, "SELECT f.tableoid, f.oid, f.srvname, "
-						  "(%s f.srvowner) AS rolname, "
-						  "f.srvfdw, f.srvtype, f.srvversion, "
-						  "%s AS srvacl, "
-						  "%s AS rsrvacl, "
-						  "%s AS initsrvacl, "
-						  "%s AS initrsrvacl, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(f.srvoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS srvoptions "
-						  "FROM pg_foreign_server f "
-						  "LEFT JOIN pg_init_privs pip "
-						  "ON (f.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_foreign_server'::regclass "
-						  "AND pip.objsubid = 0) ",
-						  username_subquery,
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  initacl_subquery->data,
-						  initracl_subquery->data);
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(initacl_subquery);
-		destroyPQExpBuffer(initracl_subquery);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT tableoid, oid, srvname, "
-						  "(%s srvowner) AS rolname, "
-						  "srvfdw, srvtype, srvversion, srvacl, "
-						  "NULL AS rsrvacl, "
-						  "NULL AS initsrvacl, NULL AS initrsrvacl, "
-						  "array_to_string(ARRAY("
-						  "SELECT quote_ident(option_name) || ' ' || "
-						  "quote_literal(option_value) "
-						  "FROM pg_options_to_table(srvoptions) "
-						  "ORDER BY option_name"
-						  "), E',\n    ') AS srvoptions "
-						  "FROM pg_foreign_server",
-						  username_subquery);
-	}
-=======
 	appendPQExpBuffer(query, "SELECT tableoid, oid, srvname, "
 					  "srvowner, "
 					  "srvfdw, srvtype, srvversion, srvacl, "
@@ -12482,7 +9746,6 @@ getForeignServers(Archive *fout, int *numForeignServers)
 					  "ORDER BY option_name"
 					  "), E',\n    ') AS srvoptions "
 					  "FROM pg_foreign_server");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -12523,19 +9786,10 @@ getForeignServers(Archive *fout, int *numForeignServers)
 		/* Decide whether we want to dump it */
 		selectDumpableObject(&(srvinfo[i].dobj), fout);
 
-<<<<<<< HEAD
 		/* Leave out the built-in gp_exttable_server */
 		if (srvinfo[i].dobj.catId.oid < (Oid) FirstNormalObjectId)
 			srvinfo[i].dobj.dump = DUMP_COMPONENT_NONE;
 
-||||||| 3b231596ccf
-		/* Do not try to dump ACL if no ACL exists. */
-		if (PQgetisnull(res, i, i_srvacl) && PQgetisnull(res, i, i_rsrvacl) &&
-			PQgetisnull(res, i, i_initsrvacl) &&
-			PQgetisnull(res, i, i_initrsrvacl))
-			srvinfo[i].dobj.dump &= ~DUMP_COMPONENT_ACL;
-=======
->>>>>>> c4cc2850f4d
 		/* Servers have user mappings */
 		srvinfo[i].dobj.components |= DUMP_COMPONENT_USERMAP;
 
@@ -12577,93 +9831,6 @@ getDefaultACLs(Archive *fout, int *numDefaultACLs)
 
 	query = createPQExpBuffer();
 
-<<<<<<< HEAD
-	appendPQExpBuffer(query,
-					  "SELECT oid, tableoid, "
-					  "defaclrole, "
-					  "defaclnamespace, "
-					  "defaclobjtype, "
-					  "defaclacl, ");
-
-	if (fout->remoteVersion >= 90200)
-	{
-		/*
-		 * Global entries (with defaclnamespace=0) replace the hard-wired
-		 * default ACL for their object type.  We should dump them as deltas
-		 * from the default ACL, since that will be used as a starting point
-		 * for interpreting the ALTER DEFAULT PRIVILEGES commands.  On the
-		 * other hand, non-global entries can only add privileges not revoke
-		 * them.  We must dump those as-is (i.e., as deltas from an empty
-		 * ACL).
-		 *
-		 * We can use defaclobjtype as the object type for acldefault(),
-		 * except for the case of 'S' (DEFACLOBJ_SEQUENCE) which must be
-		 * converted to 's'.
-		 */
-		appendPQExpBufferStr(query,
-							 "CASE WHEN defaclnamespace = 0 THEN "
-							 "acldefault(CASE WHEN defaclobjtype = 'S' "
-							 "THEN 's'::\"char\" ELSE defaclobjtype END, "
-							 "defaclrole) ELSE '{}' END AS acldefault ");
-	}
-	else
-		appendPQExpBufferStr(query,
-							 "NULL AS acldefault ");
-
-	appendPQExpBufferStr(query,
-						 "FROM pg_default_acl");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90600)
-	{
-		PQExpBuffer acl_subquery = createPQExpBuffer();
-		PQExpBuffer racl_subquery = createPQExpBuffer();
-		PQExpBuffer initacl_subquery = createPQExpBuffer();
-		PQExpBuffer initracl_subquery = createPQExpBuffer();
-
-		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
-						initracl_subquery, "defaclacl", "defaclrole",
-						"pip.initprivs",
-						"CASE WHEN defaclobjtype = 'S' THEN 's' ELSE defaclobjtype END::\"char\"",
-						dopt->binary_upgrade);
-
-		appendPQExpBuffer(query, "SELECT d.oid, d.tableoid, "
-						  "(%s d.defaclrole) AS defaclrole, "
-						  "d.defaclnamespace, "
-						  "d.defaclobjtype, "
-						  "%s AS defaclacl, "
-						  "%s AS rdefaclacl, "
-						  "%s AS initdefaclacl, "
-						  "%s AS initrdefaclacl "
-						  "FROM pg_default_acl d "
-						  "LEFT JOIN pg_init_privs pip ON "
-						  "(d.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_default_acl'::regclass "
-						  "AND pip.objsubid = 0) ",
-						  username_subquery,
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  initacl_subquery->data,
-						  initracl_subquery->data);
-
-		destroyPQExpBuffer(acl_subquery);
-		destroyPQExpBuffer(racl_subquery);
-		destroyPQExpBuffer(initacl_subquery);
-		destroyPQExpBuffer(initracl_subquery);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT oid, tableoid, "
-						  "(%s defaclrole) AS defaclrole, "
-						  "defaclnamespace, "
-						  "defaclobjtype, "
-						  "defaclacl, "
-						  "NULL AS rdefaclacl, "
-						  "NULL AS initdefaclacl, "
-						  "NULL AS initrdefaclacl "
-						  "FROM pg_default_acl",
-						  username_subquery);
-	}
-=======
 	/*
 	 * Global entries (with defaclnamespace=0) replace the hard-wired default
 	 * ACL for their object type.  We should dump them as deltas from the
@@ -12687,7 +9854,6 @@ getDefaultACLs(Archive *fout, int *numDefaultACLs)
 					  "THEN 's'::\"char\" ELSE defaclobjtype END, "
 					  "defaclrole) ELSE '{}' END AS acldefault "
 					  "FROM pg_default_acl");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -12826,33 +9992,6 @@ getAdditionalACLs(Archive *fout)
 				i;
 
 	/* Check for per-column ACLs */
-<<<<<<< HEAD
-	if (fout->remoteVersion >= 80400)
-	{
-		appendPQExpBufferStr(query,
-							 "SELECT DISTINCT attrelid FROM pg_attribute "
-							 "WHERE attacl IS NOT NULL");
-
-		res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
-
-		ntups = PQntuples(res);
-		for (i = 0; i < ntups; i++)
-		{
-			Oid			relid = atooid(PQgetvalue(res, i, 0));
-			TableInfo  *tblinfo;
-
-			tblinfo = findTableByOid(relid);
-			/* OK to ignore tables we haven't got a DumpableObject for */
-			if (tblinfo)
-			{
-				tblinfo->dobj.components |= DUMP_COMPONENT_ACL;
-				tblinfo->hascolumnACLs = true;
-			}
-		}
-		PQclear(res);
-	}
-||||||| 3b231596ccf
-=======
 	appendPQExpBufferStr(query,
 						 "SELECT DISTINCT attrelid FROM pg_attribute "
 						 "WHERE attacl IS NOT NULL");
@@ -12874,7 +10013,6 @@ getAdditionalACLs(Archive *fout)
 		}
 	}
 	PQclear(res);
->>>>>>> c4cc2850f4d
 
 	/* Fetch initial-privileges data */
 	if (fout->remoteVersion >= 90600)
@@ -13809,39 +10947,11 @@ dumpEnumType(Archive *fout, const TypeInfo *tyinfo)
 	{
 		/* Set up query for enum-specific details */
 		appendPQExpBufferStr(query,
-<<<<<<< HEAD
-							 "PREPARE dumpEnumType(pg_catalog.oid) AS\n");
-
-		if (fout->remoteVersion >= 90100)
-			appendPQExpBufferStr(query, "SELECT oid, enumlabel "
-								 "FROM pg_catalog.pg_enum "
-								 "WHERE enumtypid = $1 "
-								 "ORDER BY enumsortorder");
-		else
-			appendPQExpBufferStr(query, "SELECT oid, enumlabel "
-								 "FROM pg_catalog.pg_enum "
-								 "WHERE enumtypid = $1 "
-								 "ORDER BY oid");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90100)
-		appendPQExpBuffer(query, "SELECT oid, enumlabel "
-						  "FROM pg_catalog.pg_enum "
-						  "WHERE enumtypid = '%u'"
-						  "ORDER BY enumsortorder",
-						  tyinfo->dobj.catId.oid);
-	else
-		appendPQExpBuffer(query, "SELECT oid, enumlabel "
-						  "FROM pg_catalog.pg_enum "
-						  "WHERE enumtypid = '%u'"
-						  "ORDER BY oid",
-						  tyinfo->dobj.catId.oid);
-=======
 							 "PREPARE dumpEnumType(pg_catalog.oid) AS\n"
 							 "SELECT oid, enumlabel "
 							 "FROM pg_catalog.pg_enum "
 							 "WHERE enumtypid = $1 "
 							 "ORDER BY enumsortorder");
->>>>>>> c4cc2850f4d
 
 		ExecuteSqlStatement(fout, query->data);
 
@@ -14215,39 +11325,6 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 	{
 		/* Set up query for type-specific details */
 		appendPQExpBufferStr(query,
-<<<<<<< HEAD
-							"PREPARE dumpBaseType(pg_catalog.oid) AS\n");
-
-		appendPQExpBufferStr(query, "SELECT typlen, "
-							"typinput, typoutput, typreceive, typsend, "
-							"typreceive::pg_catalog.oid AS typreceiveoid, "
-							"typsend::pg_catalog.oid AS typsendoid, "
-							"typanalyze, "
-							"typanalyze::pg_catalog.oid AS typanalyzeoid, "
-							"typdelim, typbyval, typalign, typstorage, "
-							"typmodin, typmodout, "
-							"typmodin::pg_catalog.oid AS typmodinoid, "
-							"typmodout::pg_catalog.oid AS typmodoutoid, ");
-||||||| 3b231596ccf
-	/* Fetch type-specific details */
-	appendPQExpBufferStr(query, "SELECT typlen, "
-						 "typinput, typoutput, typreceive, typsend, "
-						 "typreceive::pg_catalog.oid AS typreceiveoid, "
-						 "typsend::pg_catalog.oid AS typsendoid, "
-						 "typanalyze, "
-						 "typanalyze::pg_catalog.oid AS typanalyzeoid, "
-						 "typdelim, typbyval, typalign, typstorage, ");
-
-	if (fout->remoteVersion >= 80300)
-		appendPQExpBufferStr(query,
-							 "typmodin, typmodout, "
-							 "typmodin::pg_catalog.oid AS typmodinoid, "
-							 "typmodout::pg_catalog.oid AS typmodoutoid, ");
-	else
-		appendPQExpBufferStr(query,
-							 "'-' AS typmodin, '-' AS typmodout, "
-							 "0 AS typmodinoid, 0 AS typmodoutoid, ");
-=======
 							 "PREPARE dumpBaseType(pg_catalog.oid) AS\n"
 							 "SELECT typlen, "
 							 "typinput, typoutput, typreceive, typsend, "
@@ -14262,23 +11339,7 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 							 "typcategory, typispreferred, "
 							 "(typcollation <> 0) AS typcollatable, "
 							 "pg_catalog.pg_get_expr(typdefaultbin, 0) AS typdefaultbin, typdefault, ");
->>>>>>> c4cc2850f4d
 
-<<<<<<< HEAD
-		if (fout->remoteVersion >= 80400)
-			appendPQExpBufferStr(query,
-								"typcategory, typispreferred, ");
-		else
-			appendPQExpBufferStr(query,
-								"'U' AS typcategory, false AS typispreferred, ");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-							 "typcategory, typispreferred, ");
-	else
-		appendPQExpBufferStr(query,
-							 "'U' AS typcategory, false AS typispreferred, ");
-=======
 		if (fout->remoteVersion >= 140000)
 			appendPQExpBufferStr(query,
 								 "typsubscript, "
@@ -14286,78 +11347,15 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 		else
 			appendPQExpBufferStr(query,
 								 "'-' AS typsubscript, 0 AS typsubscriptoid ");
->>>>>>> c4cc2850f4d
 
-<<<<<<< HEAD
-		if (fout->remoteVersion >= 90100)
-			appendPQExpBufferStr(query, "(typcollation <> 0) AS typcollatable, ");
-		else
-			appendPQExpBufferStr(query, "false AS typcollatable, ");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90100)
-		appendPQExpBufferStr(query, "(typcollation <> 0) AS typcollatable, ");
-	else
-		appendPQExpBufferStr(query, "false AS typcollatable, ");
-=======
 		appendPQExpBufferStr(query, "FROM pg_catalog.pg_type "
 							 "WHERE oid = $1");
->>>>>>> c4cc2850f4d
-
-<<<<<<< HEAD
-		if (fout->remoteVersion >= 140000)
-			appendPQExpBufferStr(query,
-								 "typsubscript, "
-								 "typsubscript::pg_catalog.oid AS typsubscriptoid, ");
-		else
-			appendPQExpBufferStr(query,
-								 "'-' AS typsubscript, 0 AS typsubscriptoid, ");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 140000)
-		appendPQExpBufferStr(query,
-							 "typsubscript, "
-							 "typsubscript::pg_catalog.oid AS typsubscriptoid, ");
-	else
-		appendPQExpBufferStr(query,
-							 "'-' AS typsubscript, 0 AS typsubscriptoid, ");
-=======
-		ExecuteSqlStatement(fout, query->data);
->>>>>>> c4cc2850f4d
-
-<<<<<<< HEAD
-		/* Before 8.4, pg_get_expr does not allow 0 for its second arg */
-		if (fout->remoteVersion >= 80400)
-			appendPQExpBufferStr(query,
-								 "pg_catalog.pg_get_expr(typdefaultbin, 0) AS typdefaultbin, typdefault ");
-		else
-			appendPQExpBufferStr(query,
-								 "pg_catalog.pg_get_expr(typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, typdefault ");
-||||||| 3b231596ccf
-	/* Before 8.4, pg_get_expr does not allow 0 for its second arg */
-	if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-							 "pg_catalog.pg_get_expr(typdefaultbin, 0) AS typdefaultbin, typdefault ");
-	else
-		appendPQExpBufferStr(query,
-							 "pg_catalog.pg_get_expr(typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, typdefault ");
-=======
-		fout->is_prepared[PREPQUERY_DUMPBASETYPE] = true;
-	}
->>>>>>> c4cc2850f4d
-
-<<<<<<< HEAD
-		appendPQExpBuffer(query, "FROM pg_catalog.pg_type "
-						  "WHERE oid = $1");
 
 		ExecuteSqlStatement(fout, query->data);
 
 		fout->is_prepared[PREPQUERY_DUMPBASETYPE] = true;
 	}
 
-||||||| 3b231596ccf
-	appendPQExpBuffer(query, "FROM pg_catalog.pg_type "
-					  "WHERE oid = '%u'::pg_catalog.oid",
-=======
->>>>>>> c4cc2850f4d
 	printfPQExpBuffer(query,
 					  "EXECUTE dumpBaseType('%u')",
 					  tyinfo->dobj.catId.oid);
@@ -14589,52 +11587,6 @@ dumpDomain(Archive *fout, const TypeInfo *tyinfo)
 		appendPQExpBufferStr(query,
 							 "PREPARE dumpDomain(pg_catalog.oid) AS\n");
 
-<<<<<<< HEAD
-		if (fout->remoteVersion >= 90100)
-		{
-			/* typcollation is new in 9.1 */
-			appendPQExpBufferStr(query, "SELECT t.typnotnull, "
-								 "pg_catalog.format_type(t.typbasetype, t.typtypmod) AS typdefn, "
-								 "pg_catalog.pg_get_expr(t.typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, "
-								 "t.typdefault, "
-								 "CASE WHEN t.typcollation <> u.typcollation "
-								 "THEN t.typcollation ELSE 0 END AS typcollation "
-								 "FROM pg_catalog.pg_type t "
-								 "LEFT JOIN pg_catalog.pg_type u ON (t.typbasetype = u.oid) "
-								 "WHERE t.oid = $1");
-		}
-		else
-		{
-			appendPQExpBufferStr(query, "SELECT typnotnull, "
-								 "pg_catalog.format_type(typbasetype, typtypmod) AS typdefn, "
-								 "pg_catalog.pg_get_expr(typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, "
-								 "typdefault, 0 AS typcollation "
-								 "FROM pg_catalog.pg_type "
-								 "WHERE oid = $1");
-		}
-||||||| 3b231596ccf
-		/* typcollation is new in 9.1 */
-		appendPQExpBuffer(query, "SELECT t.typnotnull, "
-						  "pg_catalog.format_type(t.typbasetype, t.typtypmod) AS typdefn, "
-						  "pg_catalog.pg_get_expr(t.typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, "
-						  "t.typdefault, "
-						  "CASE WHEN t.typcollation <> u.typcollation "
-						  "THEN t.typcollation ELSE 0 END AS typcollation "
-						  "FROM pg_catalog.pg_type t "
-						  "LEFT JOIN pg_catalog.pg_type u ON (t.typbasetype = u.oid) "
-						  "WHERE t.oid = '%u'::pg_catalog.oid",
-						  tyinfo->dobj.catId.oid);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT typnotnull, "
-						  "pg_catalog.format_type(typbasetype, typtypmod) AS typdefn, "
-						  "pg_catalog.pg_get_expr(typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, "
-						  "typdefault, 0 AS typcollation "
-						  "FROM pg_catalog.pg_type "
-						  "WHERE oid = '%u'::pg_catalog.oid",
-						  tyinfo->dobj.catId.oid);
-=======
 		appendPQExpBufferStr(query, "SELECT t.typnotnull, "
 							 "pg_catalog.format_type(t.typbasetype, t.typtypmod) AS typdefn, "
 							 "pg_catalog.pg_get_expr(t.typdefaultbin, 'pg_catalog.pg_type'::pg_catalog.regclass) AS typdefaultbin, "
@@ -14644,7 +11596,6 @@ dumpDomain(Archive *fout, const TypeInfo *tyinfo)
 							 "FROM pg_catalog.pg_type t "
 							 "LEFT JOIN pg_catalog.pg_type u ON (t.typbasetype = u.oid) "
 							 "WHERE t.oid = $1");
->>>>>>> c4cc2850f4d
 
 		ExecuteSqlStatement(fout, query->data);
 
@@ -14809,82 +11760,6 @@ dumpCompositeType(Archive *fout, const TypeInfo *tyinfo)
 
 	if (!fout->is_prepared[PREPQUERY_DUMPCOMPOSITETYPE])
 	{
-<<<<<<< HEAD
-		/* Set up query for type-specific details */
-		appendPQExpBufferStr(query,
-							 "PREPARE dumpCompositeType(pg_catalog.oid) AS\n");
-
-		if (fout->remoteVersion >= 90100)
-		{
-			/*
-			 * attcollation is new in 9.1.  Since we only want to dump COLLATE
-			 * clauses for attributes whose collation is different from their
-			 * type's default, we use a CASE here to suppress uninteresting
-			 * attcollations cheaply.  atttypid will be 0 for dropped columns;
-			 * collation does not matter for those.
-			 */
-			appendPQExpBufferStr(query, "SELECT a.attname, "
-								 "pg_catalog.format_type(a.atttypid, a.atttypmod) AS atttypdefn, "
-								 "a.attlen, a.attalign, a.attisdropped, "
-								 "CASE WHEN a.attcollation <> at.typcollation "
-								 "THEN a.attcollation ELSE 0 END AS attcollation "
-								 "FROM pg_catalog.pg_type ct "
-								 "JOIN pg_catalog.pg_attribute a ON a.attrelid = ct.typrelid "
-								 "LEFT JOIN pg_catalog.pg_type at ON at.oid = a.atttypid "
-								 "WHERE ct.oid = $1 "
-								 "ORDER BY a.attnum");
-		}
-		else
-		{
-			/*
-			 * Since ALTER TYPE could not drop columns until 9.1, attisdropped
-			 * should always be false.
-			 */
-			appendPQExpBufferStr(query, "SELECT a.attname, "
-								 "pg_catalog.format_type(a.atttypid, a.atttypmod) AS atttypdefn, "
-								 "a.attlen, a.attalign, a.attisdropped, "
-								 "0 AS attcollation "
-								 "FROM pg_catalog.pg_type ct, pg_catalog.pg_attribute a "
-								 "WHERE ct.oid = $1 "
-								 "AND a.attrelid = ct.typrelid "
-								 "ORDER BY a.attnum");
-		}
-||||||| 3b231596ccf
-		/*
-		 * attcollation is new in 9.1.  Since we only want to dump COLLATE
-		 * clauses for attributes whose collation is different from their
-		 * type's default, we use a CASE here to suppress uninteresting
-		 * attcollations cheaply.  atttypid will be 0 for dropped columns;
-		 * collation does not matter for those.
-		 */
-		appendPQExpBuffer(query, "SELECT a.attname, "
-						  "pg_catalog.format_type(a.atttypid, a.atttypmod) AS atttypdefn, "
-						  "a.attlen, a.attalign, a.attisdropped, "
-						  "CASE WHEN a.attcollation <> at.typcollation "
-						  "THEN a.attcollation ELSE 0 END AS attcollation "
-						  "FROM pg_catalog.pg_type ct "
-						  "JOIN pg_catalog.pg_attribute a ON a.attrelid = ct.typrelid "
-						  "LEFT JOIN pg_catalog.pg_type at ON at.oid = a.atttypid "
-						  "WHERE ct.oid = '%u'::pg_catalog.oid "
-						  "ORDER BY a.attnum ",
-						  tyinfo->dobj.catId.oid);
-	}
-	else
-	{
-		/*
-		 * Since ALTER TYPE could not drop columns until 9.1, attisdropped
-		 * should always be false.
-		 */
-		appendPQExpBuffer(query, "SELECT a.attname, "
-						  "pg_catalog.format_type(a.atttypid, a.atttypmod) AS atttypdefn, "
-						  "a.attlen, a.attalign, a.attisdropped, "
-						  "0 AS attcollation "
-						  "FROM pg_catalog.pg_type ct, pg_catalog.pg_attribute a "
-						  "WHERE ct.oid = '%u'::pg_catalog.oid "
-						  "AND a.attrelid = ct.typrelid "
-						  "ORDER BY a.attnum ",
-						  tyinfo->dobj.catId.oid);
-=======
 		/*
 		 * Set up query for type-specific details.
 		 *
@@ -14905,7 +11780,6 @@ dumpCompositeType(Archive *fout, const TypeInfo *tyinfo)
 							 "LEFT JOIN pg_catalog.pg_type at ON at.oid = a.atttypid "
 							 "WHERE ct.oid = $1 "
 							 "ORDER BY a.attnum");
->>>>>>> c4cc2850f4d
 
 		ExecuteSqlStatement(fout, query->data);
 
@@ -15048,16 +11922,10 @@ dumpCompositeType(Archive *fout, const TypeInfo *tyinfo)
 				qtypname, NULL,
 				tyinfo->dobj.namespace->dobj.name,
 				tyinfo->rolname, &tyinfo->dacl);
-<<<<<<< HEAD
-||||||| 3b231596ccf
-				tyinfo->rolname, tyinfo->typacl, tyinfo->rtypacl,
-				tyinfo->inittypacl, tyinfo->initrtypacl);
-=======
 
 	/* Dump any per-column comments */
 	if (tyinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
 		dumpCompositeTypeColComments(fout, tyinfo, res);
->>>>>>> c4cc2850f4d
 
 	PQclear(res);
 	destroyPQExpBuffer(q);
@@ -15359,156 +12227,10 @@ format_function_arguments(const FuncInfo *finfo, const char *funcargs, bool is_a
 }
 
 /*
-<<<<<<< HEAD
- *	is_returns_table_function: returns true if function id declared as
- *	RETURNS TABLE, i.e. at least one argument is PROARGMODE_TABLE
- */
-static bool
-is_returns_table_function(int nallargs, char **argmodes)
-{
-	int			j;
-
-	if (argmodes)
-		for (j = 0; j < nallargs; j++)
-			if (argmodes[j][0] == PROARGMODE_TABLE)
-				return true;
-
-	return false;
-}
-
-
-/*
- * format_table_function_columns: generate column list for
- * table functions.
- */
-static char *
-format_table_function_columns(Archive *fout, const FuncInfo *finfo, int nallargs,
-							  char **allargtypes,
-							  char **argmodes,
-							  char **argnames)
-{
-	PQExpBufferData fn;
-	int			j;
-	bool		first_column = true;
-
-	initPQExpBuffer(&fn);
-	appendPQExpBuffer(&fn, "(");
-
-	for (j = 0; j < nallargs; j++)
-	{
-		Oid			typid;
-		const char *typname;
-
-		/*
-		 * argmodes are checked in format_function_arguments, it isn't necessary
-		 * to check argmodes here again
-		 */
-		if (argmodes[j][0] == PROARGMODE_TABLE)
-		{
-			typid = allargtypes ? atooid(allargtypes[j]) : finfo->argtypes[j];
-			typname = getFormattedTypeName(fout, typid, zeroIsError);
-
-			/* column's name is always NOT NULL (checked in gram.y) */
-			appendPQExpBuffer(&fn, "%s%s %s",
-							  first_column ? "" : ", ",
-							  fmtId(argnames[j]),
-							  typname);
-			first_column = false;
-		}
-	}
-
-	appendPQExpBuffer(&fn, ")");
-	return fn.data;
-}
-
-
-/*
-||||||| 3b231596ccf
- * format_function_arguments_old: generate function name and argument list
- *
- * The argument type names are qualified if needed.  The function name
- * is never qualified.
- *
- * This is used only with pre-8.4 servers, so we aren't expecting to see
- * VARIADIC or TABLE arguments, nor are there any defaults for arguments.
- *
- * Any or all of allargtypes, argmodes, argnames may be NULL.
- */
-static char *
-format_function_arguments_old(Archive *fout,
-							  const FuncInfo *finfo, int nallargs,
-							  char **allargtypes,
-							  char **argmodes,
-							  char **argnames)
-{
-	PQExpBufferData fn;
-	int			j;
-
-	initPQExpBuffer(&fn);
-	appendPQExpBuffer(&fn, "%s(", fmtId(finfo->dobj.name));
-	for (j = 0; j < nallargs; j++)
-	{
-		Oid			typid;
-		const char *typname;
-		const char *argmode;
-		const char *argname;
-
-		typid = allargtypes ? atooid(allargtypes[j]) : finfo->argtypes[j];
-		typname = getFormattedTypeName(fout, typid, zeroIsError);
-
-		if (argmodes)
-		{
-			switch (argmodes[j][0])
-			{
-				case PROARGMODE_IN:
-					argmode = "";
-					break;
-				case PROARGMODE_OUT:
-					argmode = "OUT ";
-					break;
-				case PROARGMODE_INOUT:
-					argmode = "INOUT ";
-					break;
-				default:
-					pg_log_warning("bogus value in proargmodes array");
-					argmode = "";
-					break;
-			}
-		}
-		else
-			argmode = "";
-
-		argname = argnames ? argnames[j] : (char *) NULL;
-		if (argname && argname[0] == '\0')
-			argname = NULL;
-
-		appendPQExpBuffer(&fn, "%s%s%s%s%s",
-						  (j > 0) ? ", " : "",
-						  argmode,
-						  argname ? fmtId(argname) : "",
-						  argname ? " " : "",
-						  typname);
-	}
-	appendPQExpBufferChar(&fn, ')');
-	return fn.data;
-}
-
-/*
-=======
->>>>>>> c4cc2850f4d
  * format_function_signature: generate function name and argument list
  *
-<<<<<<< HEAD
- * Generates a minimal list of input argument types; this is sufficient to
- * reference the function, but not to define it.
-||||||| 3b231596ccf
- * This is like format_function_arguments_old except that only a minimal
- * list of input argument types is generated; this is sufficient to
- * reference the function, but not to define it.
-=======
  * Only a minimal list of input argument types is generated; this is
  * sufficient to reference the function, but not to define it.
->>>>>>> c4cc2850f4d
  *
  * If honor_quotes is false then the function name is never quoted.
  * This is appropriate for use in TOC tags, but not in SQL commands.
@@ -15574,21 +12296,9 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	char	   *prosupport;
 	char	   *proparallel;
 	char	   *lanname;
-<<<<<<< HEAD
 	char	   *callbackfunc;
 	char	   *prodataaccess;
 	char	   *proexeclocation;
-	int			nallargs;
-	char	  **allargtypes = NULL;
-	char	  **argmodes = NULL;
-	char	  **argnames = NULL;
-||||||| 3b231596ccf
-	int			nallargs;
-	char	  **allargtypes = NULL;
-	char	  **argmodes = NULL;
-	char	  **argnames = NULL;
-=======
->>>>>>> c4cc2850f4d
 	char	  **configitems = NULL;
 	int			nconfigitems = 0;
 	const char *keyword;
@@ -15606,36 +12316,7 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	if (!fout->is_prepared[PREPQUERY_DUMPFUNC])
 	{
 		/* Set up query for function-specific details */
-<<<<<<< HEAD
-		appendPQExpBufferStr(query, "PREPARE dumpFunc(pg_catalog.oid) AS\n");
-
-||||||| 3b231596ccf
-	/* Fetch function-specific details */
-	appendPQExpBufferStr(query,
-						 "SELECT\n"
-						 "proretset,\n"
-						 "prosrc,\n"
-						 "probin,\n"
-						 "provolatile,\n"
-						 "proisstrict,\n"
-						 "prosecdef,\n"
-						 "lanname,\n");
-
-	if (fout->remoteVersion >= 80300)
-=======
->>>>>>> c4cc2850f4d
 		appendPQExpBufferStr(query,
-<<<<<<< HEAD
-							 "SELECT\n"
-							 "proretset,\n"
-							 "prosrc,\n"
-							 "probin,\n"
-							 "provolatile,\n"
-							 "proisstrict,\n"
-							 "prosecdef,\n"
-							 "(SELECT lanname FROM pg_catalog.pg_language WHERE oid = prolang) AS lanname,\n "
-||||||| 3b231596ccf
-=======
 							 "PREPARE dumpFunc(pg_catalog.oid) AS\n");
 
 		appendPQExpBufferStr(query,
@@ -15647,41 +12328,15 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 							 "proisstrict,\n"
 							 "prosecdef,\n"
 							 "lanname,\n"
->>>>>>> c4cc2850f4d
 							 "proconfig,\n"
 							 "procost,\n"
 							 "prorows,\n"
-<<<<<<< HEAD
 							 "prodataaccess,\n"
-||||||| 3b231596ccf
-							 "prorows,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "null AS proconfig,\n"
-							 "0 AS procost,\n"
-							 "0 AS prorows,\n");
-
-	if (fout->remoteVersion >= 80400)
-	{
-		/*
-		 * In 8.4 and up we rely on pg_get_function_arguments and
-		 * pg_get_function_result instead of examining proallargtypes etc.
-		 */
-		appendPQExpBufferStr(query,
-=======
->>>>>>> c4cc2850f4d
 							 "pg_catalog.pg_get_function_arguments(p.oid) AS funcargs,\n"
 							 "pg_catalog.pg_get_function_identity_arguments(p.oid) AS funciargs,\n"
 							 "pg_catalog.pg_get_function_result(p.oid) AS funcresult,\n"
-<<<<<<< HEAD
-							 "(SELECT procallback FROM pg_catalog.pg_proc_callback WHERE profnoid::pg_catalog.oid = p.oid) as callbackfunc,\n");
-
-		if (fout->remoteVersion >= 90200)
-			appendPQExpBufferStr(query,
-								 "proleakproof,\n");
-		else
-			appendPQExpBufferStr(query,
-								 "false AS proleakproof,\n");
+							 "(SELECT procallback FROM pg_catalog.pg_proc_callback WHERE profnoid::pg_catalog.oid = p.oid) as callbackfunc,\n"
+							 "proleakproof,\n");
 
 		/* GPDB6 added proexeclocation */
 		if (fout->remoteVersion >= GPDB6_MAJOR_PGVERSION)
@@ -15690,100 +12345,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		else
 				appendPQExpBufferStr(query,
 									 "'a' as proexeclocation,\n");
-
-		if (fout->remoteVersion >= 90500)
-			appendPQExpBufferStr(query,
-								 "array_to_string(protrftypes, ' ') AS protrftypes,\n");
-
-		if (fout->remoteVersion >= 90600)
-			appendPQExpBufferStr(query,
-								 "proparallel,\n");
-		else
-			appendPQExpBufferStr(query,
-								 "'u' AS proparallel,\n");
-
-		if (fout->remoteVersion >= 110000)
-			appendPQExpBufferStr(query,
-								 "prokind,\n");
-		else if (fout->remoteVersion >= 80400)
-			appendPQExpBufferStr(query,
-								 "CASE WHEN proiswindow THEN 'w' ELSE 'f' END AS prokind,\n");
-		else
-			appendPQExpBufferStr(query,
-								 "CASE WHEN proiswin THEN 'w' ELSE 'f' END AS prokind,\n");
-
-		if (fout->remoteVersion >= 120000)
-			appendPQExpBufferStr(query,
-								 "prosupport,\n");
-		else
-			appendPQExpBufferStr(query,
-								 "'-' AS prosupport,\n");
-
-		if (fout->remoteVersion >= 140000)
-			appendPQExpBufferStr(query,
-								 "CASE WHEN prosrc IS NULL AND lanname = 'sql' THEN pg_get_function_sqlbody(p.oid) END AS prosqlbody\n");
-||||||| 3b231596ccf
-							 "pg_catalog.pg_get_function_result(p.oid) AS funcresult,\n");
-	}
-	else if (fout->remoteVersion >= 80100)
-		appendPQExpBufferStr(query,
-							 "proallargtypes,\n"
-							 "proargmodes,\n"
-							 "proargnames,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "null AS proallargtypes,\n"
-							 "null AS proargmodes,\n"
-							 "proargnames,\n");
-
-	if (fout->remoteVersion >= 90200)
-		appendPQExpBufferStr(query,
-							 "proleakproof,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "false AS proleakproof,\n");
-
-	if (fout->remoteVersion >= 90500)
-		appendPQExpBufferStr(query,
-							 "array_to_string(protrftypes, ' ') AS protrftypes,\n");
-
-	if (fout->remoteVersion >= 90600)
-		appendPQExpBufferStr(query,
-							 "proparallel,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'u' AS proparallel,\n");
-
-	if (fout->remoteVersion >= 110000)
-		appendPQExpBufferStr(query,
-							 "prokind,\n");
-	else if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-							 "CASE WHEN proiswindow THEN 'w' ELSE 'f' END AS prokind,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'f' AS prokind,\n");
-
-	if (fout->remoteVersion >= 120000)
-		appendPQExpBufferStr(query,
-							 "prosupport,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'-' AS prosupport,\n");
-
-	if (fout->remoteVersion >= 140000)
-		appendPQExpBufferStr(query,
-							 "pg_get_function_sqlbody(p.oid) AS prosqlbody\n");
-	else
-		appendPQExpBufferStr(query,
-							 "NULL AS prosqlbody\n");
-
-	appendPQExpBuffer(query,
-					  "FROM pg_catalog.pg_proc p, pg_catalog.pg_language l\n"
-					  "WHERE p.oid = '%u'::pg_catalog.oid "
-					  "AND l.oid = p.prolang",
-=======
-							 "proleakproof,\n");
 
 		if (fout->remoteVersion >= 90500)
 			appendPQExpBufferStr(query,
@@ -15816,7 +12377,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		if (fout->remoteVersion >= 140000)
 			appendPQExpBufferStr(query,
 								 "pg_get_function_sqlbody(p.oid) AS prosqlbody\n");
->>>>>>> c4cc2850f4d
 		else
 			appendPQExpBufferStr(query,
 								 "NULL AS prosqlbody\n");
@@ -15853,34 +12413,7 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	funcargs = PQgetvalue(res, 0, PQfnumber(res, "funcargs"));
 	funciargs = PQgetvalue(res, 0, PQfnumber(res, "funciargs"));
 	funcresult = PQgetvalue(res, 0, PQfnumber(res, "funcresult"));
-<<<<<<< HEAD
-
-	if (PQfnumber(res, "protrftypes") != -1)
-		protrftypes = PQgetvalue(res, 0, PQfnumber(res, "protrftypes"));
-	else
-		protrftypes = NULL;
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80400)
-	{
-		funcargs = PQgetvalue(res, 0, PQfnumber(res, "funcargs"));
-		funciargs = PQgetvalue(res, 0, PQfnumber(res, "funciargs"));
-		funcresult = PQgetvalue(res, 0, PQfnumber(res, "funcresult"));
-		proallargtypes = proargmodes = proargnames = NULL;
-	}
-	else
-	{
-		proallargtypes = PQgetvalue(res, 0, PQfnumber(res, "proallargtypes"));
-		proargmodes = PQgetvalue(res, 0, PQfnumber(res, "proargmodes"));
-		proargnames = PQgetvalue(res, 0, PQfnumber(res, "proargnames"));
-		funcargs = funciargs = funcresult = NULL;
-	}
-	if (PQfnumber(res, "protrftypes") != -1)
-		protrftypes = PQgetvalue(res, 0, PQfnumber(res, "protrftypes"));
-	else
-		protrftypes = NULL;
-=======
 	protrftypes = PQgetvalue(res, 0, PQfnumber(res, "protrftypes"));
->>>>>>> c4cc2850f4d
 	prokind = PQgetvalue(res, 0, PQfnumber(res, "prokind"));
 	provolatile = PQgetvalue(res, 0, PQfnumber(res, "provolatile"));
 	proisstrict = PQgetvalue(res, 0, PQfnumber(res, "proisstrict"));
@@ -15925,85 +12458,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	}
 	else
 	{
-<<<<<<< HEAD
-		if (strcmp(prosrc, "-") != 0)
-		{
-			appendPQExpBufferStr(asPart, "AS ");
-			/* with no bin, dollar quote src unconditionally if allowed */
-			if (dopt->disable_dollar_quoting)
-				appendStringLiteralAH(asPart, prosrc, fout);
-			else
-				appendStringLiteralDQ(asPart, prosrc, NULL);
-		}
-	}
-
-	nallargs = finfo->nargs;	/* unless we learn different from allargs */
-	funcfullsig = format_function_arguments(finfo, funcargs, false);
-	funcsig = format_function_arguments(finfo, funciargs, false);
-
-	funcsig_tag = format_function_signature(fout, finfo, false);
-
-	if (proconfig && *proconfig)
-||||||| 3b231596ccf
-		if (strcmp(prosrc, "-") != 0)
-		{
-			appendPQExpBufferStr(asPart, "AS ");
-			/* with no bin, dollar quote src unconditionally if allowed */
-			if (dopt->disable_dollar_quoting)
-				appendStringLiteralAH(asPart, prosrc, fout);
-			else
-				appendStringLiteralDQ(asPart, prosrc, NULL);
-		}
-	}
-
-	nallargs = finfo->nargs;	/* unless we learn different from allargs */
-
-	if (proallargtypes && *proallargtypes)
-	{
-		int			nitems = 0;
-
-		if (!parsePGArray(proallargtypes, &allargtypes, &nitems) ||
-			nitems < finfo->nargs)
-		{
-			pg_log_warning("could not parse proallargtypes array");
-			if (allargtypes)
-				free(allargtypes);
-			allargtypes = NULL;
-		}
-		else
-			nallargs = nitems;
-	}
-
-	if (proargmodes && *proargmodes)
-	{
-		int			nitems = 0;
-
-		if (!parsePGArray(proargmodes, &argmodes, &nitems) ||
-			nitems != nallargs)
-		{
-			pg_log_warning("could not parse proargmodes array");
-			if (argmodes)
-				free(argmodes);
-			argmodes = NULL;
-		}
-	}
-
-	if (proargnames && *proargnames)
-	{
-		int			nitems = 0;
-
-		if (!parsePGArray(proargnames, &argnames, &nitems) ||
-			nitems != nallargs)
-		{
-			pg_log_warning("could not parse proargnames array");
-			if (argnames)
-				free(argnames);
-			argnames = NULL;
-		}
-	}
-
-	if (proconfig && *proconfig)
-=======
 		appendPQExpBufferStr(asPart, "AS ");
 		/* with no bin, dollar quote src unconditionally if allowed */
 		if (dopt->disable_dollar_quoting)
@@ -16013,7 +12467,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	}
 
 	if (*proconfig)
->>>>>>> c4cc2850f4d
 	{
 		if (!parsePGArray(proconfig, &configitems, &nconfigitems))
 			fatal("could not parse %s array", "proconfig");
@@ -16024,30 +12477,10 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		nconfigitems = 0;
 	}
 
-<<<<<<< HEAD
-	qual_funcsig = psprintf("%s.%s",
-							fmtId(finfo->dobj.namespace->dobj.name),
-							funcsig);
-||||||| 3b231596ccf
-	if (funcargs)
-	{
-		/* 8.4 or later; we rely on server-side code for most of the work */
-		funcfullsig = format_function_arguments(finfo, funcargs, false);
-		funcsig = format_function_arguments(finfo, funciargs, false);
-	}
-	else
-		/* pre-8.4, do it ourselves */
-		funcsig = format_function_arguments_old(fout,
-												finfo, nallargs, allargtypes,
-												argmodes, argnames);
-
-	funcsig_tag = format_function_signature(fout, finfo, false);
-=======
 	funcfullsig = format_function_arguments(finfo, funcargs, false);
 	funcsig = format_function_arguments(finfo, funciargs, false);
 
 	funcsig_tag = format_function_signature(fout, finfo, false);
->>>>>>> c4cc2850f4d
 
 	qual_funcsig = psprintf("%s.%s",
 							fmtId(finfo->dobj.namespace->dobj.name),
@@ -16071,20 +12504,11 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		 /* no result type to output */ ;
 	else if (funcresult)
 		appendPQExpBuffer(q, " RETURNS %s", funcresult);
-	else if (!is_returns_table_function(nallargs, argmodes))
+	else
 		appendPQExpBuffer(q, " RETURNS %s%s",
 						  (proretset[0] == 't') ? "SETOF " : "",
 						  getFormattedTypeName(fout, finfo->prorettype,
 											   zeroIsError));
-	else
-	{
-		/* RETURNS TABLE functions */
-		char	   *func_cols;
-		func_cols = format_table_function_columns(fout, finfo, nallargs, allargtypes,
-												  argmodes, argnames);
-		appendPQExpBuffer(q, "RETURNS TABLE %s", func_cols);
-		free(func_cols);
-	}
 
 	appendPQExpBuffer(q, "\n    LANGUAGE %s", fmtId(lanname));
 
@@ -16257,10 +12681,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 								"pg_catalog.pg_proc", keyword,
 								qual_funcsig);
 
-	append_depends_on_extension(fout, q, &finfo->dobj,
-								"pg_catalog.pg_proc", keyword,
-								qual_funcsig);
-
 	if (dopt->binary_upgrade)
 		binary_upgrade_extension_member(q, &finfo->dobj,
 										keyword, funcsig,
@@ -16304,22 +12724,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		free(funcfullsig);
 	free(funcsig_tag);
 	free(qual_funcsig);
-<<<<<<< HEAD
-	if (allargtypes)
-		free(allargtypes);
-	if (argmodes)
-		free(argmodes);
-	if (argnames)
-		free(argnames);
-||||||| 3b231596ccf
-	if (allargtypes)
-		free(allargtypes);
-	if (argmodes)
-		free(argmodes);
-	if (argnames)
-		free(argnames);
-=======
->>>>>>> c4cc2850f4d
 	if (configitems)
 		free(configitems);
 }
@@ -16617,50 +13021,6 @@ dumpOpr(Archive *fout, const OprInfo *oprinfo)
 	{
 		/* Set up query for operator-specific details */
 		appendPQExpBufferStr(query,
-<<<<<<< HEAD
-							 "PREPARE dumpOpr(pg_catalog.oid) AS\n");
-
-		appendPQExpBuffer(query, "SELECT oprkind, "
-							"oprcode::pg_catalog.regprocedure, "
-							"oprleft::pg_catalog.regtype, "
-							"oprright::pg_catalog.regtype, "
-							"oprcom, "
-							"oprnegate, "
-							"oprrest::pg_catalog.regprocedure, "
-							"oprjoin::pg_catalog.regprocedure, "
-							"oprcanmerge, oprcanhash "
-							"FROM pg_catalog.pg_operator "
-							"WHERE oid = $1");
-||||||| 3b231596ccf
-		appendPQExpBuffer(query, "SELECT oprkind, "
-						  "oprcode::pg_catalog.regprocedure, "
-						  "oprleft::pg_catalog.regtype, "
-						  "oprright::pg_catalog.regtype, "
-						  "oprcom, "
-						  "oprnegate, "
-						  "oprrest::pg_catalog.regprocedure, "
-						  "oprjoin::pg_catalog.regprocedure, "
-						  "oprcanmerge, oprcanhash "
-						  "FROM pg_catalog.pg_operator "
-						  "WHERE oid = '%u'::pg_catalog.oid",
-						  oprinfo->dobj.catId.oid);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT oprkind, "
-						  "oprcode::pg_catalog.regprocedure, "
-						  "oprleft::pg_catalog.regtype, "
-						  "oprright::pg_catalog.regtype, "
-						  "oprcom, "
-						  "oprnegate, "
-						  "oprrest::pg_catalog.regprocedure, "
-						  "oprjoin::pg_catalog.regprocedure, "
-						  "(oprlsortop != 0) AS oprcanmerge, "
-						  "oprcanhash "
-						  "FROM pg_catalog.pg_operator "
-						  "WHERE oid = '%u'::pg_catalog.oid",
-						  oprinfo->dobj.catId.oid);
-=======
 							 "PREPARE dumpOpr(pg_catalog.oid) AS\n"
 							 "SELECT oprkind, "
 							 "oprcode::pg_catalog.regprocedure, "
@@ -16673,7 +13033,6 @@ dumpOpr(Archive *fout, const OprInfo *oprinfo)
 							 "oprcanmerge, oprcanhash "
 							 "FROM pg_catalog.pg_operator "
 							 "WHERE oid = $1");
->>>>>>> c4cc2850f4d
 
 		ExecuteSqlStatement(fout, query->data);
 
@@ -17042,45 +13401,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 
 	/* Get additional fields from the pg_opclass row */
 	appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
-<<<<<<< HEAD
-						"opckeytype::pg_catalog.regtype, "
-						"opcdefault, opcfamily, "
-						"opfname AS opcfamilyname, "
-						"nspname AS opcfamilynsp, "
-						"(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcmethod) AS amname "
-						"FROM pg_catalog.pg_opclass c "
-						"LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = opcfamily "
-						"LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						"WHERE c.oid = '%u'::pg_catalog.oid",
-						opcinfo->dobj.catId.oid);
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
-						  "opckeytype::pg_catalog.regtype, "
-						  "opcdefault, opcfamily, "
-						  "opfname AS opcfamilyname, "
-						  "nspname AS opcfamilynsp, "
-						  "(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcmethod) AS amname "
-						  "FROM pg_catalog.pg_opclass c "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = opcfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE c.oid = '%u'::pg_catalog.oid",
-						  opcinfo->dobj.catId.oid);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
-						  "opckeytype::pg_catalog.regtype, "
-						  "opcdefault, NULL AS opcfamily, "
-						  "NULL AS opcfamilyname, "
-						  "NULL AS opcfamilynsp, "
-						  "(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcamid) AS amname "
-						  "FROM pg_catalog.pg_opclass "
-						  "WHERE oid = '%u'::pg_catalog.oid",
-						  opcinfo->dobj.catId.oid);
-	}
-=======
 					  "opckeytype::pg_catalog.regtype, "
 					  "opcdefault, opcfamily, "
 					  "opfname AS opcfamilyname, "
@@ -17091,7 +13411,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 					  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
 					  "WHERE c.oid = '%u'::pg_catalog.oid",
 					  opcinfo->dobj.catId.oid);
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQueryForSingleRow(fout, query->data);
 
@@ -17153,116 +13472,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	 * pg_depend entries.
 	 */
 	resetPQExpBuffer(query);
-<<<<<<< HEAD
-
-	if (fout->remoteVersion >= 90100)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "opfname AS sortfamily, "
-						  "nspname AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
-						  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND amopfamily = '%s'::pg_catalog.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid,
-						  opcfamily);
-	}
-	else if (fout->remoteVersion >= 80400)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
-						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
-						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-||||||| 3b231596ccf
-
-	if (fout->remoteVersion >= 90100)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "opfname AS sortfamily, "
-						  "nspname AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
-						  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND amopfamily = '%s'::pg_catalog.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid,
-						  opcfamily);
-	}
-	else if (fout->remoteVersion >= 80400)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
-						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-	else if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
-						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-	else
-	{
-		/*
-		 * Here, we print all entries since there are no opfamilies and hence
-		 * no loose operators to worry about.
-		 */
-		appendPQExpBuffer(query, "SELECT amopstrategy, amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop "
-						  "WHERE amopclaid = '%u'::pg_catalog.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-=======
 	appendPQExpBuffer(query, "SELECT amopstrategy, "
 					  "amopopr::pg_catalog.regoperator, "
 					  "opfname AS sortfamily, "
@@ -17277,7 +13486,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 					  "ORDER BY amopstrategy",
 					  opcinfo->dobj.catId.oid,
 					  opcfamily);
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -17326,44 +13534,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	resetPQExpBuffer(query);
 
 	appendPQExpBuffer(query, "SELECT amprocnum, "
-<<<<<<< HEAD
-						"amproc::pg_catalog.regprocedure, "
-						"amproclefttype::pg_catalog.regtype, "
-						"amprocrighttype::pg_catalog.regtype "
-						"FROM pg_catalog.pg_amproc ap, pg_catalog.pg_depend "
-						"WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						"AND refobjid = '%u'::pg_catalog.oid "
-						"AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass "
-						"AND objid = ap.oid "
-						"ORDER BY amprocnum",
-						opcinfo->dobj.catId.oid);
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBuffer(query, "SELECT amprocnum, "
-						  "amproc::pg_catalog.regprocedure, "
-						  "amproclefttype::pg_catalog.regtype, "
-						  "amprocrighttype::pg_catalog.regtype "
-						  "FROM pg_catalog.pg_amproc ap, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass "
-						  "AND objid = ap.oid "
-						  "ORDER BY amprocnum",
-						  opcinfo->dobj.catId.oid);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT amprocnum, "
-						  "amproc::pg_catalog.regprocedure, "
-						  "'' AS amproclefttype, "
-						  "'' AS amprocrighttype "
-						  "FROM pg_catalog.pg_amproc "
-						  "WHERE amopclaid = '%u'::pg_catalog.oid "
-						  "ORDER BY amprocnum",
-						  opcinfo->dobj.catId.oid);
-	}
-=======
 					  "amproc::pg_catalog.regprocedure, "
 					  "amproclefttype::pg_catalog.regtype, "
 					  "amprocrighttype::pg_catalog.regtype "
@@ -17374,7 +13544,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 					  "AND objid = ap.oid "
 					  "ORDER BY amprocnum",
 					  opcinfo->dobj.catId.oid);
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -18015,65 +14184,11 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 							 "aggtransfn,\n"
 							 "aggfinalfn,\n"
 							 "aggtranstype::pg_catalog.regtype,\n"
-<<<<<<< HEAD
-							 "agginitval,\n");
-
-		if (fout->remoteVersion >= 80100)
-			appendPQExpBufferStr(query,
-								 "aggsortop,\n");
-		else
-			appendPQExpBufferStr(query,
-								 "0 AS aggsortop,\n");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80100)
-		appendPQExpBufferStr(query,
-							 "aggsortop,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "0 AS aggsortop,\n");
-
-	if (fout->remoteVersion >= 80400)
-		appendPQExpBufferStr(query,
-							 "pg_catalog.pg_get_function_arguments(p.oid) AS funcargs,\n"
-							 "pg_catalog.pg_get_function_identity_arguments(p.oid) AS funciargs,\n");
-=======
 							 "agginitval,\n"
 							 "aggsortop,\n"
 							 "pg_catalog.pg_get_function_arguments(p.oid) AS funcargs,\n"
 							 "pg_catalog.pg_get_function_identity_arguments(p.oid) AS funciargs,\n");
->>>>>>> c4cc2850f4d
 
-<<<<<<< HEAD
-		if (fout->remoteVersion >= 80400)
-			appendPQExpBufferStr(query,
-								 "pg_catalog.pg_get_function_arguments(p.oid) AS funcargs,\n"
-								 "pg_catalog.pg_get_function_identity_arguments(p.oid) AS funciargs,\n");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90400)
-		appendPQExpBufferStr(query,
-							 "aggkind,\n"
-							 "aggmtransfn,\n"
-							 "aggminvtransfn,\n"
-							 "aggmfinalfn,\n"
-							 "aggmtranstype::pg_catalog.regtype,\n"
-							 "aggfinalextra,\n"
-							 "aggmfinalextra,\n"
-							 "aggtransspace,\n"
-							 "aggmtransspace,\n"
-							 "aggminitval,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'n' AS aggkind,\n"
-							 "'-' AS aggmtransfn,\n"
-							 "'-' AS aggminvtransfn,\n"
-							 "'-' AS aggmfinalfn,\n"
-							 "0 AS aggmtranstype,\n"
-							 "false AS aggfinalextra,\n"
-							 "false AS aggmfinalextra,\n"
-							 "0 AS aggtransspace,\n"
-							 "0 AS aggmtransspace,\n"
-							 "NULL AS aggminitval,\n");
-=======
 		if (fout->remoteVersion >= 90400)
 			appendPQExpBufferStr(query,
 								 "aggkind,\n"
@@ -18098,47 +14213,7 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 								 "0 AS aggtransspace,\n"
 								 "0 AS aggmtransspace,\n"
 								 "NULL AS aggminitval,\n");
->>>>>>> c4cc2850f4d
 
-<<<<<<< HEAD
-		if (fout->remoteVersion >= 90400)
-			appendPQExpBufferStr(query,
-								 "aggkind,\n"
-								 "aggmtransfn,\n"
-								 "aggminvtransfn,\n"
-								 "aggmfinalfn,\n"
-								 "aggmtranstype::pg_catalog.regtype,\n"
-								 "aggfinalextra,\n"
-								 "aggmfinalextra,\n"
-								 "aggtransspace,\n"
-								 "aggmtransspace,\n"
-								 "aggminitval,\n");
-		else
-			appendPQExpBufferStr(query,
-								 "'n' AS aggkind,\n"
-								 "'-' AS aggmtransfn,\n"
-								 "'-' AS aggminvtransfn,\n"
-								 "'-' AS aggmfinalfn,\n"
-								 "0 AS aggmtranstype,\n"
-								 "false AS aggfinalextra,\n"
-								 "false AS aggmfinalextra,\n"
-								 "0 AS aggtransspace,\n"
-								 "0 AS aggmtransspace,\n"
-								 "NULL AS aggminitval,\n");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 90600)
-		appendPQExpBufferStr(query,
-							 "aggcombinefn,\n"
-							 "aggserialfn,\n"
-							 "aggdeserialfn,\n"
-							 "proparallel,\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'-' AS aggcombinefn,\n"
-							 "'-' AS aggserialfn,\n"
-							 "'-' AS aggdeserialfn,\n"
-							 "'u' AS proparallel,\n");
-=======
 		if (fout->remoteVersion >= 90600)
 			appendPQExpBufferStr(query,
 								 "aggcombinefn,\n"
@@ -18151,42 +14226,7 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 								 "'-' AS aggserialfn,\n"
 								 "'-' AS aggdeserialfn,\n"
 								 "'u' AS proparallel,\n");
->>>>>>> c4cc2850f4d
 
-<<<<<<< HEAD
-		if (fout->remoteVersion >= 90600)
-			appendPQExpBufferStr(query,
-								 "aggcombinefn,\n"
-								 "aggserialfn,\n"
-								 "aggdeserialfn,\n"
-								 "proparallel,\n");
-		else
-			appendPQExpBufferStr(query,
-								 "'-' AS aggcombinefn,\n"
-								 "'-' AS aggserialfn,\n"
-								 "'-' AS aggdeserialfn,\n"
-								 "'u' AS proparallel,\n");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 110000)
-		appendPQExpBufferStr(query,
-							 "aggfinalmodify,\n"
-							 "aggmfinalmodify\n");
-	else
-		appendPQExpBufferStr(query,
-							 "'0' AS aggfinalmodify,\n"
-							 "'0' AS aggmfinalmodify\n");
-=======
-		if (fout->remoteVersion >= 110000)
-			appendPQExpBufferStr(query,
-								 "aggfinalmodify,\n"
-								 "aggmfinalmodify\n");
-		else
-			appendPQExpBufferStr(query,
-								 "'0' AS aggfinalmodify,\n"
-								 "'0' AS aggmfinalmodify\n");
->>>>>>> c4cc2850f4d
-
-<<<<<<< HEAD
 		if (fout->remoteVersion >= 110000)
 			appendPQExpBufferStr(query,
 								 "aggfinalmodify,\n"
@@ -18196,13 +14236,6 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 								 "'0' AS aggfinalmodify,\n"
 								 "'0' AS aggmfinalmodify\n");
 
-||||||| 3b231596ccf
-	appendPQExpBuffer(query,
-					  "FROM pg_catalog.pg_aggregate a, pg_catalog.pg_proc p "
-					  "WHERE a.aggfnoid = p.oid "
-					  "AND p.oid = '%u'::pg_catalog.oid",
-=======
->>>>>>> c4cc2850f4d
 		appendPQExpBufferStr(query,
 							 "FROM pg_catalog.pg_aggregate a, pg_catalog.pg_proc p "
 							 "WHERE a.aggfnoid = p.oid "
@@ -20352,6 +16385,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 	int			j,
 				k;
 	bool		hasExternalPartitions = false;
+	char	   *partkeydef = NULL;
 	char	   *ftoptions = NULL;
 	char	   *srvname = NULL;
 	char	   *foreign = "";
@@ -20370,14 +16404,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					   qrelname);
 
 	if (dopt->binary_upgrade)
-<<<<<<< HEAD
-		binary_upgrade_set_type_oids_by_rel(fout, q, 	tbinfo);
-||||||| 3b231596ccf
-		binary_upgrade_set_type_oids_by_rel_oid(fout, q,
-												tbinfo->dobj.catId.oid);
-=======
 		binary_upgrade_set_type_oids_by_rel(fout, q, tbinfo);
->>>>>>> c4cc2850f4d
 
 	/* Is it a table or a view? */
 	if (tbinfo->relkind == RELKIND_VIEW)
@@ -20419,23 +16446,10 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 	}
 	else
 	{
-<<<<<<< HEAD
-||||||| 3b231596ccf
-		char	   *ftoptions = NULL;
-		char	   *srvname = NULL;
-		char	   *foreign = "";
-
-=======
-		char	   *partkeydef = NULL;
-		char	   *ftoptions = NULL;
-		char	   *srvname = NULL;
-		char	   *foreign = "";
-
 		/*
 		 * Set reltypename, and collect any relkind-specific data that we
 		 * didn't fetch during getTables().
 		 */
->>>>>>> c4cc2850f4d
 		switch (tbinfo->relkind)
 		{
 			case RELKIND_PARTITIONED_TABLE:
@@ -20494,17 +16508,11 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 				break;
 			default:
 				reltypename = "TABLE";
-<<<<<<< HEAD
-||||||| 3b231596ccf
-		}
-=======
-				break;
-		}
->>>>>>> c4cc2850f4d
 
 				/* Is it an external table (server GPDB 6.x and below.) */
 				if (tbinfo->relstorage == RELSTORAGE_EXTERNAL)
 					reltypename = "EXTERNAL TABLE";
+				break;
 		}
 	}
 
@@ -20947,14 +16955,6 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 										"MATERIALIZED VIEW" : "INDEX",
 										qualrelname);
 
-		/* Materialized views can depend on extensions */
-		if (tbinfo->relkind == RELKIND_MATVIEW)
-			append_depends_on_extension(fout, q, &tbinfo->dobj,
-										"pg_catalog.pg_class",
-										tbinfo->relkind == RELKIND_MATVIEW ?
-										"MATERIALIZED VIEW" : "INDEX",
-										qualrelname);
-
 		/*
 		 * in binary upgrade mode, update the catalog with any missing values
 		 * that might be present.
@@ -21367,14 +17367,6 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		char	   *tablespace = NULL;
 		char	   *tableam = NULL;
 
-<<<<<<< HEAD
-		if (tbinfo->relkind == RELKIND_RELATION ||
-			tbinfo->relkind == RELKIND_PARTITIONED_TABLE ||
-			tbinfo->relkind == RELKIND_MATVIEW)
-||||||| 3b231596ccf
-		if (tbinfo->relkind == RELKIND_RELATION ||
-			tbinfo->relkind == RELKIND_MATVIEW)
-=======
 		/*
 		 * _selectTablespace() relies on tablespace-enabled objects in the
 		 * default tablespace to have a tablespace of "" (empty string) versus
@@ -21385,8 +17377,9 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		if (RELKIND_HAS_TABLESPACE(tbinfo->relkind))
 			tablespace = tbinfo->reltablespace;
 
-		if (RELKIND_HAS_TABLE_AM(tbinfo->relkind))
->>>>>>> c4cc2850f4d
+		/* GPDB: a partitioned table can have an access method, too */
+		if (RELKIND_HAS_TABLE_AM(tbinfo->relkind) ||
+			tbinfo->relkind == RELKIND_PARTITIONED_TABLE)
 			tableam = tbinfo->amname;
 
 		ArchiveEntry(fout, tbinfo->dobj.catId, tbinfo->dobj.dumpId,
