@@ -25,12 +25,8 @@
 #include "catalog/gp_partition_template.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
-<<<<<<< HEAD
 #include "catalog/partition.h"
-||||||| 3b231596ccf
-=======
 #include "catalog/pg_authid.h"
->>>>>>> c4cc2850f4d
 #include "catalog/pg_inherits.h"
 #include "catalog/toasting.h"
 #include "commands/alter.h"

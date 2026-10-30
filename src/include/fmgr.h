@@ -461,12 +461,8 @@ typedef struct
 	int			indexmaxkeys;	/* INDEX_MAX_KEYS */
 	int			namedatalen;	/* NAMEDATALEN */
 	int			float8byval;	/* FLOAT8PASSBYVAL */
-<<<<<<< HEAD
 	int         product;        /* magic product code */
-||||||| 3b231596ccf
-=======
 	char		abi_extra[32];	/* see pg_config_manual.h */
->>>>>>> c4cc2850f4d
 } Pg_magic_struct;
 
 /*
@@ -492,25 +488,17 @@ typedef enum {
 	INDEX_MAX_KEYS, \
 	NAMEDATALEN, \
 	FLOAT8PASSBYVAL, \
-<<<<<<< HEAD
-	PgMagicProductGreenplum \
-||||||| 3b231596ccf
-	FLOAT8PASSBYVAL \
-=======
+	PgMagicProductGreenplum, \
 	FMGR_ABI_EXTRA, \
->>>>>>> c4cc2850f4d
 }
 
-<<<<<<< HEAD
 #ifndef FLOAT8PASSBYVAL
 #define FLOAT8PASSBYVAL 1
 #endif
-||||||| 3b231596ccf
-=======
+
 StaticAssertDecl(sizeof(FMGR_ABI_EXTRA) <= sizeof(((Pg_magic_struct*)0)->abi_extra),
 				 "FMGR_ABI_EXTRA too long");
 
->>>>>>> c4cc2850f4d
 /*
  * Declare the module magic function.  It needs to be a function as the dlsym
  * in the backend is only guaranteed to work on functions, not data
