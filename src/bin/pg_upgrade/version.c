@@ -85,45 +85,13 @@ check_for_data_types_usage(ClusterInfo *cluster,
 						  "				  t.oid = c.reltype AND "
 						  "				  c.oid = a.attrelid AND "
 						  "				  NOT a.attisdropped AND "
-<<<<<<< HEAD
-						  "				  a.atttypid = x.oid ",
-						  base_query);
-
-		/* Ranges were introduced in 9.2 */
-		if (GET_MAJOR_VERSION(cluster->major_version) >= 902)
-			appendPQExpBufferStr(&querybuf,
-								 "			UNION ALL "
-			/* ranges containing any type selected so far */
-								 "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
-								 "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid");
-
-		appendPQExpBufferStr(&querybuf,
-							 "	) "
-							 ") "
-||||||| 3b231596ccf
-						  "				  a.atttypid = x.oid ",
-						  base_query);
-
-		/* Ranges were introduced in 9.2 */
-		if (GET_MAJOR_VERSION(cluster->major_version) >= 902)
-			appendPQExpBufferStr(&querybuf,
-								 "			UNION ALL "
-			/* ranges containing any type selected so far */
-								 "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
-								 "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid");
-
-		appendPQExpBufferStr(&querybuf,
-							 "	) foo "
-							 ") "
-=======
 						  "				  a.atttypid = x.oid "
 						  "			UNION ALL "
 		/* ranges containing any type selected so far */
 						  "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
 						  "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid"
-						  "	) foo "
+						  "	) "
 						  ") "
->>>>>>> c4cc2850f4d
 		/* now look for stored columns of any such type */
 						  "SELECT n.nspname, c.relname, a.attname "
 						  "FROM	pg_catalog.pg_class c, "
