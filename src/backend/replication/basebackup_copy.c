@@ -18,6 +18,7 @@
 #include "libpq/pqformat.h"
 #include "replication/basebackup.h"
 #include "replication/basebackup_sink.h"
+#include "utils/guc.h"
 
 static void bbsink_copytblspc_begin_backup(bbsink *sink);
 static void bbsink_copytblspc_begin_archive(bbsink *sink,
@@ -82,6 +83,8 @@ bbsink_copytblspc_begin_backup(bbsink *sink)
 
 	/* Send a CommandComplete message */
 	pq_puttextmessage('C', "SELECT");
+
+	elogif(debug_basebackup, LOG, "basebackup header -- Sent basebackup header.");
 }
 
 /*
@@ -303,14 +306,26 @@ SendTablespaceList(List *tablespaces)
 		else
 		{
 			Size		len;
+			char		*link_path_to_be_sent;
 
 			len = strlen(ti->oid);
 			pq_sendint32(&buf, len);
 			pq_sendbytes(&buf, ti->oid, len);
 
-			len = strlen(ti->path);
+			if(ti->rpath == NULL)
+			{
+				/* Lop off the dbid before sending the link target. */
+				char *link_path_without_dbid = pstrdup(ti->path);
+				char *file_sep_before_dbid_in_link_path =
+						strrchr(link_path_without_dbid, '/');
+				*file_sep_before_dbid_in_link_path = '\0';
+				link_path_to_be_sent = link_path_without_dbid;
+			}
+			else
+				link_path_to_be_sent = ti->path;
+			len = strlen(link_path_to_be_sent);
 			pq_sendint32(&buf, len);
-			pq_sendbytes(&buf, ti->path, len);
+			pq_sendbytes(&buf, link_path_to_be_sent, len);
 		}
 		if (ti->size >= 0)
 			send_int8_string(&buf, ti->size / 1024);
