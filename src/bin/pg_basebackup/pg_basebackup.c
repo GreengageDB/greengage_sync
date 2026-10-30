@@ -62,34 +62,6 @@ typedef struct WriteTarState
 	bbstreamer *streamer;
 } WriteTarState;
 
-<<<<<<< HEAD
-typedef struct UnpackTarState
-{
-	int			tablespacenum;
-	char		current_path[MAXPGPATH];
-	char		filename[MAXPGPATH];
-	const char *mapped_tblspc_path;
-	pgoff_t		current_len_left;
-	int			current_padding;
-	FILE	   *file;
-	char		gp_tablespace_filename[MAXPGPATH];
-	bool		basetablespace;
-} UnpackTarState;
-
-||||||| 3b231596ccf
-typedef struct UnpackTarState
-{
-	int			tablespacenum;
-	char		current_path[MAXPGPATH];
-	char		filename[MAXPGPATH];
-	const char *mapped_tblspc_path;
-	pgoff_t		current_len_left;
-	int			current_padding;
-	FILE	   *file;
-} UnpackTarState;
-
-=======
->>>>>>> c4cc2850f4d
 typedef struct WriteManifestState
 {
 	char		filename[MAXPGPATH];
@@ -167,7 +139,6 @@ static bool found_existing_xlogdir = false;
 static bool made_tablespace_dirs = false;
 static bool found_tablespace_dirs = false;
 
-<<<<<<< HEAD
 static bool forceoverwrite = false;
 #define MAX_EXCLUDE 255
 static int	num_exclude = 0;
@@ -176,12 +147,7 @@ static int	num_exclude_from = 0;
 static char *excludefroms[MAX_EXCLUDE];
 static int target_gp_dbid = 0;
 
-/* Progress counters */
-||||||| 3b231596ccf
-/* Progress counters */
-=======
 /* Progress indicators */
->>>>>>> c4cc2850f4d
 static uint64 totalsize_kb;
 static uint64 totaldone;
 static int	tablespacecount;
@@ -233,6 +199,7 @@ static bool reached_end_position(XLogRecPtr segendpos, uint32 timeline,
 								 bool segment_finished);
 
 static const char *get_tablespace_mapping(const char *dir);
+static const char *get_tablespace_link_target(const char *dir);
 static void tablespace_list_append(const char *arg);
 static void WriteInternalConfFile(void);
 
@@ -1064,10 +1031,11 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 		 * mappings.
 		 */
 		directory = spclocation == NULL ? basedir
-			: get_tablespace_mapping(spclocation);
+			: get_tablespace_link_target(spclocation);
 		streamer = bbstreamer_extractor_new(directory,
-											get_tablespace_mapping,
-											progress_update_filename);
+											get_tablespace_link_target,
+											progress_update_filename,
+											forceoverwrite);
 	}
 	else
 	{
@@ -1216,6 +1184,15 @@ ReceiveTarFile(PGconn *conn, char *archive_name, char *spclocation,
 	progress_report(tablespacenum, true, false);
 
 	/*
+	 * GPDB: the main tablespace carried the source segment's
+	 * internal.auto.conf; overwrite it with the target segment's dbid.  This
+	 * is only possible when the archive was extracted into basedir; tar
+	 * backups need the file to be added manually (see main()).
+	 */
+	if (format == 'p' && spclocation == NULL)
+		WriteInternalConfFile();
+
+	/*
 	 * Do not sync the resulting tar file yet, all files are synced once at
 	 * the end.
 	 */
@@ -1257,106 +1234,45 @@ get_tablespace_mapping(const char *dir)
 	return dir;
 }
 
-<<<<<<< HEAD
+/*
+ * GPDB: map a tablespace location received from the server to the directory
+ * of the target segment.  A tablespace's per-segment contents live in a
+ * per-dbid subdirectory of the (mapped) location, i.e.
+ * <location>/<dbid>/<GP_TABLESPACE_VERSION_DIRECTORY>/...  The server strips
+ * the source segment's dbid from the locations it sends, so append the
+ * --target-gp-dbid here.  Used both as the extraction directory of a
+ * tablespace archive and as the target of the pg_tblspc symlinks.
+ */
+static const char *
+get_tablespace_link_target(const char *dir)
+{
+	const char *mapped = get_tablespace_mapping(dir);
+
+	if (target_gp_dbid > 0)
+		return psprintf("%s/%d", mapped, target_gp_dbid);
+
+	return mapped;
+}
 
 /*
- * Receive a tar format stream from the connection to the server, and unpack
- * the contents of it into a directory. Only files, directories and
- * symlinks are supported, no other kinds of special files.
- *
- * If the data is for the main data directory, it will be restored in the
- * specified directory. If it's for another tablespace, it will be restored
- * in the original or mapped directory.
+ * GPDB: add an EXCLUDE option to the BASE_BACKUP command, in whichever
+ * syntax the server speaks.
  */
 static void
-ReceiveAndUnpackTarFile(PGconn *conn, PGresult *res, int rownum)
+add_to_exclude_list(PQExpBuffer buf, bool use_new_option_syntax,
+					const char *exclude)
 {
-	UnpackTarState state;
-
-	memset(&state, 0, sizeof(state));
-	state.tablespacenum = rownum;
-
-	state.basetablespace = PQgetisnull(res, rownum, 0);
-	if (state.basetablespace)
-		strlcpy(state.current_path, basedir, sizeof(state.current_path));
-	else
-	{
-		strlcpy(state.current_path,
-				get_tablespace_mapping(PQgetvalue(res, rownum, 1)),
-				sizeof(state.current_path));
-
-		if (target_gp_dbid < 1)
-		{
-			pg_log_error("cannot restore user-defined tablespaces without the --target-gp-dbid option");
-			exit(1);
-		}
-		
-		/* 
-		 * Construct the new tablespace path using the given target gp dbid
-		 */
-		snprintf(state.gp_tablespace_filename, sizeof(state.filename), "%s/%d/%s",
-				state.current_path,
-				target_gp_dbid,
-				GP_TABLESPACE_VERSION_DIRECTORY);
-	}
-
-	ReceiveCopyData(conn, ReceiveTarAndUnpackCopyChunk, &state);
-
-
-	if (state.file)
-		fclose(state.file);
-
-	progress_report(rownum, state.filename, true, false);
-
-	if (state.file != NULL)
-	{
-		pg_log_error("COPY stream ended before last file was finished");
-		exit(1);
-	}
-
-	if (state.basetablespace && writerecoveryconf)
-		WriteRecoveryConfig(conn, basedir, recoveryconfcontents);
-
-	if (state.basetablespace)
-		WriteInternalConfFile();
-
-	/*
-	 * No data is synced here, everything is done for all tablespaces at the
-	 * end.
-	 */
+	AppendStringCommandOption(buf, use_new_option_syntax, "EXCLUDE",
+							  (char *) exclude);
 }
 
 static void
-add_to_exclude_list(PQExpBufferData *buf, const char *exclude)
+append_exclude_command_options(PQExpBuffer buf, bool use_new_option_syntax)
 {
-	char		quoted[MAXPGPATH];
-	int			error;
-	size_t		len;
-
-	error = 1;
-	len = PQescapeStringConn(conn, quoted, exclude, MAXPGPATH, &error);
-	if (len == 0 || error != 0)
-	{
-		pg_log_error("could not process exclude \"%s\": %s",
-					 exclude, PQerrorMessage(conn));
-		exit(1);
-	}
-	appendPQExpBuffer(buf, " EXCLUDE '%s'", quoted);
-}
-
-static char *
-build_exclude_list(void)
-{
-	PQExpBufferData	buf;
 	int				i;
 
-	if (num_exclude == 0 && num_exclude_from == 0)
-		return "";
-
-	initPQExpBuffer(&buf);
-
 	for (i = 0; i < num_exclude; i++)
-		add_to_exclude_list(&buf, excludes[i]);
+		add_to_exclude_list(buf, use_new_option_syntax, excludes[i]);
 
 	for (i = 0; i < num_exclude_from; i++)
 	{
@@ -1385,518 +1301,13 @@ build_exclude_list(void)
 				 len--)
 				str[len - 1] = '\0';
 
-			add_to_exclude_list(&buf, str);
+			add_to_exclude_list(buf, use_new_option_syntax, str);
 		}
 
 		fclose(file);
 	}
-
-	if (PQExpBufferDataBroken(buf))
-	{
-		pg_log_error("out of memory");
-		exit(1);
-	}
-
-	return buf.data;
 }
 
-static void
-ReceiveTarAndUnpackCopyChunk(size_t r, char *copybuf, void *callback_data)
-{
-	UnpackTarState *state = callback_data;
-
-	if (state->file == NULL)
-	{
-#ifndef WIN32
-		int			filemode;
-#endif
-
-		/*
-		 * No current file, so this must be the header for a new file
-		 */
-		if (r != TAR_BLOCK_SIZE)
-		{
-			pg_log_error("invalid tar block header size: %zu", r);
-			exit(1);
-		}
-		totaldone += TAR_BLOCK_SIZE;
-
-		state->current_len_left = read_tar_number(&copybuf[124], 12);
-
-#ifndef WIN32
-		/* Set permissions on the file */
-		filemode = read_tar_number(&copybuf[100], 8);
-#endif
-
-		/*
-		 * All files are padded up to a multiple of TAR_BLOCK_SIZE
-		 */
-		state->current_padding =
-			tarPaddingBytesRequired(state->current_len_left);
-
-		/*
-		 * First part of header is zero terminated filename
-		 */
-
-		if (!state->basetablespace)
-		{
-			/*
-			 * Append relfile path to --target-gp-dbid tablespace path.
-			 *
-			 * For example, copybuf can be
-			 * "<GP_TABLESPACE_VERSION_DIRECTORY>_db<dbid>/16384/16385".
-			 * We create a pointer to the dbid and relfile "/16384/16385",
-			 * construct the new tablespace with provided dbid, and append
-			 * the dbid and relfile on top.
-			 */
-			char *copybuf_dbid_relfile = strstr(copybuf, "/");
-
-			snprintf(state->filename, sizeof(state->filename), "%s%s",
-						state->gp_tablespace_filename,
-						copybuf_dbid_relfile);
-		}
-		else
-		{
-			snprintf(state->filename, sizeof(state->filename),
-					 "%s/%s", state->current_path, copybuf);
-		}
-
-		if (state->filename[strlen(state->filename) - 1] == '/')
-		{
-			/*
-			 * Ends in a slash means directory or symlink to directory
-			 */
-			if (copybuf[156] == '5')
-			{
-				/*
-				 * Directory. Remove trailing slash first.
-				 */
-				state->filename[strlen(state->filename) - 1] = '\0';
-
-				/*
-				 * Since the forceoverwrite flag is being used, the
-				 * directories still exist. Remove them so that
-				 * pg_basebackup can create them. Skip when we detect
-				 * pg_log because we want to retain its contents.
-				 */
-				if (forceoverwrite && pg_check_dir(state->filename) != 0)
-				{
-					/*
-					 * We want to retain the contents of pg_log. And for
-					 * pg_xlog we assume is deleted at the start of
-					 * pg_basebackup. We cannot delete pg_xlog because if
-					 * streammode was used then it may have already copied
-					 * new xlog files into pg_xlog directory.
-					 */
-					if (pg_str_endswith(state->filename, "/pg_log") ||
-						pg_str_endswith(state->filename, "/log") ||
-						pg_str_endswith(state->filename, "/pg_wal") ||
-						pg_str_endswith(state->filename, "/pg_xlog"))
-						return;
-
-					rmtree(state->filename, true);
-				}
-
-				bool is_gp_tablespace_directory = strncmp(
-					state->gp_tablespace_filename, state->filename,
-					strlen(state->filename)) == 0;
-
-				if (is_gp_tablespace_directory && !forceoverwrite)
-				{
-					/*
-					 * This directory has already been created during beginning
-					 * of BaseBackup().
-					 */
-					return;
-				}
-
-				if (mkdir(state->filename, pg_dir_create_mode) != 0)
-				{
-					/*
-					 * When streaming WAL, pg_wal (or pg_xlog for pre-9.6
-					 * clusters) will have been created by the wal receiver
-					 * process. Also, when the WAL directory location was
-					 * specified, pg_wal (or pg_xlog) has already been created
-					 * as a symbolic link before starting the actual backup.
-					 * So just ignore creation failures on related
-					 * directories.
-					 */
-					if (!((pg_str_endswith(state->filename, "/pg_wal") ||
-						   pg_str_endswith(state->filename, "/pg_xlog") ||
-						   pg_str_endswith(state->filename, "/archive_status")) &&
-						  errno == EEXIST))
-					{
-						pg_log_error("could not create directory \"%s\": %m",
-									 state->filename);
-						exit(1);
-					}
-				}
-#ifndef WIN32
-				if (chmod(state->filename, (mode_t) filemode))
-				{
-					pg_log_error("could not set permissions on directory \"%s\": %m",
-								 state->filename);
-					exit(1);
-				}
-#endif
-			}
-			else if (copybuf[156] == '2')
-			{
-				/*
-				 * Symbolic link
-				 *
-				 * It's most likely a link in pg_tblspc directory, to the
-				 * location of a tablespace. Apply any tablespace mapping
-				 * given on the command line (--tablespace-mapping). (We
-				 * blindly apply the mapping without checking that the link
-				 * really is inside pg_tblspc. We don't expect there to be
-				 * other symlinks in a data directory, but if there are, you
-				 * can call it an undocumented feature that you can map them
-				 * too.)
-				 */
-				state->filename[strlen(state->filename) - 1] = '\0';	/* Remove trailing slash */
-
-				state->mapped_tblspc_path =
-					get_tablespace_mapping(&copybuf[157]);
-				char *mapped_tblspc_path_with_dbid = psprintf("%s/%d",
-					state->mapped_tblspc_path, target_gp_dbid);
-				if (symlink(mapped_tblspc_path_with_dbid, state->filename) != 0)
-				{
-					pg_log_error("could not create symbolic link from \"%s\" to \"%s\": %m",
-								 state->filename, state->mapped_tblspc_path);
-					exit(1);
-				}
-
-				pfree(mapped_tblspc_path_with_dbid);
-			}
-			else
-			{
-				pg_log_error("unrecognized link indicator \"%c\"",
-							 copybuf[156]);
-				exit(1);
-			}
-			return;				/* directory or link handled */
-		}
-
-		/*
-		 * regular file
-		 *
-		 * In GPDB, we may need to remove the file first if we are forcing
-		 * an overwrite instead of starting with a blank directory. Some
-		 * files may have had their permissions changed to read only.
-		 * Remove the file instead of literally overwriting them.
-		 */
-		if (forceoverwrite)
-			remove(state->filename);
-
-		state->file = fopen(state->filename, "wb");
-		if (!state->file)
-		{
-			pg_log_error("could not create file \"%s\": %m", state->filename);
-			exit(1);
-		}
-
-#ifndef WIN32
-		if (chmod(state->filename, (mode_t) filemode))
-		{
-			pg_log_error("could not set permissions on file \"%s\": %m",
-						 state->filename);
-			exit(1);
-		}
-#endif
-
-		if (state->current_len_left == 0)
-		{
-			/*
-			 * Done with this file, next one will be a new tar header
-			 */
-			fclose(state->file);
-			state->file = NULL;
-			return;
-		}
-	}							/* new file */
-	else
-	{
-		/*
-		 * Continuing blocks in existing file
-		 */
-		if (state->current_len_left == 0 && r == state->current_padding)
-		{
-			/*
-			 * Received the padding block for this file, ignore it and close
-			 * the file, then move on to the next tar header.
-			 */
-			fclose(state->file);
-			state->file = NULL;
-			totaldone += r;
-			return;
-		}
-
-		errno = 0;
-		if (fwrite(copybuf, r, 1, state->file) != 1)
-		{
-			/* if write didn't set errno, assume problem is no disk space */
-			if (errno == 0)
-				errno = ENOSPC;
-			pg_log_error("could not write to file \"%s\": %m", state->filename);
-			exit(1);
-		}
-		totaldone += r;
-		progress_report(state->tablespacenum, state->filename, false, false);
-
-		state->current_len_left -= r;
-		if (state->current_len_left == 0 && state->current_padding == 0)
-		{
-			/*
-			 * Received the last block, and there is no padding to be
-			 * expected. Close the file and move on to the next tar header.
-			 */
-			fclose(state->file);
-			state->file = NULL;
-			return;
-		}
-	}							/* continuing data in existing file */
-}
-
-||||||| 3b231596ccf
-
-/*
- * Receive a tar format stream from the connection to the server, and unpack
- * the contents of it into a directory. Only files, directories and
- * symlinks are supported, no other kinds of special files.
- *
- * If the data is for the main data directory, it will be restored in the
- * specified directory. If it's for another tablespace, it will be restored
- * in the original or mapped directory.
- */
-static void
-ReceiveAndUnpackTarFile(PGconn *conn, PGresult *res, int rownum)
-{
-	UnpackTarState state;
-	bool		basetablespace;
-
-	memset(&state, 0, sizeof(state));
-	state.tablespacenum = rownum;
-
-	basetablespace = PQgetisnull(res, rownum, 0);
-	if (basetablespace)
-		strlcpy(state.current_path, basedir, sizeof(state.current_path));
-	else
-		strlcpy(state.current_path,
-				get_tablespace_mapping(PQgetvalue(res, rownum, 1)),
-				sizeof(state.current_path));
-
-	ReceiveCopyData(conn, ReceiveTarAndUnpackCopyChunk, &state);
-
-
-	if (state.file)
-		fclose(state.file);
-
-	progress_report(rownum, state.filename, true, false);
-
-	if (state.file != NULL)
-	{
-		pg_log_error("COPY stream ended before last file was finished");
-		exit(1);
-	}
-
-	if (basetablespace && writerecoveryconf)
-		WriteRecoveryConfig(conn, basedir, recoveryconfcontents);
-
-	/*
-	 * No data is synced here, everything is done for all tablespaces at the
-	 * end.
-	 */
-}
-
-static void
-ReceiveTarAndUnpackCopyChunk(size_t r, char *copybuf, void *callback_data)
-{
-	UnpackTarState *state = callback_data;
-
-	if (state->file == NULL)
-	{
-#ifndef WIN32
-		int			filemode;
-#endif
-
-		/*
-		 * No current file, so this must be the header for a new file
-		 */
-		if (r != TAR_BLOCK_SIZE)
-		{
-			pg_log_error("invalid tar block header size: %zu", r);
-			exit(1);
-		}
-		totaldone += TAR_BLOCK_SIZE;
-
-		state->current_len_left = read_tar_number(&copybuf[124], 12);
-
-#ifndef WIN32
-		/* Set permissions on the file */
-		filemode = read_tar_number(&copybuf[100], 8);
-#endif
-
-		/*
-		 * All files are padded up to a multiple of TAR_BLOCK_SIZE
-		 */
-		state->current_padding =
-			tarPaddingBytesRequired(state->current_len_left);
-
-		/*
-		 * First part of header is zero terminated filename
-		 */
-		snprintf(state->filename, sizeof(state->filename),
-				 "%s/%s", state->current_path, copybuf);
-		if (state->filename[strlen(state->filename) - 1] == '/')
-		{
-			/*
-			 * Ends in a slash means directory or symlink to directory
-			 */
-			if (copybuf[156] == '5')
-			{
-				/*
-				 * Directory. Remove trailing slash first.
-				 */
-				state->filename[strlen(state->filename) - 1] = '\0';
-				if (mkdir(state->filename, pg_dir_create_mode) != 0)
-				{
-					/*
-					 * When streaming WAL, pg_wal (or pg_xlog for pre-9.6
-					 * clusters) will have been created by the wal receiver
-					 * process. Also, when the WAL directory location was
-					 * specified, pg_wal (or pg_xlog) has already been created
-					 * as a symbolic link before starting the actual backup.
-					 * So just ignore creation failures on related
-					 * directories.
-					 */
-					if (!((pg_str_endswith(state->filename, "/pg_wal") ||
-						   pg_str_endswith(state->filename, "/pg_xlog") ||
-						   pg_str_endswith(state->filename, "/archive_status")) &&
-						  errno == EEXIST))
-					{
-						pg_log_error("could not create directory \"%s\": %m",
-									 state->filename);
-						exit(1);
-					}
-				}
-#ifndef WIN32
-				if (chmod(state->filename, (mode_t) filemode))
-				{
-					pg_log_error("could not set permissions on directory \"%s\": %m",
-								 state->filename);
-					exit(1);
-				}
-#endif
-			}
-			else if (copybuf[156] == '2')
-			{
-				/*
-				 * Symbolic link
-				 *
-				 * It's most likely a link in pg_tblspc directory, to the
-				 * location of a tablespace. Apply any tablespace mapping
-				 * given on the command line (--tablespace-mapping). (We
-				 * blindly apply the mapping without checking that the link
-				 * really is inside pg_tblspc. We don't expect there to be
-				 * other symlinks in a data directory, but if there are, you
-				 * can call it an undocumented feature that you can map them
-				 * too.)
-				 */
-				state->filename[strlen(state->filename) - 1] = '\0';	/* Remove trailing slash */
-
-				state->mapped_tblspc_path =
-					get_tablespace_mapping(&copybuf[157]);
-				if (symlink(state->mapped_tblspc_path, state->filename) != 0)
-				{
-					pg_log_error("could not create symbolic link from \"%s\" to \"%s\": %m",
-								 state->filename, state->mapped_tblspc_path);
-					exit(1);
-				}
-			}
-			else
-			{
-				pg_log_error("unrecognized link indicator \"%c\"",
-							 copybuf[156]);
-				exit(1);
-			}
-			return;				/* directory or link handled */
-		}
-
-		/*
-		 * regular file
-		 */
-		state->file = fopen(state->filename, "wb");
-		if (!state->file)
-		{
-			pg_log_error("could not create file \"%s\": %m", state->filename);
-			exit(1);
-		}
-
-#ifndef WIN32
-		if (chmod(state->filename, (mode_t) filemode))
-		{
-			pg_log_error("could not set permissions on file \"%s\": %m",
-						 state->filename);
-			exit(1);
-		}
-#endif
-
-		if (state->current_len_left == 0)
-		{
-			/*
-			 * Done with this file, next one will be a new tar header
-			 */
-			fclose(state->file);
-			state->file = NULL;
-			return;
-		}
-	}							/* new file */
-	else
-	{
-		/*
-		 * Continuing blocks in existing file
-		 */
-		if (state->current_len_left == 0 && r == state->current_padding)
-		{
-			/*
-			 * Received the padding block for this file, ignore it and close
-			 * the file, then move on to the next tar header.
-			 */
-			fclose(state->file);
-			state->file = NULL;
-			totaldone += r;
-			return;
-		}
-
-		errno = 0;
-		if (fwrite(copybuf, r, 1, state->file) != 1)
-		{
-			/* if write didn't set errno, assume problem is no disk space */
-			if (errno == 0)
-				errno = ENOSPC;
-			pg_log_error("could not write to file \"%s\": %m", state->filename);
-			exit(1);
-		}
-		totaldone += r;
-		progress_report(state->tablespacenum, state->filename, false, false);
-
-		state->current_len_left -= r;
-		if (state->current_len_left == 0 && state->current_padding == 0)
-		{
-			/*
-			 * Received the last block, and there is no padding to be
-			 * expected. Close the file and move on to the next tar header.
-			 */
-			fclose(state->file);
-			state->file = NULL;
-			return;
-		}
-	}							/* continuing data in existing file */
-}
-
-=======
->>>>>>> c4cc2850f4d
 /*
  * Receive the backup manifest file and write it out to a file.
  */
@@ -1972,7 +1383,6 @@ BaseBackup(void)
 	char		xlogend[64];
 	int			minServerMajor,
 				maxServerMajor;
-	char 	   *exclude_list;
 	int			serverVersion,
 				serverMajor;
 	int			writing_to_stdout;
@@ -2065,7 +1475,7 @@ BaseBackup(void)
 										"NOVERIFY_CHECKSUMS");
 	}
 
-	exclude_list = build_exclude_list();
+	append_exclude_command_options(&buf, use_new_option_syntax);
 
 	if (manifest)
 	{
@@ -2088,42 +1498,10 @@ BaseBackup(void)
 			fprintf(stderr, "\n");
 	}
 
-<<<<<<< HEAD
-	basebkp =
-		psprintf("BASE_BACKUP LABEL '%s' %s %s %s %s %s %s %s %s %s %s",
-				 escaped_label,
-				 estimatesize ? "PROGRESS" : "",
-				 includewal == FETCH_WAL ? "WAL" : "",
-				 fastcheckpoint ? "FAST" : "",
-				 includewal == NO_WAL ? "" : "NOWAIT",
-				 maxrate_clause ? maxrate_clause : "",
-				 format == 't' ? "TABLESPACE_MAP" : "",
-				 verify_checksums ? "" : "NOVERIFY_CHECKSUMS",
-				 manifest_clause ? manifest_clause : "",
-				 manifest_checksums_clause,
-				 exclude_list);
-
-	if (exclude_list[0] != '\0')
-		free(exclude_list);
-||||||| 3b231596ccf
-	basebkp =
-		psprintf("BASE_BACKUP LABEL '%s' %s %s %s %s %s %s %s %s %s",
-				 escaped_label,
-				 estimatesize ? "PROGRESS" : "",
-				 includewal == FETCH_WAL ? "WAL" : "",
-				 fastcheckpoint ? "FAST" : "",
-				 includewal == NO_WAL ? "" : "NOWAIT",
-				 maxrate_clause ? maxrate_clause : "",
-				 format == 't' ? "TABLESPACE_MAP" : "",
-				 verify_checksums ? "" : "NOVERIFY_CHECKSUMS",
-				 manifest_clause ? manifest_clause : "",
-				 manifest_checksums_clause);
-=======
 	if (use_new_option_syntax && buf.len > 0)
 		basebkp = psprintf("BASE_BACKUP (%s)", buf.data);
 	else
 		basebkp = psprintf("BASE_BACKUP %s", buf.data);
->>>>>>> c4cc2850f4d
 
 	if (PQsendQuery(conn, basebkp) == 0)
 	{
@@ -2225,7 +1603,7 @@ BaseBackup(void)
 	/*
 	 * In the case of forceoverwrite the base directory may already exist. In
 	 * this case we need to wipeout the old pg_xlog directory. This is done
-	 * before StartLogStreamer and ReceiveAndUnpackTarFile so that either can
+	 * before StartLogStreamer and ReceiveTarFile so that either can
 	 * create pg_xlog directory and begin populating new contents to it.
 	 */
 	if (forceoverwrite)

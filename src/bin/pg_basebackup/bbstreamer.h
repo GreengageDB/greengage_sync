@@ -203,7 +203,8 @@ extern bbstreamer *bbstreamer_gzip_writer_new(char *pathname, FILE *file,
 											  int compresslevel);
 extern bbstreamer *bbstreamer_extractor_new(const char *basepath,
 											const char *(*link_map) (const char *),
-											void (*report_output_file) (const char *));
+											void (*report_output_file) (const char *),
+											bool forceoverwrite);
 
 extern bbstreamer *bbstreamer_tar_parser_new(bbstreamer *next);
 extern bbstreamer *bbstreamer_tar_terminator_new(bbstreamer *next);
