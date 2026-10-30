@@ -1171,6 +1171,7 @@ where o.ten = 1;
                      ->  Materialize
                            ->  Memoize
                                  Cache Key: o.four
+                                 Cache Mode: binary
                                  ->  Recursive Union
                                        ->  Result
                                        ->  WorkTable Scan on x
