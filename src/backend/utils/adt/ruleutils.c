@@ -4961,7 +4961,6 @@ set_deparse_plan(deparse_namespace *dpns, Plan *plan)
 	else if (IsA(plan, CteScan))
 		dpns->inner_plan = list_nth(dpns->subplans,
 									((CteScan *) plan)->ctePlanId - 1);
-<<<<<<< HEAD
 	else if (IsA(plan, Sequence))
 	{
 		/*
@@ -4972,12 +4971,9 @@ set_deparse_plan(deparse_namespace *dpns, Plan *plan)
 		Assert(list_length(((Sequence *) plan)->subplans) == 2);
 		dpns->inner_plan = linitial(((Sequence *) plan)->subplans);
 	}
-||||||| 3b231596ccf
-=======
 	else if (IsA(plan, WorkTableScan))
 		dpns->inner_plan = find_recursive_union(dpns,
 												(WorkTableScan *) plan);
->>>>>>> c4cc2850f4d
 	else if (IsA(plan, ModifyTable))
 		dpns->inner_plan = plan;
 	else if (IsA(plan, ShareInputScan))
