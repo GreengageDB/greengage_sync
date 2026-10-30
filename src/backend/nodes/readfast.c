@@ -2656,6 +2656,9 @@ readNodeBinary(void)
 				return_value = _readAlterTableMoveAllStmt();
 				break;
 
+			case T_PublicationObjSpec:
+				return_value = _readPublicationObjSpec();
+				break;
 			case T_PublicationTable:
 				return_value = _readPublicationTable();
 				break;

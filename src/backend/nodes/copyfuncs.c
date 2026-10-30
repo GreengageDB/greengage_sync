@@ -5700,7 +5700,6 @@ _copyPartitionCmd(const PartitionCmd *from)
 	return newnode;
 }
 
-<<<<<<< HEAD
 static GpAlterPartitionId *
 _copyGpAlterPartitionId(const GpAlterPartitionId *from)
 {
@@ -5815,8 +5814,10 @@ _copyGpPartitionListSpec(const GpPartitionListSpec *from)
 
 	COPY_NODE_FIELD(partValues);
 	COPY_LOCATION_FIELD(location);
-||||||| 3b231596ccf
-=======
+
+	return newnode;
+}
+
 static PublicationObjSpec *
 _copyPublicationObject(const PublicationObjSpec *from)
 {
@@ -5836,7 +5837,6 @@ _copyPublicationTable(const PublicationTable *from)
 	PublicationTable *newnode = makeNode(PublicationTable);
 
 	COPY_NODE_FIELD(relation);
->>>>>>> c4cc2850f4d
 
 	return newnode;
 }

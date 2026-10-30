@@ -1842,6 +1842,9 @@ _outNode(StringInfo str, void *obj)
 				_outAlterTableSpaceOptionsStmt(str, obj);
 				break;
 
+			case T_PublicationObjSpec:
+				_outPublicationObjSpec(str, obj);
+				break;
 			case T_PublicationTable:
 				_outPublicationTable(str, obj);
 				break;
