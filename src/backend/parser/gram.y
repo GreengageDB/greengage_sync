@@ -6,15 +6,9 @@
  * gram.y
  *	  POSTGRESQL BISON rules/actions
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -293,12 +287,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	PartitionSpec		*partspec;
 	PartitionBoundSpec	*partboundspec;
 	RoleSpec			*rolespec;
-<<<<<<< HEAD
 	DistributionKeyElem *dkelem;
-||||||| 3b231596ccf
-=======
 	PublicationObjSpec	*publicationobjectspec;
->>>>>>> c4cc2850f4d
 	struct SelectLimit	*selectlimit;
 	SetQuantifier	 setquantifier;
 	struct GroupClause  *groupclause;
@@ -1957,8 +1947,8 @@ deny_day_specifier: Sconst { $$ = (Node *)makeString($1); }
 deny_point: DAY_P deny_day_specifier opt_time
 				{
 					DenyLoginPoint *n = makeNode(DenyLoginPoint);
-					n->day = (Value *)$2;
-					n->time = (Value *)$3;
+					n->day = (Node *)$2;
+					n->time = (Node *)$3;
 					$$ = (Node *)n;
 				}
 		;
@@ -3922,7 +3912,7 @@ alter_table_partition_id_spec:
            | FOR '(' func_name '(' func_arg_list opt_sort_clause ')' ')'
 				{
 					Node		   *arg;
-					Value		   *val;
+					Node		   *val;
 					Node		   *fname;
 
                     /* allow RANK only */
@@ -3939,7 +3929,7 @@ alter_table_partition_id_spec:
 					arg = linitial($5);
 					if (!IsA(arg, A_Const))
 						parser_yyerror("syntax error");
-					val = &((A_Const *) arg)->val;
+					val = (Node *) &((A_Const *) arg)->val;
 					if (!IsA(val, Integer) && !IsA(val, Float))
 						parser_yyerror("syntax error");
 
@@ -17238,7 +17228,7 @@ func_expr_common_subexpr:
 
 					n = makeNode(FuncCall);
 					n->funcname = SystemFuncName("median");
-					n->args = list_make1(makeAConst(makeFloat(pstrdup("0.5")), @1));
+					n->args = list_make1(makeAConst((Node *) makeFloat(pstrdup("0.5")), @1));
 
 					sortby = makeNode(SortBy);
 					sortby->node = $3;

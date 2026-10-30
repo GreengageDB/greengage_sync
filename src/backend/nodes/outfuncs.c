@@ -3,15 +3,9 @@
  * outfuncs.c
  *	  Output functions for Postgres tree nodes.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -3578,7 +3572,7 @@ unwrapStringList(List *list)
 
 	foreach(lc, list)
 	{
-		Value	   *val = (Value *) lfirst(lc);
+		String	   *val = (String *) lfirst(lc);
 
 		lfirst(lc) = strVal(val);
 		pfree(val);
@@ -5207,154 +5201,12 @@ _outConstraint(StringInfo str, const Constraint *node)
 	WRITE_CHAR_FIELD(fk_matchtype);
 	WRITE_CHAR_FIELD(fk_upd_action);
 	WRITE_CHAR_FIELD(fk_del_action);
+	WRITE_NODE_FIELD(fk_del_set_cols);
 	WRITE_NODE_FIELD(old_conpfeqop);
 	WRITE_OID_FIELD(old_pktable_oid);
 
-<<<<<<< HEAD
 	WRITE_BOOL_FIELD(skip_validation);
 	WRITE_BOOL_FIELD(initially_valid);
-||||||| 3b231596ccf
-		case CONSTR_PRIMARY:
-			appendStringInfoString(str, "PRIMARY_KEY");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_UNIQUE:
-			appendStringInfoString(str, "UNIQUE");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_EXCLUSION:
-			appendStringInfoString(str, "EXCLUSION");
-			WRITE_NODE_FIELD(exclusions);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			WRITE_STRING_FIELD(access_method);
-			WRITE_NODE_FIELD(where_clause);
-			break;
-
-		case CONSTR_FOREIGN:
-			appendStringInfoString(str, "FOREIGN_KEY");
-			WRITE_NODE_FIELD(pktable);
-			WRITE_NODE_FIELD(fk_attrs);
-			WRITE_NODE_FIELD(pk_attrs);
-			WRITE_CHAR_FIELD(fk_matchtype);
-			WRITE_CHAR_FIELD(fk_upd_action);
-			WRITE_CHAR_FIELD(fk_del_action);
-			WRITE_NODE_FIELD(old_conpfeqop);
-			WRITE_OID_FIELD(old_pktable_oid);
-			WRITE_BOOL_FIELD(skip_validation);
-			WRITE_BOOL_FIELD(initially_valid);
-			break;
-
-		case CONSTR_ATTR_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_NOT_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_NOT_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_DEFERRED:
-			appendStringInfoString(str, "ATTR_DEFERRED");
-			break;
-
-		case CONSTR_ATTR_IMMEDIATE:
-			appendStringInfoString(str, "ATTR_IMMEDIATE");
-			break;
-
-		default:
-			appendStringInfo(str, "<unrecognized_constraint %d>",
-							 (int) node->contype);
-			break;
-	}
-=======
-		case CONSTR_PRIMARY:
-			appendStringInfoString(str, "PRIMARY_KEY");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_UNIQUE:
-			appendStringInfoString(str, "UNIQUE");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_EXCLUSION:
-			appendStringInfoString(str, "EXCLUSION");
-			WRITE_NODE_FIELD(exclusions);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			WRITE_STRING_FIELD(access_method);
-			WRITE_NODE_FIELD(where_clause);
-			break;
-
-		case CONSTR_FOREIGN:
-			appendStringInfoString(str, "FOREIGN_KEY");
-			WRITE_NODE_FIELD(pktable);
-			WRITE_NODE_FIELD(fk_attrs);
-			WRITE_NODE_FIELD(pk_attrs);
-			WRITE_CHAR_FIELD(fk_matchtype);
-			WRITE_CHAR_FIELD(fk_upd_action);
-			WRITE_CHAR_FIELD(fk_del_action);
-			WRITE_NODE_FIELD(fk_del_set_cols);
-			WRITE_NODE_FIELD(old_conpfeqop);
-			WRITE_OID_FIELD(old_pktable_oid);
-			WRITE_BOOL_FIELD(skip_validation);
-			WRITE_BOOL_FIELD(initially_valid);
-			break;
-
-		case CONSTR_ATTR_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_NOT_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_NOT_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_DEFERRED:
-			appendStringInfoString(str, "ATTR_DEFERRED");
-			break;
-
-		case CONSTR_ATTR_IMMEDIATE:
-			appendStringInfoString(str, "ATTR_IMMEDIATE");
-			break;
-
-		default:
-			appendStringInfo(str, "<unrecognized_constraint %d>",
-							 (int) node->contype);
-			break;
-	}
->>>>>>> c4cc2850f4d
 }
 
 #ifndef COMPILING_BINARY_FUNCS
@@ -5723,10 +5575,21 @@ _outAlterTSDictionaryStmt(StringInfo str, const AlterTSDictionaryStmt *node)
 }
 
 /*
- * GPDB: PublicationTable is an untransformed parse node that upstream never
- * serializes, but CREATE/ALTER PUBLICATION ... FOR TABLE is dispatched to the
- * segments with its 'tables' list of PublicationTable nodes.
+ * GPDB: PublicationObjSpec and PublicationTable are untransformed parse nodes
+ * that upstream never serializes, but CREATE/ALTER PUBLICATION is dispatched
+ * to the segments with its 'pubobjects' list of PublicationObjSpec nodes.
  */
+static void
+_outPublicationObjSpec(StringInfo str, const PublicationObjSpec *node)
+{
+	WRITE_NODE_TYPE("PUBLICATIONOBJSPEC");
+
+	WRITE_ENUM_FIELD(pubobjtype, PublicationObjSpecType);
+	WRITE_STRING_FIELD(name);
+	WRITE_NODE_FIELD(pubtable);
+	WRITE_LOCATION_FIELD(location);
+}
+
 static void
 _outPublicationTable(StringInfo str, const PublicationTable *node)
 {
@@ -5742,7 +5605,7 @@ _outCreatePublicationStmt(StringInfo str, const CreatePublicationStmt *node)
 
 	WRITE_STRING_FIELD(pubname);
 	WRITE_NODE_FIELD(options);
-	WRITE_NODE_FIELD(tables);
+	WRITE_NODE_FIELD(pubobjects);
 	WRITE_BOOL_FIELD(for_all_tables);
 }
 
@@ -5753,9 +5616,9 @@ _outAlterPublicationStmt(StringInfo str, const AlterPublicationStmt *node)
 
 	WRITE_STRING_FIELD(pubname);
 	WRITE_NODE_FIELD(options);
-	WRITE_NODE_FIELD(tables);
+	WRITE_NODE_FIELD(pubobjects);
 	WRITE_BOOL_FIELD(for_all_tables);
-	WRITE_ENUM_FIELD(tableAction, DefElemAction);
+	WRITE_ENUM_FIELD(action, AlterPublicationAction);
 }
 
 static void
@@ -6949,6 +6812,9 @@ outNode(StringInfo str, const void *obj)
 				_outAlterTSDictionaryStmt(str, obj);
 				break;
 
+			case T_PublicationObjSpec:
+				_outPublicationObjSpec(str, obj);
+				break;
 			case T_PublicationTable:
 				_outPublicationTable(str, obj);
 				break;

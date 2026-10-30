@@ -11,15 +11,9 @@
  * be handled easily in a simple depth-first traversal.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -721,12 +715,8 @@ _copyIndexOnlyScan(const IndexOnlyScan *from)
 	 */
 	COPY_SCALAR_FIELD(indexid);
 	COPY_NODE_FIELD(indexqual);
-<<<<<<< HEAD
 	COPY_NODE_FIELD(indexqualorig);
-||||||| 3b231596ccf
-=======
 	COPY_NODE_FIELD(recheckqual);
->>>>>>> c4cc2850f4d
 	COPY_NODE_FIELD(indexorderby);
 	COPY_NODE_FIELD(indextlist);
 	COPY_SCALAR_FIELD(indexorderdir);
@@ -5700,7 +5690,6 @@ _copyPartitionCmd(const PartitionCmd *from)
 	return newnode;
 }
 
-<<<<<<< HEAD
 static GpAlterPartitionId *
 _copyGpAlterPartitionId(const GpAlterPartitionId *from)
 {
@@ -5815,8 +5804,10 @@ _copyGpPartitionListSpec(const GpPartitionListSpec *from)
 
 	COPY_NODE_FIELD(partValues);
 	COPY_LOCATION_FIELD(location);
-||||||| 3b231596ccf
-=======
+
+	return newnode;
+}
+
 static PublicationObjSpec *
 _copyPublicationObject(const PublicationObjSpec *from)
 {
@@ -5836,7 +5827,6 @@ _copyPublicationTable(const PublicationTable *from)
 	PublicationTable *newnode = makeNode(PublicationTable);
 
 	COPY_NODE_FIELD(relation);
->>>>>>> c4cc2850f4d
 
 	return newnode;
 }
