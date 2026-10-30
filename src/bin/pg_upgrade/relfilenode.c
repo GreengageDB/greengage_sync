@@ -160,7 +160,6 @@ transfer_single_new_db(FileNameMap *maps, int size, char *old_tablespace)
 		{
 			RelType type = maps[mapnum].type;
 
-<<<<<<< HEAD
 			if (type == AO || type == AOCS)
 			{
 				transfer_ao(&maps[mapnum]);
@@ -174,23 +173,8 @@ transfer_single_new_db(FileNameMap *maps, int size, char *old_tablespace)
 				 * Copy/link any fsm and vm files, if they exist
 				 */
 				transfer_relfile(&maps[mapnum], "_fsm", vm_must_add_frozenbit);
-				if (vm_crashsafe_match)
-					transfer_relfile(&maps[mapnum], "_vm", vm_must_add_frozenbit);
-			}
-||||||| 3b231596ccf
-			/*
-			 * Copy/link any fsm and vm files, if they exist
-			 */
-			transfer_relfile(&maps[mapnum], "_fsm", vm_must_add_frozenbit);
-			if (vm_crashsafe_match)
 				transfer_relfile(&maps[mapnum], "_vm", vm_must_add_frozenbit);
-=======
-			/*
-			 * Copy/link any fsm and vm files, if they exist
-			 */
-			transfer_relfile(&maps[mapnum], "_fsm", vm_must_add_frozenbit);
-			transfer_relfile(&maps[mapnum], "_vm", vm_must_add_frozenbit);
->>>>>>> c4cc2850f4d
+			}
 		}
 	}
 }

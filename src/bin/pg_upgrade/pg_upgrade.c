@@ -3,14 +3,8 @@
  *
  *	main source file
  *
-<<<<<<< HEAD
  *	Portions Copyright (c) 2016-Present, VMware, Inc. or its affiliates
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
-=======
  *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  *	src/bin/pg_upgrade/pg_upgrade.c
  */
 
@@ -235,23 +229,10 @@ main(int argc, char **argv)
 			  new_cluster.pgdata);
 	check_ok();
 
-<<<<<<< HEAD
 	/* For non-master segments, uniquify the system identifier. */
 	if (!is_greenplum_dispatcher_mode())
 		reset_system_identifier();
 
-	prep_status("Sync data directory to disk");
-	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
-			  "\"%s/initdb\" --sync-only \"%s\"", new_cluster.bindir,
-			  new_cluster.pgdata);
-	check_ok();
-||||||| 3b231596ccf
-	prep_status("Sync data directory to disk");
-	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
-			  "\"%s/initdb\" --sync-only \"%s\"", new_cluster.bindir,
-			  new_cluster.pgdata);
-	check_ok();
-=======
 	if (user_opts.do_sync)
 	{
 		prep_status("Sync data directory to disk");
@@ -260,7 +241,6 @@ main(int argc, char **argv)
 				  new_cluster.pgdata);
 		check_ok();
 	}
->>>>>>> c4cc2850f4d
 
 	create_script_for_old_cluster_deletion(&deletion_script_file_name);
 
