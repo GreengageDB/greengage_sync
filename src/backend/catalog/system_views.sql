@@ -1,15 +1,9 @@
 /*
  * PostgreSQL System Views
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2010, Greenplum inc.
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  *
  * src/backend/catalog/system_views.sql
  *
@@ -1655,7 +1649,28 @@ GRANT SELECT (oid, subdbid, subname, subowner, subenabled, subbinary,
               substream, subtwophasestate, subslotname, subsynccommit, subpublications)
     ON pg_subscription TO public;
 
-<<<<<<< HEAD
+CREATE VIEW pg_stat_subscription_workers AS
+    SELECT
+        w.subid,
+        s.subname,
+        w.subrelid,
+        w.last_error_relid,
+        w.last_error_command,
+        w.last_error_xid,
+        w.last_error_count,
+        w.last_error_message,
+        w.last_error_time
+    FROM (SELECT
+              oid as subid,
+              NULL as relid
+          FROM pg_subscription
+          UNION ALL
+          SELECT
+              srsubid as subid,
+              srrelid as relid
+          FROM pg_subscription_rel) sr,
+          LATERAL pg_stat_get_subscription_worker(sr.subid, sr.relid) w
+          JOIN pg_subscription s ON (w.subid = s.oid);
 
 --
 -- We have a few function definitions in here, too.
@@ -2022,28 +2037,3 @@ CREATE VIEW gp_suboverflowed_backend(segid, pids) AS
   SELECT -1, gp_get_suboverflowed_backends()
 UNION ALL
   SELECT gp_segment_id, gp_get_suboverflowed_backends() FROM gp_dist_random('gp_id') order by 1;
-||||||| 3b231596ccf
-=======
-CREATE VIEW pg_stat_subscription_workers AS
-    SELECT
-        w.subid,
-        s.subname,
-        w.subrelid,
-        w.last_error_relid,
-        w.last_error_command,
-        w.last_error_xid,
-        w.last_error_count,
-        w.last_error_message,
-        w.last_error_time
-    FROM (SELECT
-              oid as subid,
-              NULL as relid
-          FROM pg_subscription
-          UNION ALL
-          SELECT
-              srsubid as subid,
-              srrelid as relid
-          FROM pg_subscription_rel) sr,
-          LATERAL pg_stat_get_subscription_worker(sr.subid, sr.relid) w
-          JOIN pg_subscription s ON (w.subid = s.oid);
->>>>>>> c4cc2850f4d
