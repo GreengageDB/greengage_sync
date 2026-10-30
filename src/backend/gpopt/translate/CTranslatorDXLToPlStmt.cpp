@@ -969,6 +969,11 @@ CTranslatorDXLToPlStmt::TranslateDXLIndexOnlyScan(
 
 	index_scan->indexqual = index_cond;
 	// index_scan->indexqualorig = index_orig_cond;
+	// The executor rechecks lossy index-only scan results with recheckqual
+	// (since 9a3ddeb519e), which planner plans get from setrefs.c.  Recheck
+	// with the index conditions, against the index tuple, as the executor did
+	// before; an empty recheckqual would accept every lossy match.
+	index_scan->recheckqual = (List *) gpdb::CopyObject(index_cond);
 	SetParamIds(plan);
 
 	return (Plan *) index_scan;
