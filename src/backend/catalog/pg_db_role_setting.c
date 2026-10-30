@@ -257,7 +257,7 @@ AlterSetting(Oid databaseid, Oid roleid, VariableSetStmt *setstmt)
 						break;
 					case T_Float:
 						/* represented as a string, so just copy it */
-						appendStringInfoString(&buffer, strVal(&arg->val));
+						appendStringInfoString(&buffer, castNode(Float, &arg->val)->fval);
 						break;
 					case T_String:
 						appendStringInfoString(&buffer, quote_literal_cstr(strVal(&arg->val)));
