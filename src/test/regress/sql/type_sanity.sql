@@ -596,7 +596,11 @@ CREATE TABLE tab_core_types AS SELECT
 -- included in this table.
 SELECT oid, typname, typtype, typelem, typarray, typarray
   FROM pg_type t
-  WHERE typtype NOT IN ('p', 'c') AND
+  -- GPDB: check built-in types only; earlier Greengage tests leave user types
+  -- behind (textrange3 from rangetypes) whose OIDs vary from run to run.
+  -- Upstream added the same filter later, in cc50080a828.
+  WHERE oid < 16384 AND
+    typtype NOT IN ('p', 'c') AND
     -- reg* types cannot be pg_upgraded, so discard them.
     oid != ALL(ARRAY['regproc', 'regprocedure', 'regoper',
                      'regoperator', 'regconfig', 'regdictionary',
