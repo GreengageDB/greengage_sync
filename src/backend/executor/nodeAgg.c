@@ -237,19 +237,13 @@
  *    to filter expressions having to be evaluated early, and allows to JIT
  *    the entire expression into one native function.
  *
-<<<<<<< HEAD
  *    GPDB: Note that statement_mem is used to decide the operator memory
  *    instead of the work_mem, but to keep minimal change with postgres we keep
  *    the word "work_mem" in comments.
  *
  * Portions Copyright (c) 2007-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -458,14 +452,8 @@ static HashAggBatch *hashagg_batch_new(LogicalTape *input_tape, int setno,
 									   int64 input_tuples, double input_card,
 									   int used_bits);
 static MinimalTuple hashagg_batch_read(HashAggBatch *batch, uint32 *hashp);
-<<<<<<< HEAD
 static void hashagg_spill_init(AggState *aggstate,
-							   HashAggSpill *spill, HashTapeInfo *tapeinfo,
-||||||| 3b231596ccf
-static void hashagg_spill_init(HashAggSpill *spill, HashTapeInfo *tapeinfo,
-=======
-static void hashagg_spill_init(HashAggSpill *spill, LogicalTapeSet *lts,
->>>>>>> c4cc2850f4d
+							   HashAggSpill *spill, LogicalTapeSet *lts,
 							   int used_bits, double input_groups,
 							   double hashentrysize);
 static Size hashagg_spill_tuple(AggState *aggstate, HashAggSpill *spill,
@@ -1951,6 +1939,21 @@ hash_agg_enter_spill_mode(AggState *aggstate)
 
 		aggstate->hash_tapeset = LogicalTapeSetCreate(true, NULL, -1);
 
+#ifdef FAULT_INJECTOR
+		if (SIMPLE_FAULT_INJECTOR("hashagg_spill_temp_files") == FaultInjectorTypeSkip) {
+			const char *filename = LogicalTapeGetBufFilename(aggstate->hash_tapeset);
+			if (!filename)
+				ereport(NOTICE, (errmsg("hashagg: buffilename is null")));
+			else if (strstr(filename, "base/" PG_TEMP_FILES_DIR) == filename)
+				ereport(NOTICE, (errmsg("hashagg: Use default tablespace")));
+			else if (strstr(filename, "pg_tblspc/") == filename)
+				ereport(NOTICE, (errmsg("hashagg: Use temp tablespace")));
+			else
+				ereport(NOTICE, (errmsg("hashagg: Unexpected prefix of the tablespace path")));
+
+		}
+#endif
+
 		aggstate->hash_spills = palloc(sizeof(HashAggSpill) * aggstate->num_hashes);
 
 		for (int setno = 0; setno < aggstate->num_hashes; setno++)
@@ -1958,13 +1961,7 @@ hash_agg_enter_spill_mode(AggState *aggstate)
 			AggStatePerHash perhash = &aggstate->perhash[setno];
 			HashAggSpill *spill = &aggstate->hash_spills[setno];
 
-<<<<<<< HEAD
-			hashagg_spill_init(aggstate, spill, aggstate->hash_tapeinfo, 0,
-||||||| 3b231596ccf
-			hashagg_spill_init(spill, aggstate->hash_tapeinfo, 0,
-=======
-			hashagg_spill_init(spill, aggstate->hash_tapeset, 0,
->>>>>>> c4cc2850f4d
+			hashagg_spill_init(aggstate, spill, aggstate->hash_tapeset, 0,
 							   perhash->aggnode->numGroups,
 							   aggstate->hashentrysize);
 		}
@@ -2218,13 +2215,7 @@ lookup_hash_entries(AggState *aggstate)
 			TupleTableSlot *slot = aggstate->tmpcontext->ecxt_outertuple;
 
 			if (spill->partitions == NULL)
-<<<<<<< HEAD
-				hashagg_spill_init(aggstate, spill, aggstate->hash_tapeinfo, 0,
-||||||| 3b231596ccf
-				hashagg_spill_init(spill, aggstate->hash_tapeinfo, 0,
-=======
-				hashagg_spill_init(spill, aggstate->hash_tapeset, 0,
->>>>>>> c4cc2850f4d
+				hashagg_spill_init(aggstate, spill, aggstate->hash_tapeset, 0,
 								   perhash->aggnode->numGroups,
 								   aggstate->hashentrysize);
 
@@ -2794,13 +2785,7 @@ agg_refill_hash_table(AggState *aggstate)
 				 * that we don't assign tapes that will never be used.
 				 */
 				spill_initialized = true;
-<<<<<<< HEAD
-				hashagg_spill_init(aggstate, &spill, tapeinfo, batch->used_bits,
-||||||| 3b231596ccf
-				hashagg_spill_init(&spill, tapeinfo, batch->used_bits,
-=======
-				hashagg_spill_init(&spill, tapeset, batch->used_bits,
->>>>>>> c4cc2850f4d
+				hashagg_spill_init(aggstate, &spill, tapeset, batch->used_bits,
 								   batch->input_card, aggstate->hashentrysize);
 			}
 			/* no memory for a new group, spill */
@@ -2992,160 +2977,13 @@ agg_retrieve_hash_table_in_memory(AggState *aggstate)
 }
 
 /*
-<<<<<<< HEAD
- * Initialize HashTapeInfo
- */
-static void
-hashagg_tapeinfo_init(AggState *aggstate)
-{
-	HashTapeInfo *tapeinfo = palloc(sizeof(HashTapeInfo));
-	int			init_tapes = 16;	/* expanded dynamically */
-
-	tapeinfo->tapeset = LogicalTapeSetCreate(init_tapes, true, NULL, NULL, -1);
-	tapeinfo->ntapes = init_tapes;
-	tapeinfo->nfreetapes = init_tapes;
-	tapeinfo->freetapes_alloc = init_tapes;
-	tapeinfo->freetapes = palloc(init_tapes * sizeof(int));
-	for (int i = 0; i < init_tapes; i++)
-		tapeinfo->freetapes[i] = i;
-
-	aggstate->hash_tapeinfo = tapeinfo;
-
-#ifdef FAULT_INJECTOR
-	if (SIMPLE_FAULT_INJECTOR("hashagg_spill_temp_files") == FaultInjectorTypeSkip) {
-		const char *filename = LogicalTapeGetBufFilename(tapeinfo->tapeset);
-		if (!filename)
-			ereport(NOTICE, (errmsg("hashagg: buffilename is null")));
-		else if (strstr(filename, "base/" PG_TEMP_FILES_DIR) == filename)
-			ereport(NOTICE, (errmsg("hashagg: Use default tablespace")));
-		else if (strstr(filename, "pg_tblspc/") == filename)
-			ereport(NOTICE, (errmsg("hashagg: Use temp tablespace")));
-		else
-			ereport(NOTICE, (errmsg("hashagg: Unexpected prefix of the tablespace path")));
-
-	}
-#endif
-}
-
-/*
- * Assign unused tapes to spill partitions, extending the tape set if
- * necessary.
- */
-static void
-hashagg_tapeinfo_assign(HashTapeInfo *tapeinfo, int *partitions,
-						int npartitions)
-{
-	int			partidx = 0;
-
-	/* use free tapes if available */
-	while (partidx < npartitions && tapeinfo->nfreetapes > 0)
-		partitions[partidx++] = tapeinfo->freetapes[--tapeinfo->nfreetapes];
-
-	if (partidx < npartitions)
-	{
-		LogicalTapeSetExtend(tapeinfo->tapeset, npartitions - partidx);
-
-		while (partidx < npartitions)
-			partitions[partidx++] = tapeinfo->ntapes++;
-	}
-}
-
-/*
- * After a tape has already been written to and then read, this function
- * rewinds it for writing and adds it to the free list.
- */
-static void
-hashagg_tapeinfo_release(HashTapeInfo *tapeinfo, int tapenum)
-{
-	/* rewinding frees the buffer while not in use */
-	LogicalTapeRewindForWrite(tapeinfo->tapeset, tapenum);
-	if (tapeinfo->freetapes_alloc == tapeinfo->nfreetapes)
-	{
-		tapeinfo->freetapes_alloc <<= 1;
-		tapeinfo->freetapes = repalloc(tapeinfo->freetapes,
-									   tapeinfo->freetapes_alloc * sizeof(int));
-	}
-	tapeinfo->freetapes[tapeinfo->nfreetapes++] = tapenum;
-}
-
-/*
-||||||| 3b231596ccf
- * Initialize HashTapeInfo
- */
-static void
-hashagg_tapeinfo_init(AggState *aggstate)
-{
-	HashTapeInfo *tapeinfo = palloc(sizeof(HashTapeInfo));
-	int			init_tapes = 16;	/* expanded dynamically */
-
-	tapeinfo->tapeset = LogicalTapeSetCreate(init_tapes, true, NULL, NULL, -1);
-	tapeinfo->ntapes = init_tapes;
-	tapeinfo->nfreetapes = init_tapes;
-	tapeinfo->freetapes_alloc = init_tapes;
-	tapeinfo->freetapes = palloc(init_tapes * sizeof(int));
-	for (int i = 0; i < init_tapes; i++)
-		tapeinfo->freetapes[i] = i;
-
-	aggstate->hash_tapeinfo = tapeinfo;
-}
-
-/*
- * Assign unused tapes to spill partitions, extending the tape set if
- * necessary.
- */
-static void
-hashagg_tapeinfo_assign(HashTapeInfo *tapeinfo, int *partitions,
-						int npartitions)
-{
-	int			partidx = 0;
-
-	/* use free tapes if available */
-	while (partidx < npartitions && tapeinfo->nfreetapes > 0)
-		partitions[partidx++] = tapeinfo->freetapes[--tapeinfo->nfreetapes];
-
-	if (partidx < npartitions)
-	{
-		LogicalTapeSetExtend(tapeinfo->tapeset, npartitions - partidx);
-
-		while (partidx < npartitions)
-			partitions[partidx++] = tapeinfo->ntapes++;
-	}
-}
-
-/*
- * After a tape has already been written to and then read, this function
- * rewinds it for writing and adds it to the free list.
- */
-static void
-hashagg_tapeinfo_release(HashTapeInfo *tapeinfo, int tapenum)
-{
-	/* rewinding frees the buffer while not in use */
-	LogicalTapeRewindForWrite(tapeinfo->tapeset, tapenum);
-	if (tapeinfo->freetapes_alloc == tapeinfo->nfreetapes)
-	{
-		tapeinfo->freetapes_alloc <<= 1;
-		tapeinfo->freetapes = repalloc(tapeinfo->freetapes,
-									   tapeinfo->freetapes_alloc * sizeof(int));
-	}
-	tapeinfo->freetapes[tapeinfo->nfreetapes++] = tapenum;
-}
-
-/*
-=======
->>>>>>> c4cc2850f4d
  * hashagg_spill_init
  *
  * Called after we determined that spilling is necessary. Chooses the number
  * of partitions to create, and initializes them.
  */
 static void
-<<<<<<< HEAD
-hashagg_spill_init(AggState *aggstate, HashAggSpill *spill, HashTapeInfo *tapeinfo, int used_bits,
-||||||| 3b231596ccf
-hashagg_spill_init(HashAggSpill *spill, HashTapeInfo *tapeinfo, int used_bits,
-=======
-hashagg_spill_init(HashAggSpill *spill, LogicalTapeSet *tapeset, int used_bits,
->>>>>>> c4cc2850f4d
+hashagg_spill_init(AggState *aggstate, HashAggSpill *spill, LogicalTapeSet *tapeset, int used_bits,
 				   double input_groups, double hashentrysize)
 {
 	int			npartitions;
