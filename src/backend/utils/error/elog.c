@@ -43,15 +43,9 @@
  * overflow.)
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2009, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -232,8 +226,6 @@ static void log_line_prefix(StringInfo buf, ErrorData *edata);
 static void send_message_to_server_log(ErrorData *edata);
 static void send_message_to_frontend(ErrorData *edata);
 static void append_with_tabs(StringInfo buf, const char *str);
-static void write_pipe_chunks(char *data, int len, int dest);
-static void write_csvlog(ErrorData *edata);
 static void elog_debug_linger(ErrorData *edata);
 
 /* GPDB: wrapper function to silence unused result warning */
@@ -242,9 +234,6 @@ ignore_returned_result(long long int result)
 {
 	(void) result;
 }
-
-static void setup_formatted_log_time(void);
-static void setup_formatted_start_time(void);
 
 
 /*
@@ -4169,13 +4158,9 @@ static void
 send_message_to_server_log(ErrorData *edata)
 {
 	StringInfoData buf;
-<<<<<<< HEAD
 	StringInfoData prefix;
 	int			nc;
-||||||| 3b231596ccf
-=======
 	bool		fallback_to_stderr = false;
->>>>>>> c4cc2850f4d
 
 	AssertImply(mainthread() != 0, mythread() == mainthread());
 
@@ -4510,7 +4495,6 @@ write_pipe_chunks(char *data, int len, int dest)
 
 	Assert(len > 0);
 
-<<<<<<< HEAD
 	p.hdr.zero = 0;
 	p.hdr.pid = MyProcPid;
 	p.hdr.thid = mythread();
@@ -4519,23 +4503,10 @@ write_pipe_chunks(char *data, int len, int dest)
 	p.hdr.log_format = (dest == LOG_DESTINATION_CSVLOG ? 'c' : 't');
 	p.hdr.is_segv_msg = 'f';
 	p.hdr.next = -1;
-||||||| 3b231596ccf
-	p.proto.nuls[0] = p.proto.nuls[1] = '\0';
-	p.proto.pid = MyProcPid;
-=======
-	p.proto.nuls[0] = p.proto.nuls[1] = '\0';
-	p.proto.pid = MyProcPid;
-	p.proto.flags = 0;
-	if (dest == LOG_DESTINATION_STDERR)
-		p.proto.flags |= PIPE_PROTO_DEST_STDERR;
-	else if (dest == LOG_DESTINATION_CSVLOG)
-		p.proto.flags |= PIPE_PROTO_DEST_CSVLOG;
->>>>>>> c4cc2850f4d
 
 	/* write all but the last chunk */
 	while (len > PIPE_MAX_PAYLOAD)
 	{
-<<<<<<< HEAD
 		p.hdr.is_last = 'f';
 		p.hdr.len = PIPE_MAX_PAYLOAD;
 		memcpy(p.data, data, PIPE_MAX_PAYLOAD);
@@ -4546,19 +4517,6 @@ write_pipe_chunks(char *data, int len, int dest)
 				Assert(p.hdr.thid != 0);
 #endif
 		ignore_returned_result(write(fd, &p, PIPE_CHUNK_SIZE));
-||||||| 3b231596ccf
-		p.proto.is_last = (dest == LOG_DESTINATION_CSVLOG ? 'F' : 'f');
-		p.proto.len = PIPE_MAX_PAYLOAD;
-		memcpy(p.proto.data, data, PIPE_MAX_PAYLOAD);
-		rc = write(fd, &p, PIPE_HEADER_SIZE + PIPE_MAX_PAYLOAD);
-		(void) rc;
-=======
-		/* no need to set PIPE_PROTO_IS_LAST yet */
-		p.proto.len = PIPE_MAX_PAYLOAD;
-		memcpy(p.proto.data, data, PIPE_MAX_PAYLOAD);
-		rc = write(fd, &p, PIPE_HEADER_SIZE + PIPE_MAX_PAYLOAD);
-		(void) rc;
->>>>>>> c4cc2850f4d
 		data += PIPE_MAX_PAYLOAD;
 		len -= PIPE_MAX_PAYLOAD;
 
@@ -4566,7 +4524,6 @@ write_pipe_chunks(char *data, int len, int dest)
 	}
 
 	/* write the last chunk */
-<<<<<<< HEAD
 	p.hdr.is_last = 't';
 	p.hdr.len = len;
 
@@ -4578,19 +4535,6 @@ write_pipe_chunks(char *data, int len, int dest)
 #endif
 	memcpy(p.data, data, len);
 	ignore_returned_result(write(fd, &p, PIPE_HEADER_SIZE + len));
-||||||| 3b231596ccf
-	p.proto.is_last = (dest == LOG_DESTINATION_CSVLOG ? 'T' : 't');
-	p.proto.len = len;
-	memcpy(p.proto.data, data, len);
-	rc = write(fd, &p, PIPE_HEADER_SIZE + len);
-	(void) rc;
-=======
-	p.proto.flags |= PIPE_PROTO_IS_LAST;
-	p.proto.len = len;
-	memcpy(p.proto.data, data, len);
-	rc = write(fd, &p, PIPE_HEADER_SIZE + len);
-	(void) rc;
->>>>>>> c4cc2850f4d
 }
 
 
