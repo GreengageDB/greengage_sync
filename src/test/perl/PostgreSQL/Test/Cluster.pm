@@ -651,29 +651,13 @@ sub backup
 	local %ENV = $self->_get_env();
 
 	print "# Taking pg_basebackup $backup_name from node \"$name\"\n";
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
-	TestLib::system_or_bail(
+	PostgreSQL::Test::Utils::system_or_bail(
 		'pg_basebackup',    '-D',
 		$backup_path,       '-h',
 		$self->host,        '-p',
 		$self->port,        '--checkpoint',
 		'fast',             '--no-sync',
 		'--target-gp-dbid', 99,
-||||||| 3b231596ccf:src/test/perl/PostgresNode.pm
-	TestLib::system_or_bail(
-		'pg_basebackup', '-D',
-		$backup_path,    '-h',
-		$self->host,     '-p',
-		$self->port,     '--checkpoint',
-		'fast',          '--no-sync',
-=======
-	PostgreSQL::Test::Utils::system_or_bail(
-		'pg_basebackup', '-D',
-		$backup_path,    '-h',
-		$self->host,     '-p',
-		$self->port,     '--checkpoint',
-		'fast',          '--no-sync',
->>>>>>> c4cc2850f4d:src/test/perl/PostgreSQL/Test/Cluster.pm
 		@{ $params{backup_options} });
 	print "# Backup finished\n";
 	return;
@@ -908,17 +892,9 @@ sub start
 	# sub init) so that it does not get copied to standbys.
 	# -w is now the default but having it here does no harm and helps
 	# compatibility with older versions.
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
-	$ret = TestLib::system_log('pg_ctl', '-w', '-D', $self->data_dir, '-l',
+	$ret = PostgreSQL::Test::Utils::system_log('pg_ctl', '-w', '-D', $self->data_dir, '-l',
 		$self->logfile, '-o', "--cluster-name=$name -c gp_role=utility --gp_dbid=$self->{_dbid} --gp_contentid=0",
 		'start');
-||||||| 3b231596ccf:src/test/perl/PostgresNode.pm
-	$ret = TestLib::system_log('pg_ctl', '-w', '-D', $self->data_dir, '-l',
-		$self->logfile, '-o', "--cluster-name=$name", 'start');
-=======
-	$ret = PostgreSQL::Test::Utils::system_log('pg_ctl', '-w', '-D', $self->data_dir, '-l',
-		$self->logfile, '-o', "--cluster-name=$name", 'start');
->>>>>>> c4cc2850f4d:src/test/perl/PostgreSQL/Test/Cluster.pm
 
 	if ($ret != 0)
 	{
@@ -1314,14 +1290,8 @@ sub new
 	my $node = {
 		_port    => $port,
 		_host    => $host,
-<<<<<<< HEAD:src/test/perl/PostgresNode.pm
 		_dbid    => $last_dbid,
-		_basedir => "$TestLib::tmp_check/t_${testname}_${name}_data",
-||||||| 3b231596ccf:src/test/perl/PostgresNode.pm
-		_basedir => "$TestLib::tmp_check/t_${testname}_${name}_data",
-=======
 		_basedir => "$PostgreSQL::Test::Utils::tmp_check/t_${testname}_${name}_data",
->>>>>>> c4cc2850f4d:src/test/perl/PostgreSQL/Test/Cluster.pm
 		_name    => $name,
 		_logfile_generation => 0,
 		_logfile_base       => "$PostgreSQL::Test::Utils::log_path/${testname}_${name}",
