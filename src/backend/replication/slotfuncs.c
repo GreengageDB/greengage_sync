@@ -25,16 +25,6 @@
 #include "utils/pg_lsn.h"
 #include "utils/resowner.h"
 
-<<<<<<< HEAD
-static void
-check_permissions(void)
-{
-	if (!superuser() && !has_rolreplication(GetUserId()))
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("must be superuser or replication role to use replication slots")));
-}
-
 static void
 warn_slot_only_created_on_segment(const char *name) {
 	ereport(WARNING,
@@ -42,18 +32,6 @@ warn_slot_only_created_on_segment(const char *name) {
 			 errhint("Creating replication slots on a single segment is not advised.  Replication slots are automatically created by management tools.")));
 }
 
-||||||| 3b231596ccf
-static void
-check_permissions(void)
-{
-	if (!superuser() && !has_rolreplication(GetUserId()))
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("must be superuser or replication role to use replication slots")));
-}
-
-=======
->>>>>>> c4cc2850f4d
 /*
  * Helper function for creating a new physical replication slot with
  * given arguments. Note that this function doesn't release the created
