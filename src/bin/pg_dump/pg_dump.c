@@ -1934,40 +1934,22 @@ selectDumpableNamespace(NamespaceInfo *nsinfo, Archive *fout)
 		 * no-mans-land between being a system object and a user object.
 		 * CREATE SCHEMA would fail, so its DUMP_COMPONENT_DEFINITION is just
 		 * a comment and an indication of ownership.  If the owner is the
-<<<<<<< HEAD
-		 * default, that DUMP_COMPONENT_DEFINITION is superfluous.
+		 * default, omit that superfluous DUMP_COMPONENT_DEFINITION.  Before
+		 * v15, the default owner was BOOTSTRAP_SUPERUSERID.
 		 *
 		 * In Greenplum binary upgrades, we need to dump the public schema
 		 * (i.e. DROP and re-CREATE it) in order to maintain its Oid; see
 		 * binary_upgrade_set_namespace_oid().
-||||||| 3b231596ccf
-		 * default, that DUMP_COMPONENT_DEFINITION is superfluous.
-=======
-		 * default, omit that superfluous DUMP_COMPONENT_DEFINITION.  Before
-		 * v15, the default owner was BOOTSTRAP_SUPERUSERID.
->>>>>>> c4cc2850f4d
 		 */
-<<<<<<< HEAD
 		if (dopt->binary_upgrade)
 			nsinfo->dobj.dump = DUMP_COMPONENT_ALL;
 		else
 		{
 			nsinfo->create = false;
 			nsinfo->dobj.dump = DUMP_COMPONENT_ALL;
-			if (nsinfo->nspowner == BOOTSTRAP_SUPERUSERID)
+			if (nsinfo->nspowner == ROLE_PG_DATABASE_OWNER)
 				nsinfo->dobj.dump &= ~DUMP_COMPONENT_DEFINITION;
 		}
-||||||| 3b231596ccf
-		nsinfo->create = false;
-		nsinfo->dobj.dump = DUMP_COMPONENT_ALL;
-		if (nsinfo->nspowner == BOOTSTRAP_SUPERUSERID)
-			nsinfo->dobj.dump &= ~DUMP_COMPONENT_DEFINITION;
-=======
-		nsinfo->create = false;
-		nsinfo->dobj.dump = DUMP_COMPONENT_ALL;
-		if (nsinfo->nspowner == ROLE_PG_DATABASE_OWNER)
-			nsinfo->dobj.dump &= ~DUMP_COMPONENT_DEFINITION;
->>>>>>> c4cc2850f4d
 		nsinfo->dobj.dump_contains = DUMP_COMPONENT_ALL;
 
 		/*
