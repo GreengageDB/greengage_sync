@@ -14,29 +14,13 @@
 
 CREATE FUNCTION check_primary_key ()
 	RETURNS trigger
-<<<<<<< HEAD:src/test/regress/input/create_function_0.source
-	AS '@libdir@/regress@DLSUFFIX@'
+	AS :'regresslib'
 	LANGUAGE C READS SQL DATA;
-||||||| 3b231596ccf:src/test/regress/input/create_function_0.source
-	AS '@libdir@/refint@DLSUFFIX@'
-	LANGUAGE C;
-=======
-	AS :'refintlib'
-	LANGUAGE C;
->>>>>>> c4cc2850f4d:src/test/regress/sql/create_function_0.sql
 
 CREATE FUNCTION check_foreign_key ()
 	RETURNS trigger
-<<<<<<< HEAD:src/test/regress/input/create_function_0.source
-	AS '@libdir@/regress@DLSUFFIX@'
+	AS :'regresslib'
 	LANGUAGE C READS SQL DATA;
-||||||| 3b231596ccf:src/test/regress/input/create_function_0.source
-	AS '@libdir@/refint@DLSUFFIX@'
-	LANGUAGE C;
-=======
-	AS :'refintlib'
-	LANGUAGE C;
->>>>>>> c4cc2850f4d:src/test/regress/sql/create_function_0.sql
 
 CREATE FUNCTION autoinc ()
 	RETURNS trigger
@@ -45,42 +29,18 @@ CREATE FUNCTION autoinc ()
 
 CREATE FUNCTION trigger_return_old ()
         RETURNS trigger
-<<<<<<< HEAD:src/test/regress/input/create_function_0.source
-        AS '@libdir@/regress@DLSUFFIX@'
-        LANGUAGE C READS SQL DATA;
-||||||| 3b231596ccf:src/test/regress/input/create_function_0.source
-        AS '@libdir@/regress@DLSUFFIX@'
-        LANGUAGE C;
-=======
         AS :'regresslib'
-        LANGUAGE C;
->>>>>>> c4cc2850f4d:src/test/regress/sql/create_function_0.sql
+        LANGUAGE C READS SQL DATA;
 
 CREATE FUNCTION ttdummy ()
         RETURNS trigger
-<<<<<<< HEAD:src/test/regress/input/create_function_0.source
-        AS '@libdir@/regress@DLSUFFIX@'
-        LANGUAGE C READS SQL DATA;
-||||||| 3b231596ccf:src/test/regress/input/create_function_0.source
-        AS '@libdir@/regress@DLSUFFIX@'
-        LANGUAGE C;
-=======
         AS :'regresslib'
-        LANGUAGE C;
->>>>>>> c4cc2850f4d:src/test/regress/sql/create_function_0.sql
+        LANGUAGE C READS SQL DATA;
 
 CREATE FUNCTION set_ttdummy (int4)
         RETURNS int4
-<<<<<<< HEAD:src/test/regress/input/create_function_0.source
-        AS '@libdir@/regress@DLSUFFIX@'
-        LANGUAGE C STRICT READS SQL DATA;
-||||||| 3b231596ccf:src/test/regress/input/create_function_0.source
-        AS '@libdir@/regress@DLSUFFIX@'
-        LANGUAGE C STRICT;
-=======
         AS :'regresslib'
-        LANGUAGE C STRICT;
->>>>>>> c4cc2850f4d:src/test/regress/sql/create_function_0.sql
+        LANGUAGE C STRICT READS SQL DATA;
 
 CREATE FUNCTION make_tuple_indirect (record)
         RETURNS record
@@ -136,21 +96,13 @@ CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL CONTAINS SQL
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C NO SQL
     AS 'nosuchfile';
 
-<<<<<<< HEAD:src/test/regress/input/create_function_0.source
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C NO SQL
-    AS '@libdir@/regress@DLSUFFIX@', 'nosuchsymbol';
-||||||| 3b231596ccf:src/test/regress/input/create_function_0.source
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C
-    AS '@libdir@/regress@DLSUFFIX@', 'nosuchsymbol';
-=======
 -- To produce stable regression test output, we have to filter the name
 -- of the regresslib file out of the error message in this test.
 \set VERBOSITY sqlstate
-CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C
+CREATE FUNCTION test1 (int) RETURNS int LANGUAGE C NO SQL
     AS :'regresslib', 'nosuchsymbol';
 \set VERBOSITY default
 SELECT regexp_replace(:'LAST_ERROR_MESSAGE', 'file ".*"', 'file "..."');
->>>>>>> c4cc2850f4d:src/test/regress/sql/create_function_0.sql
 
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE internal NO SQL
     AS 'nosuch';
