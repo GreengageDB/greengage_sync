@@ -43,7 +43,6 @@
 #include "utils/resowner.h"
 #include "utils/timestamp.h"
 
-<<<<<<< HEAD
 #include "access/genam.h"
 #include "access/hash.h"
 #include "access/xact.h"
@@ -60,8 +59,7 @@
 #include "utils/guc.h"
 #include "utils/snapmgr.h"
 #include "utils/tarrable.h"
-||||||| 3b231596ccf
-=======
+
 /*
  * How much data do we want to send in one CopyData message? Note that
  * this may also result in reading the underlying files in chunks of this
@@ -71,7 +69,6 @@
  * size, so use that value instead if it's bigger than our preference.
  */
 #define SINK_BUFFER_LENGTH			Max(32768, BLCKSZ)
->>>>>>> c4cc2850f4d
 
 typedef struct
 {
@@ -87,30 +84,16 @@ typedef struct
 	HTAB	   *exclude;
 } basebackup_options;
 
-<<<<<<< HEAD
 
 static bool match_exclude_list(char *path, HTAB *exclude);
 
-static int64 sendTablespace(char *path, char *oid, bool sizeonly,
-||||||| 3b231596ccf
-static int64 sendTablespace(char *path, char *oid, bool sizeonly,
-=======
 static int64 sendTablespace(bbsink *sink, char *path, char *oid, bool sizeonly,
->>>>>>> c4cc2850f4d
 							struct backup_manifest_info *manifest);
 static int64 sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 					 List *tablespaces, bool sendtblspclinks,
-<<<<<<< HEAD
 					 backup_manifest_info *manifest, const char *spcoid,
 					 HTAB *exclude);
-static bool sendFile(const char *readfilename, const char *tarfilename,
-||||||| 3b231596ccf
-					 backup_manifest_info *manifest, const char *spcoid);
-static bool sendFile(const char *readfilename, const char *tarfilename,
-=======
-					 backup_manifest_info *manifest, const char *spcoid);
 static bool sendFile(bbsink *sink, const char *readfilename, const char *tarfilename,
->>>>>>> c4cc2850f4d
 					 struct stat *statbuf, bool missing_ok, Oid dboid,
 					 backup_manifest_info *manifest, const char *spcoid);
 static void sendFileWithContent(bbsink *sink, const char *filename,
@@ -304,39 +287,25 @@ perform_base_backup(basebackup_options *opt, bbsink *sink)
 
 	total_checksum_failures = 0;
 
-<<<<<<< HEAD
-	pgstat_progress_update_param(PROGRESS_BASEBACKUP_PHASE,
-								 PROGRESS_BASEBACKUP_PHASE_WAIT_CHECKPOINT);
-	startptr = do_pg_start_backup(opt->label, opt->fastcheckpoint, &starttli,
-								  labelfile, &tablespaces,
-								  tblspc_map_file);
-	Assert(!XLogRecPtrIsInvalid(startptr));
-
-	elogif(!debug_basebackup, LOG,
-		   "basebackup perform -- "
-		   "Basebackup start xlog location = %X/%X",
-		   (uint32) (startptr >> 32), (uint32) startptr);
-
-	/*
-	 * Set xlogCleanUpTo so that checkpoint process knows
-	 * which old xlog files should not be cleaned
-	 */
-	WalSndSetXLogCleanUpTo(startptr);
-
-	SIMPLE_FAULT_INJECTOR("base_backup_post_create_checkpoint");
-||||||| 3b231596ccf
-	pgstat_progress_update_param(PROGRESS_BASEBACKUP_PHASE,
-								 PROGRESS_BASEBACKUP_PHASE_WAIT_CHECKPOINT);
-	startptr = do_pg_start_backup(opt->label, opt->fastcheckpoint, &starttli,
-								  labelfile, &tablespaces,
-								  tblspc_map_file);
-=======
 	basebackup_progress_wait_checkpoint();
 	state.startptr = do_pg_start_backup(opt->label, opt->fastcheckpoint,
 										&state.starttli,
 										labelfile, &state.tablespaces,
 										tblspc_map_file);
->>>>>>> c4cc2850f4d
+	Assert(!XLogRecPtrIsInvalid(state.startptr));
+
+	elogif(!debug_basebackup, LOG,
+		   "basebackup perform -- "
+		   "Basebackup start xlog location = %X/%X",
+		   (uint32) (state.startptr >> 32), (uint32) state.startptr);
+
+	/*
+	 * Set xlogCleanUpTo so that checkpoint process knows
+	 * which old xlog files should not be cleaned
+	 */
+	WalSndSetXLogCleanUpTo(state.startptr);
+
+	SIMPLE_FAULT_INJECTOR("base_backup_post_create_checkpoint");
 
 	/*
 	 * Once do_pg_start_backup has been called, ensure that any failure causes
@@ -380,16 +349,8 @@ perform_base_backup(basebackup_options *opt, bbsink *sink)
 				tablespaceinfo *tmp = (tablespaceinfo *) lfirst(lc);
 
 				if (tmp->path == NULL)
-<<<<<<< HEAD
-					tmp->size = sendDir(".", 1, true, tablespaces, true, NULL,
-										NULL, opt->exclude);
-||||||| 3b231596ccf
-					tmp->size = sendDir(".", 1, true, tablespaces, true, NULL,
-										NULL);
-=======
 					tmp->size = sendDir(sink, ".", 1, true, state.tablespaces,
-										true, NULL, NULL);
->>>>>>> c4cc2850f4d
+										true, NULL, NULL, opt->exclude);
 				else
 					tmp->size = sendTablespace(sink, tmp->path, tmp->oid, true,
 											   NULL);
@@ -426,16 +387,8 @@ perform_base_backup(basebackup_options *opt, bbsink *sink)
 				}
 
 				/* Then the bulk of the files... */
-<<<<<<< HEAD
-				sendDir(".", 1, false, tablespaces, sendtblspclinks,
-						&manifest, NULL, opt->exclude);
-||||||| 3b231596ccf
-				sendDir(".", 1, false, tablespaces, sendtblspclinks,
-						&manifest, NULL);
-=======
 				sendDir(sink, ".", 1, false, state.tablespaces,
-						sendtblspclinks, &manifest, NULL);
->>>>>>> c4cc2850f4d
+						sendtblspclinks, &manifest, NULL, opt->exclude);
 
 				/* ... and pg_control after everything else. */
 				if (lstat(XLOG_CONTROL_FILE, &statbuf) != 0)
@@ -1073,236 +1026,8 @@ SendBaseBackup(BaseBackupCmd *cmd)
 	if (opt.maxrate > 0)
 		sink = bbsink_throttle_new(sink, opt.maxrate);
 
-<<<<<<< HEAD
-	sprintf(is, INT64_FORMAT, intval);
-	pq_sendint32(buf, strlen(is));
-	pq_sendbytes(buf, is, strlen(is));
-}
-
-static void
-SendBackupHeader(List *tablespaces)
-{
-	StringInfoData buf;
-	ListCell   *lc;
-
-	/* Construct and send the directory information */
-	pq_beginmessage(&buf, 'T'); /* RowDescription */
-	pq_sendint16(&buf, 3);		/* 3 fields */
-
-	/* First field - spcoid */
-	pq_sendstring(&buf, "spcoid");
-	pq_sendint32(&buf, 0);		/* table oid */
-	pq_sendint16(&buf, 0);		/* attnum */
-	pq_sendint32(&buf, OIDOID); /* type oid */
-	pq_sendint16(&buf, 4);		/* typlen */
-	pq_sendint32(&buf, 0);		/* typmod */
-	pq_sendint16(&buf, 0);		/* format code */
-
-	/* Second field - spclocation */
-	pq_sendstring(&buf, "spclocation");
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-	pq_sendint32(&buf, TEXTOID);
-	pq_sendint16(&buf, -1);
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-
-	/* Third field - size */
-	pq_sendstring(&buf, "size");
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-	pq_sendint32(&buf, INT8OID);
-	pq_sendint16(&buf, 8);
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-	pq_endmessage(&buf);
-
-	foreach(lc, tablespaces)
-	{
-		tablespaceinfo *ti = lfirst(lc);
-
-		/* Send one datarow message */
-		pq_beginmessage(&buf, 'D');
-		pq_sendint16(&buf, 3);	/* number of columns */
-		if (ti->path == NULL)
-		{
-			pq_sendint32(&buf, -1); /* Length = -1 ==> NULL */
-			pq_sendint32(&buf, -1);
-		}
-		else
-		{
-			Size		len;
-			char		*link_path_to_be_sent;
-
-			len = strlen(ti->oid);
-			pq_sendint32(&buf, len);
-			pq_sendbytes(&buf, ti->oid, len);
-
-			if(ti->rpath == NULL)
-			{
-				/* Lop off the dbid before sending the link target. */
-				char *link_path_without_dbid = pstrdup(ti->path);
-				char *file_sep_before_dbid_in_link_path =
-						strrchr(link_path_without_dbid, '/');
-				*file_sep_before_dbid_in_link_path = '\0';
-				link_path_to_be_sent = link_path_without_dbid;
-			}
-			else
-				link_path_to_be_sent = ti->path;
-			len = strlen(link_path_to_be_sent);
-			pq_sendint32(&buf, len);
-			pq_sendbytes(&buf, link_path_to_be_sent, len);
-		}
-		if (ti->size >= 0)
-			send_int8_string(&buf, ti->size / 1024);
-		else
-			pq_sendint32(&buf, -1); /* NULL */
-
-		pq_endmessage(&buf);
-	}
-
-	/* Send a CommandComplete message */
-	pq_puttextmessage('C', "SELECT");
-
-	elogif(debug_basebackup, LOG, "basebackup header -- Sent basebackup header.");
-}
-
-/*
- * Send a single resultset containing just a single
- * XLogRecPtr record (in text format)
- */
-static void
-SendXlogRecPtrResult(XLogRecPtr ptr, TimeLineID tli)
-{
-	StringInfoData buf;
-	char		str[MAXFNAMELEN];
-	Size		len;
-
-	pq_beginmessage(&buf, 'T'); /* RowDescription */
-	pq_sendint16(&buf, 2);		/* 2 fields */
-
-	/* Field headers */
-	pq_sendstring(&buf, "recptr");
-	pq_sendint32(&buf, 0);		/* table oid */
-	pq_sendint16(&buf, 0);		/* attnum */
-	pq_sendint32(&buf, TEXTOID);	/* type oid */
-	pq_sendint16(&buf, -1);
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-
-	pq_sendstring(&buf, "tli");
-	pq_sendint32(&buf, 0);		/* table oid */
-	pq_sendint16(&buf, 0);		/* attnum */
-||||||| 3b231596ccf
-	sprintf(is, INT64_FORMAT, intval);
-	pq_sendint32(buf, strlen(is));
-	pq_sendbytes(buf, is, strlen(is));
-}
-
-static void
-SendBackupHeader(List *tablespaces)
-{
-	StringInfoData buf;
-	ListCell   *lc;
-
-	/* Construct and send the directory information */
-	pq_beginmessage(&buf, 'T'); /* RowDescription */
-	pq_sendint16(&buf, 3);		/* 3 fields */
-
-	/* First field - spcoid */
-	pq_sendstring(&buf, "spcoid");
-	pq_sendint32(&buf, 0);		/* table oid */
-	pq_sendint16(&buf, 0);		/* attnum */
-	pq_sendint32(&buf, OIDOID); /* type oid */
-	pq_sendint16(&buf, 4);		/* typlen */
-	pq_sendint32(&buf, 0);		/* typmod */
-	pq_sendint16(&buf, 0);		/* format code */
-
-	/* Second field - spclocation */
-	pq_sendstring(&buf, "spclocation");
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-	pq_sendint32(&buf, TEXTOID);
-	pq_sendint16(&buf, -1);
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-
-	/* Third field - size */
-	pq_sendstring(&buf, "size");
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-	pq_sendint32(&buf, INT8OID);
-	pq_sendint16(&buf, 8);
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-	pq_endmessage(&buf);
-
-	foreach(lc, tablespaces)
-	{
-		tablespaceinfo *ti = lfirst(lc);
-
-		/* Send one datarow message */
-		pq_beginmessage(&buf, 'D');
-		pq_sendint16(&buf, 3);	/* number of columns */
-		if (ti->path == NULL)
-		{
-			pq_sendint32(&buf, -1); /* Length = -1 ==> NULL */
-			pq_sendint32(&buf, -1);
-		}
-		else
-		{
-			Size		len;
-
-			len = strlen(ti->oid);
-			pq_sendint32(&buf, len);
-			pq_sendbytes(&buf, ti->oid, len);
-
-			len = strlen(ti->path);
-			pq_sendint32(&buf, len);
-			pq_sendbytes(&buf, ti->path, len);
-		}
-		if (ti->size >= 0)
-			send_int8_string(&buf, ti->size / 1024);
-		else
-			pq_sendint32(&buf, -1); /* NULL */
-
-		pq_endmessage(&buf);
-	}
-
-	/* Send a CommandComplete message */
-	pq_puttextmessage('C', "SELECT");
-}
-
-/*
- * Send a single resultset containing just a single
- * XLogRecPtr record (in text format)
- */
-static void
-SendXlogRecPtrResult(XLogRecPtr ptr, TimeLineID tli)
-{
-	StringInfoData buf;
-	char		str[MAXFNAMELEN];
-	Size		len;
-
-	pq_beginmessage(&buf, 'T'); /* RowDescription */
-	pq_sendint16(&buf, 2);		/* 2 fields */
-
-	/* Field headers */
-	pq_sendstring(&buf, "recptr");
-	pq_sendint32(&buf, 0);		/* table oid */
-	pq_sendint16(&buf, 0);		/* attnum */
-	pq_sendint32(&buf, TEXTOID);	/* type oid */
-	pq_sendint16(&buf, -1);
-	pq_sendint32(&buf, 0);
-	pq_sendint16(&buf, 0);
-
-	pq_sendstring(&buf, "tli");
-	pq_sendint32(&buf, 0);		/* table oid */
-	pq_sendint16(&buf, 0);		/* attnum */
-=======
 	/* Set up progress reporting. */
 	sink = bbsink_progress_new(sink, opt.progress);
->>>>>>> c4cc2850f4d
 
 	/*
 	 * Perform the base backup, but make sure we clean up the bbsink even if
@@ -1419,26 +1144,12 @@ sendTablespace(bbsink *sink, char *path, char *spcoid, bool sizeonly,
 		return 0;
 	}
 
-<<<<<<< HEAD
-	size = _tarWriteHeader(GP_TABLESPACE_VERSION_DIRECTORY, NULL, &statbuf,
-||||||| 3b231596ccf
-	size = _tarWriteHeader(TABLESPACE_VERSION_DIRECTORY, NULL, &statbuf,
-=======
-	size = _tarWriteHeader(sink, TABLESPACE_VERSION_DIRECTORY, NULL, &statbuf,
->>>>>>> c4cc2850f4d
+	size = _tarWriteHeader(sink, GP_TABLESPACE_VERSION_DIRECTORY, NULL, &statbuf,
 						   sizeonly);
 
 	/* Send all the files in the tablespace version directory */
-<<<<<<< HEAD
-	size += sendDir(pathbuf, strlen(path), sizeonly, NIL, true, manifest,
-					spcoid, NULL);
-||||||| 3b231596ccf
-	size += sendDir(pathbuf, strlen(path), sizeonly, NIL, true, manifest,
-					spcoid);
-=======
 	size += sendDir(sink, pathbuf, strlen(path), sizeonly, NIL, true, manifest,
-					spcoid);
->>>>>>> c4cc2850f4d
+					spcoid, NULL);
 
 	return size;
 }
@@ -1474,19 +1185,9 @@ match_exclude_list(char *path, HTAB *exclude)
  * GPDB: Also omit any files in the 'exclude' list.
  */
 static int64
-<<<<<<< HEAD
-sendDir(const char *path, int basepathlen, bool sizeonly, List *tablespaces,
-		bool sendtblspclinks, backup_manifest_info *manifest,
-		const char *spcoid, HTAB *exclude)
-||||||| 3b231596ccf
-sendDir(const char *path, int basepathlen, bool sizeonly, List *tablespaces,
-		bool sendtblspclinks, backup_manifest_info *manifest,
-		const char *spcoid)
-=======
 sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 		List *tablespaces, bool sendtblspclinks, backup_manifest_info *manifest,
-		const char *spcoid)
->>>>>>> c4cc2850f4d
+		const char *spcoid, HTAB *exclude)
 {
 	DIR		   *dir;
 	struct dirent *de;
@@ -1721,17 +1422,11 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 						 errdetail("The symbolic link with target \"%s\" is too long. Symlink targets with length greater than %d characters would be truncated.", pathbuf, MAX_TARABLE_SYMLINK_PATH_LENGTH)));
 			linkpath[rllen] = '\0';
 
-<<<<<<< HEAD
 			/* Lop off the dbid before sending the link target. */
 			char *file_sep_before_dbid_in_link_path = strrchr(linkpath, '/');
 			*file_sep_before_dbid_in_link_path = '\0';
 
-			size += _tarWriteHeader(pathbuf + basepathlen + 1, linkpath,
-||||||| 3b231596ccf
-			size += _tarWriteHeader(pathbuf + basepathlen + 1, linkpath,
-=======
 			size += _tarWriteHeader(sink, pathbuf + basepathlen + 1, linkpath,
->>>>>>> c4cc2850f4d
 									&statbuf, sizeonly);
 #else
 
@@ -1787,16 +1482,8 @@ sendDir(bbsink *sink, const char *path, int basepathlen, bool sizeonly,
 				skip_this_dir = true;
 
 			if (!skip_this_dir)
-<<<<<<< HEAD
-				size += sendDir(pathbuf, basepathlen, sizeonly, tablespaces,
-								sendtblspclinks, manifest, spcoid, exclude);
-||||||| 3b231596ccf
-				size += sendDir(pathbuf, basepathlen, sizeonly, tablespaces,
-								sendtblspclinks, manifest, spcoid);
-=======
 				size += sendDir(sink, pathbuf, basepathlen, sizeonly, tablespaces,
-								sendtblspclinks, manifest, spcoid);
->>>>>>> c4cc2850f4d
+								sendtblspclinks, manifest, spcoid, exclude);
 		}
 		else if (S_ISREG(statbuf.st_mode))
 		{
