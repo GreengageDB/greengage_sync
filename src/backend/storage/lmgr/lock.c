@@ -133,16 +133,8 @@ static const char *const lock_mode_names[] =
 static bool Dummy_trace = false;
 #endif
 
-<<<<<<< HEAD
 const LockMethodData default_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-||||||| 3b231596ccf
-static const LockMethodData default_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-=======
-static const LockMethodData default_lockmethod = {
 	MaxLockMode,
->>>>>>> c4cc2850f4d
 	LockConflicts,
 	lock_mode_names,
 #ifdef LOCK_DEBUG
@@ -152,16 +144,8 @@ static const LockMethodData default_lockmethod = {
 #endif
 };
 
-<<<<<<< HEAD
 const LockMethodData user_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-||||||| 3b231596ccf
-static const LockMethodData user_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-=======
-static const LockMethodData user_lockmethod = {
 	MaxLockMode,
->>>>>>> c4cc2850f4d
 	LockConflicts,
 	lock_mode_names,
 #ifdef LOCK_DEBUG
