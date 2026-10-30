@@ -1148,47 +1148,13 @@ reportDependentObjects(const ObjectAddresses *targetObjects,
 			char	   *otherDesc = getObjectDescription(&extra->dependee,
 														 false);
 
-<<<<<<< HEAD
-			if (msglevel == NOTICE && Gp_role == GP_ROLE_EXECUTE)
-||||||| 3b231596ccf
-			if (numReportedClient < MAX_REPORTED_DEPS)
-=======
-			if (otherDesc)
->>>>>>> c4cc2850f4d
+			if (otherDesc && msglevel == NOTICE && Gp_role == GP_ROLE_EXECUTE)
 			{
-<<<<<<< HEAD
 				ereport(DEBUG1,
 						(errmsg("%s depends on %s",
 								objDesc, otherDesc)));
-||||||| 3b231596ccf
-				/* separate entries with a newline */
-				if (clientdetail.len != 0)
-					appendStringInfoChar(&clientdetail, '\n');
-				appendStringInfo(&clientdetail, _("%s depends on %s"),
-								 objDesc, otherDesc);
-				numReportedClient++;
-=======
-				if (numReportedClient < MAX_REPORTED_DEPS)
-				{
-					/* separate entries with a newline */
-					if (clientdetail.len != 0)
-						appendStringInfoChar(&clientdetail, '\n');
-					appendStringInfo(&clientdetail, _("%s depends on %s"),
-									 objDesc, otherDesc);
-					numReportedClient++;
-				}
-				else
-					numNotReportedClient++;
-				/* separate entries with a newline */
-				if (logdetail.len != 0)
-					appendStringInfoChar(&logdetail, '\n');
-				appendStringInfo(&logdetail, _("%s depends on %s"),
-								 objDesc, otherDesc);
-				pfree(otherDesc);
->>>>>>> c4cc2850f4d
 			}
-			else
-<<<<<<< HEAD
+			else if (otherDesc)
 			{
 				if (numReportedClient < MAX_REPORTED_DEPS)
 				{
@@ -1208,17 +1174,8 @@ reportDependentObjects(const ObjectAddresses *targetObjects,
 								 objDesc, otherDesc);
 				pfree(otherDesc);
 			}
-||||||| 3b231596ccf
+			else
 				numNotReportedClient++;
-			/* separate entries with a newline */
-			if (logdetail.len != 0)
-				appendStringInfoChar(&logdetail, '\n');
-			appendStringInfo(&logdetail, _("%s depends on %s"),
-							 objDesc, otherDesc);
-			pfree(otherDesc);
-=======
-				numNotReportedClient++;
->>>>>>> c4cc2850f4d
 			ok = false;
 		}
 		else
