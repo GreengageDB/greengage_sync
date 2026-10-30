@@ -6,7 +6,7 @@
  *
  * Portions Copyright (c) 2007-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Copyright (c) 2000-2021, PostgreSQL Global Development Group
+ * Copyright (c) 2000-2022, PostgreSQL Global Development Group
  * Written by Peter Eisentraut <peter_e@gmx.net>.
  *
  * src/include/utils/guc.h
@@ -239,6 +239,12 @@ typedef enum
 #define GUC_UNIT_TIME		   0xF0000	/* mask for time-related units */
 
 #define GUC_EXPLAIN			  0x100000	/* include in explain */
+
+/*
+ * GUC_RUNTIME_COMPUTED is intended for runtime-computed GUCs that are only
+ * available via 'postgres -C' if the server is not running.
+ */
+#define GUC_RUNTIME_COMPUTED  0x200000
 
 #define GUC_UNIT				(GUC_UNIT_MEMORY | GUC_UNIT_TIME)
 

@@ -299,6 +299,10 @@ EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t ^@	 'Worth';
 SELECT count(*) FROM radix_text_tbl WHERE t ^@	 'Worth';
 
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM radix_text_tbl WHERE starts_with(t, 'Worth');
+SELECT count(*) FROM radix_text_tbl WHERE starts_with(t, 'Worth');
+
 -- Now check the results from bitmap indexscan
 SET enable_seqscan = OFF;
 SET enable_indexscan = OFF;
@@ -428,7 +432,15 @@ EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t ^@	 'Worth';
 SELECT count(*) FROM radix_text_tbl WHERE t ^@	 'Worth';
 
+<<<<<<< HEAD
 RESET optimizer_enable_tablescan;
+||||||| 3b231596ccf
+=======
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM radix_text_tbl WHERE starts_with(t, 'Worth');
+SELECT count(*) FROM radix_text_tbl WHERE starts_with(t, 'Worth');
+
+>>>>>>> c4cc2850f4d
 RESET enable_seqscan;
 RESET enable_indexscan;
 RESET enable_bitmapscan;

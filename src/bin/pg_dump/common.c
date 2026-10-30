@@ -4,7 +4,7 @@
  *	Catalog routines used by pg_dump; long ago these were shared
  *	by another dump tool, but not anymore.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -86,6 +86,15 @@ static void flagInhAttrs(DumpOptions *dopt, TableInfo *tblinfo, int numTables);
 static void findParentsByOid(TableInfo *self,
 							 InhInfo *inhinfo, int numInherits);
 static int	strInArray(const char *pattern, char **arr, int arr_size);
+<<<<<<< HEAD
+||||||| 3b231596ccf
+static IndxInfo *findIndexByOid(Oid oid, DumpableObject **idxinfoindex,
+								int numIndexes);
+
+=======
+static IndxInfo *findIndexByOid(Oid oid);
+
+>>>>>>> c4cc2850f4d
 
 /*
  * getSchemaData
@@ -177,9 +186,15 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 
 	pg_log_info("reading user-defined operators");
 	(void) getOperators(fout, &numOperators);
+<<<<<<< HEAD
 
 	pg_log_info("reading user-defined external protocols");
 	getExtProtocols(fout, &numExtProtocols);
+||||||| 3b231596ccf
+	oprinfo = getOperators(fout, &numOperators);
+	oprinfoindex = buildIndexArray(oprinfo, numOperators, sizeof(OprInfo));
+=======
+>>>>>>> c4cc2850f4d
 
 	pg_log_info("reading user-defined access methods");
 	getAccessMethods(fout, &numAccessMethods);
@@ -274,8 +289,11 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 	pg_log_info("reading publications");
 	(void) getPublications(fout, &numPublications);
 
-	pg_log_info("reading publication membership");
+	pg_log_info("reading publication membership of tables");
 	getPublicationTables(fout, tblinfo, numTables);
+
+	pg_log_info("reading publication membership of schemas");
+	getPublicationNamespaces(fout);
 
 	pg_log_info("reading subscriptions");
 	getSubscriptions(fout);
@@ -814,7 +832,13 @@ findTableByOid(Oid oid)
  *	  finds the DumpableObject for the index with the given oid
  *	  returns NULL if not found
  */
+<<<<<<< HEAD
 IndxInfo *
+||||||| 3b231596ccf
+	return (TableInfo *) findObjectByOid(oid, tblinfoindex, numTables);
+=======
+static IndxInfo *
+>>>>>>> c4cc2850f4d
 findIndexByOid(Oid oid)
 {
 	CatalogId	catId;

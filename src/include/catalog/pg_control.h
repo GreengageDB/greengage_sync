@@ -5,7 +5,7 @@
  *	  However, we define it here so that the format is documented.
  *
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/catalog/pg_control.h
@@ -85,9 +85,15 @@ typedef struct CheckPoint
 #define XLOG_END_OF_RECOVERY			0x90
 #define XLOG_FPI_FOR_HINT				0xA0
 #define XLOG_FPI						0xB0
+<<<<<<< HEAD
 #define XLOG_NEXTRELFILENODE			0xC0
 #define XLOG_NEXTGXID					0xD0
 #define XLOG_OVERWRITE_CONTRECORD		0xE0
+||||||| 3b231596ccf
+=======
+/* 0xC0 is used in Postgres 9.5-11 */
+#define XLOG_OVERWRITE_CONTRECORD		0xD0
+>>>>>>> c4cc2850f4d
 
 
 /*

@@ -5,9 +5,15 @@
  *	  Planning is complete, we just need to convert the selected
  *	  Path into a Plan.
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| 3b231596ccf
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -228,7 +234,13 @@ static IndexScan *make_indexscan(List *qptlist, List *qpqual, Index scanrelid,
 								 ScanDirection indexscandir);
 static IndexOnlyScan *make_indexonlyscan(List *qptlist, List *qpqual,
 										 Index scanrelid, Oid indexid,
+<<<<<<< HEAD
 										 List *indexqual, List *indexqualorig,
+||||||| 3b231596ccf
+										 List *indexqual, List *indexorderby,
+=======
+										 List *indexqual, List *recheckqual,
+>>>>>>> c4cc2850f4d
 										 List *indexorderby,
 										 List *indextlist,
 										 ScanDirection indexscandir);
@@ -321,7 +333,8 @@ static Sort *make_sort_from_groupcols(List *groupcls,
 									  Plan *lefttree);
 static Memoize *make_memoize(Plan *lefttree, Oid *hashoperators,
 							 Oid *collations, List *param_exprs,
-							 bool singlerow, uint32 est_entries);
+							 bool singlerow, bool binary_mode,
+							 uint32 est_entries, Bitmapset *keyparamids);
 static WindowAgg *make_windowagg(List *tlist, Index winref,
 								 int partNumCols, AttrNumber *partColIdx, Oid *partOperators, Oid *partCollations,
 								 int ordNumCols, AttrNumber *ordColIdx, Oid *ordOperators, Oid *ordCollations,
@@ -1741,6 +1754,7 @@ static Memoize *
 create_memoize_plan(PlannerInfo *root, MemoizePath *best_path, int flags)
 {
 	Memoize    *plan;
+	Bitmapset  *keyparamids;
 	Plan	   *subplan;
 	Oid		   *operators;
 	Oid		   *collations;
@@ -1772,8 +1786,11 @@ create_memoize_plan(PlannerInfo *root, MemoizePath *best_path, int flags)
 		i++;
 	}
 
+	keyparamids = pull_paramids((Expr *) param_exprs);
+
 	plan = make_memoize(subplan, operators, collations, param_exprs,
-						best_path->singlerow, best_path->est_entries);
+						best_path->singlerow, best_path->binary_mode,
+						best_path->est_entries, keyparamids);
 
 	copy_generic_path_info(&plan->plan, (Path *) best_path);
 
@@ -3765,7 +3782,8 @@ create_indexscan_plan(PlannerInfo *root,
 	List	   *indexclauses = best_path->indexclauses;
 	List	   *indexorderbys = best_path->indexorderbys;
 	Index		baserelid = best_path->path.parent->relid;
-	Oid			indexoid = best_path->indexinfo->indexoid;
+	IndexOptInfo *indexinfo = best_path->indexinfo;
+	Oid			indexoid = indexinfo->indexoid;
 	List	   *qpqual;
 	List	   *stripped_indexquals;
 	List	   *fixed_indexquals;
@@ -3895,6 +3913,24 @@ create_indexscan_plan(PlannerInfo *root,
 		}
 	}
 
+	/*
+	 * For an index-only scan, we must mark indextlist entries as resjunk if
+	 * they are columns that the index AM can't return; this cues setrefs.c to
+	 * not generate references to those columns.
+	 */
+	if (indexonly)
+	{
+		int			i = 0;
+
+		foreach(l, indexinfo->indextlist)
+		{
+			TargetEntry *indextle = (TargetEntry *) lfirst(l);
+
+			indextle->resjunk = !indexinfo->canreturn[i];
+			i++;
+		}
+	}
+
 	/* Finally ready to build the plan node */
 	if (indexonly)
 		scan_plan = (Scan *) make_indexonlyscan(tlist,
@@ -3904,7 +3940,7 @@ create_indexscan_plan(PlannerInfo *root,
 												fixed_indexquals,
 												stripped_indexquals,
 												fixed_indexorderbys,
-												best_path->indexinfo->indextlist,
+												indexinfo->indextlist,
 												best_path->indexscandir);
 	else
 		scan_plan = (Scan *) make_indexscan(tlist,
@@ -6071,7 +6107,8 @@ replace_nestloop_params_mutator(Node *node, PlannerInfo *root)
 		/* Upper-level Vars should be long gone at this point */
 		Assert(var->varlevelsup == 0);
 		/* If not to be replaced, we can just return the Var unmodified */
-		if (!bms_is_member(var->varno, root->curOuterRels))
+		if (IS_SPECIAL_VARNO(var->varno) ||
+			!bms_is_member(var->varno, root->curOuterRels))
 			return node;
 		/* Replace the Var with a nestloop Param */
 		return (Node *) replace_nestloop_param_var(root, var);
@@ -6721,7 +6758,12 @@ make_indexonlyscan(List *qptlist,
 				   Index scanrelid,
 				   Oid indexid,
 				   List *indexqual,
+<<<<<<< HEAD
 				   List *indexqualorig,
+||||||| 3b231596ccf
+=======
+				   List *recheckqual,
+>>>>>>> c4cc2850f4d
 				   List *indexorderby,
 				   List *indextlist,
 				   ScanDirection indexscandir)
@@ -6736,7 +6778,12 @@ make_indexonlyscan(List *qptlist,
 	node->scan.scanrelid = scanrelid;
 	node->indexid = indexid;
 	node->indexqual = indexqual;
+<<<<<<< HEAD
 	node->indexqualorig = indexqualorig;
+||||||| 3b231596ccf
+=======
+	node->recheckqual = recheckqual;
+>>>>>>> c4cc2850f4d
 	node->indexorderby = indexorderby;
 	node->indextlist = indextlist;
 	node->indexorderdir = indexscandir;
@@ -7852,7 +7899,8 @@ materialize_finished_plan(PlannerInfo *root, Plan *subplan)
 
 static Memoize *
 make_memoize(Plan *lefttree, Oid *hashoperators, Oid *collations,
-			 List *param_exprs, bool singlerow, uint32 est_entries)
+			 List *param_exprs, bool singlerow, bool binary_mode,
+			 uint32 est_entries, Bitmapset *keyparamids)
 {
 	Memoize    *node = makeNode(Memoize);
 	Plan	   *plan = &node->plan;
@@ -7867,7 +7915,9 @@ make_memoize(Plan *lefttree, Oid *hashoperators, Oid *collations,
 	node->collations = collations;
 	node->param_exprs = param_exprs;
 	node->singlerow = singlerow;
+	node->binary_mode = binary_mode;
 	node->est_entries = est_entries;
+	node->keyparamids = keyparamids;
 
 	return node;
 }

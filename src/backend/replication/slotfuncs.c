@@ -3,7 +3,7 @@
  * slotfuncs.c
  *	   Support functions for replication slots
  *
- * Copyright (c) 2012-2021, PostgreSQL Global Development Group
+ * Copyright (c) 2012-2022, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
  *	  src/backend/replication/slotfuncs.c
@@ -25,6 +25,7 @@
 #include "utils/pg_lsn.h"
 #include "utils/resowner.h"
 
+<<<<<<< HEAD
 static void
 check_permissions(void)
 {
@@ -41,6 +42,18 @@ warn_slot_only_created_on_segment(const char *name) {
 			 errhint("Creating replication slots on a single segment is not advised.  Replication slots are automatically created by management tools.")));
 }
 
+||||||| 3b231596ccf
+static void
+check_permissions(void)
+{
+	if (!superuser() && !has_rolreplication(GetUserId()))
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("must be superuser or replication role to use replication slots")));
+}
+
+=======
+>>>>>>> c4cc2850f4d
 /*
  * Helper function for creating a new physical replication slot with
  * given arguments. Note that this function doesn't release the created
@@ -92,7 +105,7 @@ pg_create_physical_replication_slot(PG_FUNCTION_ARGS)
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
 		elog(ERROR, "return type must be a row type");
 
-	check_permissions();
+	CheckSlotPermissions();
 
 	CheckSlotRequirements();
 
@@ -197,7 +210,7 @@ pg_create_logical_replication_slot(PG_FUNCTION_ARGS)
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
 		elog(ERROR, "return type must be a row type");
 
-	check_permissions();
+	CheckSlotPermissions();
 
 	CheckLogicalDecodingRequirements();
 
@@ -233,7 +246,7 @@ pg_drop_replication_slot(PG_FUNCTION_ARGS)
 {
 	Name		name = PG_GETARG_NAME(0);
 
-	check_permissions();
+	CheckSlotPermissions();
 
 	CheckSlotRequirements();
 
@@ -432,7 +445,7 @@ pg_get_replication_slots(PG_FUNCTION_ARGS)
 
 			XLByteToSeg(slot_contents.data.restart_lsn, targetSeg, wal_segment_size);
 
-			/* determine how many segments slots can be kept by slots */
+			/* determine how many segments can be kept by slots */
 			slotKeepSegs = XLogMBVarToSegs(max_slot_wal_keep_size_mb, wal_segment_size);
 			/* ditto for wal_keep_size */
 			keepSegs = XLogMBVarToSegs(wal_keep_size_mb, wal_segment_size);
@@ -547,7 +560,8 @@ pg_logical_replication_slot_advance(XLogRecPtr moveto)
 			 */
 			record = XLogReadRecord(ctx->reader, &errm);
 			if (errm)
-				elog(ERROR, "%s", errm);
+				elog(ERROR, "could not find record while advancing replication slot: %s",
+					 errm);
 
 			/*
 			 * Process the record.  Storage-level changes are ignored in
@@ -628,7 +642,7 @@ pg_replication_slot_advance(PG_FUNCTION_ARGS)
 
 	Assert(!MyReplicationSlot);
 
-	check_permissions();
+	CheckSlotPermissions();
 
 	if (XLogRecPtrIsInvalid(moveto))
 		ereport(ERROR,
@@ -643,9 +657,9 @@ pg_replication_slot_advance(PG_FUNCTION_ARGS)
 	 * target position accordingly.
 	 */
 	if (!RecoveryInProgress())
-		moveto = Min(moveto, GetFlushRecPtr());
+		moveto = Min(moveto, GetFlushRecPtr(NULL));
 	else
-		moveto = Min(moveto, GetXLogReplayRecPtr(&ThisTimeLineID));
+		moveto = Min(moveto, GetXLogReplayRecPtr(NULL));
 
 	/* Acquire the slot so we "own" it */
 	ReplicationSlotAcquire(NameStr(*slotname), true);
@@ -727,7 +741,7 @@ copy_replication_slot(FunctionCallInfo fcinfo, bool logical_slot)
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
 		elog(ERROR, "return type must be a row type");
 
-	check_permissions();
+	CheckSlotPermissions();
 
 	if (logical_slot)
 		CheckLogicalDecodingRequirements();

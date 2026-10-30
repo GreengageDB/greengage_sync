@@ -3,7 +3,7 @@
  *
  *	information support functions
  *
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/info.c
  */
 
@@ -119,6 +119,7 @@ gen_db_file_maps(DbInfo *old_db, DbInfo *new_db,
 		 * Verify that rels of same OID have same name.  The namespace name
 		 * should always match, but the relname might not match for TOAST
 		 * tables (and, therefore, their indexes).
+<<<<<<< HEAD
 		 *
 		 * TOAST table names initially match the heap pg_class oid, but
 		 * pre-9.0 they can change during certain commands such as CLUSTER, so
@@ -127,11 +128,26 @@ gen_db_file_maps(DbInfo *old_db, DbInfo *new_db,
 		 * XXX GPDB: for TOAST tables, don't insist on a match at all
 		 * yet; there are other ways for us to get mismatched names. Ideally
 		 * this will go away eventually.
+||||||| 3b231596ccf
+		 *
+		 * TOAST table names initially match the heap pg_class oid, but
+		 * pre-9.0 they can change during certain commands such as CLUSTER, so
+		 * don't insist on a match if old cluster is < 9.0.
+=======
+>>>>>>> c4cc2850f4d
 		 */
 		if (strcmp(old_rel->nspname, new_rel->nspname) != 0 ||
+<<<<<<< HEAD
 			(strcmp(old_rel->relname, new_rel->relname) != 0 &&
 			 (/* GET_MAJOR_VERSION(old_cluster.major_version) >= 900 || */
 			  strcmp(old_rel->nspname, "pg_toast") != 0)))
+||||||| 3b231596ccf
+			(strcmp(old_rel->relname, new_rel->relname) != 0 &&
+			 (GET_MAJOR_VERSION(old_cluster.major_version) >= 900 ||
+			  strcmp(old_rel->nspname, "pg_toast") != 0)))
+=======
+			strcmp(old_rel->relname, new_rel->relname) != 0)
+>>>>>>> c4cc2850f4d
 		{
 			pg_log(PG_WARNING, "Relation names for OID %u in database \"%s\" do not match: "
 				   "old name \"%s.%s\", new name \"%s.%s\"\n",
@@ -385,16 +401,25 @@ get_db_infos(ClusterInfo *cluster)
 
 	snprintf(query, sizeof(query),
 			 "SELECT d.oid, d.datname, d.encoding, d.datcollate, d.datctype, "
-			 "%s AS spclocation "
+			 "pg_catalog.pg_tablespace_location(t.oid) AS spclocation "
 			 "FROM pg_catalog.pg_database d "
 			 " LEFT OUTER JOIN pg_catalog.pg_tablespace t "
 			 " ON d.dattablespace = t.oid "
 			 "WHERE d.datallowconn = true "
 	/* we don't preserve pg_database.oid so we sort by name */
+<<<<<<< HEAD
 			 "ORDER BY 2",
 	/* 9.2 removed the spclocation column */
 			 (GET_MAJOR_VERSION(cluster->major_version) == 803) ?
 			 "t.spclocation" : "pg_catalog.pg_tablespace_location(t.oid)");
+||||||| 3b231596ccf
+			 "ORDER BY 2",
+	/* 9.2 removed the spclocation column */
+			 (GET_MAJOR_VERSION(cluster->major_version) <= 901) ?
+			 "t.spclocation" : "pg_catalog.pg_tablespace_location(t.oid)");
+=======
+			 "ORDER BY 2");
+>>>>>>> c4cc2850f4d
 
 	res = executeQueryOrDie(conn, "%s", query);
 
@@ -540,8 +565,15 @@ get_rel_infos(ClusterInfo *cluster, DbInfo *dbinfo)
 	 */
 	snprintf(query + strlen(query), sizeof(query) - strlen(query),
 			 "SELECT all_rels.*, n.nspname, c.relname, "
+<<<<<<< HEAD
 			 "  %s as relstorage, c.relkind, "
 			 "  c.relfilenode, c.reltablespace, %s "
+||||||| 3b231596ccf
+			 "  c.relfilenode, c.reltablespace, %s "
+=======
+			 "  c.relfilenode, c.reltablespace, "
+			 "  pg_catalog.pg_tablespace_location(t.oid) AS spclocation "
+>>>>>>> c4cc2850f4d
 			 "FROM (SELECT * FROM regular_heap "
 			 "      UNION ALL "
 			 "      SELECT * FROM toast_heap "
@@ -554,6 +586,7 @@ get_rel_infos(ClusterInfo *cluster, DbInfo *dbinfo)
 			 "  %s"
 			 "  LEFT OUTER JOIN pg_catalog.pg_tablespace t "
 			 "     ON c.reltablespace = t.oid "
+<<<<<<< HEAD
 			 "ORDER BY 1;",
 	/*
 	 * GPDB 7 with PostgreSQL v12 merge removed the relstorage column.
@@ -576,6 +609,15 @@ get_rel_infos(ClusterInfo *cluster, DbInfo *dbinfo)
 
 			(GET_MAJOR_VERSION(cluster->major_version) <= 1000) ?
 			 "" : "LEFT OUTER JOIN pg_catalog.pg_am am ON c.relam = am.oid");
+||||||| 3b231596ccf
+			 "ORDER BY 1;",
+	/* 9.2 removed the pg_tablespace.spclocation column */
+			 (GET_MAJOR_VERSION(cluster->major_version) >= 902) ?
+			 "pg_catalog.pg_tablespace_location(t.oid) AS spclocation" :
+			 "t.spclocation");
+=======
+			 "ORDER BY 1;");
+>>>>>>> c4cc2850f4d
 
 	res = executeQueryOrDie(conn, "%s", query);
 

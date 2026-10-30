@@ -3,7 +3,7 @@
  * async.h
  *	  Asynchronous notification: NOTIFY, LISTEN, UNLISTEN
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/commands/async.h
@@ -43,13 +43,18 @@ extern void AtAbort_Notify(void);
 extern void AtSubCommit_Notify(void);
 extern void AtSubAbort_Notify(void);
 extern void AtPrepare_Notify(void);
-extern void ProcessCompletedNotifies(void);
 
 /* signal handler for inbound notifies (PROCSIG_NOTIFY_INTERRUPT) */
 extern void HandleNotifyInterrupt(void);
 
 /* process interrupts */
+<<<<<<< HEAD
 extern void ProcessNotifyInterrupt(void);
 extern void NotifyMyFrontEnd(const char *channel, const char *payload, int32 srcPid);
+||||||| 3b231596ccf
+extern void ProcessNotifyInterrupt(void);
+=======
+extern void ProcessNotifyInterrupt(bool flush);
+>>>>>>> c4cc2850f4d
 
 #endif							/* ASYNC_H */

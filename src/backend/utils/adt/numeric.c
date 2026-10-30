@@ -11,7 +11,7 @@
  * Transactions on Mathematical Software, Vol. 24, No. 4, December 1998,
  * pages 359-367.
  *
- * Copyright (c) 1998-2021, PostgreSQL Global Development Group
+ * Copyright (c) 1998-2022, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
  *	  src/backend/utils/adt/numeric.c
@@ -40,8 +40,13 @@
 #include "utils/builtins.h"
 #include "utils/float.h"
 #include "utils/guc.h"
+<<<<<<< HEAD
 #include "utils/int8.h"
 #include "utils/memutils.h"
+||||||| 3b231596ccf
+#include "utils/int8.h"
+=======
+>>>>>>> c4cc2850f4d
 #include "utils/numeric.h"
 #include "utils/pg_lsn.h"
 #include "utils/sortsupport.h"
@@ -10692,9 +10697,13 @@ power_var(const NumericVar *base, const NumericVar *exp, NumericVar *result)
 	 */
 	ln_dweight = estimate_ln_dweight(base);
 
+	/*
+	 * Set the scale for the low-precision calculation, computing ln(base) to
+	 * around 8 significant digits.  Note that ln_dweight may be as small as
+	 * -SHRT_MAX, so the scale may exceed NUMERIC_MAX_DISPLAY_SCALE here.
+	 */
 	local_rscale = 8 - ln_dweight;
 	local_rscale = Max(local_rscale, NUMERIC_MIN_DISPLAY_SCALE);
-	local_rscale = Min(local_rscale, NUMERIC_MAX_DISPLAY_SCALE);
 
 	ln_var(base, &ln_base, local_rscale);
 

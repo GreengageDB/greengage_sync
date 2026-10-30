@@ -16,7 +16,7 @@
  *		contents of records in here except turning them into a more usable
  *		format.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -235,7 +235,12 @@ DecodeXLogOp(LogicalDecodingContext *ctx, XLogRecordBuffer *buf)
 		case XLOG_FPW_CHANGE:
 		case XLOG_FPI_FOR_HINT:
 		case XLOG_FPI:
+<<<<<<< HEAD
 		case XLOG_NEXTRELFILENODE:
+||||||| 3b231596ccf
+=======
+		case XLOG_OVERWRITE_CONTRECORD:
+>>>>>>> c4cc2850f4d
 			break;
 		default:
 			elog(ERROR, "unexpected RM_XLOG_ID record type: %u", info);
@@ -886,8 +891,8 @@ DecodeAbort(LogicalDecodingContext *ctx, XLogRecordBuffer *buf,
 	if (two_phase && !skip_xact)
 	{
 		ReorderBufferFinishPrepared(ctx->reorder, xid, buf->origptr, buf->endptr,
-									abort_time, origin_id, origin_lsn,
 									InvalidXLogRecPtr,
+									abort_time, origin_id, origin_lsn,
 									parsed->twophase_gid, false);
 	}
 	else

@@ -3,8 +3,14 @@
 /*
  *	pg_upgrade.h
  *
+<<<<<<< HEAD
  *	Portions Copyright (c) 2016-Present, VMware, Inc. or its affiliates
  *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+||||||| 3b231596ccf
+ *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+=======
+ *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
+>>>>>>> c4cc2850f4d
  *	src/bin/pg_upgrade/pg_upgrade.h
  */
 
@@ -93,6 +99,7 @@ extern char *output_files[];
 #endif
 
 
+<<<<<<< HEAD
 #define atooid(x)  ((Oid) strtoul((x), NULL, 10))
 
 /* OID system catalog preservation added during PG 9.0 development */
@@ -114,6 +121,25 @@ extern char *output_files[];
 
 /*
  * The format of visibility map is changed with this 9.6 commit,
+||||||| 3b231596ccf
+/*
+ * postmaster/postgres -b (binary_upgrade) flag added during PG 9.1
+ * development
+ */
+#define BINARY_UPGRADE_SERVER_FLAG_CAT_VER 201104251
+
+/*
+ *	Visibility map changed with this 9.2 commit,
+ *	8f9fe6edce358f7904e0db119416b4d1080a83aa; pick later catalog version.
+ */
+#define VISIBILITY_MAP_CRASHSAFE_CAT_VER 201107031
+
+/*
+ * The format of visibility map is changed with this 9.6 commit,
+=======
+/*
+ * The format of visibility map was changed with this 9.6 commit.
+>>>>>>> c4cc2850f4d
  */
 #define VISIBILITY_MAP_FROZEN_BIT_CAT_VER 201603011
 
@@ -397,6 +423,7 @@ typedef struct
 {
 	bool		check;			/* true -> ask user for permission to make
 								 * changes */
+	bool		do_sync;		/* flush changes to disk */
 	transferMode transfer_mode; /* copy files or link them? */
 	int			jobs;			/* number of processes/threads to use */
 	char	   *socketdir;		/* directory to use for Unix sockets */
@@ -557,8 +584,6 @@ bool		check_for_data_types_usage(ClusterInfo *cluster,
 bool		check_for_data_type_usage(ClusterInfo *cluster,
 									  const char *type_name,
 									  const char *output_path);
-void		new_9_0_populate_pg_largeobject_metadata(ClusterInfo *cluster,
-													 bool check_mode);
 void		old_9_3_check_for_line_data_type_usage(ClusterInfo *cluster);
 void		old_9_6_check_for_unknown_data_type_usage(ClusterInfo *cluster);
 void		old_9_6_invalidate_hash_indexes(ClusterInfo *cluster,

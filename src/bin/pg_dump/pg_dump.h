@@ -3,9 +3,15 @@
  * pg_dump.h
  *	  Common header file for the pg_dump utility
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| 3b231596ccf
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/bin/pg_dump/pg_dump.h
@@ -85,6 +91,7 @@ typedef enum
 	DO_POLICY,
 	DO_PUBLICATION,
 	DO_PUBLICATION_REL,
+	DO_PUBLICATION_TABLE_IN_SCHEMA,
 	DO_SUBSCRIPTION
 } DumpableObjectType;
 
@@ -149,6 +156,7 @@ typedef struct _dumpableObject
 	int			allocDeps;		/* allocated size of dependencies[] */
 } DumpableObject;
 
+<<<<<<< HEAD
 typedef struct _binaryupgradeinfo
 {
 	DumpableObject dobj;
@@ -176,6 +184,29 @@ typedef struct _dumpableObjectWithAcl
 	DumpableObject dobj;
 	DumpableAcl dacl;
 } DumpableObjectWithAcl;
+||||||| 3b231596ccf
+=======
+/*
+ * Object types that have ACLs must store them in a DumpableAcl sub-struct,
+ * which must immediately follow the DumpableObject base struct.
+ */
+typedef struct _dumpableAcl
+{
+	char	   *acl;			/* the object's actual ACL string */
+	char	   *acldefault;		/* default ACL for the object's type & owner */
+	/* these fields come from the object's pg_init_privs entry, if any: */
+	char		privtype;		/* entry type, 'i' or 'e'; 0 if no entry */
+	char	   *initprivs;		/* the object's initial ACL string, or NULL */
+} DumpableAcl;
+
+/* Generic struct that can be used to access any object type having an ACL */
+typedef struct _dumpableObjectWithAcl
+{
+	DumpableObject dobj;
+	DumpableAcl dacl;
+} DumpableObjectWithAcl;
+
+>>>>>>> c4cc2850f4d
 typedef struct _namespaceInfo
 {
 	DumpableObject dobj;
@@ -205,8 +236,20 @@ typedef struct _typeInfo
 	 * result of format_type(), which will be quoted if needed, and might be
 	 * schema-qualified too.
 	 */
+<<<<<<< HEAD
 	char		*ftypname;
 	const char  *rolname;
+||||||| 3b231596ccf
+	char	   *ftypname;
+	char	   *rolname;		/* name of owner, or empty string */
+	char	   *typacl;
+	char	   *rtypacl;
+	char	   *inittypacl;
+	char	   *initrtypacl;
+=======
+	char	   *ftypname;
+	const char *rolname;
+>>>>>>> c4cc2850f4d
 	Oid			typelem;
 	Oid			typrelid;
 	char		typrelkind;		/* 'r', 'v', 'c', etc */
@@ -335,13 +378,20 @@ typedef struct _tableInfo
 	uint32		toast_minmxid;	/* toast table's relminmxid */
 	int			ncheck;			/* # of CHECK expressions */
 	Oid			reltype;		/* OID of table's composite type, if any */
+<<<<<<< HEAD
 	char	   *reloftype;		/* underlying type for typed table */
+||||||| 3b231596ccf
+	char	   *reloftype;		/* underlying type for typed table */
+=======
+	Oid			reloftype;		/* underlying type for typed table */
+>>>>>>> c4cc2850f4d
 	Oid			foreign_server; /* foreign server oid, if applicable */
 	/* these two are set only if table is a sequence owned by a column: */
 	Oid			owning_tab;		/* OID of table owning sequence */
 	int			owning_col;		/* attr # of column owning sequence */
 	bool		is_identity_sequence;
 	int			relpages;		/* table's size in pages (from pg_class) */
+	int			toastpages;		/* toast table's size in pages, if any */
 
 	bool		interesting;	/* true if need to collect more data */
 	bool		dummy_view;		/* view's real definition must be postponed */
@@ -375,8 +425,6 @@ typedef struct _tableInfo
 	char	  **attencoding;	/* the attribute encoding values */
 	struct _attrDefInfo **attrdefs; /* DEFAULT expressions */
 	struct _constraintInfo *checkexprs; /* CHECK constraints */
-	char	   *partkeydef;		/* partition key definition */
-	char	   *partbound;		/* partition bound definition */
 	bool		needs_override; /* has GENERATED ALWAYS AS IDENTITY */
 	char	   *amname;			/* relation access method */
 
@@ -508,7 +556,7 @@ typedef struct _triggerInfo
 	Oid			tgconstrrelid;
 	char	   *tgconstrrelname;
 	char		tgenabled;
-	bool		tgisinternal;
+	bool		tgispartition;
 	bool		tgdeferrable;
 	bool		tginitdeferred;
 	char	   *tgdef;
@@ -698,6 +746,17 @@ typedef struct _PublicationRelInfo
 } PublicationRelInfo;
 
 /*
+ * The PublicationSchemaInfo struct is used to represent publication schema
+ * mapping.
+ */
+typedef struct _PublicationSchemaInfo
+{
+	DumpableObject dobj;
+	PublicationInfo *publication;
+	NamespaceInfo *pubschema;
+} PublicationSchemaInfo;
+
+/*
  * The SubscriptionInfo struct is used to represent subscription.
  */
 typedef struct _SubscriptionInfo
@@ -793,6 +852,7 @@ extern EventTriggerInfo *getEventTriggers(Archive *fout, int *numEventTriggers);
 extern void getPolicies(Archive *fout, TableInfo tblinfo[], int numTables);
 extern PublicationInfo *getPublications(Archive *fout,
 										int *numPublications);
+extern void getPublicationNamespaces(Archive *fout);
 extern void getPublicationTables(Archive *fout, TableInfo tblinfo[],
 								 int numTables);
 extern void getSubscriptions(Archive *fout);

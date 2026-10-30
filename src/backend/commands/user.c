@@ -3,9 +3,15 @@
  * user.c
  *	  Commands for manipulating roles (formerly called users).
  *
+<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+||||||| 3b231596ccf
+ * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+=======
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+>>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/backend/commands/user.c
@@ -454,7 +460,7 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	if (password)
 	{
 		char	   *shadow_pass;
-		char	   *logdetail;
+		const char *logdetail = NULL;
 
 		/*
 		 * Don't allow an empty password. Libpq treats an empty password the
@@ -710,24 +716,22 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 				new_tuple;
 	Form_pg_authid authform;
 	ListCell   *option;
-	char	   *rolename = NULL;
+	char	   *rolename;
 	char	   *password = NULL;	/* user password */
-	int			issuper = -1;	/* Make the user a superuser? */
-	int			inherit = -1;	/* Auto inherit privileges? */
-	int			createrole = -1;	/* Can this user create roles? */
-	int			createdb = -1;	/* Can the user create databases? */
-	int			canlogin = -1;	/* Can this user login? */
-	int			isreplication = -1; /* Is this a replication role? */
 	int			connlimit = -1; /* maximum connections allowed */
+<<<<<<< HEAD
 	char	   *resqueue = NULL;	/* resource queue for this role */
 	char	   *resgroup = NULL;	/* resource group for this role */
 	List	   *exttabcreate = NIL;	/* external table create privileges being added  */
 	List	   *exttabnocreate = NIL;	/* external table create privileges being removed */
 	List	   *rolemembers = NIL;	/* roles to be added/removed */
+||||||| 3b231596ccf
+	List	   *rolemembers = NIL;	/* roles to be added/removed */
+=======
+>>>>>>> c4cc2850f4d
 	char	   *validUntil = NULL;	/* time the login is valid until */
 	Datum		validUntil_datum;	/* same, as timestamptz Datum */
 	bool		validUntil_null;
-	int			bypassrls = -1;
 	DefElem    *dpassword = NULL;
 	DefElem    *dresqueue = NULL;
 	DefElem    *dresgroup = NULL;
@@ -915,18 +919,6 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 
 	if (dpassword && dpassword->arg)
 		password = strVal(dpassword->arg);
-	if (dissuper)
-		issuper = intVal(dissuper->arg);
-	if (dinherit)
-		inherit = intVal(dinherit->arg);
-	if (dcreaterole)
-		createrole = intVal(dcreaterole->arg);
-	if (dcreatedb)
-		createdb = intVal(dcreatedb->arg);
-	if (dcanlogin)
-		canlogin = intVal(dcanlogin->arg);
-	if (disreplication)
-		isreplication = intVal(disreplication->arg);
 	if (dconnlimit)
 	{
 		connlimit = intVal(dconnlimit->arg);
@@ -935,16 +927,20 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 					 errmsg("invalid connection limit: %d", connlimit)));
 	}
-	if (drolemembers)
-		rolemembers = (List *) drolemembers->arg;
 	if (dvalidUntil)
 		validUntil = strVal(dvalidUntil->arg);
+<<<<<<< HEAD
 	if (dresqueue)
 		resqueue = strVal(linitial((List *) dresqueue->arg));
 	if (dresgroup)
 		resgroup = strVal(linitial((List *) dresgroup->arg));
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg);
+||||||| 3b231596ccf
+	if (dbypassRLS)
+		bypassrls = intVal(dbypassRLS->arg);
+=======
+>>>>>>> c4cc2850f4d
 
 	/*
 	 * Scan the pg_authid relation to be certain the user exists.
@@ -963,24 +959,30 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	 * property.  Otherwise, if you don't have createrole, you're only allowed
 	 * to change your own password.
 	 */
+<<<<<<< HEAD
 
 	bWas_super = ((Form_pg_authid) GETSTRUCT(tuple))->rolsuper;
 
 	if (authform->rolsuper || issuper >= 0)
+||||||| 3b231596ccf
+	if (authform->rolsuper || issuper >= 0)
+=======
+	if (authform->rolsuper || dissuper)
+>>>>>>> c4cc2850f4d
 	{
 		if (!superuser())
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("must be superuser to alter superuser roles or change superuser attribute")));
 	}
-	else if (authform->rolreplication || isreplication >= 0)
+	else if (authform->rolreplication || disreplication)
 	{
 		if (!superuser())
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("must be superuser to alter replication roles or change replication attribute")));
 	}
-	else if (bypassrls >= 0)
+	else if (dbypassRLS)
 	{
 		if (!superuser())
 			ereport(ERROR,
@@ -989,6 +991,7 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	}
 	else if (!have_createrole_privilege())
 	{
+<<<<<<< HEAD
 		/* We already checked issuper, isreplication, and bypassrls */
 		if (!(inherit < 0 &&
 			  createrole < 0 &&
@@ -1001,13 +1004,29 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 			  !exttabcreate &&
 			  !exttabnocreate &&
 			  roleid == GetUserId()))
+||||||| 3b231596ccf
+		/* We already checked issuper, isreplication, and bypassrls */
+		if (!(inherit < 0 &&
+			  createrole < 0 &&
+			  createdb < 0 &&
+			  canlogin < 0 &&
+			  !dconnlimit &&
+			  !rolemembers &&
+			  !validUntil &&
+			  dpassword &&
+			  roleid == GetUserId()))
+=======
+		/* check the rest */
+		if (dinherit || dcreaterole || dcreatedb || dcanlogin || dconnlimit ||
+			drolemembers || dvalidUntil || !dpassword || roleid != GetUserId())
+>>>>>>> c4cc2850f4d
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("permission denied")));
 	}
 
 	/* Convert validuntil to internal form */
-	if (validUntil)
+	if (dvalidUntil)
 	{
 		validUntil_datum = DirectFunctionCall3(timestamptz_in,
 											   CStringGetDatum(validUntil),
@@ -1043,12 +1062,18 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	/*
 	 * issuper/createrole/etc
 	 */
-	if (issuper >= 0)
+	if (dissuper)
 	{
+<<<<<<< HEAD
 		bool isNull;
 		Oid roleResgroup;
 
 		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(issuper > 0);
+||||||| 3b231596ccf
+		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(issuper > 0);
+=======
+		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(intVal(dissuper->arg));
+>>>>>>> c4cc2850f4d
 		new_record_repl[Anum_pg_authid_rolsuper - 1] = true;
 
 		roleResgroup = heap_getattr(tuple, Anum_pg_authid_rolresgroup,
@@ -1075,33 +1100,33 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 		bWas_super = (issuper > 0);
 	}
 
-	if (inherit >= 0)
+	if (dinherit)
 	{
-		new_record[Anum_pg_authid_rolinherit - 1] = BoolGetDatum(inherit > 0);
+		new_record[Anum_pg_authid_rolinherit - 1] = BoolGetDatum(intVal(dinherit->arg));
 		new_record_repl[Anum_pg_authid_rolinherit - 1] = true;
 	}
 
-	if (createrole >= 0)
+	if (dcreaterole)
 	{
-		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(createrole > 0);
+		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(intVal(dcreaterole->arg));
 		new_record_repl[Anum_pg_authid_rolcreaterole - 1] = true;
 	}
 
-	if (createdb >= 0)
+	if (dcreatedb)
 	{
-		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(createdb > 0);
+		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(intVal(dcreatedb->arg));
 		new_record_repl[Anum_pg_authid_rolcreatedb - 1] = true;
 	}
 
-	if (canlogin >= 0)
+	if (dcanlogin)
 	{
-		new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(canlogin > 0);
+		new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(intVal(dcanlogin->arg));
 		new_record_repl[Anum_pg_authid_rolcanlogin - 1] = true;
 	}
 
-	if (isreplication >= 0)
+	if (disreplication)
 	{
-		new_record[Anum_pg_authid_rolreplication - 1] = BoolGetDatum(isreplication > 0);
+		new_record[Anum_pg_authid_rolreplication - 1] = BoolGetDatum(intVal(disreplication->arg));
 		new_record_repl[Anum_pg_authid_rolreplication - 1] = true;
 	}
 
@@ -1115,7 +1140,7 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	if (password)
 	{
 		char	   *shadow_pass;
-		char	   *logdetail;
+		const char *logdetail = NULL;
 
 		/* Like in CREATE USER, don't allow an empty password. */
 		if (password[0] == '\0' ||
@@ -1148,6 +1173,7 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	new_record_nulls[Anum_pg_authid_rolvaliduntil - 1] = validUntil_null;
 	new_record_repl[Anum_pg_authid_rolvaliduntil - 1] = true;
 
+<<<<<<< HEAD
 	/* Set the CREATE EXTERNAL TABLE permissions for this role, if specified in ALTER */
 	if (exttabcreate || exttabnocreate)
 	{
@@ -1259,8 +1285,13 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	}
 
 	if (bypassrls >= 0)
+||||||| 3b231596ccf
+	if (bypassrls >= 0)
+=======
+	if (dbypassRLS)
+>>>>>>> c4cc2850f4d
 	{
-		new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(bypassrls > 0);
+		new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(intVal(dbypassRLS->arg));
 		new_record_repl[Anum_pg_authid_rolbypassrls - 1] = true;
 	}
 
@@ -1277,9 +1308,13 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	 * Advance command counter so we can see new record; else tests in
 	 * AddRoleMems may fail.
 	 */
-	if (rolemembers)
+	if (drolemembers)
+	{
+		List	   *rolemembers	= (List *) drolemembers->arg;
+
 		CommandCounterIncrement();
 
+<<<<<<< HEAD
 	if (stmt->action == +1)		/* add members to role */
 	{
 		if (rolemembers)
@@ -1346,6 +1381,26 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 						   roleid,
 						   GetUserId(),
 						   "ALTER", alter_subtype);
+||||||| 3b231596ccf
+	if (stmt->action == +1)		/* add members to role */
+		AddRoleMems(rolename, roleid,
+					rolemembers, roleSpecsToIds(rolemembers),
+					GetUserId(), false);
+	else if (stmt->action == -1)	/* drop members from role */
+		DelRoleMems(rolename, roleid,
+					rolemembers, roleSpecsToIds(rolemembers),
+					false);
+=======
+		if (stmt->action == +1)		/* add members to role */
+			AddRoleMems(rolename, roleid,
+						rolemembers, roleSpecsToIds(rolemembers),
+						GetUserId(), false);
+		else if (stmt->action == -1)	/* drop members from role */
+			DelRoleMems(rolename, roleid,
+						rolemembers, roleSpecsToIds(rolemembers),
+						false);
+	}
+>>>>>>> c4cc2850f4d
 
 	/*
 	 * Close pg_authid, but keep lock till commit.
