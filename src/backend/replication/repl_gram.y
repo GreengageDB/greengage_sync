@@ -516,6 +516,7 @@ ident_or_keyword:
 			| K_USE_SNAPSHOT				{ $$ = "use_snapshot"; }
 			| K_MANIFEST					{ $$ = "manifest"; }
 			| K_MANIFEST_CHECKSUMS			{ $$ = "manifest_checksums"; }
+			| K_EXCLUDE						{ $$ = "exclude"; }
 		;
 
 %%
