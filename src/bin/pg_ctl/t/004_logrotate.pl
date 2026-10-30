@@ -6,7 +6,7 @@ use warnings;
 
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 10;
+use Test::More tests => 6;
 use Time::HiRes qw(usleep);
 
 # Extract the file name of a $format from the contents of
@@ -65,7 +65,8 @@ $node->init();
 $node->append_conf(
 	'postgresql.conf', qq(
 logging_collector = on
-log_destination = 'stderr, csvlog'
+# GPDB: log_destination is defunct; the logging collector always writes one
+# CSV file, which current_logfiles lists as "stderr".
 # these ensure stability of test results:
 log_rotation_age = 0
 lc_messages = 'C'
@@ -95,18 +96,12 @@ note "current_logfiles = $current_logfiles";
 
 like(
 	$current_logfiles,
-<<<<<<< HEAD
 	qr|^stderr log/gpdb-.*csv$|,
-||||||| 3b231596ccf
-	qr|^stderr log/postgresql-.*log$|,
-=======
-	qr|^stderr log/postgresql-.*log
-csvlog log/postgresql-.*csv$|,
->>>>>>> c4cc2850f4d
 	'current_logfiles is sane');
 
 check_log_pattern('stderr', $current_logfiles, 'division by zero', $node);
-check_log_pattern('csvlog', $current_logfiles, 'division by zero', $node);
+# GPDB: no separate csvlog destination
+#check_log_pattern('csvlog', $current_logfiles, 'division by zero', $node);
 
 # Sleep 2 seconds and ask for log rotation; this should result in
 # output into a different log file name.
@@ -127,20 +122,14 @@ note "now current_logfiles = $new_current_logfiles";
 
 like(
 	$new_current_logfiles,
-<<<<<<< HEAD
 	qr|^stderr log/gpdb-.*csv$|,
-||||||| 3b231596ccf
-	qr|^stderr log/postgresql-.*log$|,
-=======
-	qr|^stderr log/postgresql-.*log
-csvlog log/postgresql-.*csv$|,
->>>>>>> c4cc2850f4d
 	'new current_logfiles is sane');
 
 # Verify that log output gets to this file, too
 $node->psql('postgres', 'fee fi fo fum');
 
 check_log_pattern('stderr', $new_current_logfiles, 'syntax error', $node);
-check_log_pattern('csvlog', $new_current_logfiles, 'syntax error', $node);
+# GPDB: no separate csvlog destination
+#check_log_pattern('csvlog', $new_current_logfiles, 'syntax error', $node);
 
 $node->stop();
