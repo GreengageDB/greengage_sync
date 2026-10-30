@@ -76,7 +76,7 @@
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
 
-#include "catalog/catalog.h"
+#include "catalog/gp_internal_auto_conf.h"
 
 
 /* Ideally this would be in a .h file, but it hardly seems worth the trouble */

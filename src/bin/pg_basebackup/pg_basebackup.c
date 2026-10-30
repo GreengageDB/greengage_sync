@@ -38,7 +38,7 @@
 #include "receivelog.h"
 #include "replication/basebackup.h"
 #include "streamutil.h"
-#include "catalog/catalog.h"
+#include "catalog/gp_internal_auto_conf.h"
 
 
 #define ERRCODE_DATA_CORRUPTED	"XX001"
