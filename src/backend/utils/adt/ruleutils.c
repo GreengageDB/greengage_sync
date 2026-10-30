@@ -2674,21 +2674,29 @@ pg_get_expr_worker(text *expr, Oid relid, const char *relname, int prettyFlags)
 	/*
 	 * Throw error if the expression contains Vars we won't be able to
 	 * deparse.
+	 *
+	 * GPDB: gp_partition_template.template stores a GpPartitionDefinition
+	 * node tree, which is not an expression and contains no Vars;
+	 * expression_tree_walker() has no case for it, so skip the check.
+	 * get_rule_expr() deparses the node directly.
 	 */
-	relids = pull_varnos(NULL, node);
-	if (OidIsValid(relid))
+	if (!(tst && IsA(tst, GpPartitionDefinition)))
 	{
-		if (!bms_is_subset(relids, bms_make_singleton(1)))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("expression contains variables of more than one relation")));
-	}
-	else
-	{
-		if (!bms_is_empty(relids))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("expression contains variables")));
+		relids = pull_varnos(NULL, node);
+		if (OidIsValid(relid))
+		{
+			if (!bms_is_subset(relids, bms_make_singleton(1)))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("expression contains variables of more than one relation")));
+		}
+		else
+		{
+			if (!bms_is_empty(relids))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("expression contains variables")));
+		}
 	}
 
 	/* Prepare deparse context if needed */
@@ -4961,7 +4969,6 @@ set_deparse_plan(deparse_namespace *dpns, Plan *plan)
 	else if (IsA(plan, CteScan))
 		dpns->inner_plan = list_nth(dpns->subplans,
 									((CteScan *) plan)->ctePlanId - 1);
-<<<<<<< HEAD
 	else if (IsA(plan, Sequence))
 	{
 		/*
@@ -4972,12 +4979,9 @@ set_deparse_plan(deparse_namespace *dpns, Plan *plan)
 		Assert(list_length(((Sequence *) plan)->subplans) == 2);
 		dpns->inner_plan = linitial(((Sequence *) plan)->subplans);
 	}
-||||||| 3b231596ccf
-=======
 	else if (IsA(plan, WorkTableScan))
 		dpns->inner_plan = find_recursive_union(dpns,
 												(WorkTableScan *) plan);
->>>>>>> c4cc2850f4d
 	else if (IsA(plan, ModifyTable))
 		dpns->inner_plan = plan;
 	else if (IsA(plan, ShareInputScan))

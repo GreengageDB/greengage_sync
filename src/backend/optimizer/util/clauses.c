@@ -3,15 +3,9 @@
  * clauses.c
  *	  routines to manipulate qualification clauses
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -5570,7 +5564,6 @@ substitute_actual_srf_parameters_mutator(Node *node,
 }
 
 /*
-<<<<<<< HEAD
  * flatten_join_alias_var_optimizer
  *	  Replace Vars that reference JOIN outputs with references to the original
  *	  relation variables instead.
@@ -5788,8 +5781,9 @@ get_rightscalararrayop(const Expr *clause)
 		return lsecond(expr->args);
 	else
 		return NULL;
-||||||| 3b231596ccf
-=======
+}
+
+/*
  * pull_paramids
  *		Returns a Bitmapset containing the paramids of all Params in 'expr'.
  */
@@ -5817,5 +5811,4 @@ pull_paramids_walker(Node *node, Bitmapset **context)
 	}
 	return expression_tree_walker(node, pull_paramids_walker,
 								  (void *) context);
->>>>>>> c4cc2850f4d
 }
