@@ -25,21 +25,16 @@ COPY onek FROM :'filename';
 \set filename :abs_srcdir '/data/tenk.data'
 COPY tenk1 FROM :'filename';
 
-<<<<<<< HEAD:src/test/regress/input/copy.source
 -- Create a table that's identical to 'tenk1', but all the data is in a single
 -- segment. This comes handy in making some PostgreSQL tests pass on GPDB,
 -- where data distribution might make a difference to a test result.
 CREATE SCHEMA singleseg;
 create table singleseg.tenk1 (like tenk1, distkey int4) distributed by (distkey);
-COPY singleseg.tenk1 (unique1,unique2,two,four,ten,twenty,hundred,thousand,twothousand,fivethous,tenthous,odd,even,stringu1,stringu2,string4) FROM '@abs_srcdir@/data/tenk.data';
+\set filename :abs_srcdir '/data/tenk.data'
+COPY singleseg.tenk1 (unique1,unique2,two,four,ten,twenty,hundred,thousand,twothousand,fivethous,tenthous,odd,even,stringu1,stringu2,string4) FROM :'filename';
 
-COPY slow_emp4000 FROM '@abs_srcdir@/data/rect.data';
-||||||| 3b231596ccf:src/test/regress/input/copy.source
-COPY slow_emp4000 FROM '@abs_srcdir@/data/rect.data';
-=======
 \set filename :abs_srcdir '/data/rect.data'
 COPY slow_emp4000 FROM :'filename';
->>>>>>> c4cc2850f4d:src/test/regress/sql/copy.sql
 
 \set filename :abs_srcdir '/data/person.data'
 COPY person FROM :'filename';
@@ -152,14 +147,8 @@ copy copytest to :'filename' csv;
 
 create temp table copytest2 (like copytest);
 
-<<<<<<< HEAD:src/test/regress/input/copy.source
-copy copytest2 from '@abs_builddir@/results/copytest.csv' csv;
-copy copytest2 from '@abs_builddir@/results/copytest.csv' csv LOG ERRORS SEGMENT REJECT LIMIT 10 ROWS;
-||||||| 3b231596ccf:src/test/regress/input/copy.source
-copy copytest2 from '@abs_builddir@/results/copytest.csv' csv;
-=======
 copy copytest2 from :'filename' csv;
->>>>>>> c4cc2850f4d:src/test/regress/sql/copy.sql
+copy copytest2 from :'filename' csv LOG ERRORS SEGMENT REJECT LIMIT 10 ROWS;
 
 select * from copytest except select * from copytest2 order by 1,2,3;
 
@@ -209,7 +198,8 @@ CREATE TEMP TABLE venue(
     venuestate char(2),
     venueseats integer) DISTRIBUTED BY (venueid);
 
-COPY venue FROM '@abs_srcdir@/data/venue_pipe.txt' WITH DELIMITER AS '|';
+\set filename :abs_srcdir '/data/venue_pipe.txt'
+COPY venue FROM :'filename' WITH DELIMITER AS '|';
 SELECT count(*) FROM venue;
 
 -- test copy from with a partitioned table
