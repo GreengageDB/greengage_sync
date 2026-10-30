@@ -1936,13 +1936,7 @@ pq_getkeepalivescount(Port *port)
 
 	if (port->default_keepalives_count == 0)
 	{
-<<<<<<< HEAD
-		socklen_t size = sizeof(port->default_keepalives_count);
-||||||| 3b231596ccf
-		ACCEPT_TYPE_ARG3 size = sizeof(port->default_keepalives_count);
-=======
 		socklen_t	size = sizeof(port->default_keepalives_count);
->>>>>>> c4cc2850f4d
 
 		if (getsockopt(port->sock, IPPROTO_TCP, TCP_KEEPCNT,
 					   (char *) &port->default_keepalives_count,
