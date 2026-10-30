@@ -2674,21 +2674,29 @@ pg_get_expr_worker(text *expr, Oid relid, const char *relname, int prettyFlags)
 	/*
 	 * Throw error if the expression contains Vars we won't be able to
 	 * deparse.
+	 *
+	 * GPDB: gp_partition_template.template stores a GpPartitionDefinition
+	 * node tree, which is not an expression and contains no Vars;
+	 * expression_tree_walker() has no case for it, so skip the check.
+	 * get_rule_expr() deparses the node directly.
 	 */
-	relids = pull_varnos(NULL, node);
-	if (OidIsValid(relid))
+	if (!(tst && IsA(tst, GpPartitionDefinition)))
 	{
-		if (!bms_is_subset(relids, bms_make_singleton(1)))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("expression contains variables of more than one relation")));
-	}
-	else
-	{
-		if (!bms_is_empty(relids))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("expression contains variables")));
+		relids = pull_varnos(NULL, node);
+		if (OidIsValid(relid))
+		{
+			if (!bms_is_subset(relids, bms_make_singleton(1)))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("expression contains variables of more than one relation")));
+		}
+		else
+		{
+			if (!bms_is_empty(relids))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("expression contains variables")));
+		}
 	}
 
 	/* Prepare deparse context if needed */
