@@ -12,10 +12,8 @@
 #ifndef _STARTUP_H
 #define _STARTUP_H
 
-<<<<<<< HEAD
 extern bool am_startup;
-||||||| 3b231596ccf
-=======
+
 /*
  * Log the startup progress message if a timer has expired.
  */
@@ -28,7 +26,6 @@ extern bool am_startup;
 	} while(0)
 
 extern int  log_startup_progress_interval;
->>>>>>> c4cc2850f4d
 
 extern void HandleStartupProcInterrupts(void);
 extern void StartupProcessMain(void) pg_attribute_noreturn();
