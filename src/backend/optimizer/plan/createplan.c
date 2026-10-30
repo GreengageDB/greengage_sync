@@ -5146,7 +5146,7 @@ remove_isnotfalse(List *clauses)
 	{
 		Node *node = (Node *) lfirst(l);
 
-		if (IsA(node, Expr) || IsA(node, BooleanTest))
+		if (IsA(node, BooleanTest))
 		{
 			Expr *expr = (Expr *) node;
 
