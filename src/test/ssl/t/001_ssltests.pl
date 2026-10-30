@@ -608,13 +608,7 @@ $node->connect_ok(
 # intermediate client_ca.crt is provided by client, and isn't in server's ssl_ca_file
 switch_server_cert($node, 'server-cn-only', 'root_ca');
 $common_connstr =
-<<<<<<< HEAD
-  "$default_ssl_connstr user=ssltestuser dbname=certdb sslkey=ssl/client_tmp.key sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR";
-||||||| 3b231596ccf
-  "user=ssltestuser dbname=certdb sslkey=ssl/client_tmp.key sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR";
-=======
-  "user=ssltestuser dbname=certdb sslkey=$key{'client.key'} sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR";
->>>>>>> c4cc2850f4d
+  "$default_ssl_connstr user=ssltestuser dbname=certdb sslkey=$key{'client.key'} sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR";
 
 $node->connect_ok(
 	"$common_connstr sslmode=require sslcert=ssl/client+client_ca.crt",
