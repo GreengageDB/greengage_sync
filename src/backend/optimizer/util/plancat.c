@@ -4,15 +4,9 @@
  *	   routines for accessing the system catalogs
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc.
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1205,21 +1199,11 @@ estimate_rel_size(Relation rel, int32 *attr_widths,
 	BlockNumber relallvisible;
 	double		density;
 
-	if (RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind))
+	if (RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind) ||
+		rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||
+		rel->rd_rel->relkind == RELKIND_AOBLOCKDIR ||
+		rel->rd_rel->relkind == RELKIND_AOVISIMAP)
 	{
-<<<<<<< HEAD
-		case RELKIND_RELATION:
-		case RELKIND_MATVIEW:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_AOSEGMENTS:
-		case RELKIND_AOBLOCKDIR:
-		case RELKIND_AOVISIMAP:
-||||||| 3b231596ccf
-		case RELKIND_RELATION:
-		case RELKIND_MATVIEW:
-		case RELKIND_TOASTVALUE:
-=======
->>>>>>> c4cc2850f4d
 			table_relation_estimate_size(rel, attr_widths, pages, tuples,
 										 allvisfrac);
 	}
