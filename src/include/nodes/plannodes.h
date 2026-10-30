@@ -4,15 +4,9 @@
  *	  definitions for query plan nodes
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/nodes/plannodes.h
@@ -679,18 +673,12 @@ typedef struct DynamicIndexScan
  * indextlist, which represents the contents of the index as a targetlist
  * with one TLE per index column.  Vars appearing in this list reference
  * the base table, and this is the only field in the plan node that may
-<<<<<<< HEAD
- * contain such Vars.
- *
- * GPDB: We need indexqualorig to determine direct dispatch, however there
- * is no need to dispatch it.
-||||||| 3b231596ccf
- * contain such Vars.
-=======
  * contain such Vars.  Also, for the convenience of setrefs.c, TLEs in
  * indextlist are marked as resjunk if they correspond to columns that
  * the index AM cannot reconstruct.
->>>>>>> c4cc2850f4d
+ *
+ * GPDB: We need indexqualorig to determine direct dispatch, however there
+ * is no need to dispatch it.
  * ----------------
  */
 typedef struct IndexOnlyScan
@@ -698,12 +686,8 @@ typedef struct IndexOnlyScan
 	Scan		scan;
 	Oid			indexid;		/* OID of index to scan */
 	List	   *indexqual;		/* list of index quals (usually OpExprs) */
-<<<<<<< HEAD
 	List	   *indexqualorig;	/* the same in original form (GPDB keeps it) */
-||||||| 3b231596ccf
-=======
 	List	   *recheckqual;	/* index quals in recheckable form */
->>>>>>> c4cc2850f4d
 	List	   *indexorderby;	/* list of index ORDER BY exprs */
 	List	   *indextlist;		/* TargetEntry list describing index's cols */
 	ScanDirection indexorderdir;	/* forward or backward or don't care */
