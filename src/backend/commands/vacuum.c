@@ -14,15 +14,9 @@
  * Also have a look at vacuum_ao.c, which contains VACUUM related code for
  * Append-Optimized tables.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -45,12 +39,8 @@
 #include "access/transam.h"
 #include "access/xact.h"
 #include "catalog/namespace.h"
-<<<<<<< HEAD
-#include "catalog/partition.h"
-||||||| 3b231596ccf
-=======
 #include "catalog/index.h"
->>>>>>> c4cc2850f4d
+#include "catalog/partition.h"
 #include "catalog/pg_database.h"
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
@@ -2885,7 +2875,6 @@ get_vacoptval_from_boolean(DefElem *def)
 	return defGetBoolean(def) ? VACOPTVALUE_ENABLED : VACOPTVALUE_DISABLED;
 }
 
-<<<<<<< HEAD
 
 
 /*
@@ -3275,8 +3264,8 @@ bool
 gp_vacuum_needs_update_stats(void)
 {
 	return (Gp_role == GP_ROLE_EXECUTE);
-||||||| 3b231596ccf
-=======
+}
+
 /*
  *	vac_bulkdel_one_index() -- bulk-deletion for index relation.
  *
@@ -3415,5 +3404,4 @@ vac_cmp_itemptr(const void *left, const void *right)
 		return 1;
 
 	return 0;
->>>>>>> c4cc2850f4d
 }
