@@ -4,15 +4,9 @@
  *	  Post-processing of a completed plan tree: fix references to subplan
  *	  vars, compute regproc values for operators, etc
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -462,20 +456,6 @@ set_plan_references(PlannerInfo *root, Plan *plan)
 	}
 
 	/* Now fix the Plan tree */
-<<<<<<< HEAD
-	Plan *retPlan = set_plan_refs(root, plan, rtoffset);
-
-#ifdef USE_ASSERT_CHECKING
-	/**
-	 * Ensuring that the output of setrefs behaves as expected.
-	 */
-	set_plan_references_output_asserts(glob, retPlan);
-#endif
-
-	return retPlan;
-||||||| 3b231596ccf
-	return set_plan_refs(root, plan, rtoffset);
-=======
 	result = set_plan_refs(root, plan, rtoffset);
 
 	/*
@@ -503,8 +483,14 @@ set_plan_references(PlannerInfo *root, Plan *plan)
 		}
 	}
 
+#ifdef USE_ASSERT_CHECKING
+	/**
+	 * Ensuring that the output of setrefs behaves as expected.
+	 */
+	set_plan_references_output_asserts(glob, result);
+#endif
+
 	return result;
->>>>>>> c4cc2850f4d
 }
 
 /*
@@ -1526,12 +1512,9 @@ set_indexonlyscan_references(PlannerInfo *root,
 					   INDEX_VAR,
 					   rtoffset,
 					   NUM_EXEC_QUAL((Plan *) plan));
-<<<<<<< HEAD
 	/* indexqualorig is already transformed to reference index columns */
 	plan->indexqualorig = fix_scan_list(root, plan->indexqualorig,
 										rtoffset, 1);
-||||||| 3b231596ccf
-=======
 	plan->recheckqual = (List *)
 		fix_upper_expr(root,
 					   (Node *) plan->recheckqual,
@@ -1539,7 +1522,6 @@ set_indexonlyscan_references(PlannerInfo *root,
 					   INDEX_VAR,
 					   rtoffset,
 					   NUM_EXEC_QUAL((Plan *) plan));
->>>>>>> c4cc2850f4d
 	/* indexqual is already transformed to reference index columns */
 	plan->indexqual = fix_scan_list(root, plan->indexqual,
 									rtoffset, 1);
