@@ -12520,6 +12520,9 @@ GetForeignKeyActionTriggers(Relation trigrel,
 			continue;
 		if (trgform->tgrelid != confrelid)
 			continue;
+		/* Only ever look at "action" triggers on the PK side. */
+		if (RI_FKey_trigger_type(trgform->tgfoid) != RI_TRIGGER_PK)
+			continue;
 		if (TRIGGER_FOR_DELETE(trgform->tgtype))
 		{
 			Assert(*deleteTriggerOid == InvalidOid);
@@ -12530,8 +12533,11 @@ GetForeignKeyActionTriggers(Relation trigrel,
 			Assert(*updateTriggerOid == InvalidOid);
 			*updateTriggerOid = trgform->oid;
 		}
+#ifndef USE_ASSERT_CHECKING
+		/* In an assert-enabled build, continue looking to find duplicates */
 		if (OidIsValid(*deleteTriggerOid) && OidIsValid(*updateTriggerOid))
 			break;
+#endif
 	}
 
 	if (!OidIsValid(*deleteTriggerOid))
@@ -12575,6 +12581,9 @@ GetForeignKeyCheckTriggers(Relation trigrel,
 			continue;
 		if (trgform->tgrelid != conrelid)
 			continue;
+		/* Only ever look at "check" triggers on the FK side. */
+		if (RI_FKey_trigger_type(trgform->tgfoid) != RI_TRIGGER_FK)
+			continue;
 		if (TRIGGER_FOR_INSERT(trgform->tgtype))
 		{
 			Assert(*insertTriggerOid == InvalidOid);
@@ -12585,8 +12594,11 @@ GetForeignKeyCheckTriggers(Relation trigrel,
 			Assert(*updateTriggerOid == InvalidOid);
 			*updateTriggerOid = trgform->oid;
 		}
+#ifndef USE_ASSERT_CHECKING
+		/* In an assert-enabled build, continue looking to find duplicates. */
 		if (OidIsValid(*insertTriggerOid) && OidIsValid(*updateTriggerOid))
 			break;
+#endif
 	}
 
 	if (!OidIsValid(*insertTriggerOid))
