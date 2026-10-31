@@ -13,7 +13,7 @@
  *
  * Author: Andreas Pflug <pgadmin@pse-consulting.de>
  *
- * Copyright (c) 2004-2021, PostgreSQL Global Development Group
+ * Copyright (c) 2004-2022, PostgreSQL Global Development Group
  *
  *
  * IDENTIFICATION
@@ -94,7 +94,7 @@ static bool rotation_disabled = false;
 static FILE *syslogFile = NULL;
 static FILE *csvlogFile = NULL;
 NON_EXEC_STATIC pg_time_t first_syslogger_file_time = 0;
-static char *last_file_name = NULL;
+static char *last_sys_file_name = NULL;
 static char *last_csv_file_name = NULL;
 
 /*
@@ -152,6 +152,8 @@ static volatile sig_atomic_t rotation_requested = false;
 
 /* Local subroutines */
 #ifdef EXEC_BACKEND
+static int	syslogger_fdget(FILE *file);
+static FILE *syslogger_fdopen(int fd);
 static pid_t syslogger_forkexec(void);
 static void syslogger_parseArgs(int argc, char *argv[]);
 #endif
@@ -370,7 +372,7 @@ SysLoggerMain(int argc, char *argv[])
 	 * time because passing down just the pg_time_t is a lot cheaper than
 	 * passing a whole file path in the EXEC_BACKEND case.
 	 */
-	last_file_name = logfile_getname(first_syslogger_file_time, NULL, Log_directory, Log_filename);
+	last_sys_file_name = logfile_getname(first_syslogger_file_time, NULL, Log_directory, Log_filename);
 	if (csvlogFile != NULL)
 		last_csv_file_name = logfile_getname(first_syslogger_file_time, ".csv", Log_directory, Log_filename);
 
@@ -540,7 +542,7 @@ SysLoggerMain(int argc, char *argv[])
 			all_rotations_occurred &=
 				logfile_rotate(time_based_rotation, (size_rotation_for & LOG_DESTINATION_STDERR) != 0,
 							   NULL, Log_directory, Log_filename,
-							   &syslogFile, &last_file_name);
+							   &syslogFile, &last_sys_file_name);
 			all_rotations_occurred &=
 				logfile_rotate(time_based_rotation, (size_rotation_for & LOG_DESTINATION_CSVLOG) != 0,
 							   ".csv", Log_directory, Log_filename,
@@ -988,6 +990,60 @@ SysLogger_Start(void)
 #ifdef EXEC_BACKEND
 
 /*
+ * syslogger_fdget() -
+ *
+ * Utility wrapper to grab the file descriptor of an opened error output
+ * file.  Used when building the command to fork the logging collector.
+ */
+static int
+syslogger_fdget(FILE *file)
+{
+#ifndef WIN32
+	if (file != NULL)
+		return fileno(file);
+	else
+		return -1;
+#else
+	if (file != NULL)
+		return (int) _get_osfhandle(_fileno(file));
+	else
+		return 0;
+#endif							/* WIN32 */
+}
+
+/*
+ * syslogger_fdopen() -
+ *
+ * Utility wrapper to re-open an error output file, using the given file
+ * descriptor.  Used when parsing arguments in a forked logging collector.
+ */
+static FILE *
+syslogger_fdopen(int fd)
+{
+	FILE	   *file = NULL;
+
+#ifndef WIN32
+	if (fd != -1)
+	{
+		file = fdopen(fd, "a");
+		setvbuf(file, NULL, PG_IOLBF, 0);
+	}
+#else							/* WIN32 */
+	if (fd != 0)
+	{
+		fd = _open_osfhandle(fd, _O_APPEND | _O_TEXT);
+		if (fd > 0)
+		{
+			file = fdopen(fd, "a");
+			setvbuf(file, NULL, PG_IOLBF, 0);
+		}
+	}
+#endif							/* WIN32 */
+
+	return file;
+}
+
+/*
  * syslogger_forkexec() -
  *
  * Format up the arglist for, then fork and exec, a syslogger process
@@ -1006,34 +1062,11 @@ syslogger_forkexec(void)
 	av[ac++] = NULL;			/* filled in by postmaster_forkexec */
 
 	/* static variables (those not passed by write_backend_variables) */
-#ifndef WIN32
-	if (syslogFile != NULL)
-		snprintf(filenobuf, sizeof(filenobuf), "%d",
-				 fileno(syslogFile));
-	else
-		strcpy(filenobuf, "-1");
-#else							/* WIN32 */
-	if (syslogFile != NULL)
-		snprintf(filenobuf, sizeof(filenobuf), "%ld",
-				 (long) _get_osfhandle(_fileno(syslogFile)));
-	else
-		strcpy(filenobuf, "0");
-#endif							/* WIN32 */
+	snprintf(filenobuf, sizeof(filenobuf), "%d",
+			 syslogger_fdget(syslogFile));
 	av[ac++] = filenobuf;
-
-#ifndef WIN32
-	if (csvlogFile != NULL)
-		snprintf(csvfilenobuf, sizeof(csvfilenobuf), "%d",
-				 fileno(csvlogFile));
-	else
-		strcpy(csvfilenobuf, "-1");
-#else							/* WIN32 */
-	if (csvlogFile != NULL)
-		snprintf(csvfilenobuf, sizeof(csvfilenobuf), "%ld",
-				 (long) _get_osfhandle(_fileno(csvlogFile)));
-	else
-		strcpy(csvfilenobuf, "0");
-#endif							/* WIN32 */
+	snprintf(csvfilenobuf, sizeof(csvfilenobuf), "%d",
+			 syslogger_fdget(csvlogFile));
 	av[ac++] = csvfilenobuf;
 
 	av[ac] = NULL;
@@ -1063,41 +1096,10 @@ syslogger_parseArgs(int argc, char *argv[])
 	 * fails there's not a lot we can do to report the problem anyway.  As
 	 * coded, we'll just crash on a null pointer dereference after failure...
 	 */
-#ifndef WIN32
 	fd = atoi(*argv++);
-	if (fd != -1)
-	{
-		syslogFile = fdopen(fd, "a");
-		setvbuf(syslogFile, NULL, PG_IOLBF, 0);
-	}
+	syslogFile = syslogger_fdopen(fd);
 	fd = atoi(*argv++);
-	if (fd != -1)
-	{
-		csvlogFile = fdopen(fd, "a");
-		setvbuf(csvlogFile, NULL, PG_IOLBF, 0);
-	}
-#else							/* WIN32 */
-	fd = atoi(*argv++);
-	if (fd != 0)
-	{
-		fd = _open_osfhandle(fd, _O_APPEND | _O_TEXT);
-		if (fd > 0)
-		{
-			syslogFile = fdopen(fd, "a");
-			setvbuf(syslogFile, NULL, PG_IOLBF, 0);
-		}
-	}
-	fd = atoi(*argv++);
-	if (fd != 0)
-	{
-		fd = _open_osfhandle(fd, _O_APPEND | _O_TEXT);
-		if (fd > 0)
-		{
-			csvlogFile = fdopen(fd, "a");
-			setvbuf(csvlogFile, NULL, PG_IOLBF, 0);
-		}
-	}
-#endif							/* WIN32 */
+	csvlogFile = syslogger_fdopen(fd);
 }
 #endif							/* EXEC_BACKEND */
 
@@ -2535,9 +2537,9 @@ update_metainfo_datafile(void)
 		return;
 	}
 
-	if (last_file_name && (Log_destination & LOG_DESTINATION_STDERR))
+	if (last_sys_file_name && (Log_destination & LOG_DESTINATION_STDERR))
 	{
-		if (fprintf(fh, "stderr %s\n", last_file_name) < 0)
+		if (fprintf(fh, "stderr %s\n", last_sys_file_name) < 0)
 		{
 			ereport(LOG,
 					(errcode_for_file_access(),

@@ -150,6 +150,32 @@ and p <@ box(point(5,5), point(6, 6));
 
 drop index gist_tbl_multi_index;
 
+-- Test that we don't try to return the value of a non-returnable
+-- column in an index-only scan.  (This isn't GIST-specific, but
+-- it only applies to index AMs that can return some columns and not
+-- others, so GIST with appropriate opclasses is a convenient test case.)
+create index gist_tbl_multi_index on gist_tbl using gist (circle(p,1), p);
+explain (verbose, costs off)
+select circle(p,1) from gist_tbl
+where p <@ box(point(5, 5), point(5.3, 5.3));
+select circle(p,1) from gist_tbl
+where p <@ box(point(5, 5), point(5.3, 5.3));
+
+-- Similarly, test that index rechecks involving a non-returnable column
+-- are done correctly.
+explain (verbose, costs off)
+select p from gist_tbl where circle(p,1) @> circle(point(0,0),0.95);
+select p from gist_tbl where circle(p,1) @> circle(point(0,0),0.95);
+
+-- This case isn't supported, but it should at least EXPLAIN correctly.
+explain (verbose, costs off)
+select p from gist_tbl order by circle(p,1) <-> point(0,0) limit 1;
+-- GPDB: 15 rows tie at distance 0 and gist_tbl is randomly distributed, so
+-- the row LIMIT 1 returns varies from run to run when the query executes (it
+-- does under ORCA, which does not use expression indexes).  Return the
+-- distance, which all tied rows share; the Postgres planner still fails here.
+select circle(p,1) <-> point(0,0) as dist from gist_tbl order by circle(p,1) <-> point(0,0) limit 1;
+
 -- Clean up
 reset enable_seqscan;
 reset enable_bitmapscan;
