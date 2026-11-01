@@ -46,12 +46,8 @@
 #include "catalog/namespace.h"
 #include "commands/async.h"
 #include "commands/prepare.h"
-<<<<<<< HEAD
 #include "commands/extension.h"
-||||||| 3b231596ccf
-=======
 #include "common/pg_prng.h"
->>>>>>> c4cc2850f4d
 #include "executor/spi.h"
 #include "jit/jit.h"
 #include "libpq/libpq.h"
@@ -4871,63 +4867,19 @@ void
 PostgresSingleUserMain(int argc, char *argv[],
 					   const char *username)
 {
-<<<<<<< HEAD
-	int			firstchar;
-	StringInfoData input_message;
-	sigjmp_buf	local_sigjmp_buf;
-	volatile bool send_ready_for_query = true;
-	bool		idle_in_transaction_timeout_enabled = false;
-	bool		idle_session_timeout_enabled = false;
-	bool		idle_gang_timeout_enabled = false;
-
-	/*
-	 * CDB: Catch program error signals.
-	 *
-	 * Save our main thread-id for comparison during signals.
-	 */
-	main_tid = pthread_self();
-||||||| 3b231596ccf
-	int			firstchar;
-	StringInfoData input_message;
-	sigjmp_buf	local_sigjmp_buf;
-	volatile bool send_ready_for_query = true;
-	bool		idle_in_transaction_timeout_enabled = false;
-	bool		idle_session_timeout_enabled = false;
-=======
 	const char *dbname = NULL;
->>>>>>> c4cc2850f4d
 
 	Assert(!IsUnderPostmaster);
 
-<<<<<<< HEAD
-#ifndef WIN32
-	PostmasterPriority = getpriority(PRIO_PROCESS, 0);
-#endif
-
-	set_ps_display("startup");
-
-	SetProcessingMode(InitProcessing);
-||||||| 3b231596ccf
-	SetProcessingMode(InitProcessing);
-=======
 	/* Initialize startup process environment. */
 	InitStandaloneProcess(argv[0]);
->>>>>>> c4cc2850f4d
 
 	/*
 	 * Set default values for command-line options.
 	 */
-<<<<<<< HEAD
 	EchoQuery = false;
 
-	if (!IsUnderPostmaster)
-		InitializeGUCOptions();
-||||||| 3b231596ccf
-	if (!IsUnderPostmaster)
-		InitializeGUCOptions();
-=======
 	InitializeGUCOptions();
->>>>>>> c4cc2850f4d
 
 	/*
 	 * Parse command-line options.
@@ -4945,30 +4897,15 @@ PostgresSingleUserMain(int argc, char *argv[],
 							progname)));
 	}
 
-<<<<<<< HEAD
-	/* Acquire configuration parameters, unless inherited from postmaster */
-	if (!IsUnderPostmaster)
-	{
-		if (!SelectConfigFiles(userDoption, progname))
-			proc_exit(1);
-
-        /*
-	     * Remember stand-alone backend startup time.
-         * CDB: Moved this up from below for use in error message headers.
-         */
-	    PgStartTime = GetCurrentTimestamp();
-	}
-||||||| 3b231596ccf
-	/* Acquire configuration parameters, unless inherited from postmaster */
-	if (!IsUnderPostmaster)
-	{
-		if (!SelectConfigFiles(userDoption, progname))
-			proc_exit(1);
-	}
-=======
 	/* Acquire configuration parameters */
 	if (!SelectConfigFiles(userDoption, progname))
 		proc_exit(1);
+
+	/*
+	 * Remember stand-alone backend startup time.
+	 * CDB: Moved this up from below for use in error message headers.
+	 */
+	PgStartTime = GetCurrentTimestamp();
 
 	/*
 	 * Validate we have been given a reasonable-looking DataDir and change
@@ -4989,12 +4926,6 @@ PostgresSingleUserMain(int argc, char *argv[],
 	InitializeMaxBackends();
 
 	CreateSharedMemoryAndSemaphores();
-
-	/*
-	 * Remember stand-alone backend startup time,roughly at the same point
-	 * during startup that postmaster does so.
-	 */
-	PgStartTime = GetCurrentTimestamp();
 
 	/*
 	 * Create a per-backend PGPROC struct in shared memory. We must do this
@@ -5030,12 +4961,25 @@ PostgresMain(const char *dbname, const char *username)
 	volatile bool send_ready_for_query = true;
 	bool		idle_in_transaction_timeout_enabled = false;
 	bool		idle_session_timeout_enabled = false;
+	bool		idle_gang_timeout_enabled = false;
 
 	AssertArg(dbname != NULL);
 	AssertArg(username != NULL);
 
+	/*
+	 * CDB: Catch program error signals.
+	 *
+	 * Save our main thread-id for comparison during signals.
+	 */
+	main_tid = pthread_self();
+
+#ifndef WIN32
+	PostmasterPriority = getpriority(PRIO_PROCESS, 0);
+#endif
+
+	set_ps_display("startup");
+
 	SetProcessingMode(InitProcessing);
->>>>>>> c4cc2850f4d
 
 	/*
 	 * Set up signal handlers.  (InitPostmasterChild or InitStandaloneProcess
@@ -5214,18 +5158,6 @@ PostgresMain(const char *dbname, const char *username)
 	initStringInfo(&row_description_buf);
 	MemoryContextSwitchTo(TopMemoryContext);
 
-<<<<<<< HEAD
-
-||||||| 3b231596ccf
-	/*
-	 * Remember stand-alone backend startup time
-	 */
-	if (!IsUnderPostmaster)
-		PgStartTime = GetCurrentTimestamp();
-
-	/*
-=======
->>>>>>> c4cc2850f4d
 	/*
 	 * POSTGRES main processing loop begins here
 	 *

@@ -8,16 +8,13 @@
 --  - EXCLUDE clauses
 --
 
-<<<<<<< HEAD:src/test/regress/input/constraints.source
 -- start_matchsubs
 -- m/DETAIL:  Failing row contains \(.*\)/
 -- s/DETAIL:  Failing row contains \(.*\)/DETAIL:  Failing row contains (#####)/
 -- end_matchsubs
-||||||| 3b231596ccf:src/test/regress/input/constraints.source
-=======
+
 -- directory paths are passed to us in environment variables
 \getenv abs_srcdir PG_ABS_SRCDIR
->>>>>>> c4cc2850f4d:src/test/regress/sql/constraints.sql
 
 --
 -- DEFAULT syntax

@@ -194,15 +194,9 @@ CONTEXT:  COPY agg_bad, line 3, column b: "aaa"
 SELECT explain_filter('EXPLAIN (VERBOSE, COSTS FALSE) SELECT * FROM agg_csv');
  Foreign Scan on public.agg_csv
    Output: a, b
-<<<<<<< HEAD:contrib/file_fdw/output/file_fdw.source
-   Foreign File: @abs_srcdir@/data/agg.csv
+   Foreign File: .../agg.csv
  Optimizer: Postgres query optimizer
  Settings: optimizer=off
-||||||| 3b231596ccf:contrib/file_fdw/output/file_fdw.source
-   Foreign File: @abs_srcdir@/data/agg.csv
-=======
-   Foreign File: .../agg.csv
->>>>>>> c4cc2850f4d:contrib/file_fdw/expected/file_fdw.out
 
 \t off
 PREPARE st(int) AS SELECT * FROM agg_csv WHERE a = $1;
@@ -249,28 +243,12 @@ COPY agg_csv FROM STDIN;
 ERROR:  cannot insert into foreign table "agg_csv"
 -- constraint exclusion tests
 \t on
-<<<<<<< HEAD:contrib/file_fdw/output/file_fdw.source
-EXPLAIN (VERBOSE, COSTS FALSE) SELECT * FROM agg_csv WHERE a < 0;
- Result
-||||||| 3b231596ccf:contrib/file_fdw/output/file_fdw.source
-EXPLAIN (VERBOSE, COSTS FALSE) SELECT * FROM agg_csv WHERE a < 0;
- Foreign Scan on public.agg_csv
-=======
 SELECT explain_filter('EXPLAIN (VERBOSE, COSTS FALSE) SELECT * FROM agg_csv WHERE a < 0');
- Foreign Scan on public.agg_csv
->>>>>>> c4cc2850f4d:contrib/file_fdw/expected/file_fdw.out
+ Result
    Output: a, b
-<<<<<<< HEAD:contrib/file_fdw/output/file_fdw.source
    One-Time Filter: false
  Optimizer: Postgres query optimizer
  Settings: optimizer=off
-||||||| 3b231596ccf:contrib/file_fdw/output/file_fdw.source
-   Filter: (agg_csv.a < 0)
-   Foreign File: @abs_srcdir@/data/agg.csv
-=======
-   Filter: (agg_csv.a < 0)
-   Foreign File: .../agg.csv
->>>>>>> c4cc2850f4d:contrib/file_fdw/expected/file_fdw.out
 
 \t off
 SELECT * FROM agg_csv WHERE a < 0;
@@ -464,15 +442,9 @@ SELECT explain_filter('EXPLAIN (VERBOSE, COSTS FALSE) SELECT * FROM agg_text WHE
  Foreign Scan on public.agg_text
    Output: a, b
    Filter: (agg_text.a > 0)
-<<<<<<< HEAD:contrib/file_fdw/output/file_fdw.source
-   Foreign File: @abs_srcdir@/data/agg.data
+   Foreign File: .../agg.data
  Optimizer: Postgres query optimizer
  Settings: optimizer=off
-||||||| 3b231596ccf:contrib/file_fdw/output/file_fdw.source
-   Foreign File: @abs_srcdir@/data/agg.data
-=======
-   Foreign File: .../agg.data
->>>>>>> c4cc2850f4d:contrib/file_fdw/expected/file_fdw.out
 
 \t off
 -- file FDW allows foreign tables to be accessed without user mapping

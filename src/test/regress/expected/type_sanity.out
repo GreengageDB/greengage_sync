@@ -778,7 +778,11 @@ CREATE TABLE tab_core_types AS SELECT
 -- included in this table.
 SELECT oid, typname, typtype, typelem, typarray, typarray
   FROM pg_type t
-  WHERE typtype NOT IN ('p', 'c') AND
+  -- GPDB: check built-in types only; earlier Greengage tests leave user types
+  -- behind (textrange3 from rangetypes) whose OIDs vary from run to run.
+  -- Upstream added the same filter later, in cc50080a828.
+  WHERE oid < 16384 AND
+    typtype NOT IN ('p', 'c') AND
     -- reg* types cannot be pg_upgraded, so discard them.
     oid != ALL(ARRAY['regproc', 'regprocedure', 'regoper',
                      'regoperator', 'regconfig', 'regdictionary',
@@ -799,7 +803,9 @@ SELECT oid, typname, typtype, typelem, typarray, typarray
                     WHERE a.atttypid=t.oid AND
                           a.attnum > 0 AND
                           a.attrelid='tab_core_types'::regclass);
- oid | typname | typtype | typelem | typarray | typarray 
------+---------+---------+---------+----------+----------
-(0 rows)
+ oid  |         typname          | typtype | typelem | typarray | typarray 
+------+--------------------------+---------+---------+----------+----------
+ 7198 | complex                  | b       |       0 |     7199 |     7199
+ 7157 | gp_hyperloglog_estimator | b       |       0 |     7165 |     7165
+(2 rows)
 

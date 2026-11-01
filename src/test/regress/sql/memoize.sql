@@ -72,10 +72,7 @@ SELECT explain_memoize('
 SELECT COUNT(*),AVG(t1.unique1) FROM tenk1 t1
 INNER JOIN tenk1 t2 ON t1.unique1 = t2.thousand
 WHERE t2.unique1 < 1200;', true);
-<<<<<<< HEAD
 RESET enable_sort;
-||||||| 3b231596ccf
-=======
 
 CREATE TABLE flt (f float);
 CREATE INDEX flt_f_idx ON flt (f);
@@ -135,7 +132,6 @@ WHERE unique1 < 3
 	WHERE t0.ten = t1.twenty AND t0.two <> t2.four OFFSET 0);
 
 RESET enable_seqscan;
->>>>>>> c4cc2850f4d
 RESET enable_mergejoin;
 RESET work_mem;
 

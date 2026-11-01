@@ -983,17 +983,14 @@ shm_mq_send_bytes(shm_mq_handle *mqh, Size nbytes, const void *data,
 		}
 		else if (available == 0)
 		{
-<<<<<<< HEAD
 			if (QueryFinishPending)
 			{
 				*bytes_written = sent;
 				return SHM_MQ_QUERY_FINISH;
 			}
-||||||| 3b231596ccf
-=======
+
 			/* Update the pending send bytes in the shared memory. */
 			shm_mq_inc_bytes_written(mq, mqh->mqh_send_pending);
->>>>>>> c4cc2850f4d
 
 			/*
 			 * Since mq->mqh_counterparty_attached is known to be true at this

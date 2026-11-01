@@ -40,13 +40,7 @@
 #include "access/heapam_xlog.h"
 #include "access/htup_details.h"
 #include "access/multixact.h"
-<<<<<<< HEAD
 #include "access/nbtree.h"
-#include "access/parallel.h"
-||||||| 3b231596ccf
-#include "access/parallel.h"
-=======
->>>>>>> c4cc2850f4d
 #include "access/transam.h"
 #include "access/aosegfiles.h"
 #include "access/aocssegfiles.h"

@@ -3064,75 +3064,15 @@ mergeruns(Tuplesortstate *state)
 		/* Select an output tape */
 		selectnewtape(state);
 
-<<<<<<< HEAD
-			if (QueryFinishPending)
-			{
-				/* pretend we are done */
-				state->status = TSS_SORTEDONTAPE;
-				return;
-			}
-
-			for (tapenum = 0; tapenum < state->tapeRange; tapenum++)
-			{
-				if (state->tp_dummy[tapenum] == 0)
-				{
-					allDummy = false;
-					break;
-				}
-			}
-
-			if (allDummy)
-			{
-				state->tp_dummy[state->tapeRange]++;
-				for (tapenum = 0; tapenum < state->tapeRange; tapenum++)
-					state->tp_dummy[tapenum]--;
-			}
-			else
-				mergeonerun(state);
+		if (QueryFinishPending)
+		{
+			/* pretend we are done */
+			state->status = TSS_SORTEDONTAPE;
+			return;
 		}
 
-		/* Step D6: decrease level */
-		if (--state->Level == 0)
-			break;
-		/* rewind output tape T to use as new input */
-		LogicalTapeRewindForRead(state->tapeset, state->tp_tapenum[state->tapeRange],
-								 state->read_buffer_size);
-		/* rewind used-up input tape P, and prepare it for write pass */
-		LogicalTapeRewindForWrite(state->tapeset, state->tp_tapenum[state->tapeRange - 1]);
-		state->tp_runs[state->tapeRange - 1] = 0;
-||||||| 3b231596ccf
-			for (tapenum = 0; tapenum < state->tapeRange; tapenum++)
-			{
-				if (state->tp_dummy[tapenum] == 0)
-				{
-					allDummy = false;
-					break;
-				}
-			}
-
-			if (allDummy)
-			{
-				state->tp_dummy[state->tapeRange]++;
-				for (tapenum = 0; tapenum < state->tapeRange; tapenum++)
-					state->tp_dummy[tapenum]--;
-			}
-			else
-				mergeonerun(state);
-		}
-
-		/* Step D6: decrease level */
-		if (--state->Level == 0)
-			break;
-		/* rewind output tape T to use as new input */
-		LogicalTapeRewindForRead(state->tapeset, state->tp_tapenum[state->tapeRange],
-								 state->read_buffer_size);
-		/* rewind used-up input tape P, and prepare it for write pass */
-		LogicalTapeRewindForWrite(state->tapeset, state->tp_tapenum[state->tapeRange - 1]);
-		state->tp_runs[state->tapeRange - 1] = 0;
-=======
 		/* Merge one run from each input tape. */
 		mergeonerun(state);
->>>>>>> c4cc2850f4d
 
 		/*
 		 * If the input tapes are empty, and we output only one output run,
@@ -3332,7 +3272,6 @@ dumptuples(Tuplesortstate *state, bool alltuples)
 	memtupwrite = state->memtupcount;
 	for (i = 0; i < memtupwrite; i++)
 	{
-<<<<<<< HEAD
 #ifdef FAULT_INJECTOR
 		/*
 		 * We're injecting an interrupt here. We have to hold interrupts while we're
@@ -3351,14 +3290,7 @@ dumptuples(Tuplesortstate *state, bool alltuples)
 		{
 			break;
 		}
-		WRITETUP(state, state->tp_tapenum[state->destTape],
-				 &state->memtuples[i]);
-||||||| 3b231596ccf
-		WRITETUP(state, state->tp_tapenum[state->destTape],
-				 &state->memtuples[i]);
-=======
 		WRITETUP(state, state->destTape, &state->memtuples[i]);
->>>>>>> c4cc2850f4d
 		state->memtupcount--;
 	}
 
@@ -3379,22 +3311,12 @@ dumptuples(Tuplesortstate *state, bool alltuples)
 			 state->worker, state->currentRun, (state->currentRun - 1) % state->nOutputTapes + 1,
 			 pg_rusage_show(&state->ru_start));
 #endif
-<<<<<<< HEAD
 
 	/* CDB: Accumulate total size of spilled tuples. */
 	if (state->availMem > prevAvailMem)
 	{
 		state->spilledBytes += state->availMem - prevAvailMem;
 	}
-
-	if (!alltuples)
-		selectnewtape(state);
-||||||| 3b231596ccf
-
-	if (!alltuples)
-		selectnewtape(state);
-=======
->>>>>>> c4cc2850f4d
 }
 
 /*

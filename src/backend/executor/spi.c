@@ -2556,16 +2556,8 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 		 * Replan if needed, and increment plan refcount.  If it's a saved
 		 * plan, the refcount must be backed by the plan_owner.
 		 */
-<<<<<<< HEAD
-		cplan = GetCachedPlan(plansource, paramLI,
-							  plan_owner, _SPI_current->queryEnv, NULL);
-||||||| 3b231596ccf
-		cplan = GetCachedPlan(plansource, paramLI,
-							  plan_owner, _SPI_current->queryEnv);
-=======
 		cplan = GetCachedPlan(plansource, options->params,
-							  plan_owner, _SPI_current->queryEnv);
->>>>>>> c4cc2850f4d
+							  plan_owner, _SPI_current->queryEnv, NULL);
 
 		stmt_list = cplan->stmt_list;
 

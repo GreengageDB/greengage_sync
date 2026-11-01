@@ -7,30 +7,12 @@ use warnings;
 use Config;
 use Fcntl ':mode';
 use File::stat qw{lstat};
-<<<<<<< HEAD
-use PostgresNode;
-use TestLib;
-use Test::More tests => 26;
-||||||| 3b231596ccf
-use PostgresNode;
-use TestLib;
-use Test::More tests => 24;
-=======
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 24;
->>>>>>> c4cc2850f4d
+use Test::More tests => 26;
 
-<<<<<<< HEAD
-my $tempdir = TestLib::tempdir;
-my $tempdir_short = TestLib::tempdir_short;
-||||||| 3b231596ccf
-my $tempdir       = TestLib::tempdir;
-my $tempdir_short = TestLib::tempdir_short;
-=======
 my $tempdir       = PostgreSQL::Test::Utils::tempdir;
 my $tempdir_short = PostgreSQL::Test::Utils::tempdir_short;
->>>>>>> c4cc2850f4d
 
 program_help_ok('pg_ctl');
 program_version_ok('pg_ctl');
@@ -63,14 +45,8 @@ else
 close $conf;
 my $ctlcmd = [
 	'pg_ctl', 'start', '-D', "$tempdir/data", '-l',
-<<<<<<< HEAD
-	"$TestLib::log_path/001_start_stop_server.log"
-	,'-o', '-c gp_role=utility --gp_dbid=-1 --gp_contentid=-1',
-||||||| 3b231596ccf
-	"$TestLib::log_path/001_start_stop_server.log"
-=======
 	"$PostgreSQL::Test::Utils::log_path/001_start_stop_server.log"
->>>>>>> c4cc2850f4d
+	,'-o', '-c gp_role=utility --gp_dbid=-1 --gp_contentid=-1',
 ];
 if ($Config{osname} ne 'msys')
 {

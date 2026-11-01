@@ -3,15 +3,9 @@
  * readfuncs.c
  *	  Reader functions for Postgres tree nodes.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -54,15 +48,10 @@
 #include "nodes/parsenodes.h"
 #include "nodes/plannodes.h"
 #include "nodes/readfuncs.h"
-<<<<<<< HEAD
 
 #include "cdb/cdbgang.h"
 #include "nodes/altertablenodes.h"
 #include "utils/builtins.h"
-||||||| 3b231596ccf
-#include "utils/builtins.h"
-=======
->>>>>>> c4cc2850f4d
 
 /*
  * readfuncs.c is compiled normally into readfuncs.o, but it's also
@@ -109,26 +98,11 @@
 /* Read an unsigned integer field (anything written as ":fldname %u") */
 #define READ_UINT_FIELD(fldname)    READ_SCALAR_FIELD(fldname, atoui(token))
 
-<<<<<<< HEAD
-/* Read an uint64 field (anything written as ":fldname %ll") */
-#ifndef WIN32
-#define READ_UINT64_FIELD(fldname)  READ_SCALAR_FIELD(fldname, atoll(token))
-#else
-#define READ_UINT64_FIELD(fldname)  READ_SCALAR_FIELD(fldname, _atoi64(token))
-#endif
-||||||| 3b231596ccf
-/* Read an unsigned integer field (anything written using UINT64_FORMAT) */
-#define READ_UINT64_FIELD(fldname) \
-	token = pg_strtok(&length);		/* skip :fldname */ \
-	token = pg_strtok(&length);		/* get field value */ \
-	local_node->fldname = pg_strtouint64(token, NULL, 10)
-=======
 /* Read an unsigned integer field (anything written using UINT64_FORMAT) */
 #define READ_UINT64_FIELD(fldname) \
 	token = pg_strtok(&length);		/* skip :fldname */ \
 	token = pg_strtok(&length);		/* get field value */ \
 	local_node->fldname = strtou64(token, NULL, 10)
->>>>>>> c4cc2850f4d
 
 /* Read a long integer field (anything written as ":fldname %ld") */
 #define READ_LONG_FIELD(fldname) \
@@ -818,6 +792,7 @@ _readConstraint(void)
 	READ_CHAR_FIELD(fk_matchtype);
 	READ_CHAR_FIELD(fk_upd_action);
 	READ_CHAR_FIELD(fk_del_action);
+	READ_NODE_FIELD(fk_del_set_cols);
 	READ_NODE_FIELD(old_conpfeqop);
 	READ_OID_FIELD(old_pktable_oid);
 
@@ -1017,7 +992,7 @@ unwrapStringList(List *list)
 
 	foreach(lc, list)
 	{
-		Value	   *val = (Value *) lfirst(lc);
+		String	   *val = (String *) lfirst(lc);
 
 		lfirst(lc) = strVal(val);
 		pfree(val);
@@ -1253,20 +1228,20 @@ _readAConst(void)
 
 	token = pg_strtok(&length);
 	token = debackslash(token,length);
-	local_node->val.type = T_String;
+	local_node->val.node.type = T_String;
 
 	if (token[0] == '"')
 	{
-		local_node->val.val.str = palloc(length - 1);
-		strncpy(local_node->val.val.str , token+1, strlen(token)-2);
-		local_node->val.val.str[strlen(token)-2] = '\0';
+		local_node->val.sval.sval = palloc(length - 1);
+		strncpy(local_node->val.sval.sval , token+1, strlen(token)-2);
+		local_node->val.sval.sval[strlen(token)-2] = '\0';
 	}
 	else if (length > 2 && (token[0] == 'b'|| token[0] == 'B') && (token[1] == '\'' || token[1] == '"'))
 	{
-		local_node->val.type = T_BitString;
-		local_node->val.val.str = palloc(length+1);
-		strncpy(local_node->val.val.str , token, length);
-		local_node->val.val.str[length] = '\0';
+		local_node->val.node.type = T_BitString;
+		local_node->val.bsval.bsval = palloc(length+1);
+		strncpy(local_node->val.bsval.bsval , token, length);
+		local_node->val.bsval.bsval[length] = '\0';
 	}
 	else
 	{
@@ -1286,20 +1261,20 @@ _readAConst(void)
 	 	   }
 	 	if (isInt)
 		{
-			local_node->val.type = T_Integer;
-			local_node->val.val.ival = atol(token);
+			local_node->val.node.type = T_Integer;
+			local_node->val.ival.ival = atol(token);
 		}
 		else if (isFloat)
 		{
-			local_node->val.type = T_Float;
-			local_node->val.val.str = palloc(length + 1);
-			strcpy(local_node->val.val.str , token);
+			local_node->val.node.type = T_Float;
+			local_node->val.fval.fval = palloc(length + 1);
+			strcpy(local_node->val.fval.fval , token);
 		}
 		else
 		{
 			elog(ERROR,"Deserialization problem:  A_Const not string, bitstring, float, or int");
-			local_node->val.val.str = palloc(length + 1);
-			strcpy(local_node->val.val.str , token);
+			local_node->val.sval.sval = palloc(length + 1);
+			strcpy(local_node->val.sval.sval , token);
 		}
 	}
 
@@ -4378,8 +4353,21 @@ _readVacuumRelation(void)
 }
 
 /*
- * GPDB: see _outPublicationTable.
+ * GPDB: see _outPublicationObjSpec.
  */
+static PublicationObjSpec *
+_readPublicationObjSpec(void)
+{
+	READ_LOCALS(PublicationObjSpec);
+
+	READ_ENUM_FIELD(pubobjtype, PublicationObjSpecType);
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(pubtable);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
 static PublicationTable *
 _readPublicationTable(void)
 {
@@ -4397,7 +4385,7 @@ _readCreatePublicationStmt()
 
 	READ_STRING_FIELD(pubname);
 	READ_NODE_FIELD(options);
-	READ_NODE_FIELD(tables);
+	READ_NODE_FIELD(pubobjects);
 	READ_BOOL_FIELD(for_all_tables);
 
 	READ_DONE();
@@ -4410,9 +4398,9 @@ _readAlterPublicationStmt()
 
 	READ_STRING_FIELD(pubname);
 	READ_NODE_FIELD(options);
-	READ_NODE_FIELD(tables);
+	READ_NODE_FIELD(pubobjects);
 	READ_BOOL_FIELD(for_all_tables);
-	READ_ENUM_FIELD(tableAction, DefElemAction);
+	READ_ENUM_FIELD(action, AlterPublicationAction);
 
 	READ_DONE();
 }
@@ -5136,6 +5124,8 @@ parseNodeString(void)
 		return_value = _readCreateOpFamilyStmt();
 	else if (MATCHX("CREATEPLANGSTMT"))
 		return_value = _readCreatePLangStmt();
+	else if (MATCHX("PUBLICATIONOBJSPEC"))
+		return_value = _readPublicationObjSpec();
 	else if (MATCHX("PUBLICATIONTABLE"))
 		return_value = _readPublicationTable();
 	else if (MATCHX("CREATEPUBLICATIONSTMT"))

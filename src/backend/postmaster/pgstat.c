@@ -42,12 +42,8 @@
 #include "catalog/catalog.h"
 #include "catalog/pg_database.h"
 #include "catalog/pg_proc.h"
-<<<<<<< HEAD
-#include "executor/instrument.h"
-||||||| 3b231596ccf
-=======
 #include "catalog/pg_subscription.h"
->>>>>>> c4cc2850f4d
+#include "executor/instrument.h"
 #include "common/ip.h"
 #include "executor/instrument.h"
 #include "libpq/libpq.h"
@@ -349,15 +345,11 @@ NON_EXEC_STATIC void PgstatCollectorMain(int argc, char *argv[]) pg_attribute_no
 static PgStat_StatDBEntry *pgstat_get_db_entry(Oid databaseid, bool create);
 static PgStat_StatTabEntry *pgstat_get_tab_entry(PgStat_StatDBEntry *dbentry,
 												 Oid tableoid, bool create);
-<<<<<<< HEAD
-static PgStat_StatQueueEntry *pgstat_get_queue_entry(Oid queueid, bool create); /*GPDB*/
-
-||||||| 3b231596ccf
-=======
 static PgStat_StatSubWorkerEntry *pgstat_get_subworker_entry(PgStat_StatDBEntry *dbentry,
 															 Oid subid, Oid subrelid,
 															 bool create);
->>>>>>> c4cc2850f4d
+static PgStat_StatQueueEntry *pgstat_get_queue_entry(Oid queueid, bool create); /*GPDB*/
+
 static void pgstat_write_statsfiles(bool permanent, bool allDbs);
 static void pgstat_write_db_statsfile(PgStat_StatDBEntry *dbentry, bool permanent);
 static HTAB *pgstat_read_statsfiles(Oid onlydb, bool permanent, bool deep);
@@ -3447,12 +3439,12 @@ pgstat_send_qd_tabstats(void)
 		record.table_stat.tuples_inserted = trans->tuples_inserted;
 		record.table_stat.tuples_updated = trans->tuples_updated;
 		record.table_stat.tuples_deleted = trans->tuples_deleted;
-		record.table_stat.inserted_pre_trunc = trans->inserted_pre_trunc;
-		record.table_stat.updated_pre_trunc = trans->updated_pre_trunc;
-		record.table_stat.deleted_pre_trunc = trans->deleted_pre_trunc;
+		record.table_stat.inserted_pre_truncdrop = trans->inserted_pre_truncdrop;
+		record.table_stat.updated_pre_truncdrop = trans->updated_pre_truncdrop;
+		record.table_stat.deleted_pre_truncdrop = trans->deleted_pre_truncdrop;
 		record.table_stat.t_id = tabstat->t_id;
 		record.table_stat.t_shared = tabstat->t_shared;
-		record.table_stat.t_truncated = trans->truncated;
+		record.table_stat.t_truncdropped = trans->truncdropped;
 		record.nest_level = trans->nest_level;
 
 		appendBinaryStringInfo(
@@ -3546,11 +3538,11 @@ pgstat_combine_one_qe_result(List **oidList, struct pg_result *pgresult,
 			trans->tuples_inserted += records[i].table_stat.tuples_inserted;
 			trans->tuples_updated += records[i].table_stat.tuples_updated;
 			trans->tuples_deleted += records[i].table_stat.tuples_deleted;
-			trans->truncated = (trans->truncated ||
-								records[i].table_stat.t_truncated) ? true : false;
-			trans->inserted_pre_trunc += records[i].table_stat.inserted_pre_trunc;
-			trans->updated_pre_trunc += records[i].table_stat.updated_pre_trunc;
-			trans->deleted_pre_trunc += records[i].table_stat.deleted_pre_trunc;
+			trans->truncdropped = (trans->truncdropped ||
+								records[i].table_stat.t_truncdropped) ? true : false;
+			trans->inserted_pre_truncdrop += records[i].table_stat.inserted_pre_truncdrop;
+			trans->updated_pre_truncdrop += records[i].table_stat.updated_pre_truncdrop;
+			trans->deleted_pre_truncdrop += records[i].table_stat.deleted_pre_truncdrop;
 		}
 		else
 		{
@@ -3564,10 +3556,10 @@ pgstat_combine_one_qe_result(List **oidList, struct pg_result *pgresult,
 			trans->tuples_inserted = records[i].table_stat.tuples_inserted;
 			trans->tuples_updated = records[i].table_stat.tuples_updated;
 			trans->tuples_deleted = records[i].table_stat.tuples_deleted;
-			trans->truncated = records[i].table_stat.t_truncated;
-			trans->inserted_pre_trunc = records[i].table_stat.inserted_pre_trunc;
-			trans->updated_pre_trunc = records[i].table_stat.updated_pre_trunc;
-			trans->deleted_pre_trunc = records[i].table_stat.deleted_pre_trunc;
+			trans->truncdropped = records[i].table_stat.t_truncdropped;
+			trans->inserted_pre_truncdrop = records[i].table_stat.inserted_pre_truncdrop;
+			trans->updated_pre_truncdrop = records[i].table_stat.updated_pre_truncdrop;
+			trans->deleted_pre_truncdrop = records[i].table_stat.deleted_pre_truncdrop;
 
 #ifdef FAULT_INJECTOR
 			FaultInjector_InjectFaultIfSet(
