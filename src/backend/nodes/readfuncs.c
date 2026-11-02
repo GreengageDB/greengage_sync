@@ -1223,6 +1223,12 @@ _readAConst(void)
 
 	/* skip " :val " */
 	token = pg_strtok(&length);
+	if (length == 4 && strncmp(token, "NULL", 4) == 0)
+	{
+		local_node->isnull = true;
+		local_node->location = -1;
+		READ_DONE();
+	}
 	if (length != 4 || token[0] != ':' || token[1] != 'v')
 		elog(ERROR,"Unable to understand A_CONST node \"%.30s\"", token);
 
