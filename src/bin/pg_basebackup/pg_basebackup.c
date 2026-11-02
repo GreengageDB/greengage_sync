@@ -1036,6 +1036,9 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 											get_tablespace_link_target,
 											progress_update_filename,
 											forceoverwrite);
+
+		if (spclocation != NULL && target_gp_dbid > 0)
+			pfree(directory);
 	}
 	else
 	{
