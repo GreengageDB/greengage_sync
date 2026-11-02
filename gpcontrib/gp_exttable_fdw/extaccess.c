@@ -600,6 +600,8 @@ external_insert_init(Relation rel)
 
 		/* get a url to use. we use seg number modulo total num of urls */
 		v = list_nth(extentry->urilocations, my_url);
+		if (v == NULL)
+			elog(ERROR, "external table has no URL for segment %d", segindex);
 		uri_str = pstrdup(strVal(v));
 		extInsertDesc->ext_uri = uri_str;
 
