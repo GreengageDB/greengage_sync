@@ -1420,12 +1420,12 @@ ResourceQueueGetPriorityWeight(Oid queueId)
 		entry = (List *) lfirst(le);
 		Assert(entry);
 		key = (Node *) linitial(entry);
-		Assert(key->type == T_Integer); /* This is resource type id */
+		Assert(IsA(key, Integer)); /* This is resource type id */
 		if (intVal(key) == PG_RESRCTYPE_PRIORITY)
 		{
 			Node	   *val = lsecond(entry);
 
-			Assert(val->type == T_String);
+			Assert(IsA(val, String));
 			weight = BackoffPriorityValueToInt(strVal(val));
 		}
 	}
