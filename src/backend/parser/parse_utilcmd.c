@@ -2532,6 +2532,7 @@ transformDistributedBy(ParseState *pstate,
 
 					distrkey->name = iparam->name;
 					distrkey->opclass = NIL;
+					distrkey->location = -1;
 
 					distrkeys = lappend(distrkeys, distrkey);
 				}
