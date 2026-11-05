@@ -1021,7 +1021,7 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 
 	if (format == 'p')
 	{
-		char *directory;
+		const char *directory;
 
 		/*
 		 * In plain format, we must extract the archive. The data for the main
@@ -1039,7 +1039,7 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 
 		/* get_tablespace_link_target() returns a palloc'd string. */
 		if (spclocation != NULL)
-			pfree(directory);
+			pfree(unconstify(char *, directory));
 	}
 	else
 	{
