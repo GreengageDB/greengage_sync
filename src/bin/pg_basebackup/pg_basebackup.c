@@ -1021,7 +1021,7 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 
 	if (format == 'p')
 	{
-		const char *directory;
+		char *directory;
 
 		/*
 		 * In plain format, we must extract the archive. The data for the main
@@ -1037,7 +1037,8 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 											progress_update_filename,
 											forceoverwrite);
 
-		if (spclocation != NULL && target_gp_dbid > 0)
+		/* get_tablespace_link_target() returns a palloc'd string. */
+		if (spclocation != NULL)
 			pfree(directory);
 	}
 	else
@@ -1244,17 +1245,17 @@ get_tablespace_mapping(const char *dir)
  * <location>/<dbid>/<GP_TABLESPACE_VERSION_DIRECTORY>/...  The server strips
  * the source segment's dbid from the locations it sends, so append the
  * --target-gp-dbid here.  Used both as the extraction directory of a
- * tablespace archive and as the target of the pg_tblspc symlinks.
+ * tablespace archive and as the target of the pg_tblspc symlinks.  The
+ * result is always palloc'd.
  */
 static const char *
 get_tablespace_link_target(const char *dir)
 {
 	const char *mapped = get_tablespace_mapping(dir);
 
-	if (target_gp_dbid > 0)
-		return psprintf("%s/%d", mapped, target_gp_dbid);
+	Assert(target_gp_dbid > 0);
 
-	return mapped;
+	return psprintf("%s/%d", mapped, target_gp_dbid);
 }
 
 /*
