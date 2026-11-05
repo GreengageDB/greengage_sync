@@ -16,12 +16,8 @@
 
 #include "access/transam.h"
 #include "access/xact.h"
-<<<<<<< HEAD
-#include "storage/dbdirnode.h"
-||||||| 3b231596ccf
-=======
 #include "replication/origin.h"
->>>>>>> c4cc2850f4d
+#include "storage/dbdirnode.h"
 #include "storage/sinval.h"
 #include "storage/standbydefs.h"
 #include "utils/timestamp.h"
@@ -361,16 +357,13 @@ xact_desc_commit(StringInfo buf, uint8 info, xl_xact_commit *xlrec, RepOriginId 
 							   parsed.tsId,
 							   XactCompletionRelcacheInitFileInval(parsed.xinfo));
 
-<<<<<<< HEAD
 	xact_desc_deldbs(buf, parsed.ndeldbs, parsed.deldbs);
 
 	if (xlrec->tablespace_oid_to_delete_on_commit != InvalidOid)
 		appendStringInfo(buf, "; tablespace_oid_to_delete_on_commit: %u", xlrec->tablespace_oid_to_delete_on_commit);
-||||||| 3b231596ccf
-=======
+
 	if (XactCompletionApplyFeedback(parsed.xinfo))
 		appendStringInfoString(buf, "; apply_feedback");
->>>>>>> c4cc2850f4d
 
 	if (XactCompletionForceSyncCommit(parsed.xinfo))
 		appendStringInfoString(buf, "; sync");
@@ -415,13 +408,10 @@ xact_desc_abort(StringInfo buf, uint8 info, xl_xact_abort *xlrec, RepOriginId or
 
 	xact_desc_relations(buf, "rels", parsed.nrels, parsed.xnodes);
 	xact_desc_subxacts(buf, parsed.nsubxacts, parsed.subxacts);
-<<<<<<< HEAD
 	xact_desc_deldbs(buf, parsed.ndeldbs, parsed.deldbs);
 
 	if (xlrec->tablespace_oid_to_delete_on_abort != InvalidOid)
 		appendStringInfo(buf, "; tablespace_oid_to_delete_on_abort: %u", xlrec->tablespace_oid_to_delete_on_abort);
-||||||| 3b231596ccf
-=======
 
 	if (parsed.xinfo & XACT_XINFO_HAS_ORIGIN)
 	{
@@ -430,7 +420,6 @@ xact_desc_abort(StringInfo buf, uint8 info, xl_xact_abort *xlrec, RepOriginId or
 						 LSN_FORMAT_ARGS(parsed.origin_lsn),
 						 timestamptz_to_str(parsed.origin_timestamp));
 	}
->>>>>>> c4cc2850f4d
 }
 
 static void
@@ -451,14 +440,12 @@ xact_desc_prepare(StringInfo buf, uint8 info, xl_xact_prepare *xlrec, RepOriginI
 	standby_desc_invalidations(buf, parsed.nmsgs, parsed.msgs, parsed.dbId,
 							   parsed.tsId, xlrec->initfileinval);
 
-<<<<<<< HEAD
 	if (xlrec->tablespace_oid_to_delete_on_commit != InvalidOid)
 		appendStringInfo(buf, "; tablespace_oid_to_delete_on_commit = %u", xlrec->tablespace_oid_to_delete_on_commit);
 
 	if (xlrec->tablespace_oid_to_delete_on_abort != InvalidOid)
 		appendStringInfo(buf, "; tablespace_oid_to_delete_on_abort = %u", xlrec->tablespace_oid_to_delete_on_abort);
-||||||| 3b231596ccf
-=======
+
 	/*
 	 * Check if the replication origin has been set in this record in the
 	 * same way as PrepareRedoAdd().
@@ -468,7 +455,6 @@ xact_desc_prepare(StringInfo buf, uint8 info, xl_xact_prepare *xlrec, RepOriginI
 						 origin_id,
 						 LSN_FORMAT_ARGS(parsed.origin_lsn),
 						 timestamptz_to_str(parsed.origin_timestamp));
->>>>>>> c4cc2850f4d
 }
 
 static void
