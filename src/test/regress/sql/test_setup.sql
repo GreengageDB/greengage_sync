@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 -- Suppress NOTICE messages when schema doesn't exist
 SET client_min_messages TO 'warning';
 DROP SCHEMA IF EXISTS test_util CASCADE;
@@ -42,9 +41,7 @@ SELECT
   'workmem_wanted_lines', (SELECT COUNT(*) FROM query_plan WHERE et like '%Work_mem wanted: %');
 end;
 $$ language plpgsql;
-||||||| 3b231596ccf
-=======
+
 -- Postgres formerly made the public schema read/write by default,
 -- and most of the core regression tests still expect that.
 GRANT ALL ON SCHEMA public TO public;
->>>>>>> c4cc2850f4d

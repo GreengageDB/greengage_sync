@@ -39,14 +39,9 @@ static void AddAcl(PQExpBuffer aclbuf, const char *keyword,
  *		TABLE, SEQUENCE, FUNCTION, PROCEDURE, LANGUAGE, SCHEMA, DATABASE, TABLESPACE,
  *		FOREIGN DATA WRAPPER, SERVER, or LARGE OBJECT)
  *	acls: the ACL string fetched from the database
-<<<<<<< HEAD
  *	baseacls: the initial ACL string for this object; can be
  *		NULL or empty string to indicate "not available from server"
-||||||| 3b231596ccf
- *	racls: the ACL string of any initial-but-now-revoked privileges
-=======
- *	baseacls: the initial ACL string for this object
->>>>>>> c4cc2850f4d
+ *		(GPDB: external protocols dumped from GPDB 6, see getExtProtocols())
  *	owner: username of object owner (will be passed through fmtId); can be
  *		NULL or empty string to indicate "no owner known"
  *	prefix: string to prefix to each generated command; typically empty
@@ -108,7 +103,6 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 		if (aclitems)
 			free(aclitems);
 		return false;
-<<<<<<< HEAD
 	}
 
 	/* Parse the baseacls, if provided */
@@ -122,18 +116,8 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 				free(baseitems);
 			return false;
 		}
-||||||| 3b231596ccf
-		if (!parsePGArray(acls, &aclitems, &naclitems))
-		{
-			if (aclitems)
-				free(aclitems);
-			return false;
-		}
-=======
->>>>>>> c4cc2850f4d
 	}
 
-<<<<<<< HEAD
 	/*
 	 * Compare the actual ACL with the base ACL, extracting the privileges
 	 * that need to be granted (i.e., are in the actual ACL but not the base
@@ -150,75 +134,6 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 	 */
 	grantitems = (char **) pg_malloc(naclitems * sizeof(char *));
 	for (i = 0; i < naclitems; i++)
-||||||| 3b231596ccf
-	if (strlen(racls) != 0)
-=======
-	/* Parse the baseacls too */
-	if (!parsePGArray(baseacls, &baseitems, &nbaseitems))
->>>>>>> c4cc2850f4d
-	{
-<<<<<<< HEAD
-		bool		found = false;
-
-		for (int j = 0; j < nbaseitems; j++)
-		{
-			if (strcmp(aclitems[i], baseitems[j]) == 0)
-			{
-				found = true;
-				break;
-			}
-		}
-		if (!found)
-			grantitems[ngrantitems++] = aclitems[i];
-	}
-	revokeitems = (char **) pg_malloc(nbaseitems * sizeof(char *));
-	for (i = 0; i < nbaseitems; i++)
-	{
-		bool		found = false;
-
-		for (int j = 0; j < naclitems; j++)
-		{
-			if (strcmp(baseitems[i], aclitems[j]) == 0)
-			{
-				found = true;
-				break;
-			}
-		}
-		if (!found)
-			revokeitems[nrevokeitems++] = baseitems[i];
-||||||| 3b231596ccf
-		if (!parsePGArray(racls, &raclitems, &nraclitems))
-		{
-			if (aclitems)
-				free(aclitems);
-			if (raclitems)
-				free(raclitems);
-			return false;
-		}
-=======
-		if (aclitems)
-			free(aclitems);
-		if (baseitems)
-			free(baseitems);
-		return false;
->>>>>>> c4cc2850f4d
-	}
-
-<<<<<<< HEAD
-||||||| 3b231596ccf
-=======
-	/*
-	 * Compare the actual ACL with the base ACL, extracting the privileges
-	 * that need to be granted (i.e., are in the actual ACL but not the base
-	 * ACL) and the ones that need to be revoked (the reverse).  We use plain
-	 * string comparisons to check for matches.  In principle that could be
-	 * fooled by extraneous issues such as whitespace, but since all these
-	 * strings are the work of aclitemout(), it should be OK in practice.
-	 * Besides, a false mismatch will just cause the output to be a little
-	 * more verbose than it really needed to be.
-	 */
-	grantitems = (char **) pg_malloc(naclitems * sizeof(char *));
-	for (i = 0; i < naclitems; i++)
 	{
 		bool		found = false;
 
@@ -250,7 +165,6 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 			revokeitems[nrevokeitems++] = baseitems[i];
 	}
 
->>>>>>> c4cc2850f4d
 	/* Prepare working buffers */
 	grantee = createPQExpBuffer();
 	grantor = createPQExpBuffer();
@@ -264,46 +178,15 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 	secondsql = createPQExpBuffer();
 
 	/*
-<<<<<<< HEAD
 	 * If we weren't given baseacls information, we just revoke everything and
 	 * then grant what's listed in the ACL.  This avoids having to embed
 	 * detailed knowledge about what the defaults are/were, and it's not very
 	 * expensive since servers lacking acldefault() are now rare.
 	 *
 	 * Otherwise, we need only revoke what's listed in revokeitems.
-||||||| 3b231596ccf
-	 * For pre-9.6 systems, we always start with REVOKE ALL FROM PUBLIC, as we
-	 * don't wish to make any assumptions about what the default ACLs are, and
-	 * we do not collect them during the dump phase (and racls will always be
-	 * the empty set, see above).
-	 *
-	 * For 9.6 and later, if any revoke ACLs have been provided, then include
-	 * them in 'firstsql'.
-	 *
-	 * Revoke ACLs happen when an object starts out life with a set of
-	 * privileges (eg: GRANT SELECT ON pg_class TO PUBLIC;) and the user has
-	 * decided to revoke those rights.  Since those objects come into being
-	 * with those default privileges, we have to revoke them to match what the
-	 * current state of affairs is.  Note that we only started explicitly
-	 * tracking such initial rights in 9.6, and prior to that all initial
-	 * rights are actually handled by the simple 'REVOKE ALL .. FROM PUBLIC'
-	 * case, for initdb-created objects.  Prior to 9.6, we didn't handle
-	 * extensions correctly, but we do now by tracking their initial
-	 * privileges, in the same way we track initdb initial privileges, see
-	 * pg_init_privs.
-=======
-	 * Build REVOKE statements for ACLs listed in revokeitems[].
->>>>>>> c4cc2850f4d
 	 */
-<<<<<<< HEAD
 	if (baseacls == NULL || *baseacls == '\0')
-||||||| 3b231596ccf
-	if (remoteVersion < 90600)
-=======
-	for (i = 0; i < nrevokeitems; i++)
->>>>>>> c4cc2850f4d
 	{
-<<<<<<< HEAD
 		/* We assume the old defaults only involved the owner and PUBLIC */
 		appendPQExpBuffer(firstsql, "%sREVOKE ALL", prefix);
 		if (subname)
@@ -344,320 +227,11 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 				appendPQExpBuffer(firstsql, "%s FROM ", name);
 				if (grantee->len == 0)
 					appendPQExpBufferStr(firstsql, "PUBLIC;\n");
-				else if (strncmp(grantee->data, "group ",
-								 strlen("group ")) == 0)
-					appendPQExpBuffer(firstsql, "GROUP %s;\n",
-									  fmtId(grantee->data + strlen("group ")));
 				else
 					appendPQExpBuffer(firstsql, "%s;\n",
 									  fmtId(grantee->data));
 			}
 		}
-	}
-
-	/*
-	 * Scan individual ACL items to be granted.
-	 *
-	 * The order in which privileges appear in the ACL string (the order they
-	 * have been GRANT'd in, which the backend maintains) must be preserved to
-	 * ensure that GRANTs WITH GRANT OPTION and subsequent GRANTs based on
-	 * those are dumped in the correct order.  However, some old server
-	 * versions will show grants to PUBLIC before the owner's own grants; for
-	 * consistency's sake, force the owner's grants to be output first.
-	 */
-	for (i = 0; i < ngrantitems; i++)
-	{
-		if (parseAclItem(grantitems[i], type, name, subname, remoteVersion,
-						 grantee, grantor, privs, privswgo))
-||||||| 3b231596ccf
-		Assert(nraclitems == 0);
-
-		appendPQExpBuffer(firstsql, "%sREVOKE ALL", prefix);
-		if (subname)
-			appendPQExpBuffer(firstsql, "(%s)", subname);
-		appendPQExpBuffer(firstsql, " ON %s ", type);
-		if (nspname && *nspname)
-			appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-		appendPQExpBuffer(firstsql, "%s FROM PUBLIC;\n", name);
-	}
-	else
-	{
-		/* Scan individual REVOKE ACL items */
-		for (i = 0; i < nraclitems; i++)
-		{
-			if (!parseAclItem(raclitems[i], type, name, subname, remoteVersion,
-							  grantee, grantor, privs, NULL))
-			{
-				ok = false;
-				break;
-			}
-
-			if (privs->len > 0)
-			{
-				appendPQExpBuffer(firstsql, "%sREVOKE %s ON %s ",
-								  prefix, privs->data, type);
-				if (nspname && *nspname)
-					appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-				appendPQExpBuffer(firstsql, "%s FROM ", name);
-				if (grantee->len == 0)
-					appendPQExpBufferStr(firstsql, "PUBLIC;\n");
-				else if (strncmp(grantee->data, "group ",
-								 strlen("group ")) == 0)
-					appendPQExpBuffer(firstsql, "GROUP %s;\n",
-									  fmtId(grantee->data + strlen("group ")));
-				else
-					appendPQExpBuffer(firstsql, "%s;\n",
-									  fmtId(grantee->data));
-			}
-		}
-	}
-
-	/*
-	 * We still need some hacking though to cover the case where new default
-	 * public privileges are added in new versions: the REVOKE ALL will revoke
-	 * them, leading to behavior different from what the old version had,
-	 * which is generally not what's wanted.  So add back default privs if the
-	 * source database is too old to have had that particular priv.
-	 */
-	if (remoteVersion < 80200 && strcmp(type, "DATABASE") == 0)
-	{
-		/* database CONNECT priv didn't exist before 8.2 */
-		appendPQExpBuffer(firstsql, "%sGRANT CONNECT ON %s %s TO PUBLIC;\n",
-						  prefix, type, name);
-	}
-
-	/* Scan individual ACL items */
-	for (i = 0; i < naclitems; i++)
-	{
-		if (!parseAclItem(aclitems[i], type, name, subname, remoteVersion,
-						  grantee, grantor, privs, privswgo))
-		{
-			ok = false;
-			break;
-		}
-
-		if (grantor->len == 0 && owner)
-			printfPQExpBuffer(grantor, "%s", owner);
-
-		if (privs->len > 0 || privswgo->len > 0)
-=======
-		if (!parseAclItem(revokeitems[i],
-						  type, name, subname, remoteVersion,
-						  grantee, grantor, privs, NULL))
-		{
-			ok = false;
-			break;
-		}
-
-		if (privs->len > 0)
->>>>>>> c4cc2850f4d
-		{
-<<<<<<< HEAD
-			/*
-			 * If the grantor isn't the owner, we'll need to use SET SESSION
-			 * AUTHORIZATION to become the grantor.  Issue the SET/RESET only
-			 * if there's something useful to do.
-			 */
-			if (privs->len > 0 || privswgo->len > 0)
-			{
-				PQExpBuffer thissql;
-
-				/* Set owner as grantor if that's not explicit in the ACL */
-				if (grantor->len == 0 && owner)
-					printfPQExpBuffer(grantor, "%s", owner);
-
-				/* Make sure owner's own grants are output before others */
-				if (owner &&
-					strcmp(grantee->data, owner) == 0 &&
-					strcmp(grantor->data, owner) == 0)
-					thissql = firstsql;
-				else
-					thissql = secondsql;
-
-				if (grantor->len > 0
-					&& (!owner || strcmp(owner, grantor->data) != 0))
-					appendPQExpBuffer(thissql, "SET SESSION AUTHORIZATION %s;\n",
-									  fmtId(grantor->data));
-
-				if (privs->len > 0)
-				{
-					appendPQExpBuffer(thissql, "%sGRANT %s ON %s ",
-									  prefix, privs->data, type);
-					if (nspname && *nspname)
-						appendPQExpBuffer(thissql, "%s.", fmtId(nspname));
-					appendPQExpBuffer(thissql, "%s TO ", name);
-					if (grantee->len == 0)
-						appendPQExpBufferStr(thissql, "PUBLIC;\n");
-					else if (strncmp(grantee->data, "group ",
-									 strlen("group ")) == 0)
-						appendPQExpBuffer(thissql, "GROUP %s;\n",
-										  fmtId(grantee->data + strlen("group ")));
-					else
-						appendPQExpBuffer(thissql, "%s;\n", fmtId(grantee->data));
-				}
-				if (privswgo->len > 0)
-				{
-					appendPQExpBuffer(thissql, "%sGRANT %s ON %s ",
-									  prefix, privswgo->data, type);
-					if (nspname && *nspname)
-						appendPQExpBuffer(thissql, "%s.", fmtId(nspname));
-					appendPQExpBuffer(thissql, "%s TO ", name);
-					if (grantee->len == 0)
-						appendPQExpBufferStr(thissql, "PUBLIC");
-					else if (strncmp(grantee->data, "group ",
-									 strlen("group ")) == 0)
-						appendPQExpBuffer(thissql, "GROUP %s",
-										  fmtId(grantee->data + strlen("group ")));
-					else
-						appendPQExpBufferStr(thissql, fmtId(grantee->data));
-					appendPQExpBufferStr(thissql, " WITH GRANT OPTION;\n");
-				}
-
-				if (grantor->len > 0
-					&& (!owner || strcmp(owner, grantor->data) != 0))
-					appendPQExpBufferStr(thissql, "RESET SESSION AUTHORIZATION;\n");
-			}
-||||||| 3b231596ccf
-			/*
-			 * Prior to 9.6, we had to handle owner privileges in a special
-			 * manner by first REVOKE'ing the rights and then GRANT'ing them
-			 * after.  With 9.6 and above, what we need to REVOKE and what we
-			 * need to GRANT is figured out when we dump and stashed into
-			 * "racls" and "acls", respectively.  See above.
-			 */
-			if (remoteVersion < 90600 && owner
-				&& strcmp(grantee->data, owner) == 0
-				&& strcmp(grantor->data, owner) == 0)
-			{
-				found_owner_privs = true;
-
-				/*
-				 * For the owner, the default privilege level is ALL WITH
-				 * GRANT OPTION.
-				 */
-				if (strcmp(privswgo->data, "ALL") != 0)
-				{
-					appendPQExpBuffer(firstsql, "%sREVOKE ALL", prefix);
-					if (subname)
-						appendPQExpBuffer(firstsql, "(%s)", subname);
-					appendPQExpBuffer(firstsql, " ON %s ", type);
-					if (nspname && *nspname)
-						appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-					appendPQExpBuffer(firstsql, "%s FROM %s;\n",
-									  name, fmtId(grantee->data));
-					if (privs->len > 0)
-					{
-						appendPQExpBuffer(firstsql,
-										  "%sGRANT %s ON %s ",
-										  prefix, privs->data, type);
-						if (nspname && *nspname)
-							appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-						appendPQExpBuffer(firstsql,
-										  "%s TO %s;\n",
-										  name, fmtId(grantee->data));
-					}
-					if (privswgo->len > 0)
-					{
-						appendPQExpBuffer(firstsql,
-										  "%sGRANT %s ON %s ",
-										  prefix, privswgo->data, type);
-						if (nspname && *nspname)
-							appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-						appendPQExpBuffer(firstsql,
-										  "%s TO %s WITH GRANT OPTION;\n",
-										  name, fmtId(grantee->data));
-					}
-				}
-			}
-			else
-			{
-				/*
-				 * For systems prior to 9.6, we can assume we are starting
-				 * from no privs at this point.
-				 *
-				 * For 9.6 and above, at this point we have issued REVOKE
-				 * statements for all initial and default privileges which are
-				 * no longer present on the object (as they were passed in as
-				 * 'racls') and we can simply GRANT the rights which are in
-				 * 'acls'.
-				 */
-				if (grantor->len > 0
-					&& (!owner || strcmp(owner, grantor->data) != 0))
-					appendPQExpBuffer(secondsql, "SET SESSION AUTHORIZATION %s;\n",
-									  fmtId(grantor->data));
-
-				if (privs->len > 0)
-				{
-					appendPQExpBuffer(secondsql, "%sGRANT %s ON %s ",
-									  prefix, privs->data, type);
-					if (nspname && *nspname)
-						appendPQExpBuffer(secondsql, "%s.", fmtId(nspname));
-					appendPQExpBuffer(secondsql, "%s TO ", name);
-					if (grantee->len == 0)
-						appendPQExpBufferStr(secondsql, "PUBLIC;\n");
-					else if (strncmp(grantee->data, "group ",
-									 strlen("group ")) == 0)
-						appendPQExpBuffer(secondsql, "GROUP %s;\n",
-										  fmtId(grantee->data + strlen("group ")));
-					else
-						appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
-				}
-				if (privswgo->len > 0)
-				{
-					appendPQExpBuffer(secondsql, "%sGRANT %s ON %s ",
-									  prefix, privswgo->data, type);
-					if (nspname && *nspname)
-						appendPQExpBuffer(secondsql, "%s.", fmtId(nspname));
-					appendPQExpBuffer(secondsql, "%s TO ", name);
-					if (grantee->len == 0)
-						appendPQExpBufferStr(secondsql, "PUBLIC");
-					else if (strncmp(grantee->data, "group ",
-									 strlen("group ")) == 0)
-						appendPQExpBuffer(secondsql, "GROUP %s",
-										  fmtId(grantee->data + strlen("group ")));
-					else
-						appendPQExpBufferStr(secondsql, fmtId(grantee->data));
-					appendPQExpBufferStr(secondsql, " WITH GRANT OPTION;\n");
-				}
-
-				if (grantor->len > 0
-					&& (!owner || strcmp(owner, grantor->data) != 0))
-					appendPQExpBufferStr(secondsql, "RESET SESSION AUTHORIZATION;\n");
-			}
-=======
-			appendPQExpBuffer(firstsql, "%sREVOKE %s ON %s ",
-							  prefix, privs->data, type);
-			if (nspname && *nspname)
-				appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-			appendPQExpBuffer(firstsql, "%s FROM ", name);
-			if (grantee->len == 0)
-				appendPQExpBufferStr(firstsql, "PUBLIC;\n");
-			else
-				appendPQExpBuffer(firstsql, "%s;\n",
-								  fmtId(grantee->data));
->>>>>>> c4cc2850f4d
-		}
-<<<<<<< HEAD
-||||||| 3b231596ccf
-	}
-
-	/*
-	 * For systems prior to 9.6, if we didn't find any owner privs, the owner
-	 * must have revoked 'em all.
-	 *
-	 * For 9.6 and above, we handle this through the 'racls'.  See above.
-	 */
-	if (remoteVersion < 90600 && !found_owner_privs && owner)
-	{
-		appendPQExpBuffer(firstsql, "%sREVOKE ALL", prefix);
-		if (subname)
-			appendPQExpBuffer(firstsql, "(%s)", subname);
-		appendPQExpBuffer(firstsql, " ON %s ", type);
-		if (nspname && *nspname)
-			appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-		appendPQExpBuffer(firstsql, "%s FROM %s;\n",
-						  name, fmtId(owner));
-=======
 	}
 
 	/*
@@ -745,7 +319,6 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					appendPQExpBufferStr(thissql, "RESET SESSION AUTHORIZATION;\n");
 			}
 		}
->>>>>>> c4cc2850f4d
 		else
 		{
 			/* parseAclItem failed, give up */
