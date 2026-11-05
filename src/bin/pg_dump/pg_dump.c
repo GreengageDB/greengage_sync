@@ -351,14 +351,9 @@ static void dumpTypeStorageOptions(Archive *fout, const TypeInfo *tyinfo);
 static void dumpPreassignedOidArchiveEntry(Archive *fout, BinaryUpgradeInfo *binfo);
 static void dumpPreassignedOidDefinition(Archive *fout, BinaryUpgradeInfo *binfo);
 static void setExtPartDependency(TableInfo *tblinfo, int numTables);
-static char *format_table_function_columns(Archive *fout, const FuncInfo *finfo, int nallargs,
-							  char **allargtypes,
-							  char **argmodes,
-							  char **argnames);
 static void expand_oid_patterns(SimpleStringList *patterns,
 						   SimpleOidList *oids);
 
-static bool is_returns_table_function(int nallargs, char **argmodes);
 static void testGPbackend(Archive *fout);
 
 static char *nextToken(register char **stringp, register const char *delim);
@@ -830,22 +825,11 @@ main(int argc, char **argv)
 
 
 	/*
-<<<<<<< HEAD
-	 * We allow the server to be back to 8.3, and up to any minor release of
-||||||| 3b231596ccf
-	 * We allow the server to be back to 8.0, and up to any minor release of
-=======
-	 * We allow the server to be back to 9.2, and up to any minor release of
->>>>>>> c4cc2850f4d
-	 * our own major version.  (See also version check in pg_dumpall.c.)
+	 * We allow the server to be back to Greenplum 6 (9.4), and up to any minor
+	 * release of our own major version.  (See also version check in
+	 * pg_dumpall.c.)
 	 */
-<<<<<<< HEAD
-	fout->minRemoteVersion = GPDB5_MAJOR_PGVERSION;	/* we can handle back to 8.3 */
-||||||| 3b231596ccf
-	fout->minRemoteVersion = 80000;
-=======
-	fout->minRemoteVersion = 90200;
->>>>>>> c4cc2850f4d
+	fout->minRemoteVersion = GPDB6_MAJOR_PGVERSION;	/* we can handle back to 9.4 */
 	fout->maxRemoteVersion = (PG_VERSION_NUM / 100) * 100 + 99;
 
 	fout->numWorkers = numWorkers;
@@ -858,7 +842,6 @@ main(int argc, char **argv)
 	setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
 
 	/*
-<<<<<<< HEAD
 	 * Determine whether or not we're interacting with a GP backend.
 	 */
 	testGPbackend(fout);
@@ -883,23 +866,6 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * Disable security label support if server version < v9.1.x (prevents
-	 * access to nonexistent pg_seclabel catalog)
-	 */
-	if (fout->remoteVersion < 90100)
-		dopt.no_security_labels = 1;
-
-	/*
-||||||| 3b231596ccf
-	 * Disable security label support if server version < v9.1.x (prevents
-	 * access to nonexistent pg_seclabel catalog)
-	 */
-	if (fout->remoteVersion < 90100)
-		dopt.no_security_labels = 1;
-
-	/*
-=======
->>>>>>> c4cc2850f4d
 	 * On hot standbys, never try to dump unlogged table data, since it will
 	 * just throw an error.
 	 */
@@ -1318,30 +1284,16 @@ setup_connection(Archive *AH, const char *dumpencoding,
 		ExecuteSqlStatement(AH, "SET extra_float_digits TO 3");
 
 	/*
-<<<<<<< HEAD
-	 * Disable synchronized scanning to prevent unpredictable
-	 * changes in row ordering across a dump and reload.
-||||||| 3b231596ccf
-	 * If synchronized scanning is supported, disable it, to prevent
-	 * unpredictable changes in row ordering across a dump and reload.
-=======
 	 * Disable synchronized scanning, to prevent unpredictable changes in row
 	 * ordering across a dump and reload.
->>>>>>> c4cc2850f4d
 	 */
 	ExecuteSqlStatement(AH, "SET synchronize_seqscans TO off");
-<<<<<<< HEAD
 
 	/*
 	 * The default for enable_nestloop is off in GPDB. However, many of the queries
 	 * that we issue best run with nested loop joins, so enable it.
 	 */
 	ExecuteSqlStatement(AH, "SET enable_nestloop TO on");
-||||||| 3b231596ccf
-	if (AH->remoteVersion >= 80300)
-		ExecuteSqlStatement(AH, "SET synchronize_seqscans TO off");
-=======
->>>>>>> c4cc2850f4d
 
 	/*
 	 * Disable timeouts if supported.
@@ -3207,37 +3159,15 @@ dumpDatabase(Archive *fout)
 	/* Compute correct tag for archive entry */
 	appendPQExpBuffer(labelq, "DATABASE %s", qdatname);
 
-<<<<<<< HEAD
-	char	   *comment = PQgetvalue(res, 0, PQfnumber(res, "description"));
-
-	if (comment && *comment && !dopt->no_comments)
-||||||| 3b231596ccf
 	/* Dump DB comment if any */
-	if (fout->remoteVersion >= 80200)
-=======
-	/* Dump DB comment if any */
->>>>>>> c4cc2850f4d
 	{
-		resetPQExpBuffer(dbQry);
-
 		/*
-			* Generates warning when loaded into a differently-named
-			* database.
-			*/
-		appendPQExpBuffer(dbQry, "COMMENT ON DATABASE %s IS ", qdatname);
-		appendStringLiteralAH(dbQry, comment, fout);
-		appendPQExpBufferStr(dbQry, ";\n");
+		 * 8.2 and up keep comments on shared objects in a shared table, so we
+		 * cannot use the dumpComment() code used for other database objects.
+		 * Be careful that the ArchiveEntry parameters match that function.
+		 */
+		char	   *comment = PQgetvalue(res, 0, PQfnumber(res, "description"));
 
-<<<<<<< HEAD
-		ArchiveEntry(fout, nilCatalogId, createDumpId(),
-						ARCHIVE_OPTS(.tag = labelq->data,
-									.owner = dba,
-									.description = "COMMENT",
-									.section = SECTION_NONE,
-									.createStmt = dbQry->data,
-									.deps = &dbDumpId,
-									.nDeps = 1));
-||||||| 3b231596ccf
 		if (comment && *comment && !dopt->no_comments)
 		{
 			resetPQExpBuffer(dbQry);
@@ -3259,35 +3189,6 @@ dumpDatabase(Archive *fout)
 									  .deps = &dbDumpId,
 									  .nDeps = 1));
 		}
-	}
-	else
-	{
-		dumpComment(fout, "DATABASE", qdatname, NULL, dba,
-					dbCatId, 0, dbDumpId);
-	}
-=======
-		if (comment && *comment && !dopt->no_comments)
-		{
-			resetPQExpBuffer(dbQry);
-
-			/*
-			 * Generates warning when loaded into a differently-named
-			 * database.
-			 */
-			appendPQExpBuffer(dbQry, "COMMENT ON DATABASE %s IS ", qdatname);
-			appendStringLiteralAH(dbQry, comment, fout);
-			appendPQExpBufferStr(dbQry, ";\n");
-
-			ArchiveEntry(fout, nilCatalogId, createDumpId(),
-						 ARCHIVE_OPTS(.tag = labelq->data,
-									  .owner = dba,
-									  .description = "COMMENT",
-									  .section = SECTION_NONE,
-									  .createStmt = dbQry->data,
-									  .deps = &dbDumpId,
-									  .nDeps = 1));
-		}
->>>>>>> c4cc2850f4d
 	}
 
 	/* Dump DB security label, if enabled */
@@ -4961,42 +4862,9 @@ binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 	simple_oid_list_append(&preassigned_oids, tyinfo->dobj.catId.oid);
 	appendPQExpBufferStr(upgrade_buffer, "\n-- For binary upgrade, must preserve pg_type oid\n");
 	appendPQExpBuffer(upgrade_buffer,
-<<<<<<< HEAD
 						"SELECT pg_catalog.binary_upgrade_set_next_pg_type_oid('%u'::pg_catalog.oid, "
 						"'%u'::pg_catalog.oid, $$%s$$::text);\n\n",
 						tyinfo->dobj.catId.oid, tyinfo->dobj.namespace->dobj.catId.oid, tyinfo->dobj.name);
-||||||| 3b231596ccf
-					  "SELECT pg_catalog.binary_upgrade_set_next_pg_type_oid('%u'::pg_catalog.oid);\n\n",
-					  pg_type_oid);
-
-	/* we only support old >= 8.3 for binary upgrades */
-	appendPQExpBuffer(upgrade_query,
-					  "SELECT typarray "
-					  "FROM pg_catalog.pg_type "
-					  "WHERE oid = '%u'::pg_catalog.oid;",
-					  pg_type_oid);
-
-	res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
-
-	pg_type_array_oid = atooid(PQgetvalue(res, 0, PQfnumber(res, "typarray")));
-
-	PQclear(res);
-=======
-					  "SELECT pg_catalog.binary_upgrade_set_next_pg_type_oid('%u'::pg_catalog.oid);\n\n",
-					  pg_type_oid);
-
-	appendPQExpBuffer(upgrade_query,
-					  "SELECT typarray "
-					  "FROM pg_catalog.pg_type "
-					  "WHERE oid = '%u'::pg_catalog.oid;",
-					  pg_type_oid);
-
-	res = ExecuteSqlQueryForSingleRow(fout, upgrade_query->data);
-
-	pg_type_array_oid = atooid(PQgetvalue(res, 0, PQfnumber(res, "typarray")));
-
-	PQclear(res);
->>>>>>> c4cc2850f4d
 
 	if (!OidIsValid(pg_type_array_oid) && force_array_type)
 	{
@@ -6581,15 +6449,6 @@ getFuncs(Archive *fout, int *numFuncs)
 							  "\n  OR p.oid = pg_transform.trftosql))",
 							  g_last_builtin_oid);
 
-<<<<<<< HEAD
-/*
- * GPDB: Much of the extension machinery was backported into GPDB 5 from higher
- * major versions, so include the clause.
- */
-||||||| 3b231596ccf
-		if (dopt->binary_upgrade && fout->remoteVersion >= 90100)
-=======
->>>>>>> c4cc2850f4d
 		if (dopt->binary_upgrade)
 			appendPQExpBufferStr(query,
 								 "\n  OR EXISTS(SELECT 1 FROM pg_depend WHERE "
@@ -8147,38 +8006,11 @@ getRules(Archive *fout, int *numRules)
 	int			i_ev_enabled;
 
 	appendPQExpBufferStr(query, "SELECT "
-<<<<<<< HEAD
-							"tableoid, oid, rulename, "
-							"ev_class AS ruletable, ev_type, is_instead, "
-							"ev_enabled "
-							"FROM pg_rewrite "
-							"ORDER BY oid");
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBufferStr(query, "SELECT "
-							 "tableoid, oid, rulename, "
-							 "ev_class AS ruletable, ev_type, is_instead, "
-							 "ev_enabled "
-							 "FROM pg_rewrite "
-							 "ORDER BY oid");
-	}
-	else
-	{
-		appendPQExpBufferStr(query, "SELECT "
-							 "tableoid, oid, rulename, "
-							 "ev_class AS ruletable, ev_type, is_instead, "
-							 "'O'::char AS ev_enabled "
-							 "FROM pg_rewrite "
-							 "ORDER BY oid");
-	}
-=======
 						 "tableoid, oid, rulename, "
 						 "ev_class AS ruletable, ev_type, is_instead, "
 						 "ev_enabled "
 						 "FROM pg_rewrite "
 						 "ORDER BY oid");
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -12396,156 +12228,10 @@ format_function_arguments(const FuncInfo *finfo, const char *funcargs, bool is_a
 }
 
 /*
-<<<<<<< HEAD
- *	is_returns_table_function: returns true if function id declared as
- *	RETURNS TABLE, i.e. at least one argument is PROARGMODE_TABLE
- */
-static bool
-is_returns_table_function(int nallargs, char **argmodes)
-{
-	int			j;
-
-	if (argmodes)
-		for (j = 0; j < nallargs; j++)
-			if (argmodes[j][0] == PROARGMODE_TABLE)
-				return true;
-
-	return false;
-}
-
-
-/*
- * format_table_function_columns: generate column list for
- * table functions.
- */
-static char *
-format_table_function_columns(Archive *fout, const FuncInfo *finfo, int nallargs,
-							  char **allargtypes,
-							  char **argmodes,
-							  char **argnames)
-{
-	PQExpBufferData fn;
-	int			j;
-	bool		first_column = true;
-
-	initPQExpBuffer(&fn);
-	appendPQExpBuffer(&fn, "(");
-
-	for (j = 0; j < nallargs; j++)
-	{
-		Oid			typid;
-		const char *typname;
-
-		/*
-		 * argmodes are checked in format_function_arguments, it isn't necessary
-		 * to check argmodes here again
-		 */
-		if (argmodes[j][0] == PROARGMODE_TABLE)
-		{
-			typid = allargtypes ? atooid(allargtypes[j]) : finfo->argtypes[j];
-			typname = getFormattedTypeName(fout, typid, zeroIsError);
-
-			/* column's name is always NOT NULL (checked in gram.y) */
-			appendPQExpBuffer(&fn, "%s%s %s",
-							  first_column ? "" : ", ",
-							  fmtId(argnames[j]),
-							  typname);
-			first_column = false;
-		}
-	}
-
-	appendPQExpBuffer(&fn, ")");
-	return fn.data;
-}
-
-
-/*
-||||||| 3b231596ccf
- * format_function_arguments_old: generate function name and argument list
- *
- * The argument type names are qualified if needed.  The function name
- * is never qualified.
- *
- * This is used only with pre-8.4 servers, so we aren't expecting to see
- * VARIADIC or TABLE arguments, nor are there any defaults for arguments.
- *
- * Any or all of allargtypes, argmodes, argnames may be NULL.
- */
-static char *
-format_function_arguments_old(Archive *fout,
-							  const FuncInfo *finfo, int nallargs,
-							  char **allargtypes,
-							  char **argmodes,
-							  char **argnames)
-{
-	PQExpBufferData fn;
-	int			j;
-
-	initPQExpBuffer(&fn);
-	appendPQExpBuffer(&fn, "%s(", fmtId(finfo->dobj.name));
-	for (j = 0; j < nallargs; j++)
-	{
-		Oid			typid;
-		const char *typname;
-		const char *argmode;
-		const char *argname;
-
-		typid = allargtypes ? atooid(allargtypes[j]) : finfo->argtypes[j];
-		typname = getFormattedTypeName(fout, typid, zeroIsError);
-
-		if (argmodes)
-		{
-			switch (argmodes[j][0])
-			{
-				case PROARGMODE_IN:
-					argmode = "";
-					break;
-				case PROARGMODE_OUT:
-					argmode = "OUT ";
-					break;
-				case PROARGMODE_INOUT:
-					argmode = "INOUT ";
-					break;
-				default:
-					pg_log_warning("bogus value in proargmodes array");
-					argmode = "";
-					break;
-			}
-		}
-		else
-			argmode = "";
-
-		argname = argnames ? argnames[j] : (char *) NULL;
-		if (argname && argname[0] == '\0')
-			argname = NULL;
-
-		appendPQExpBuffer(&fn, "%s%s%s%s%s",
-						  (j > 0) ? ", " : "",
-						  argmode,
-						  argname ? fmtId(argname) : "",
-						  argname ? " " : "",
-						  typname);
-	}
-	appendPQExpBufferChar(&fn, ')');
-	return fn.data;
-}
-
-/*
-=======
->>>>>>> c4cc2850f4d
  * format_function_signature: generate function name and argument list
  *
-<<<<<<< HEAD
- * Generates a minimal list of input argument types; this is sufficient to
- * reference the function, but not to define it.
-||||||| 3b231596ccf
- * This is like format_function_arguments_old except that only a minimal
- * list of input argument types is generated; this is sufficient to
- * reference the function, but not to define it.
-=======
  * Only a minimal list of input argument types is generated; this is
  * sufficient to reference the function, but not to define it.
->>>>>>> c4cc2850f4d
  *
  * If honor_quotes is false then the function name is never quoted.
  * This is appropriate for use in TOC tags, but not in SQL commands.
@@ -12611,21 +12297,9 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	char	   *prosupport;
 	char	   *proparallel;
 	char	   *lanname;
-<<<<<<< HEAD
 	char	   *callbackfunc;
 	char	   *prodataaccess;
 	char	   *proexeclocation;
-	int			nallargs;
-	char	  **allargtypes = NULL;
-	char	  **argmodes = NULL;
-	char	  **argnames = NULL;
-||||||| 3b231596ccf
-	int			nallargs;
-	char	  **allargtypes = NULL;
-	char	  **argmodes = NULL;
-	char	  **argnames = NULL;
-=======
->>>>>>> c4cc2850f4d
 	char	  **configitems = NULL;
 	int			nconfigitems = 0;
 	const char *keyword;
@@ -12740,34 +12414,7 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	funcargs = PQgetvalue(res, 0, PQfnumber(res, "funcargs"));
 	funciargs = PQgetvalue(res, 0, PQfnumber(res, "funciargs"));
 	funcresult = PQgetvalue(res, 0, PQfnumber(res, "funcresult"));
-<<<<<<< HEAD
-
-	if (PQfnumber(res, "protrftypes") != -1)
-		protrftypes = PQgetvalue(res, 0, PQfnumber(res, "protrftypes"));
-	else
-		protrftypes = NULL;
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80400)
-	{
-		funcargs = PQgetvalue(res, 0, PQfnumber(res, "funcargs"));
-		funciargs = PQgetvalue(res, 0, PQfnumber(res, "funciargs"));
-		funcresult = PQgetvalue(res, 0, PQfnumber(res, "funcresult"));
-		proallargtypes = proargmodes = proargnames = NULL;
-	}
-	else
-	{
-		proallargtypes = PQgetvalue(res, 0, PQfnumber(res, "proallargtypes"));
-		proargmodes = PQgetvalue(res, 0, PQfnumber(res, "proargmodes"));
-		proargnames = PQgetvalue(res, 0, PQfnumber(res, "proargnames"));
-		funcargs = funciargs = funcresult = NULL;
-	}
-	if (PQfnumber(res, "protrftypes") != -1)
-		protrftypes = PQgetvalue(res, 0, PQfnumber(res, "protrftypes"));
-	else
-		protrftypes = NULL;
-=======
 	protrftypes = PQgetvalue(res, 0, PQfnumber(res, "protrftypes"));
->>>>>>> c4cc2850f4d
 	prokind = PQgetvalue(res, 0, PQfnumber(res, "prokind"));
 	provolatile = PQgetvalue(res, 0, PQfnumber(res, "provolatile"));
 	proisstrict = PQgetvalue(res, 0, PQfnumber(res, "proisstrict"));
@@ -12812,85 +12459,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	}
 	else
 	{
-<<<<<<< HEAD
-		if (strcmp(prosrc, "-") != 0)
-		{
-			appendPQExpBufferStr(asPart, "AS ");
-			/* with no bin, dollar quote src unconditionally if allowed */
-			if (dopt->disable_dollar_quoting)
-				appendStringLiteralAH(asPart, prosrc, fout);
-			else
-				appendStringLiteralDQ(asPart, prosrc, NULL);
-		}
-	}
-
-	nallargs = finfo->nargs;	/* unless we learn different from allargs */
-	funcfullsig = format_function_arguments(finfo, funcargs, false);
-	funcsig = format_function_arguments(finfo, funciargs, false);
-
-	funcsig_tag = format_function_signature(fout, finfo, false);
-
-	if (proconfig && *proconfig)
-||||||| 3b231596ccf
-		if (strcmp(prosrc, "-") != 0)
-		{
-			appendPQExpBufferStr(asPart, "AS ");
-			/* with no bin, dollar quote src unconditionally if allowed */
-			if (dopt->disable_dollar_quoting)
-				appendStringLiteralAH(asPart, prosrc, fout);
-			else
-				appendStringLiteralDQ(asPart, prosrc, NULL);
-		}
-	}
-
-	nallargs = finfo->nargs;	/* unless we learn different from allargs */
-
-	if (proallargtypes && *proallargtypes)
-	{
-		int			nitems = 0;
-
-		if (!parsePGArray(proallargtypes, &allargtypes, &nitems) ||
-			nitems < finfo->nargs)
-		{
-			pg_log_warning("could not parse proallargtypes array");
-			if (allargtypes)
-				free(allargtypes);
-			allargtypes = NULL;
-		}
-		else
-			nallargs = nitems;
-	}
-
-	if (proargmodes && *proargmodes)
-	{
-		int			nitems = 0;
-
-		if (!parsePGArray(proargmodes, &argmodes, &nitems) ||
-			nitems != nallargs)
-		{
-			pg_log_warning("could not parse proargmodes array");
-			if (argmodes)
-				free(argmodes);
-			argmodes = NULL;
-		}
-	}
-
-	if (proargnames && *proargnames)
-	{
-		int			nitems = 0;
-
-		if (!parsePGArray(proargnames, &argnames, &nitems) ||
-			nitems != nallargs)
-		{
-			pg_log_warning("could not parse proargnames array");
-			if (argnames)
-				free(argnames);
-			argnames = NULL;
-		}
-	}
-
-	if (proconfig && *proconfig)
-=======
 		appendPQExpBufferStr(asPart, "AS ");
 		/* with no bin, dollar quote src unconditionally if allowed */
 		if (dopt->disable_dollar_quoting)
@@ -12900,7 +12468,6 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	}
 
 	if (*proconfig)
->>>>>>> c4cc2850f4d
 	{
 		if (!parsePGArray(proconfig, &configitems, &nconfigitems))
 			fatal("could not parse %s array", "proconfig");
@@ -12911,30 +12478,10 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		nconfigitems = 0;
 	}
 
-<<<<<<< HEAD
-	qual_funcsig = psprintf("%s.%s",
-							fmtId(finfo->dobj.namespace->dobj.name),
-							funcsig);
-||||||| 3b231596ccf
-	if (funcargs)
-	{
-		/* 8.4 or later; we rely on server-side code for most of the work */
-		funcfullsig = format_function_arguments(finfo, funcargs, false);
-		funcsig = format_function_arguments(finfo, funciargs, false);
-	}
-	else
-		/* pre-8.4, do it ourselves */
-		funcsig = format_function_arguments_old(fout,
-												finfo, nallargs, allargtypes,
-												argmodes, argnames);
-
-	funcsig_tag = format_function_signature(fout, finfo, false);
-=======
 	funcfullsig = format_function_arguments(finfo, funcargs, false);
 	funcsig = format_function_arguments(finfo, funciargs, false);
 
 	funcsig_tag = format_function_signature(fout, finfo, false);
->>>>>>> c4cc2850f4d
 
 	qual_funcsig = psprintf("%s.%s",
 							fmtId(finfo->dobj.namespace->dobj.name),
@@ -12958,20 +12505,11 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 		 /* no result type to output */ ;
 	else if (funcresult)
 		appendPQExpBuffer(q, " RETURNS %s", funcresult);
-	else if (!is_returns_table_function(nallargs, argmodes))
+	else
 		appendPQExpBuffer(q, " RETURNS %s%s",
 						  (proretset[0] == 't') ? "SETOF " : "",
 						  getFormattedTypeName(fout, finfo->prorettype,
 											   zeroIsError));
-	else
-	{
-		/* RETURNS TABLE functions */
-		char	   *func_cols;
-		func_cols = format_table_function_columns(fout, finfo, nallargs, allargtypes,
-												  argmodes, argnames);
-		appendPQExpBuffer(q, "RETURNS TABLE %s", func_cols);
-		free(func_cols);
-	}
 
 	appendPQExpBuffer(q, "\n    LANGUAGE %s", fmtId(lanname));
 
@@ -13864,45 +13402,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 
 	/* Get additional fields from the pg_opclass row */
 	appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
-<<<<<<< HEAD
-						"opckeytype::pg_catalog.regtype, "
-						"opcdefault, opcfamily, "
-						"opfname AS opcfamilyname, "
-						"nspname AS opcfamilynsp, "
-						"(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcmethod) AS amname "
-						"FROM pg_catalog.pg_opclass c "
-						"LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = opcfamily "
-						"LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						"WHERE c.oid = '%u'::pg_catalog.oid",
-						opcinfo->dobj.catId.oid);
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
-						  "opckeytype::pg_catalog.regtype, "
-						  "opcdefault, opcfamily, "
-						  "opfname AS opcfamilyname, "
-						  "nspname AS opcfamilynsp, "
-						  "(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcmethod) AS amname "
-						  "FROM pg_catalog.pg_opclass c "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = opcfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE c.oid = '%u'::pg_catalog.oid",
-						  opcinfo->dobj.catId.oid);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
-						  "opckeytype::pg_catalog.regtype, "
-						  "opcdefault, NULL AS opcfamily, "
-						  "NULL AS opcfamilyname, "
-						  "NULL AS opcfamilynsp, "
-						  "(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcamid) AS amname "
-						  "FROM pg_catalog.pg_opclass "
-						  "WHERE oid = '%u'::pg_catalog.oid",
-						  opcinfo->dobj.catId.oid);
-	}
-=======
 					  "opckeytype::pg_catalog.regtype, "
 					  "opcdefault, opcfamily, "
 					  "opfname AS opcfamilyname, "
@@ -13913,7 +13412,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 					  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
 					  "WHERE c.oid = '%u'::pg_catalog.oid",
 					  opcinfo->dobj.catId.oid);
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQueryForSingleRow(fout, query->data);
 
@@ -13975,116 +13473,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	 * pg_depend entries.
 	 */
 	resetPQExpBuffer(query);
-<<<<<<< HEAD
-
-	if (fout->remoteVersion >= 90100)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "opfname AS sortfamily, "
-						  "nspname AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
-						  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND amopfamily = '%s'::pg_catalog.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid,
-						  opcfamily);
-	}
-	else if (fout->remoteVersion >= 80400)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
-						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
-						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-||||||| 3b231596ccf
-
-	if (fout->remoteVersion >= 90100)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "opfname AS sortfamily, "
-						  "nspname AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
-						  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND amopfamily = '%s'::pg_catalog.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid,
-						  opcfamily);
-	}
-	else if (fout->remoteVersion >= 80400)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
-						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-	else if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
-						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-	else
-	{
-		/*
-		 * Here, we print all entries since there are no opfamilies and hence
-		 * no loose operators to worry about.
-		 */
-		appendPQExpBuffer(query, "SELECT amopstrategy, amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "NULL AS sortfamily, "
-						  "NULL AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop "
-						  "WHERE amopclaid = '%u'::pg_catalog.oid "
-						  "ORDER BY amopstrategy",
-						  opcinfo->dobj.catId.oid);
-	}
-=======
 	appendPQExpBuffer(query, "SELECT amopstrategy, "
 					  "amopopr::pg_catalog.regoperator, "
 					  "opfname AS sortfamily, "
@@ -14099,7 +13487,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 					  "ORDER BY amopstrategy",
 					  opcinfo->dobj.catId.oid,
 					  opcfamily);
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -14148,44 +13535,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	resetPQExpBuffer(query);
 
 	appendPQExpBuffer(query, "SELECT amprocnum, "
-<<<<<<< HEAD
-						"amproc::pg_catalog.regprocedure, "
-						"amproclefttype::pg_catalog.regtype, "
-						"amprocrighttype::pg_catalog.regtype "
-						"FROM pg_catalog.pg_amproc ap, pg_catalog.pg_depend "
-						"WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						"AND refobjid = '%u'::pg_catalog.oid "
-						"AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass "
-						"AND objid = ap.oid "
-						"ORDER BY amprocnum",
-						opcinfo->dobj.catId.oid);
-||||||| 3b231596ccf
-	if (fout->remoteVersion >= 80300)
-	{
-		appendPQExpBuffer(query, "SELECT amprocnum, "
-						  "amproc::pg_catalog.regprocedure, "
-						  "amproclefttype::pg_catalog.regtype, "
-						  "amprocrighttype::pg_catalog.regtype "
-						  "FROM pg_catalog.pg_amproc ap, pg_catalog.pg_depend "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass "
-						  "AND objid = ap.oid "
-						  "ORDER BY amprocnum",
-						  opcinfo->dobj.catId.oid);
-	}
-	else
-	{
-		appendPQExpBuffer(query, "SELECT amprocnum, "
-						  "amproc::pg_catalog.regprocedure, "
-						  "'' AS amproclefttype, "
-						  "'' AS amprocrighttype "
-						  "FROM pg_catalog.pg_amproc "
-						  "WHERE amopclaid = '%u'::pg_catalog.oid "
-						  "ORDER BY amprocnum",
-						  opcinfo->dobj.catId.oid);
-	}
-=======
 					  "amproc::pg_catalog.regprocedure, "
 					  "amproclefttype::pg_catalog.regtype, "
 					  "amprocrighttype::pg_catalog.regtype "
@@ -14196,7 +13545,6 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 					  "AND objid = ap.oid "
 					  "ORDER BY amprocnum",
 					  opcinfo->dobj.catId.oid);
->>>>>>> c4cc2850f4d
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 

@@ -653,18 +653,9 @@ main(int argc, char *argv[])
 
 			/* Dump role memberships */
 			dumpRoleMembership(conn);
-<<<<<<< HEAD
 
 			/* Dump role constraints */
 			dumpRoleConstraints(conn);
-||||||| 3b231596ccf
-			/* Dump role memberships --- need different method for pre-8.1 */
-			if (server_version >= 80100)
-				dumpRoleMembership(conn);
-			else
-				dumpGroups(conn);
-=======
->>>>>>> c4cc2850f4d
 		}
 
 		/* Dump tablespaces */
@@ -1225,16 +1216,8 @@ dumpRoles(PGconn *conn)
 						  "rolname = current_user AS is_current_user "
 						  " %s %s %s %s"
 						  "FROM %s "
-<<<<<<< HEAD
 						  "ORDER BY 2", role_catalog, resq_col, resgroup_col, extauth_col, hdfs_col, role_catalog);
-	else if (server_version >= 90100)
-||||||| 3b231596ccf
-						  "ORDER BY 2", role_catalog, role_catalog);
-	else if (server_version >= 90100)
-=======
-						  "ORDER BY 2", role_catalog, role_catalog);
 	else
->>>>>>> c4cc2850f4d
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, rolcatupdate, "
@@ -1245,81 +1228,7 @@ dumpRoles(PGconn *conn)
 						  "rolname = current_user AS is_current_user "
 						  " %s %s %s %s"
 						  "FROM %s "
-<<<<<<< HEAD
 						  "ORDER BY 2", role_catalog, resq_col, resgroup_col, extauth_col, hdfs_col, role_catalog);
-	else
-		printfPQExpBuffer(buf,
-						  "SELECT oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, rolcatupdate, "
-						  "rolcanlogin, rolconnlimit, rolpassword, "
-						  "rolvaliduntil, false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  " %s %s %s %s"
-						  "FROM %s "
-						  "ORDER BY 2", role_catalog, resq_col, resgroup_col, extauth_col, hdfs_col, role_catalog);
-||||||| 3b231596ccf
-						  "ORDER BY 2", role_catalog, role_catalog);
-	else if (server_version >= 80200)
-		printfPQExpBuffer(buf,
-						  "SELECT oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolpassword, "
-						  "rolvaliduntil, false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM %s "
-						  "ORDER BY 2", role_catalog, role_catalog);
-	else if (server_version >= 80100)
-		printfPQExpBuffer(buf,
-						  "SELECT oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolpassword, "
-						  "rolvaliduntil, false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM %s "
-						  "ORDER BY 2", role_catalog);
-	else
-		printfPQExpBuffer(buf,
-						  "SELECT 0 as oid, usename as rolname, "
-						  "usesuper as rolsuper, "
-						  "true as rolinherit, "
-						  "usesuper as rolcreaterole, "
-						  "usecreatedb as rolcreatedb, "
-						  "true as rolcanlogin, "
-						  "-1 as rolconnlimit, "
-						  "passwd as rolpassword, "
-						  "valuntil as rolvaliduntil, "
-						  "false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "usename = current_user AS is_current_user "
-						  "FROM pg_shadow "
-						  "UNION ALL "
-						  "SELECT 0 as oid, groname as rolname, "
-						  "false as rolsuper, "
-						  "true as rolinherit, "
-						  "false as rolcreaterole, "
-						  "false as rolcreatedb, "
-						  "false as rolcanlogin, "
-						  "-1 as rolconnlimit, "
-						  "null::text as rolpassword, "
-						  "null::timestamptz as rolvaliduntil, "
-						  "false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "false AS is_current_user "
-						  "FROM pg_group "
-						  "WHERE NOT EXISTS (SELECT 1 FROM pg_shadow "
-						  " WHERE usename = groname) "
-						  "ORDER BY 2");
-=======
-						  "ORDER BY 2", role_catalog, role_catalog);
->>>>>>> c4cc2850f4d
 
 	res = executeQuery(conn, buf->data);
 
@@ -1585,7 +1494,6 @@ dumpRoleMembership(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 
-<<<<<<< HEAD
 /*
  * Dump role time constraints. 
  *
@@ -1623,78 +1531,6 @@ dumpRoleConstraints(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 
-||||||| 3b231596ccf
-/*
- * Dump group memberships from a pre-8.1 server.  It's annoying that we
- * can't share any useful amount of code with the post-8.1 case, but
- * the catalog representations are too different.
- *
- * Note: we expect dumpRoles already created all the roles, but there is
- * no membership yet.
- */
-static void
-dumpGroups(PGconn *conn)
-{
-	PQExpBuffer buf = createPQExpBuffer();
-	PGresult   *res;
-	int			i;
-
-	res = executeQuery(conn,
-					   "SELECT groname, grolist FROM pg_group ORDER BY 1");
-
-	if (PQntuples(res) > 0)
-		fprintf(OPF, "--\n-- Role memberships\n--\n\n");
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		char	   *groname = PQgetvalue(res, i, 0);
-		char	   *grolist = PQgetvalue(res, i, 1);
-		PGresult   *res2;
-		int			j;
-
-		/*
-		 * Array representation is {1,2,3} ... convert to (1,2,3)
-		 */
-		if (strlen(grolist) < 3)
-			continue;
-
-		grolist = pg_strdup(grolist);
-		grolist[0] = '(';
-		grolist[strlen(grolist) - 1] = ')';
-		printfPQExpBuffer(buf,
-						  "SELECT usename FROM pg_shadow "
-						  "WHERE usesysid IN %s ORDER BY 1",
-						  grolist);
-		free(grolist);
-
-		res2 = executeQuery(conn, buf->data);
-
-		for (j = 0; j < PQntuples(res2); j++)
-		{
-			char	   *usename = PQgetvalue(res2, j, 0);
-
-			/*
-			 * Don't try to grant a role to itself; can happen if old
-			 * installation has identically named user and group.
-			 */
-			if (strcmp(groname, usename) == 0)
-				continue;
-
-			fprintf(OPF, "GRANT %s", fmtId(groname));
-			fprintf(OPF, " TO %s;\n", fmtId(usename));
-		}
-
-		PQclear(res2);
-	}
-
-	PQclear(res);
-	destroyPQExpBuffer(buf);
-
-	fprintf(OPF, "\n\n");
-}
-
-=======
->>>>>>> c4cc2850f4d
 
 /*
  * Drop tablespaces.
@@ -2311,23 +2147,12 @@ connectDatabase(const char *dbname, const char *connection_string,
 	my_version = PG_VERSION_NUM;
 
 	/*
-<<<<<<< HEAD
-	 * We allow the server to be back to 8.3, and up to any minor release of
-||||||| 3b231596ccf
-	 * We allow the server to be back to 8.0, and up to any minor release of
-=======
-	 * We allow the server to be back to 9.2, and up to any minor release of
->>>>>>> c4cc2850f4d
-	 * our own major version.  (See also version check in pg_dump.c.)
+	 * We allow the server to be back to Greenplum 6 (9.4), and up to any minor
+	 * release of our own major version.  (See also version check in
+	 * pg_dump.c.)
 	 */
 	if (my_version != server_version
-<<<<<<< HEAD
-		&& (server_version < GPDB5_MAJOR_PGVERSION ||		/* we can handle back to 8.3 */
-||||||| 3b231596ccf
-		&& (server_version < 80000 ||
-=======
-		&& (server_version < 90200 ||
->>>>>>> c4cc2850f4d
+		&& (server_version < GPDB6_MAJOR_PGVERSION ||		/* we can handle back to 9.4 */
 			(server_version / 100) > (my_version / 100)))
 	{
 		pg_log_error("server version: %s; %s version: %s",
