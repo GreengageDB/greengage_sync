@@ -4359,8 +4359,21 @@ _readVacuumRelation(void)
 }
 
 /*
- * GPDB: see _outPublicationTable.
+ * GPDB: see _outPublicationObjSpec.
  */
+static PublicationObjSpec *
+_readPublicationObjSpec(void)
+{
+	READ_LOCALS(PublicationObjSpec);
+
+	READ_ENUM_FIELD(pubobjtype, PublicationObjSpecType);
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(pubtable);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
 static PublicationTable *
 _readPublicationTable(void)
 {
@@ -4378,7 +4391,7 @@ _readCreatePublicationStmt()
 
 	READ_STRING_FIELD(pubname);
 	READ_NODE_FIELD(options);
-	READ_NODE_FIELD(tables);
+	READ_NODE_FIELD(pubobjects);
 	READ_BOOL_FIELD(for_all_tables);
 
 	READ_DONE();
@@ -4391,9 +4404,9 @@ _readAlterPublicationStmt()
 
 	READ_STRING_FIELD(pubname);
 	READ_NODE_FIELD(options);
-	READ_NODE_FIELD(tables);
+	READ_NODE_FIELD(pubobjects);
 	READ_BOOL_FIELD(for_all_tables);
-	READ_ENUM_FIELD(tableAction, DefElemAction);
+	READ_ENUM_FIELD(action, AlterPublicationAction);
 
 	READ_DONE();
 }
@@ -5117,6 +5130,8 @@ parseNodeString(void)
 		return_value = _readCreateOpFamilyStmt();
 	else if (MATCHX("CREATEPLANGSTMT"))
 		return_value = _readCreatePLangStmt();
+	else if (MATCHX("PUBLICATIONOBJSPEC"))
+		return_value = _readPublicationObjSpec();
 	else if (MATCHX("PUBLICATIONTABLE"))
 		return_value = _readPublicationTable();
 	else if (MATCHX("CREATEPUBLICATIONSTMT"))

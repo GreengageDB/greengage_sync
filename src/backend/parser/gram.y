@@ -6,15 +6,9 @@
  * gram.y
  *	  POSTGRESQL BISON rules/actions
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2006-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -293,12 +287,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	PartitionSpec		*partspec;
 	PartitionBoundSpec	*partboundspec;
 	RoleSpec			*rolespec;
-<<<<<<< HEAD
 	DistributionKeyElem *dkelem;
-||||||| 3b231596ccf
-=======
 	PublicationObjSpec	*publicationobjectspec;
->>>>>>> c4cc2850f4d
 	struct SelectLimit	*selectlimit;
 	SetQuantifier	 setquantifier;
 	struct GroupClause  *groupclause;
@@ -20785,7 +20775,7 @@ preprocess_pubobj_list(List *pubobjspec_list, core_yyscan_t yyscanner)
 			if (!pubobj->name && !pubobj->pubtable)
 				ereport(ERROR,
 						errcode(ERRCODE_SYNTAX_ERROR),
-						errmsg("invalid table name at or near"),
+						errmsg("invalid table name"),
 						parser_errposition(pubobj->location));
 			else if (pubobj->name)
 			{
@@ -20812,7 +20802,7 @@ preprocess_pubobj_list(List *pubobjspec_list, core_yyscan_t yyscanner)
 			else
 				ereport(ERROR,
 						errcode(ERRCODE_SYNTAX_ERROR),
-						errmsg("invalid schema name at or near"),
+						errmsg("invalid schema name"),
 						parser_errposition(pubobj->location));
 		}
 

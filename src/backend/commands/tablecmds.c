@@ -51,13 +51,7 @@
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_opclass.h"
-<<<<<<< HEAD
 #include "catalog/pg_proc_d.h"
-#include "catalog/pg_tablespace.h"
-||||||| 3b231596ccf
-#include "catalog/pg_tablespace.h"
-=======
->>>>>>> c4cc2850f4d
 #include "catalog/pg_statistic_ext.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_trigger.h"
