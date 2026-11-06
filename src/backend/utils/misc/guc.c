@@ -6,15 +6,9 @@
  * See src/backend/utils/misc/README for more information.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Copyright (c) 2000-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Copyright (c) 2000-2021, PostgreSQL Global Development Group
-=======
  * Copyright (c) 2000-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Written by Peter Eisentraut <peter_e@gmx.net>.
  *
  * IDENTIFICATION
@@ -2872,20 +2866,10 @@ static struct config_int ConfigureNamesInt[] =
 			gettext_noop("Sets the maximum time before warning if checkpoints "
 						 "triggered by WAL volume happen too frequently."),
 			gettext_noop("Write a message to the server log if checkpoints "
-<<<<<<< HEAD
-						 "caused by the filling of checkpoint segment files happens more "
-						 "frequently than this number of seconds. Zero turns off the warning."),
-			GUC_UNIT_S | GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
-||||||| 3b231596ccf
-						 "caused by the filling of checkpoint segment files happens more "
-						 "frequently than this number of seconds. Zero turns off the warning."),
-			GUC_UNIT_S
-=======
 						 "caused by the filling of WAL segment files happen more "
 						 "frequently than this amount of time. "
 						 "Zero turns off the warning."),
-			GUC_UNIT_S
->>>>>>> c4cc2850f4d
+			GUC_UNIT_S | GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
 		},
 		&CheckPointWarning,
 		30, 0, INT_MAX,
@@ -3014,20 +2998,10 @@ static struct config_int ConfigureNamesInt[] =
 
 	{
 		{"commit_siblings", PGC_USERSET, WAL_SETTINGS,
-<<<<<<< HEAD
-			gettext_noop("Sets the minimum concurrent open transactions before performing "
-						 "commit_delay."),
-			NULL,
-			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL | GUC_DISALLOW_USER_SET
-||||||| 3b231596ccf
-			gettext_noop("Sets the minimum concurrent open transactions before performing "
-						 "commit_delay."),
-			NULL
-=======
 			gettext_noop("Sets the minimum number of concurrent open transactions "
 						 "required before performing commit_delay."),
-			NULL
->>>>>>> c4cc2850f4d
+			NULL,
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL | GUC_DISALLOW_USER_SET
 		},
 		&CommitSiblings,
 		5, 0, 1000,
@@ -3655,31 +3629,6 @@ static struct config_int ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 
-<<<<<<< HEAD
-||||||| 3b231596ccf
-	{
-		{"client_connection_check_interval", PGC_USERSET, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the time interval between checks for disconnection while running queries."),
-			NULL,
-			GUC_UNIT_MS
-		},
-		&client_connection_check_interval,
-		0, 0, INT_MAX,
-		check_client_connection_check_interval, NULL, NULL
-	},
-
-=======
-	{
-		{"client_connection_check_interval", PGC_USERSET, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the time interval between checks for disconnection while running queries."),
-			NULL,
-			GUC_UNIT_MS
-		},
-		&client_connection_check_interval,
-		0, 0, INT_MAX,
-		check_client_connection_check_interval, NULL, NULL
-	},
-
 	{
 		{"log_startup_progress_interval", PGC_SIGHUP, LOGGING_WHEN,
 			gettext_noop("Time between progress updates for "
@@ -3692,7 +3641,6 @@ static struct config_int ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 
->>>>>>> c4cc2850f4d
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL

@@ -16,14 +16,10 @@
 
 #include "access/parallel.h"
 #include "commands/explain.h"
-<<<<<<< HEAD
 #include "cdb/cdbdisp.h"
 #include "cdb/cdbexplain.h"
 #include "cdb/cdbvars.h"
-||||||| 3b231596ccf
-=======
 #include "common/pg_prng.h"
->>>>>>> c4cc2850f4d
 #include "executor/instrument.h"
 #include "jit/jit.h"
 #include "utils/guc.h"

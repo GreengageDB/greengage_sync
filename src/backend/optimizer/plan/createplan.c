@@ -5,15 +5,9 @@
  *	  Planning is complete, we just need to convert the selected
  *	  Path into a Plan.
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2008, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -234,13 +228,7 @@ static IndexScan *make_indexscan(List *qptlist, List *qpqual, Index scanrelid,
 								 ScanDirection indexscandir);
 static IndexOnlyScan *make_indexonlyscan(List *qptlist, List *qpqual,
 										 Index scanrelid, Oid indexid,
-<<<<<<< HEAD
-										 List *indexqual, List *indexqualorig,
-||||||| 3b231596ccf
-										 List *indexqual, List *indexorderby,
-=======
 										 List *indexqual, List *recheckqual,
->>>>>>> c4cc2850f4d
 										 List *indexorderby,
 										 List *indextlist,
 										 ScanDirection indexscandir);
@@ -6758,12 +6746,7 @@ make_indexonlyscan(List *qptlist,
 				   Index scanrelid,
 				   Oid indexid,
 				   List *indexqual,
-<<<<<<< HEAD
-				   List *indexqualorig,
-||||||| 3b231596ccf
-=======
 				   List *recheckqual,
->>>>>>> c4cc2850f4d
 				   List *indexorderby,
 				   List *indextlist,
 				   ScanDirection indexscandir)
@@ -6778,12 +6761,8 @@ make_indexonlyscan(List *qptlist,
 	node->scan.scanrelid = scanrelid;
 	node->indexid = indexid;
 	node->indexqual = indexqual;
-<<<<<<< HEAD
-	node->indexqualorig = indexqualorig;
-||||||| 3b231596ccf
-=======
+	node->indexqualorig = recheckqual;	/* GPDB: same quals, kept for direct dispatch */
 	node->recheckqual = recheckqual;
->>>>>>> c4cc2850f4d
 	node->indexorderby = indexorderby;
 	node->indextlist = indextlist;
 	node->indexorderdir = indexscandir;

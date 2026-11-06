@@ -8,19 +8,9 @@ use Config;
 use File::Basename qw(basename dirname);
 use File::Path qw(rmtree);
 use Fcntl qw(:seek);
-<<<<<<< HEAD
-use PostgresNode;
-use TestLib;
-use Test::More tests => 110 + 15;
-||||||| 3b231596ccf
-use PostgresNode;
-use TestLib;
-use Test::More tests => 110;
-=======
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 115;
->>>>>>> c4cc2850f4d
+use Test::More tests => 115 + 15;
 
 program_help_ok('pg_basebackup');
 program_version_ok('pg_basebackup');
@@ -651,7 +641,6 @@ rmtree("$tempdir/backup_corrupt4");
 $node->safe_psql('postgres', "DROP TABLE corrupt1;");
 $node->safe_psql('postgres', "DROP TABLE corrupt2;");
 
-<<<<<<< HEAD
 # Some additional GPDB tests
 my $twenty_characters = '11111111112222222222';
 my $longer_tempdir = "$tempdir/some_long_directory_path_$twenty_characters$twenty_characters$twenty_characters$twenty_characters$twenty_characters";
@@ -736,8 +725,7 @@ $node->command_ok([ 'pg_basebackup', '-D', $gpbackup_test_dir, '--target-gp-dbid
 
 ok(! -d "$gpbackup_test_dir/backups", 'gpbackup default backup directory should be excluded');
 rmtree($gpbackup_test_dir);
-||||||| 3b231596ccf
-=======
+
 note "Testing pg_basebackup with compression methods";
 
 # Check ZLIB compression if available.
@@ -751,7 +739,8 @@ SKIP:
 			'pg_basebackup',        '-D',
 			"$tempdir/backup_gzip", '--compress',
 			'1',                    '--no-sync',
-			'--format',             't'
+			'--format',             't',
+			'--target-gp-dbid',     '123'
 		],
 		'pg_basebackup with --compress');
 	$node->command_ok(
@@ -759,7 +748,8 @@ SKIP:
 			'pg_basebackup',         '-D',
 			"$tempdir/backup_gzip2", '--gzip',
 			'--no-sync',             '--format',
-			't'
+			't',                     '--target-gp-dbid',
+			'123'
 		],
 		'pg_basebackup with --gzip');
 
@@ -785,4 +775,3 @@ SKIP:
 	rmtree("$tempdir/backup_gzip");
 	rmtree("$tempdir/backup_gzip2");
 }
->>>>>>> c4cc2850f4d

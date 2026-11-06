@@ -173,6 +173,12 @@ DECLARE_INDEX(pg_class_tblspc_relfilenode_index, 3455, ClassTblspcRelfilenodeInd
 #define		  RELKIND_AOBLOCKDIR	  'b'		/* AO block directory */
 #define		  RELKIND_AOVISIMAP		  'M'		/* AO visibility map */
 
+/* Append-optimized auxiliary relations. */
+#define RELKIND_IS_AO_AUX(relkind) \
+	((relkind) == RELKIND_AOSEGMENTS || \
+	 (relkind) == RELKIND_AOBLOCKDIR || \
+	 (relkind) == RELKIND_AOVISIMAP)
+
 #define		  RELPERSISTENCE_PERMANENT	'p' /* regular table */
 #define		  RELPERSISTENCE_UNLOGGED	'u' /* unlogged permanent table */
 #define		  RELPERSISTENCE_TEMP		't' /* temporary table */
@@ -200,9 +206,7 @@ DECLARE_INDEX(pg_class_tblspc_relfilenode_index, 3455, ClassTblspcRelfilenodeInd
 	 (relkind) == RELKIND_INDEX || \
 	 (relkind) == RELKIND_SEQUENCE || \
 	 (relkind) == RELKIND_TOASTVALUE || \
-	 (relkind) == RELKIND_AOSEGMENTS || \
-	 (relkind) == RELKIND_AOVISIMAP || \
-	 (relkind) == RELKIND_AOBLOCKDIR || \
+	 RELKIND_IS_AO_AUX(relkind) || \
 	 (relkind) == RELKIND_MATVIEW)
 
 #define RELKIND_HAS_PARTITIONS(relkind) \

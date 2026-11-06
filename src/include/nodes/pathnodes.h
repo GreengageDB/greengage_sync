@@ -4,15 +4,9 @@
  *	  Definitions for planner's internal data structures, especially Paths.
  *
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/nodes/pathnodes.h
@@ -907,15 +901,9 @@ typedef struct RelOptInfo
 	List	   *indexlist;		/* list of IndexOptInfo */
 	List	   *statlist;		/* list of StatisticExtInfo */
 	BlockNumber pages;			/* size estimates derived from pg_class */
-<<<<<<< HEAD
-	double		tuples;
+	Cardinality	tuples;
     struct GpPolicy   *cdbpolicy;      /* distribution of stored tuples */
 	Oid			relam;			/* form_pg_class access method */
-||||||| 3b231596ccf
-	double		tuples;
-=======
-	Cardinality	tuples;
->>>>>>> c4cc2850f4d
 	double		allvisfrac;
 	Bitmapset  *eclass_indexes; /* Indexes in PlannerInfo's eq_classes list of
 								 * ECs that mention this rel */

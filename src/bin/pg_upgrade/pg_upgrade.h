@@ -3,14 +3,8 @@
 /*
  *	pg_upgrade.h
  *
-<<<<<<< HEAD
  *	Portions Copyright (c) 2016-Present, VMware, Inc. or its affiliates
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
-=======
  *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  *	src/bin/pg_upgrade/pg_upgrade.h
  */
 
@@ -99,47 +93,10 @@ extern char *output_files[];
 #endif
 
 
-<<<<<<< HEAD
 #define atooid(x)  ((Oid) strtoul((x), NULL, 10))
 
-/* OID system catalog preservation added during PG 9.0 development */
-#define TABLE_SPACE_SUBDIRS_CAT_VER 201001111
-/* postmaster/postgres -b (binary_upgrade) flag added during PG 9.1 development */
-/* In GPDB, it was introduced during GPDB 5.0 development. */
-#define BINARY_UPGRADE_SERVER_FLAG_CAT_VER 301607301
-
-/*
- *	Visibility map changed with this 9.2 commit,
- *	8f9fe6edce358f7904e0db119416b4d1080a83aa; pick later catalog version.
- */
-#define VISIBILITY_MAP_CRASHSAFE_CAT_VER 201107031
-
-/*
- * change in JSONB format during 9.4 beta
- */
-#define JSONB_FORMAT_CHANGE_CAT_VER 201409291
-
-/*
- * The format of visibility map is changed with this 9.6 commit,
-||||||| 3b231596ccf
-/*
- * postmaster/postgres -b (binary_upgrade) flag added during PG 9.1
- * development
- */
-#define BINARY_UPGRADE_SERVER_FLAG_CAT_VER 201104251
-
-/*
- *	Visibility map changed with this 9.2 commit,
- *	8f9fe6edce358f7904e0db119416b4d1080a83aa; pick later catalog version.
- */
-#define VISIBILITY_MAP_CRASHSAFE_CAT_VER 201107031
-
-/*
- * The format of visibility map is changed with this 9.6 commit,
-=======
 /*
  * The format of visibility map was changed with this 9.6 commit.
->>>>>>> c4cc2850f4d
  */
 #define VISIBILITY_MAP_FROZEN_BIT_CAT_VER 201603011
 
