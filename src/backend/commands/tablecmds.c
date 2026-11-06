@@ -4332,10 +4332,10 @@ RenameRelation(RenameStmt *stmt)
 	}
 
 	/*
-	 * Grab an exclusive lock on the target table, index, sequence
-	 * or view, which we will NOT release until end of transaction.
+	 * Open the relation using the lock acquired above, which we will NOT
+	 * release until end of transaction.
 	 */
-	targetrelation = relation_open(relid, AccessExclusiveLock);
+	targetrelation = relation_open(relid, NoLock);
 	oldrelname = pstrdup(RelationGetRelationName(targetrelation));
 
 	/* Do the work */
@@ -4345,7 +4345,7 @@ RenameRelation(RenameStmt *stmt)
 		GpRenameChildPartitions(targetrelation, oldrelname, stmt->newname);
 
 	/*
-	 * Close rel, but keep exclusive lock!
+	 * Close rel, but keep lock!
 	 */
 	relation_close(targetrelation, NoLock);
 
