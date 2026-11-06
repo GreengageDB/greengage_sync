@@ -43,7 +43,6 @@
 #include "catalog/pg_database.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_subscription.h"
-#include "executor/instrument.h"
 #include "common/ip.h"
 #include "executor/instrument.h"
 #include "libpq/libpq.h"
@@ -3422,20 +3421,26 @@ pgstat_send_qd_tabstats(void)
 				 * No need to send catalog table's pgstat to QD since if the catalog
 				 * table get updated on QE, QD should have the same update.
 				 */
+				pfree(gppolicy);
 				continue;
 			case POLICYTYPE_REPLICATED:
 				/*
 				 * gppolicy->numsegments has the same value on all segments even when we are doing expand.
 				 */
 				if (GpIdentity.segindex != tabstat->t_id % gppolicy->numsegments)
+				{
+					pfree(gppolicy);
 					continue;
+				}
 				break;
 			case POLICYTYPE_PARTITIONED:
 				break;
 			default:
 				elog(ERROR, "unrecognized policy type %d", gppolicy->ptype);
 		}
+		pfree(gppolicy);
 
+		MemSet(&record, 0, sizeof(record));
 		record.table_stat.tuples_inserted = trans->tuples_inserted;
 		record.table_stat.tuples_updated = trans->tuples_updated;
 		record.table_stat.tuples_deleted = trans->tuples_deleted;
@@ -3475,6 +3480,7 @@ pgstat_send_qd_tabstats(void)
 		pq_sendbytes(&buf, stat_data.data, stat_data.len);
 		pq_endmessage(&buf);
 	}
+	pfree(stat_data.data);
 }
 
 /*
@@ -3499,7 +3505,6 @@ pgstat_combine_one_qe_result(List **oidList, struct pg_result *pgresult,
 {
 	int						arrayLen;
 	PgStatTabRecordFromQE  *records;
-	PgStat_SubXactStatus   *xact_state;
 	PgStat_TableStatus	   *pgstat_info;
 	PgStat_TableXactStatus *trans;
 
@@ -3509,14 +3514,14 @@ pgstat_combine_one_qe_result(List **oidList, struct pg_result *pgresult,
 	* If this is the first rel to be modified at the current nest level,
 	* we first have to push a transaction stack entry.
 	*/
-	xact_state = get_tabstat_stack_level(nest_level);
+	get_tabstat_stack_level(nest_level);
 
 	arrayLen = pgresult->extraslen / sizeof(PgStatTabRecordFromQE);
 	records = (PgStatTabRecordFromQE *) pgresult->extras;
 	for (int i = 0; i < arrayLen; i++)
 	{
 		char		   *relname;
-		Assert(records[i].nest_level = nest_level);
+		Assert(records[i].nest_level == nest_level);
 
 		relname = get_rel_name(records[i].table_stat.t_id);
 		if (!relname)
