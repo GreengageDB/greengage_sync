@@ -254,9 +254,7 @@ pgstat_relation(Relation rel, FunctionCallInfo fcinfo)
 
 	if (RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind) ||
 		rel->rd_rel->relkind == RELKIND_SEQUENCE ||
-		rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||
-		rel->rd_rel->relkind == RELKIND_AOBLOCKDIR ||
-		rel->rd_rel->relkind == RELKIND_AOVISIMAP)
+		RELKIND_IS_AO_AUX(rel->rd_rel->relkind))
 	{
 			return pgstat_heap(rel, fcinfo);
 	}

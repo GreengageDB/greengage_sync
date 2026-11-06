@@ -1200,9 +1200,7 @@ estimate_rel_size(Relation rel, int32 *attr_widths,
 	double		density;
 
 	if (RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind) ||
-		rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||
-		rel->rd_rel->relkind == RELKIND_AOBLOCKDIR ||
-		rel->rd_rel->relkind == RELKIND_AOVISIMAP)
+		RELKIND_IS_AO_AUX(rel->rd_rel->relkind))
 	{
 			table_relation_estimate_size(rel, attr_widths, pages, tuples,
 										 allvisfrac);

@@ -444,9 +444,7 @@ heap_create(const char *relname,
 			table_relation_set_new_filenode(rel, &rel->rd_node,
 											relpersistence,
 											relfrozenxid, relminmxid);
-		else if (rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||
-				 rel->rd_rel->relkind == RELKIND_AOVISIMAP ||
-				 rel->rd_rel->relkind == RELKIND_AOBLOCKDIR)
+		else if (RELKIND_IS_AO_AUX(rel->rd_rel->relkind))
 		{
 			Assert(rel->rd_tableam);
 			table_relation_set_new_filenode(rel, &rel->rd_node,
