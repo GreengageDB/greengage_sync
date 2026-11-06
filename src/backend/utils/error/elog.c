@@ -4444,17 +4444,11 @@ send_message_to_server_log(ErrorData *edata)
 		 * If stderr redirection is active, it was OK to write to stderr above
 		 * because that's really a pipe to the syslogger process.
 		 */
-		else if (pgwin32_is_service() && (!redirection_done || MyBackendType == B_LOGGER) )
+		else if (pgwin32_is_service())
 			write_eventlog(edata->elevel, buf.data, buf.len);
 #endif
-			/* only use the chunking protocol if we know the syslogger should
-			 * be catching stderr output, and we are not ourselves the
-			 * syslogger. Otherwise, go directly to stderr.
-			 */
-			if (redirection_done && MyBackendType != B_LOGGER)
-				write_pipe_chunks(buf.data, buf.len, LOG_DESTINATION_STDERR);
-			else
-				write_console(buf.data, buf.len);
+		else
+			write_console(buf.data, buf.len);
 	}
 
 	/* If in the syslogger process, try to write messages direct to file */

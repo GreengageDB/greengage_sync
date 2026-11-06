@@ -135,7 +135,8 @@ ignore_returned_result(long long int result)
 
 static bool chunk_is_postgres_chunk(PipeProtoHeader *hdr)
 {
-    return hdr->zero == 0 && hdr->pid != 0 && hdr->thid != 0 &&
+	return hdr->zero == 0 && hdr->len > 0 && hdr->len <= PIPE_MAX_PAYLOAD &&
+		hdr->pid != 0 && hdr->thid != 0 &&
 		(hdr->log_format == 't' || hdr->log_format == 'c') &&
 		(hdr->is_last == 't' || hdr->is_last == 'f');
 }
@@ -1934,10 +1935,10 @@ static void syslogger_handle_chunk(PipeProtoChunk *chunk)
  * This routine interprets the log pipe protocol which sends log messages as
  * (hopefully atomic) chunks - such chunks are detected and reassembled here.
  *
- * The protocol has a header that starts with two nul bytes, then has a 16 bit
- * length, the pid of the sending process, and a flag to indicate if it is
- * the last chunk in a message. Incomplete chunks are saved until we read some
- * more, and non-final chunks are accumulated until we get the final chunk.
+ * The protocol has a header that starts with a 32-bit zero, followed by a
+ * 32-bit length, the pid and thread id of the sending process, and flags that
+ * describe the chunk. Incomplete chunks are saved until we read some more, and
+ * non-final chunks are accumulated until we get the final chunk.
  *
  * All of this is to avoid 2 problems:
  * . partial messages being written to logfiles (messes rotation), and
@@ -1956,28 +1957,18 @@ process_pipe_input(char *logbuffer, int *bytes_in_logbuffer)
 {
 	char	   *cursor = logbuffer;
 	int			count = *bytes_in_logbuffer;
-	int			dest = LOG_DESTINATION_STDERR;
 
 	/* While we have enough for a header, process data... */
-	while (count >= (int) (offsetof(PipeProtoHeader, data) + 1))
+	while (count >= PIPE_HEADER_SIZE)
 	{
 		PipeProtoHeader p;
 		int			chunklen;
 
 		/* Do we have a valid header? */
-		memcpy(&p, cursor, offsetof(PipeProtoHeader, data));
-		if (p.nuls[0] == '\0' && p.nuls[1] == '\0' &&
-			p.len > 0 && p.len <= PIPE_MAX_PAYLOAD &&
-			p.pid != 0 &&
-			p.thid != 0 &&
-			(p.is_last == 't' || p.is_last == 'f' ||
-			 p.is_last == 'T' || p.is_last == 'F'))
+		memcpy(&p, cursor, PIPE_HEADER_SIZE);
+		if (chunk_is_postgres_chunk(&p))
 		{
-			List	   *buffer_list;
-			ListCell   *cell;
-			save_buffer *existing_slot = NULL,
-					   *free_slot = NULL;
-			StringInfo	str;
+			PipeProtoChunk *chunk;
 
 			chunklen = PIPE_HEADER_SIZE + p.len;
 
@@ -1985,8 +1976,10 @@ process_pipe_input(char *logbuffer, int *bytes_in_logbuffer)
 			if (count < chunklen)
 				break;
 
-			dest = (p.log_format == 'c' || p.log_format == 'f') ?
-			 	LOG_DESTINATION_CSVLOG : LOG_DESTINATION_STDERR;
+			/* Reassemble and write the chunk using Greengage's chunk lists. */
+			chunk = get_avail_chunk();
+			memcpy(chunk, cursor, chunklen);
+			syslogger_handle_chunk(chunk);
 
 			/* Finished processing this chunk */
 			cursor += chunklen;
@@ -2011,7 +2004,7 @@ process_pipe_input(char *logbuffer, int *bytes_in_logbuffer)
 					break;
 			}
 			/* fall back on the stderr log as the destination */
-			write_syslogger_file(cursor, chunklen /*, LOG_DESTINATION_STDERR*/);
+			write_syslogger_file(cursor, chunklen, LOG_DESTINATION_STDERR);
 			cursor += chunklen;
 			count -= chunklen;
 		}
@@ -2032,7 +2025,13 @@ process_pipe_input(char *logbuffer, int *bytes_in_logbuffer)
 static void
 flush_pipe_input(char *logbuffer, int *bytes_in_logbuffer)
 {
-    syslogger_flush_chunks(); 
+	/* Write any unprocessed input remaining at EOF. */
+	if (*bytes_in_logbuffer > 0)
+		write_syslogger_file(logbuffer, *bytes_in_logbuffer,
+							 LOG_DESTINATION_STDERR);
+	*bytes_in_logbuffer = 0;
+
+	syslogger_flush_chunks();
 }
 #endif
 
@@ -2139,7 +2138,7 @@ pipeThread(void *arg)
 		 * section.
 		 */
 		EnterCriticalSection(&sysloggerSection);
-		if (result)
+		if (!result)
 		{
 			DWORD		error = GetLastError();
 
