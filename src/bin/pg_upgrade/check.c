@@ -3,7 +3,7 @@
  *
  *	server checks and output routines
  *
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/check.c
  */
 
@@ -170,6 +170,7 @@ check_and_dump_old_cluster(bool live_check, char **sequence_script_file_name)
 	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 903)
 		old_9_3_check_for_line_data_type_usage(&old_cluster);
 
+<<<<<<< HEAD
 	/*
 	 * GPDB_90_MERGE_FIXME: does enabling this work, we don't really support
 	 * large objects but if this works it would be nice to minimize the diff
@@ -185,6 +186,13 @@ check_and_dump_old_cluster(bool live_check, char **sequence_script_file_name)
 		check_for_appendonly_materialized_view_with_relfrozenxid(&old_cluster);
 	}
 
+||||||| 3b231596ccf
+	/* Pre-PG 9.0 had no large object permissions */
+	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 804)
+		new_9_0_populate_pg_largeobject_metadata(&old_cluster, true);
+
+=======
+>>>>>>> c4cc2850f4d
 	/*
 	 * While not a check option, we do this now because this is the only time
 	 * the old server is running.
@@ -267,11 +275,19 @@ issue_warnings_and_set_wal_level(char *sequence_script_file_name)
 	 */
 	start_postmaster(&new_cluster, true);
 
+<<<<<<< HEAD
 	/* GPDB_90_MERGE_FIXME: See earlier comment on large objects */
 	/* Create dummy large object permissions for old < PG 9.0? */
 	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 804)
 		new_9_0_populate_pg_largeobject_metadata(&new_cluster, false);
 
+||||||| 3b231596ccf
+	/* Create dummy large object permissions for old < PG 9.0? */
+	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 804)
+		new_9_0_populate_pg_largeobject_metadata(&new_cluster, false);
+
+=======
+>>>>>>> c4cc2850f4d
 	/* Reindex hash indexes for old < 10.0 */
 	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 906)
 		old_9_6_invalidate_hash_indexes(&new_cluster, false);
@@ -329,6 +345,7 @@ check_cluster_versions(void)
 	 * upgrades
 	 */
 
+<<<<<<< HEAD
 	/*
 	 * Upgrading from anything older than an 8.3 based Greenplum (GPDB5) is not supported.
 	 */
@@ -349,6 +366,13 @@ check_cluster_versions(void)
 
 	/* cluster versions should already have been obtained */
 	Assert(new_cluster.major_version != 0);
+||||||| 3b231596ccf
+	if (GET_MAJOR_VERSION(old_cluster.major_version) < 804)
+		pg_fatal("This utility can only upgrade from PostgreSQL version 8.4 and later.\n");
+=======
+	if (GET_MAJOR_VERSION(old_cluster.major_version) < 902)
+		pg_fatal("This utility can only upgrade from PostgreSQL version 9.2 and later.\n");
+>>>>>>> c4cc2850f4d
 
 	/* Only current PG version is supported as a target */
 	if (GET_MAJOR_VERSION(new_cluster.major_version) != GET_MAJOR_VERSION(PG_VERSION_NUM))
@@ -384,6 +408,7 @@ check_cluster_compatibility(bool live_check)
 		check_control_data(&old_cluster.controldata, &new_cluster.controldata);
 	}
 
+<<<<<<< HEAD
 	/* We read the real port number for PG >= 9.1 */
 	if (live_check && GET_MAJOR_VERSION(old_cluster.major_version) <= 900 &&
 		old_cluster.port == DEF_PGUPORT)
@@ -396,6 +421,21 @@ check_cluster_compatibility(bool live_check)
 			pg_fatal("When checking a live server, "
 					 "the old and new port numbers must be different.\n");
 	}
+||||||| 3b231596ccf
+	/* We read the real port number for PG >= 9.1 */
+	if (live_check && GET_MAJOR_VERSION(old_cluster.major_version) <= 900 &&
+		old_cluster.port == DEF_PGUPORT)
+		pg_fatal("When checking a pre-PG 9.1 live old server, "
+				 "you must specify the old server's port number.\n");
+
+	if (live_check && old_cluster.port == new_cluster.port)
+		pg_fatal("When checking a live server, "
+				 "the old and new port numbers must be different.\n");
+=======
+	if (live_check && old_cluster.port == new_cluster.port)
+		pg_fatal("When checking a live server, "
+				 "the old and new port numbers must be different.\n");
+>>>>>>> c4cc2850f4d
 }
 
 
@@ -543,11 +583,6 @@ check_databases_are_compatible(void)
  * they do, it would cause an error while restoring global objects.
  * This allows the failure to be detected at check time, rather than
  * during schema restore.
- *
- * Note, v8.4 has no tablespace_suffix, which is fine so long as the
- * version being upgraded *to* has a suffix, since it's not allowed
- * to pg_upgrade from a version to the same version if tablespaces are
- * in use.
  */
 static void
 check_for_new_tablespace_dir(ClusterInfo *new_cluster)
@@ -661,11 +696,6 @@ create_script_for_old_cluster_deletion(char **deletion_script_file_name)
 			int			dbnum;
 
 			fprintf(script, "\n");
-			/* remove PG_VERSION? */
-			if (GET_MAJOR_VERSION(old_cluster.major_version) <= 804)
-				fprintf(script, RM_CMD " %s%cPG_VERSION\n",
-						fix_path_separator(os_info.old_tablespaces[tblnum]),
-						PATH_SEPARATOR);
 
 			for (dbnum = 0; dbnum < old_cluster.dbarr.ndbs; dbnum++)
 				fprintf(script, RMDIR_CMD " %c%s%c%u%c\n", PATH_QUOTE,

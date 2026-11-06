@@ -1,0 +1,182 @@
+# Keeps <prefix>-test equal to <prefix>-base with every unit branch
+# <prefix>-uocN merged in, so CI on the test PR covers the review fixes made
+# in the unit PRs, whoever makes them.
+#
+# A sync batch is reviewed as one PR per unit of change, <prefix>-uocN ->
+# <prefix>-base, where <prefix>-base is the upstream merge commit with its
+# conflict markers.  <prefix>-test is the octopus merge of <prefix>-base and all
+# unit branches; its PR into <prefix>-base runs CI.  When a unit PR changes
+# (new commits, reopened, merged into the base), the unit branches and the
+# base that the test branch does not contain yet are merged into it.  A unit's
+# own change is already on both sides, so only the new commits come in.
+#
+# A branch that conflicts with the test branch is left out and the rest are
+# merged and pushed anyway; every later run retries it.  The conflict is
+# reported once per branch head in a comment on the unit's PR (on this PR for
+# the base).  The job fails only when this PR's unit or the base is left out.
+#
+# It runs on pull_request, whose workflow file comes from the PR's merge ref,
+# so the file lives on <prefix>-base (pull_request_target would take it from
+# the default branch).  Remove it before the batch is merged further.  It only
+# acts on PRs from branches of this repository and only merges branches.
+#
+# A push made with GITHUB_TOKEN by github-actions[bot] leaves the CI runs it
+# causes on the test PR waiting for approval (action_required), so after the
+# push this workflow approves the runs of the new test head.  With a token in
+# the SYNC_PUSH_TOKEN secret (a fine-grained PAT or app token with "Contents:
+# write") the push is made as that user and the runs start on their own.
+#
+# Unit branches must not be force-pushed: a rewritten commit that the test
+# branch already contains cannot be merged again cleanly.
+
+name: Sync unit PRs into the test branch
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+    branches: ['sync-*-base']
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: sync-uoc-test-${{ github.event.pull_request.base.ref }}
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge unit branches into the test branch
+        id: merge
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          PUSH_TOKEN: ${{ secrets.SYNC_PUSH_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          prefix=${BASE%-base}
+          test=$prefix-test
+          if ! [[ "$HEAD" =~ ^${prefix}-uoc[0-9]+$ ]]; then
+            echo "not a unit branch: $HEAD"; exit 0
+          fi
+
+          git init -q work && cd work
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote add origin "https://x-access-token:${PUSH_TOKEN}@github.com/${REPO}.git"
+          # commits and trees only; the blobs a merge needs are fetched on demand
+          git fetch -q --no-tags --filter=blob:none --depth=300 origin \
+            "+refs/heads/${prefix}-*:refs/remotes/origin/${prefix}-*"
+          if ! git rev-parse -q --verify "refs/remotes/origin/$test" >/dev/null; then
+            echo "no $test branch, nothing to do"; exit 0
+          fi
+
+          branches=()
+          # only <prefix>-uoc<N>, not other branches that share the prefix
+          units=$(git for-each-ref --format='%(refname:short)' "refs/remotes/origin/${prefix}-uoc*" \
+                  | grep -E "^origin/${prefix}-uoc[0-9]+$" | sort -V || true)
+          for ref in $units "origin/$BASE"; do
+            git merge-base --is-ancestor "$ref" "origin/$test" || branches+=("$ref")
+          done
+          if [ ${#branches[@]} -eq 0 ]; then
+            echo "$test already contains every unit branch and $BASE"; exit 0
+          fi
+          echo "merging into $test: ${branches[*]#origin/}"
+
+          # this PR's unit first, so that a conflict between it and a unit left
+          # out by an earlier run is put down to the latter
+          ordered=()
+          for b in "${branches[@]}"; do [ "$b" != "origin/$HEAD" ] || ordered+=("$b"); done
+          for b in "${branches[@]}"; do [ "$b" = "origin/$HEAD" ] || ordered+=("$b"); done
+
+          # every run retries a left-out branch, so comment once per branch head
+          report() {
+            local pr=$1 b=$2 files=$3 marker comments
+            marker="<!-- sync-uoc-test ${b#origin/} $(git rev-parse "$b") -->"
+            comments=$(gh api --paginate "repos/$REPO/issues/$pr/comments" --jq '.[].body' || true)
+            if grep -qF -- "$marker" <<<"$comments"; then return 0; fi
+            gh pr comment "$pr" --repo "$REPO" --body "Could not merge \`${b#origin/}\` into \`$test\` automatically, so \`$test\` and its CI go without it for now. Conflicting files:"$'\n\n'"${files:-(none, see the log of run $GITHUB_RUN_ID)}"$'\n\n'"Merge it into \`$test\` by hand."$'\n\n'"$marker" || true
+          }
+
+          git checkout -q --detach "origin/$test"
+          msg="Merge review fixes into $test (PR #$PR)
+
+          $(for b in "${ordered[@]}"; do echo "- ${b#origin/}: $(git log -1 --format=%s "$b")"; done)"
+
+          skipped=() failed=
+          if ! git merge -q --no-ff --no-edit -m "$msg" "${ordered[@]}"; then
+            git merge --abort 2>/dev/null || git reset -q --hard
+            for b in "${ordered[@]}"; do
+              m="Merge ${b#origin/} into $test (PR #$PR)"$'\n\n'"- ${b#origin/}: $(git log -1 --format=%s "$b")"
+              git merge -q --no-ff --no-edit -m "$m" "$b" && continue
+              files=$(git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/')
+              git merge --abort 2>/dev/null || git reset -q --hard
+              skipped+=("$b")
+              if [ "$b" = "origin/$HEAD" ] || [ "$b" = "origin/$BASE" ]; then
+                echo "::error::conflict merging ${b#origin/} into $test"
+                failed=1
+                report "$PR" "$b" "$files"
+              else
+                echo "::warning::conflict merging ${b#origin/} into $test, left out"
+                pr=$(gh pr list --repo "$REPO" --head "${b#origin/}" --base "$BASE" \
+                       --json number --jq '.[0].number // empty' || true)
+                [ -z "$pr" ] || report "$pr" "$b" "$files"
+              fi
+            done
+          fi
+          [ -z "$failed" ] || echo "failed=1" >> "$GITHUB_OUTPUT"
+          for b in "${skipped[@]}"; do
+            echo "left out \`${b#origin/}\`: it conflicts with \`$test\`" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          if [ "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse "origin/$test^{tree}")" ]; then
+            # e.g. a unit PR merged into the base: nothing new for CI to test
+            echo "the tree of $test does not change, not pushing"; exit 0
+          fi
+          git --no-pager diff --stat "origin/$test" HEAD
+          git push origin "HEAD:refs/heads/$test"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "updated $test to $(git rev-parse --short HEAD)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Approve the CI runs of the new test head
+        if: steps.merge.outputs.sha != ''
+        env:
+          SHA: ${{ steps.merge.outputs.sha }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          # the runs of the test PR appear a few seconds after the push
+          ids=
+          for i in $(seq 1 30); do
+            ids=$(gh api "repos/$REPO/actions/runs?head_sha=$SHA&status=action_required" \
+                    --jq '.workflow_runs[].id')
+            [ -n "$ids" ] && break
+            sleep 10
+          done
+          if [ -z "$ids" ]; then
+            echo "no CI run of $SHA waits for approval"; exit 0
+          fi
+          for id in $ids; do
+            if gh api -X POST "repos/$REPO/actions/runs/$id/approve" >/dev/null; then
+              echo "approved run $id"
+            else
+              echo "::warning::could not approve run $id; approve it on the test PR"
+            fi
+          done
+
+      # after the push and the approval, so that the other units are not held up
+      - name: Fail if this PR's unit or the base was left out
+        if: steps.merge.outputs.failed != ''
+        env:
+          HEAD: ${{ github.event.pull_request.head.ref }}
+        run: |
+          echo "::error::$HEAD or its base conflicts with the test branch, see the PR comment"
+          exit 1

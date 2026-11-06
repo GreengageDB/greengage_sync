@@ -38,7 +38,7 @@
  *
  * This code is released under the terms of the PostgreSQL License.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/bin/initdb/initdb.c
@@ -66,6 +66,7 @@
 #include "common/file_perm.h"
 #include "common/file_utils.h"
 #include "common/logging.h"
+#include "common/pg_prng.h"
 #include "common/restricted_token.h"
 #include "common/string.h"
 #include "common/username.h"
@@ -202,8 +203,16 @@ static bool authwarning = false;
  * but here it is more convenient to pass it as an environment variable
  * (no quoting to worry about).
  */
+<<<<<<< HEAD
 static const char *boot_options = "-F";
 static const char *backend_options = "--single -F -O -j -c gp_role=utility -c search_path=pg_catalog -c exit_on_error=true";
+||||||| 3b231596ccf
+static const char *boot_options = "-F";
+static const char *backend_options = "--single -F -O -j -c search_path=pg_catalog -c exit_on_error=true";
+=======
+static const char *boot_options = "-F -c log_checkpoints=false";
+static const char *backend_options = "--single -F -O -j -c search_path=pg_catalog -c exit_on_error=true -c log_checkpoints=false";
+>>>>>>> c4cc2850f4d
 
 /* Additional switches to pass to backend (either boot or standalone) */
 static char *extra_options = "";
@@ -889,9 +898,10 @@ choose_dsm_implementation(void)
 {
 #ifdef HAVE_SHM_OPEN
 	int			ntries = 10;
+	pg_prng_state prng_state;
 
-	/* Initialize random(); this function is its only user in this program. */
-	srandom((unsigned int) (getpid() ^ time(NULL)));
+	/* Initialize prng; this function is its only user in this program. */
+	pg_prng_seed(&prng_state, (uint64) (getpid() ^ time(NULL)));
 
 	while (ntries > 0)
 	{
@@ -899,7 +909,7 @@ choose_dsm_implementation(void)
 		char		name[64];
 		int			fd;
 
-		handle = random();
+		handle = pg_prng_uint32(&prng_state);
 		snprintf(name, 64, "/PostgreSQL.%u", handle);
 		if ((fd = shm_open(name, O_CREAT | O_RDWR | O_EXCL, 0600)) != -1)
 		{
@@ -1440,7 +1450,7 @@ bootstrap_template1(void)
 	unsetenv("PGCLIENTENCODING");
 
 	snprintf(cmd, sizeof(cmd),
-			 "\"%s\" --boot -X %u %s %s %s %s",
+			 "\"%s\" --boot -X %d %s %s %s %s",
 			 backend_exec,
 			 wal_segment_size_mb * (1024 * 1024),
 			 data_checksums ? "-k" : "",
@@ -1531,7 +1541,7 @@ get_su_pwd(void)
 						 pwfilename);
 			exit(1);
 		}
-		pwd1 = pg_get_line(pwf);
+		pwd1 = pg_get_line(pwf, NULL);
 		if (!pwd1)
 		{
 			if (ferror(pwf))
@@ -1674,8 +1684,7 @@ setup_privileges(FILE *cmdfd)
 		CppAsString2(RELKIND_VIEW) ", " CppAsString2(RELKIND_MATVIEW) ", "
 		CppAsString2(RELKIND_SEQUENCE) ")"
 		"  AND relacl IS NULL;\n\n",
-		"GRANT USAGE ON SCHEMA pg_catalog TO PUBLIC;\n\n",
-		"GRANT CREATE, USAGE ON SCHEMA public TO PUBLIC;\n\n",
+		"GRANT USAGE ON SCHEMA pg_catalog, public TO PUBLIC;\n\n",
 		"REVOKE ALL ON pg_largeobject FROM PUBLIC;\n\n",
 		"INSERT INTO pg_init_privs "
 		"  (objoid, classoid, objsubid, initprivs, privtype)"

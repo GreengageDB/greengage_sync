@@ -3,7 +3,7 @@
  *
  *	database server functions
  *
- *	Copyright (c) 2010-2021, PostgreSQL Global Development Group
+ *	Copyright (c) 2010-2022, PostgreSQL Global Development Group
  *	src/bin/pg_upgrade/server.c
  */
 
@@ -235,14 +235,7 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 #endif
 
 	/*
-	 * Since PG 9.1, we have used -b to disable autovacuum.  For earlier
-	 * releases, setting autovacuum=off disables cleanup vacuum and analyze,
-	 * but freeze vacuums can still happen, so we set
-	 * autovacuum_freeze_max_age to its maximum.
-	 * (autovacuum_multixact_freeze_max_age was introduced after 9.1, so there
-	 * is no need to set that.)  We assume all datfrozenxid and relfrozenxid
-	 * values are less than a gap of 2000000000 from the current xid counter,
-	 * so autovacuum will not touch them.
+	 * Use -b to disable autovacuum.
 	 *
 	 * Turn off durability requirements to improve object creation speed, and
 	 * we only modify the new cluster, so only use it there.  If there is a
@@ -266,14 +259,27 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 	}
 
 	snprintf(cmd, sizeof(cmd),
+<<<<<<< HEAD
 			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -c %s %s%s %s%s %s\" start",
+||||||| 3b231596ccf
+			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d%s%s %s%s\" start",
+=======
+			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -b%s %s%s\" start",
+>>>>>>> c4cc2850f4d
 			 cluster->bindir, SERVER_LOG_FILE, cluster->pgconfig, cluster->port,
+<<<<<<< HEAD
 			 (GET_MAJOR_VERSION(cluster->major_version) < 1200) ?
 			 "gp_session_role=utility" :
 			 "gp_role=utility",
 			 (cluster->controldata.cat_ver >=
 			  BINARY_UPGRADE_SERVER_FLAG_CAT_VER) ? " -b" :
 			 " -c autovacuum=off -c autovacuum_freeze_max_age=2000000000",
+||||||| 3b231596ccf
+			 (cluster->controldata.cat_ver >=
+			  BINARY_UPGRADE_SERVER_FLAG_CAT_VER) ? " -b" :
+			 " -c autovacuum=off -c autovacuum_freeze_max_age=2000000000",
+=======
+>>>>>>> c4cc2850f4d
 			 (cluster == &new_cluster) ?
 			 " -c synchronous_commit=off -c fsync=off -c full_page_writes=off -c vacuum_defer_cleanup_age=0" : "",
 			 cluster->pgopts ? cluster->pgopts : "", socket_string, version_opts);

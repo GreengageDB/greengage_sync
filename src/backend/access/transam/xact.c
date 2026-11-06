@@ -5,7 +5,7 @@
  *
  * See src/backend/access/transam/README for more information.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -43,6 +43,7 @@
 #include "commands/resgroupcmds.h"
 #include "commands/tablecmds.h"
 #include "commands/trigger.h"
+#include "common/pg_prng.h"
 #include "executor/spi.h"
 #include "libpq/be-fsstubs.h"
 #include "libpq/pqsignal.h"
@@ -52,6 +53,7 @@
 #include "replication/logical.h"
 #include "replication/logicallauncher.h"
 #include "replication/origin.h"
+#include "replication/snapbuild.h"
 #include "replication/syncrep.h"
 #include "replication/walsender.h"
 #include "storage/condition_variable.h"
@@ -242,8 +244,14 @@ typedef struct TransactionStateData
 	bool		didLogXid;		/* has xid been included in WAL record? */
 	int			parallelModeLevel;	/* Enter/ExitParallelMode counter */
 	bool		chain;			/* start a new block after this one */
+<<<<<<< HEAD
 	bool		executorSaysXactDoesWrites;	/* GP executor says xact does writes */
 	bool		assigned;		/* assigned to top-level XID */
+||||||| 3b231596ccf
+	bool		assigned;		/* assigned to top-level XID */
+=======
+	bool		topXidLogged;	/* for a subxact: is top-level XID logged? */
+>>>>>>> c4cc2850f4d
 	struct TransactionStateData *parent;	/* back link to parent */
 	struct TransactionStateData *fastLink;	/* back link to jump to parent for efficient search */
 } TransactionStateData;
@@ -283,7 +291,7 @@ typedef struct SerializedTransactionState
 static TransactionStateData TopTransactionStateData = {
 	.state = TRANS_DEFAULT,
 	.blockState = TBLOCK_DEFAULT,
-	.assigned = false,
+	.topXidLogged = false,
 };
 
 /*
@@ -631,10 +639,63 @@ MarkCurrentTransactionIdLoggedIfAny(void)
 		CurrentTransactionState->didLogXid = true;
 }
 
+<<<<<<< HEAD
 void
 MarkTopTransactionWriteXLogOnExecutor(void)
 {
 	TopXactexecutorDidWriteXLog = true;
+||||||| 3b231596ccf
+=======
+/*
+ * IsSubxactTopXidLogPending
+ *
+ * This is used to decide whether we need to WAL log the top-level XID for
+ * operation in a subtransaction.  We require that for logical decoding, see
+ * LogicalDecodingProcessRecord.
+ *
+ * This returns true if wal_level >= logical and we are inside a valid
+ * subtransaction, for which the assignment was not yet written to any WAL
+ * record.
+ */
+bool
+IsSubxactTopXidLogPending(void)
+{
+	/* check whether it is already logged */
+	if (CurrentTransactionState->topXidLogged)
+		return false;
+
+	/* wal_level has to be logical */
+	if (!XLogLogicalInfoActive())
+		return false;
+
+	/* we need to be in a transaction state */
+	if (!IsTransactionState())
+		return false;
+
+	/* it has to be a subtransaction */
+	if (!IsSubTransaction())
+		return false;
+
+	/* the subtransaction has to have a XID assigned */
+	if (!TransactionIdIsValid(GetCurrentTransactionIdIfAny()))
+		return false;
+
+	return true;
+}
+
+/*
+ * MarkSubxactTopXidLogged
+ *
+ * Remember that the top transaction id for the current subtransaction is WAL
+ * logged now.
+ */
+void
+MarkSubxactTopXidLogged(void)
+{
+	Assert(IsSubxactTopXidLogPending());
+
+	CurrentTransactionState->topXidLogged = true;
+>>>>>>> c4cc2850f4d
 }
 
 /*
@@ -2386,7 +2447,7 @@ StartTransaction(void)
 	/* Determine if statements are logged in this transaction */
 	xact_is_sampled = log_xact_sample_rate != 0 &&
 		(log_xact_sample_rate == 1 ||
-		 random() <= log_xact_sample_rate * MAX_RANDOM_VALUE);
+		 pg_prng_double(&pg_global_prng_state) <= log_xact_sample_rate);
 
 	/*
 	 * initialize current transaction state fields
@@ -3022,7 +3083,17 @@ CommitTransaction(void)
 
 	AtCommit_TablespaceStorage();
 
+	/*
+	 * Send out notification signals to other backends (and do other
+	 * post-commit NOTIFY cleanup).  This must not happen until after our
+	 * transaction is fully done from the viewpoint of other backends.
+	 */
 	AtCommit_Notify();
+
+	/*
+	 * Everything after this should be purely internal-to-this-backend
+	 * cleanup.
+	 */
 	AtEOXact_GUC(true, 1);
 	AtEOXact_SPI(true);
 	AtEOXact_Enum();
@@ -3292,6 +3363,13 @@ PrepareTransaction(void)
 	XactLastRecEnd = 0;
 
 	/*
+	 * Transfer our locks to a dummy PGPROC.  This has to be done before
+	 * ProcArrayClearTransaction().  Otherwise, a GetLockConflicts() would
+	 * conclude "xact already committed or aborted" for our locks.
+	 */
+	PostPrepare_Locks(xid);
+
+	/*
 	 * Let others know about no transaction in progress by me.  This has to be
 	 * done *after* the prepared transaction has been marked valid, else
 	 * someone may think it is unlocked and recyclable.
@@ -3335,7 +3413,6 @@ PrepareTransaction(void)
 
 	PostPrepare_MultiXact(xid);
 
-	PostPrepare_Locks(xid);
 	PostPrepare_PredicateLocks(xid);
 
 	ResourceOwnerRelease(TopTransactionResourceOwner,
@@ -3505,6 +3582,9 @@ AbortTransaction(void)
 
 	/* Reset logical streaming state. */
 	ResetLogicalStreamingState();
+
+	/* Reset snapshot export state. */
+	SnapBuildResetExportedSnapshotState();
 
 	/* If in parallel mode, clean up workers and exit parallel mode. */
 	if (IsInParallelMode())
@@ -6028,6 +6108,7 @@ CommitSubTransaction(void)
 	AfterTriggerEndSubXact(true);
 	AtSubCommit_Portals(s->subTransactionId,
 						s->parent->subTransactionId,
+						s->parent->nestingLevel,
 						s->parent->curTransactionOwner);
 	AtEOSubXact_LargeObject(true, s->subTransactionId,
 							s->parent->subTransactionId);
@@ -6173,6 +6254,11 @@ AbortSubTransaction(void)
 
 	/* Reset logical streaming state. */
 	ResetLogicalStreamingState();
+
+	/*
+	 * No need for SnapBuildResetExportedSnapshotState() here, snapshot
+	 * exports are not supported in subtransactions.
+	 */
 
 	/* Exit from parallel mode, if necessary. */
 	if (IsInParallelMode())
@@ -6336,6 +6422,7 @@ PushTransaction(void)
 	GetUserIdAndSecContext(&s->prevUser, &s->prevSecContext);
 	s->prevXactReadOnly = XactReadOnly;
 	s->parallelModeLevel = 0;
+<<<<<<< HEAD
 	s->executorSaysXactDoesWrites = false;
 
 	fastNodeCount++;
@@ -6346,6 +6433,11 @@ PushTransaction(void)
 		previousFastLink = s;
 	}
 	s->assigned = false;
+||||||| 3b231596ccf
+	s->assigned = false;
+=======
+	s->topXidLogged = false;
+>>>>>>> c4cc2850f4d
 
 	CurrentTransactionState = s;
 
@@ -7469,51 +7561,4 @@ xact_redo(XLogReaderState *record)
 	}
 	else
 		elog(PANIC, "xact_redo: unknown op code %u", info);
-}
-
-/*
- * IsSubTransactionAssignmentPending
- *
- * This is used to decide whether we need to WAL log the top-level XID for
- * operation in a subtransaction.  We require that for logical decoding, see
- * LogicalDecodingProcessRecord.
- *
- * This returns true if wal_level >= logical and we are inside a valid
- * subtransaction, for which the assignment was not yet written to any WAL
- * record.
- */
-bool
-IsSubTransactionAssignmentPending(void)
-{
-	/* wal_level has to be logical */
-	if (!XLogLogicalInfoActive())
-		return false;
-
-	/* we need to be in a transaction state */
-	if (!IsTransactionState())
-		return false;
-
-	/* it has to be a subtransaction */
-	if (!IsSubTransaction())
-		return false;
-
-	/* the subtransaction has to have a XID assigned */
-	if (!TransactionIdIsValid(GetCurrentTransactionIdIfAny()))
-		return false;
-
-	/* and it should not be already 'assigned' */
-	return !CurrentTransactionState->assigned;
-}
-
-/*
- * MarkSubTransactionAssigned
- *
- * Mark the subtransaction assignment as completed.
- */
-void
-MarkSubTransactionAssigned(void)
-{
-	Assert(IsSubTransactionAssignmentPending());
-
-	CurrentTransactionState->assigned = true;
 }
