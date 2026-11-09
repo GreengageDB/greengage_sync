@@ -166,10 +166,6 @@ check_and_dump_old_cluster(bool live_check, char **sequence_script_file_name)
 		old_cluster.controldata.cat_ver < JSONB_FORMAT_CHANGE_CAT_VER)
 		check_for_jsonb_9_4_usage(&old_cluster);
 
-	/* Pre-PG 9.4 had a different 'line' data type internal format */
-	if (GET_MAJOR_VERSION(old_cluster.major_version) <= 903)
-		old_9_3_check_for_line_data_type_usage(&old_cluster);
-
 	/* For now, the issue exists only for Greenplum 6.x/PostgreSQL 9.4 */
 	if (GET_MAJOR_VERSION(old_cluster.major_version) == 904)
 	{
@@ -368,10 +364,7 @@ check_cluster_compatibility(bool live_check)
 	{
 		get_control_data(&new_cluster, false);
 		check_control_data(&old_cluster.controldata, &new_cluster.controldata);
-	}
 
-	if(!is_skip_target_check())
-	{
 		if (live_check && old_cluster.port == new_cluster.port)
 			pg_fatal("When checking a live server, "
 					 "the old and new port numbers must be different.\n");
