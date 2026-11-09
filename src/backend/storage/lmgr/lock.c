@@ -133,16 +133,8 @@ static const char *const lock_mode_names[] =
 static bool Dummy_trace = false;
 #endif
 
-<<<<<<< HEAD
-const LockMethodData default_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-||||||| 3b231596ccf
-static const LockMethodData default_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-=======
 static const LockMethodData default_lockmethod = {
 	MaxLockMode,
->>>>>>> c4cc2850f4d
 	LockConflicts,
 	lock_mode_names,
 #ifdef LOCK_DEBUG
@@ -152,16 +144,8 @@ static const LockMethodData default_lockmethod = {
 #endif
 };
 
-<<<<<<< HEAD
-const LockMethodData user_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-||||||| 3b231596ccf
-static const LockMethodData user_lockmethod = {
-	AccessExclusiveLock,		/* highest valid lock mode number */
-=======
 static const LockMethodData user_lockmethod = {
 	MaxLockMode,
->>>>>>> c4cc2850f4d
 	LockConflicts,
 	lock_mode_names,
 #ifdef LOCK_DEBUG
@@ -171,7 +155,7 @@ static const LockMethodData user_lockmethod = {
 #endif
 };
 
-const LockMethodData resource_lockmethod = {
+static const LockMethodData resource_lockmethod = {
 	AccessExclusiveLock,        /* highest valid lock mode number */
 	LockConflicts,
 	lock_mode_names,
@@ -186,7 +170,7 @@ const LockMethodData resource_lockmethod = {
 /*
  * map from lock method id to the lock table data structures
  */
-const LockMethod LockMethods[] = {
+static const LockMethod LockMethods[] = {
 	NULL,
 	&default_lockmethod,
 	&user_lockmethod,
