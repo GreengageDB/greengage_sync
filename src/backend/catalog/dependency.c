@@ -1153,6 +1153,7 @@ reportDependentObjects(const ObjectAddresses *targetObjects,
 				ereport(DEBUG1,
 						(errmsg("%s depends on %s",
 								objDesc, otherDesc)));
+				pfree(otherDesc);
 			}
 			else if (otherDesc)
 			{
