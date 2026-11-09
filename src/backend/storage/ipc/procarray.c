@@ -912,26 +912,14 @@ ProcArrayGroupClearXid(PGPROC *proc, TransactionId latestXid)
 	/* Walk the list and clear all XIDs. */
 	while (nextidx != INVALID_PGPROCNO)
 	{
-<<<<<<< HEAD
-		PGPROC	   *proc = &allProcs[nextidx];
-		TMGXACT	   *tmGxact = &allTmGxact[nextidx];
-||||||| 3b231596ccf
-		PGPROC	   *proc = &allProcs[nextidx];
-=======
 		PGPROC	   *nextproc = &allProcs[nextidx];
->>>>>>> c4cc2850f4d
+		TMGXACT	   *tmGxact = &allTmGxact[nextidx];
 
-<<<<<<< HEAD
-		if (TransactionIdIsValid(proc->procArrayGroupMemberXid))
-			ProcArrayEndTransactionInternal(proc, proc->procArrayGroupMemberXid);
+		if (TransactionIdIsValid(nextproc->procArrayGroupMemberXid))
+			ProcArrayEndTransactionInternal(nextproc, nextproc->procArrayGroupMemberXid);
 
 		if (TransactionIdIsValid(tmGxact->gxid))
 			ProcArrayEndGxact(tmGxact);
-||||||| 3b231596ccf
-		ProcArrayEndTransactionInternal(proc, proc->procArrayGroupMemberXid);
-=======
-		ProcArrayEndTransactionInternal(nextproc, nextproc->procArrayGroupMemberXid);
->>>>>>> c4cc2850f4d
 
 		/* Move to next proc in list. */
 		nextidx = pg_atomic_read_u32(&nextproc->procArrayGroupNext);

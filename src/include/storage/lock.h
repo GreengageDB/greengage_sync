@@ -132,13 +132,6 @@ typedef uint16 LOCKMETHODID;
 #define RESOURCE_LOCKMETHOD	3
 
 /*
- * Map from lock methods to lock table data structures.
- */
-extern const	LockMethodData resource_lockmethod;
-extern const	LockMethod LockMethods[];
-
-
-/*
  *  The lock hash tables. (needed by resource queuing).
  */
 extern HTAB	*LockMethodLockHash;
