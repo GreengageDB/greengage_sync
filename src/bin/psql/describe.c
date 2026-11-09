@@ -4476,7 +4476,7 @@ describeRoles(const char *pattern, bool verbose, bool showSystem)
 			add_role_attribute(&buf, _("Replication"));
 
 		if (pset.sversion >= 90500)
-			if (strcmp(PQgetvalue(res, i, (verbose ? 11 : 10)), "t") == 0)
+			if (strcmp(PQgetvalue(res, i, (verbose ? 11 + numgreenplumspecificattrs : 10 + numgreenplumspecificattrs)), "t") == 0)
 				add_role_attribute(&buf, _("Bypass RLS"));
 
 		conns = atoi(PQgetvalue(res, i, 6));
