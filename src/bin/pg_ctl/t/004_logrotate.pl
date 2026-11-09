@@ -65,7 +65,7 @@ $node->init();
 $node->append_conf(
 	'postgresql.conf', qq(
 logging_collector = on
-# GPDB: log_destination is defunct; the logging collector always writes one
+# GGDB: log_destination is defunct; the logging collector always writes one
 # CSV file, which current_logfiles lists as "stderr".
 # these ensure stability of test results:
 log_rotation_age = 0
@@ -100,7 +100,7 @@ like(
 	'current_logfiles is sane');
 
 check_log_pattern('stderr', $current_logfiles, 'division by zero', $node);
-# GPDB: no separate csvlog destination
+# GGDB: no separate csvlog destination
 #check_log_pattern('csvlog', $current_logfiles, 'division by zero', $node);
 
 # Sleep 2 seconds and ask for log rotation; this should result in
@@ -129,7 +129,7 @@ like(
 $node->psql('postgres', 'fee fi fo fum');
 
 check_log_pattern('stderr', $new_current_logfiles, 'syntax error', $node);
-# GPDB: no separate csvlog destination
+# GGDB: no separate csvlog destination
 #check_log_pattern('csvlog', $new_current_logfiles, 'syntax error', $node);
 
 $node->stop();
