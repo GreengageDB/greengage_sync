@@ -491,7 +491,7 @@ typedef enum {
 	NAMEDATALEN, \
 	FLOAT8PASSBYVAL, \
 	FMGR_ABI_EXTRA, \
-	PgMagicProductGreenplum, \
+	PgMagicProductGreenplum, /* GGDB: must always be last */ \
 }
 
 #ifndef FLOAT8PASSBYVAL
