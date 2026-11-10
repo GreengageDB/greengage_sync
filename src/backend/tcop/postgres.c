@@ -46,7 +46,6 @@
 #include "catalog/namespace.h"
 #include "commands/async.h"
 #include "commands/prepare.h"
-#include "commands/extension.h"
 #include "common/pg_prng.h"
 #include "executor/spi.h"
 #include "jit/jit.h"
