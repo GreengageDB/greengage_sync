@@ -85,6 +85,7 @@ static char *expand_dynamic_library_name(const char *name);
 static void check_restricted_library_name(const char *name);
 static char *substitute_libpath_macro(const char *name);
 static char *find_in_dynamic_libpath(const char *basename);
+static int	get_magic_product_code(const Pg_magic_struct *module_magic_data);
 static const char *get_magic_product(const Pg_magic_struct *module_magic_data);
 
 /* Magic structure that module needs to match to be accepted */
@@ -259,8 +260,18 @@ internal_load_library(const char *libname)
 			if (magic_data_ptr->len != magic_data.len ||
 				memcmp(magic_data_ptr, &magic_data, magic_data.len) != 0)
 			{
-				/* copy data block before unlinking library */
-				Pg_magic_struct module_magic_data = *magic_data_ptr;
+				Pg_magic_struct module_magic_data;
+
+				/*
+				 * Copy only the data actually present in the module's magic
+				 * block before unlinking the library.  The block may predate
+				 * abi_extra or the Greengage product field.
+				 */
+				MemSet(&module_magic_data, 0, sizeof(module_magic_data));
+				if (magic_data_ptr->len > 0)
+					memcpy(&module_magic_data, magic_data_ptr,
+						   Min((Size) magic_data_ptr->len,
+							   sizeof(module_magic_data)));
 
 				/* try to close library */
 				dlclose(file_scanner->handle);
@@ -301,19 +312,41 @@ internal_load_library(const char *libname)
 }
 
 /*
+ * Return the product code from a current or legacy magic block.
+ */
+static int
+get_magic_product_code(const Pg_magic_struct *module_magic_data)
+{
+	int			product;
+
+	/*
+	 * Before abi_extra was added, Greengage stored product where abi_extra
+	 * starts now.  Recognize that layout when diagnosing old modules.
+	 */
+	if (module_magic_data->len ==
+		(int) (offsetof(Pg_magic_struct, abi_extra) + sizeof(product)))
+	{
+		memcpy(&product, module_magic_data->abi_extra, sizeof(product));
+		return product;
+	}
+
+	if (module_magic_data->len >=
+		(int) (offsetof(Pg_magic_struct, product) + sizeof(product)))
+		return module_magic_data->product;
+
+	/* Magic blocks without a product code are PostgreSQL blocks. */
+	return PgMagicProductPostgres;
+}
+
+/*
  * Identify what product a particular magic data was compiled for.
  */
 static const char*
 get_magic_product(const Pg_magic_struct *module_magic_data)
 {
-	/*
-	 * Assume that any magic_data context that does not contain a product code
-	 * must be Postgres, probably.
-	 */
-	if (module_magic_data->len <= offsetof(Pg_magic_struct, product))
-		return "PostgreSQL";
-	
-	switch (module_magic_data->product)
+	int			product = get_magic_product_code(module_magic_data);
+
+	switch (product)
 	{
 		case PgMagicProductNone:
 		case PgMagicProductPostgres:
@@ -324,7 +357,7 @@ get_magic_product(const Pg_magic_struct *module_magic_data)
 
 		/* Handle Unrecognized product codes */
 		default:
-			return psprintf("Product(%d)", module_magic_data->product);
+			return psprintf("Product(%d)", product);
 	}
 }
 
@@ -339,25 +372,14 @@ incompatible_module_error(const char *libname,
 	StringInfoData details;
 	const char *magic_product     = get_magic_product(&magic_data);
 	const char *mod_magic_product = get_magic_product(module_magic_data);
-
-	/*
-	 * The default header version for module_magic_data is assumed to be 0
-	 * as it may not be recent enough to have the headerversion field
-	 */
-	int lib_internal_version = 0;
-
-	/* module_magic_data is recent enough to provide its own header version */
-	if (module_magic_data->len > offsetof(Pg_magic_struct, product))
-	{
-		lib_internal_version = module_magic_data->product;
-	}
+	int			module_product    = get_magic_product_code(module_magic_data);
 
 	/*
 	 * If the version doesn't match, just report that, because the rest of the
 	 * block might not even have the fields we expect.
 	 */
 	if (magic_data.version != module_magic_data->version ||
-		magic_data.product != module_magic_data->product)
+		magic_data.product != module_product)
 	{
 		char		library_version[32];
 
@@ -381,9 +403,13 @@ incompatible_module_error(const char *libname,
 	/*
 	 * Similarly, if the ABI extra field doesn't match, error out.  Other
 	 * fields below might also mismatch, but that isn't useful information if
-	 * you're using the wrong product altogether.
+	 * you're using the wrong product altogether.  Older blocks may not have
+	 * an ABI extra field at all.
 	 */
-	if (strcmp(module_magic_data->abi_extra, magic_data.abi_extra) != 0)
+	if (module_magic_data->len >=
+		(int) (offsetof(Pg_magic_struct, abi_extra) +
+			   sizeof(module_magic_data->abi_extra)) &&
+		strcmp(module_magic_data->abi_extra, magic_data.abi_extra) != 0)
 	{
 		ereport(ERROR,
 				(errmsg("incompatible library \"%s\": ABI mismatch",
