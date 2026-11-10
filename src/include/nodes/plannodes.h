@@ -677,8 +677,9 @@ typedef struct DynamicIndexScan
  * indextlist are marked as resjunk if they correspond to columns that
  * the index AM cannot reconstruct.
  *
- * GPDB: We need indexqualorig to determine direct dispatch, however there
- * is no need to dispatch it.
+ * GGDB: We need indexqualorig to determine direct dispatch, however there
+ * is no need to dispatch it.  Like indextlist, it may contain Vars
+ * referencing the base table.
  * ----------------
  */
 typedef struct IndexOnlyScan
