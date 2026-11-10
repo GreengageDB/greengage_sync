@@ -5567,10 +5567,21 @@ _outAlterTSDictionaryStmt(StringInfo str, const AlterTSDictionaryStmt *node)
 }
 
 /*
- * GPDB: PublicationTable is an untransformed parse node that upstream never
- * serializes, but CREATE/ALTER PUBLICATION ... FOR TABLE is dispatched to the
- * segments with its 'tables' list of PublicationTable nodes.
+ * GPDB: PublicationObjSpec and PublicationTable are untransformed parse nodes
+ * that upstream never serializes, but CREATE/ALTER PUBLICATION is dispatched
+ * to the segments with its 'pubobjects' list of PublicationObjSpec nodes.
  */
+static void
+_outPublicationObjSpec(StringInfo str, const PublicationObjSpec *node)
+{
+	WRITE_NODE_TYPE("PUBLICATIONOBJSPEC");
+
+	WRITE_ENUM_FIELD(pubobjtype, PublicationObjSpecType);
+	WRITE_STRING_FIELD(name);
+	WRITE_NODE_FIELD(pubtable);
+	WRITE_LOCATION_FIELD(location);
+}
+
 static void
 _outPublicationTable(StringInfo str, const PublicationTable *node)
 {
@@ -5586,7 +5597,7 @@ _outCreatePublicationStmt(StringInfo str, const CreatePublicationStmt *node)
 
 	WRITE_STRING_FIELD(pubname);
 	WRITE_NODE_FIELD(options);
-	WRITE_NODE_FIELD(tables);
+	WRITE_NODE_FIELD(pubobjects);
 	WRITE_BOOL_FIELD(for_all_tables);
 }
 
@@ -5597,9 +5608,9 @@ _outAlterPublicationStmt(StringInfo str, const AlterPublicationStmt *node)
 
 	WRITE_STRING_FIELD(pubname);
 	WRITE_NODE_FIELD(options);
-	WRITE_NODE_FIELD(tables);
+	WRITE_NODE_FIELD(pubobjects);
 	WRITE_BOOL_FIELD(for_all_tables);
-	WRITE_ENUM_FIELD(tableAction, DefElemAction);
+	WRITE_ENUM_FIELD(action, AlterPublicationAction);
 }
 
 static void
@@ -6790,6 +6801,9 @@ outNode(StringInfo str, const void *obj)
 				_outAlterTSDictionaryStmt(str, obj);
 				break;
 
+			case T_PublicationObjSpec:
+				_outPublicationObjSpec(str, obj);
+				break;
 			case T_PublicationTable:
 				_outPublicationTable(str, obj);
 				break;
