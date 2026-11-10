@@ -100,8 +100,10 @@ $(OBJS): | submake-libpgport submake-generated-headers
 
 # Test input and expected files.  These are created by pg_regress itself, so we
 # don't have a rule to create them.  We do need rules to clean them however.
-input_files = $(patsubst $(srcdir)/input/%.source,sql/%.sql, $(wildcard $(srcdir)/input/*.source))
-output_files := $(patsubst $(srcdir)/output/%.source,expected/%.out, $(wildcard $(srcdir)/output/*.source))
+input_files = $(patsubst $(srcdir)/input/%.source,sql/%.sql, \
+	$(wildcard $(srcdir)/input/*.source) $(wildcard $(srcdir)/input/*/*.source))
+output_files := $(patsubst $(srcdir)/output/%.source,expected/%.out, \
+	$(wildcard $(srcdir)/output/*.source) $(wildcard $(srcdir)/output/*/*.source))
 
 # not installed by default
 
