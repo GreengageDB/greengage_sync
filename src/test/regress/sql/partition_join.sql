@@ -1175,7 +1175,7 @@ SET enable_partitionwise_join = on;
 EXPLAIN (COSTS OFF)
 SELECT * FROM fract_t x LEFT JOIN fract_t y USING (id) ORDER BY id ASC LIMIT 10;
 
--- GPDB: nested loops are off by default in GPDB, and the RESETs above put
+-- GGDB: nested loops are off by default in GGDB, and the RESETs above put
 -- enable_nestloop back to that default; enable it so that this case can
 -- still use upstream's nested index-only-scan plan.
 SET enable_nestloop = on;

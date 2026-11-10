@@ -2675,7 +2675,7 @@ pg_get_expr_worker(text *expr, Oid relid, const char *relname, int prettyFlags)
 	 * Throw error if the expression contains Vars we won't be able to
 	 * deparse.
 	 *
-	 * GPDB: gp_partition_template.template stores a GpPartitionDefinition
+	 * GGDB: gp_partition_template.template stores a GpPartitionDefinition
 	 * node tree, which is not an expression and contains no Vars;
 	 * expression_tree_walker() has no case for it, so skip the check.
 	 * get_rule_expr() deparses the node directly.
