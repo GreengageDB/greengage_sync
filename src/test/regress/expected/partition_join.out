@@ -5729,10 +5729,9 @@ SELECT * FROM fract_t x LEFT JOIN fract_t y USING (id) ORDER BY id ASC LIMIT 10;
                            Merge Cond: (x_2.id = y_2.id)
                            ->  Index Only Scan using fract_t1_pkey on fract_t1 x_2
                            ->  Index Only Scan using fract_t1_pkey on fract_t1 y_2
- Optimizer: Postgres query optimizer
-(15 rows)
+(14 rows)
 
--- GPDB: nested loops are off by default in GPDB, and the RESETs above put
+-- GGDB: nested loops are off by default in GGDB, and the RESETs above put
 -- enable_nestloop back to that default; enable it so that this case can
 -- still use upstream's nested index-only-scan plan.
 SET enable_nestloop = on;
@@ -5754,8 +5753,7 @@ SELECT * FROM fract_t x LEFT JOIN fract_t y USING (id) ORDER BY id DESC LIMIT 10
                            ->  Index Only Scan Backward using fract_t1_pkey on fract_t1 x_2
                            ->  Index Only Scan using fract_t1_pkey on fract_t1 y_2
                                  Index Cond: (id = x_2.id)
- Optimizer: Postgres query optimizer
-(15 rows)
+(14 rows)
 
 RESET enable_nestloop;
 -- cleanup

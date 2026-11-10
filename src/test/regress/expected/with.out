@@ -679,9 +679,7 @@ select * from search_graph order by seq;
                                  Output: g_1.f, g_1.t, g_1.label
                                  ->  Seq Scan on pg_temp.graph0 g_1
                                        Output: g_1.f, g_1.t, g_1.label
- Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing = 'on', optimizer = 'off'
-(22 rows)
+(20 rows)
 
 with recursive search_graph(f, t, label) as (
 	select * from graph0 g
@@ -752,9 +750,7 @@ select * from search_graph order by seq;
                                  Output: g_1.f, g_1.t, g_1.label
                                  ->  Seq Scan on pg_temp.graph0 g_1
                                        Output: g_1.f, g_1.t, g_1.label
- Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing = 'on', optimizer = 'off'
-(22 rows)
+(20 rows)
 
 with recursive search_graph(f, t, label) as (
 	select * from graph0 g
@@ -1047,9 +1043,7 @@ select * from search_graph;
                            Output: g_1.f, g_1.t, g_1.label
                            ->  Seq Scan on pg_temp.graph g_1
                                  Output: g_1.f, g_1.t, g_1.label
- Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing = 'on', optimizer = 'off'
-(19 rows)
+(17 rows)
 
 with recursive search_graph(f, t, label) as (
 	select * from graph g
