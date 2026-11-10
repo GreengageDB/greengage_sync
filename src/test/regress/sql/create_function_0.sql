@@ -7,7 +7,6 @@
 \getenv dlsuffix PG_DLSUFFIX
 
 \set autoinclib :libdir '/autoinc' :dlsuffix
-\set refintlib :libdir '/refint' :dlsuffix
 \set regresslib :libdir '/regress' :dlsuffix
 
 -- Create a bunch of C functions that will be used by later tests:

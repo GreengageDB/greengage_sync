@@ -1178,6 +1178,7 @@ initialize_environment(void)
 	 */
 	setenv("PG_ABS_SRCDIR", inputdir, 1);
 	setenv("PG_ABS_BUILDDIR", outputdir, 1);
+	setenv("PG_TABLESPACE_DIR", tablespacedir, 1);
 	setenv("PG_LIBDIR", dlpath, 1);
 	setenv("PG_DLSUFFIX", DLSUFFIX, 1);
 
