@@ -461,13 +461,15 @@ typedef struct
 	int			indexmaxkeys;	/* INDEX_MAX_KEYS */
 	int			namedatalen;	/* NAMEDATALEN */
 	int			float8byval;	/* FLOAT8PASSBYVAL */
-	int         product;        /* magic product code */
 	char		abi_extra[32];	/* see pg_config_manual.h */
+
+	/* GGDB: product must always be the last field, after all upstream fields. */
+	int			product;		/* magic product code */
 } Pg_magic_struct;
 
 /*
  * List of product codes for products that support some level of compatability
- * with the postgres contrib module format. 
+ * with the postgres contrib module format.
  *
  * GPDB: A patch for this has been supplied to Postgres in the hope of improved
  * cross product compatibility.  It is currently unknown if they will accept
@@ -488,8 +490,8 @@ typedef enum {
 	INDEX_MAX_KEYS, \
 	NAMEDATALEN, \
 	FLOAT8PASSBYVAL, \
-	PgMagicProductGreenplum, \
 	FMGR_ABI_EXTRA, \
+	PgMagicProductGreenplum, \
 }
 
 #ifndef FLOAT8PASSBYVAL
@@ -498,6 +500,10 @@ typedef enum {
 
 StaticAssertDecl(sizeof(FMGR_ABI_EXTRA) <= sizeof(((Pg_magic_struct*)0)->abi_extra),
 				 "FMGR_ABI_EXTRA too long");
+StaticAssertDecl(offsetof(Pg_magic_struct, product) +
+				 sizeof(((Pg_magic_struct *) 0)->product) ==
+				 sizeof(Pg_magic_struct),
+				 "product must be the last field in Pg_magic_struct");
 
 /*
  * Declare the module magic function.  It needs to be a function as the dlsym
