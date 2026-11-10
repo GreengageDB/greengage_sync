@@ -249,7 +249,11 @@ typedef enum
 #define GUC_UNIT				(GUC_UNIT_MEMORY | GUC_UNIT_TIME)
 
 /* GPDB speific */
-#define GUC_DISALLOW_USER_SET  0x00200000 /* Do not allow this GUC to be set by the user */
+/*
+ * NB: keep these above every upstream GUC_* flag bit.  GUC_DISALLOW_USER_SET
+ * used to be 0x00200000, which upstream now uses for GUC_RUNTIME_COMPUTED.
+ */
+#define GUC_DISALLOW_USER_SET  0x01000000 /* Do not allow this GUC to be set by the user */
 #define GUC_GPDB_NEED_SYNC     0x00400000  /* guc value is synced between master and primary */
 #define GUC_GPDB_NO_SYNC       0x00800000  /* guc value is not synced between master and primary */
 
