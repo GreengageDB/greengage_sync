@@ -244,14 +244,8 @@ typedef struct TransactionStateData
 	bool		didLogXid;		/* has xid been included in WAL record? */
 	int			parallelModeLevel;	/* Enter/ExitParallelMode counter */
 	bool		chain;			/* start a new block after this one */
-<<<<<<< HEAD
 	bool		executorSaysXactDoesWrites;	/* GP executor says xact does writes */
-	bool		assigned;		/* assigned to top-level XID */
-||||||| 3b231596ccf
-	bool		assigned;		/* assigned to top-level XID */
-=======
 	bool		topXidLogged;	/* for a subxact: is top-level XID logged? */
->>>>>>> c4cc2850f4d
 	struct TransactionStateData *parent;	/* back link to parent */
 	struct TransactionStateData *fastLink;	/* back link to jump to parent for efficient search */
 } TransactionStateData;
@@ -639,13 +633,12 @@ MarkCurrentTransactionIdLoggedIfAny(void)
 		CurrentTransactionState->didLogXid = true;
 }
 
-<<<<<<< HEAD
 void
 MarkTopTransactionWriteXLogOnExecutor(void)
 {
 	TopXactexecutorDidWriteXLog = true;
-||||||| 3b231596ccf
-=======
+}
+
 /*
  * IsSubxactTopXidLogPending
  *
@@ -695,7 +688,6 @@ MarkSubxactTopXidLogged(void)
 	Assert(IsSubxactTopXidLogPending());
 
 	CurrentTransactionState->topXidLogged = true;
->>>>>>> c4cc2850f4d
 }
 
 /*
@@ -6422,7 +6414,6 @@ PushTransaction(void)
 	GetUserIdAndSecContext(&s->prevUser, &s->prevSecContext);
 	s->prevXactReadOnly = XactReadOnly;
 	s->parallelModeLevel = 0;
-<<<<<<< HEAD
 	s->executorSaysXactDoesWrites = false;
 
 	fastNodeCount++;
@@ -6432,12 +6423,7 @@ PushTransaction(void)
 		s->fastLink = previousFastLink;
 		previousFastLink = s;
 	}
-	s->assigned = false;
-||||||| 3b231596ccf
-	s->assigned = false;
-=======
 	s->topXidLogged = false;
->>>>>>> c4cc2850f4d
 
 	CurrentTransactionState = s;
 
