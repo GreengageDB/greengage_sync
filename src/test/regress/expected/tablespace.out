@@ -1,10 +1,7 @@
 -- start_matchignore
--- m/WARNING:  tablespace symlink path is too long for TAR/
+-- m/WARNING:  tablespace location ".*" is too long for TAR/
+-- m/DETAIL:  The location is used to create a symlink target from pg_tblspc\. Symlink targets are truncated to 100 characters when sending a TAR \(e.g the BASE_BACKUP protocol response\)\./
 -- end_matchignore
--- start_matchsubs
--- m/DETAIL:  The symlinked path \".*\" will be truncated to 100 characters when sending a TAR to the utilities \(e.g. pg_basebackup\)/
--- s/DETAIL:  The symlinked path \".*\" will be truncated to 100 characters when sending a TAR to the utilities \(e.g. pg_basebackup\)/DETAIL:  The symlinked path \"#####\" will be truncated to 100 characters when sending a TAR to the utilities (e.g. pg_basebackup)/
--- end_matchsubs
 -- directory paths are passed to us in environment variables
 \getenv abs_builddir PG_ABS_BUILDDIR
 \getenv tablespacedir PG_TABLESPACE_DIR
