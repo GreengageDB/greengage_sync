@@ -6761,7 +6761,7 @@ make_indexonlyscan(List *qptlist,
 	node->scan.scanrelid = scanrelid;
 	node->indexid = indexid;
 	node->indexqual = indexqual;
-	node->indexqualorig = recheckqual;	/* GPDB: same quals, kept for direct dispatch */
+	node->indexqualorig = recheckqual;	/* GGDB: same quals, kept for direct dispatch */
 	node->recheckqual = recheckqual;
 	node->indexorderby = indexorderby;
 	node->indextlist = indextlist;

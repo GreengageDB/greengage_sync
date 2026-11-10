@@ -170,7 +170,7 @@ select p from gist_tbl where circle(p,1) @> circle(point(0,0),0.95);
 -- This case isn't supported, but it should at least EXPLAIN correctly.
 explain (verbose, costs off)
 select p from gist_tbl order by circle(p,1) <-> point(0,0) limit 1;
--- GPDB: 15 rows tie at distance 0 and gist_tbl is randomly distributed, so
+-- GGDB: 15 rows tie at distance 0 and gist_tbl is randomly distributed, so
 -- the row LIMIT 1 returns varies from run to run when the query executes (it
 -- does under ORCA, which does not use expression indexes).  Return the
 -- distance, which all tied rows share; the Postgres planner still fails here.
