@@ -552,7 +552,7 @@ RESET enable_seqscan;
 -- Test handling of index predicates - updating attributes in predicates
 -- should block HOT even for BRIN. We update a row that was not indexed
 -- due to the index predicate, and becomes indexable.
-CREATE TABLE brin_hot_2 (a int, b int);
+CREATE TABLE brin_hot_2 (a int, b int) DISTRIBUTED BY (b);
 INSERT INTO brin_hot_2 VALUES (1, 100);
 CREATE INDEX ON brin_hot_2 USING brin (b) WHERE a = 2;
 
