@@ -268,7 +268,7 @@ main(int argc, char* argv[])
 
         const UnitTest tests[] = {
         		unit_test_setup_teardown(test__incompatible_module_error__struct_size_mismatch, SetupDataStructures, TeardownDataStructures),
-	        		unit_test_setup_teardown(test__incompatible_module_error__postgres_module, SetupDataStructures, TeardownDataStructures),
+        		unit_test_setup_teardown(test__incompatible_module_error__postgres_module, SetupDataStructures, TeardownDataStructures),
         		unit_test_setup_teardown(test__incompatible_module_error__headerversion_mismatch, SetupDataStructures, TeardownDataStructures),
         		unit_test_setup_teardown(test__incompatible_module_error__headerversion_identical, SetupDataStructures, TeardownDataStructures),
         };
