@@ -17378,7 +17378,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		if (RELKIND_HAS_TABLESPACE(tbinfo->relkind))
 			tablespace = tbinfo->reltablespace;
 
-		/* GPDB: a partitioned table can have an access method, too */
+		/* GGDB: partitioned tables can have an access method, which must be dumped */
 		if (RELKIND_HAS_TABLE_AM(tbinfo->relkind) ||
 			tbinfo->relkind == RELKIND_PARTITIONED_TABLE)
 			tableam = tbinfo->amname;
