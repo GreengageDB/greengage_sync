@@ -549,10 +549,12 @@ SELECT * FROM brintest_3 WHERE b < '0';
 DROP TABLE brintest_3;
 RESET enable_seqscan;
 
+-- GGDB: a replicated table has no distribution key, so the UPDATE below
+-- cannot be turned into a split update and exercises the HOT path.
 -- Test handling of index predicates - updating attributes in predicates
 -- should block HOT even for BRIN. We update a row that was not indexed
 -- due to the index predicate, and becomes indexable.
-CREATE TABLE brin_hot_2 (a int, b int) DISTRIBUTED BY (b);
+CREATE TABLE brin_hot_2 (a int, b int) DISTRIBUTED REPLICATED;
 INSERT INTO brin_hot_2 VALUES (1, 100);
 CREATE INDEX ON brin_hot_2 USING brin (b) WHERE a = 2;
 
