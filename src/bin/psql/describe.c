@@ -53,9 +53,6 @@ static bool describeOneTSConfig(const char *oid, const char *nspname,
 static void printACLColumn(PQExpBuffer buf, const char *colname);
 static bool listOneExtensionContents(const char *extname, const char *oid);
 static bool isGPDB(void);
-static bool isGPDB4200OrLater(void);
-static bool isGPDB5000OrLater(void);
-static bool isGPDB6000OrLater(void);
 static bool isGPDB7000OrLater(void);
 
 static bool isGPDB(void)
@@ -96,91 +93,6 @@ static bool isGPDB(void)
 	return false;
 }
 
-
-/*
- * A new catalog table was introduced in GPDB 4.2 (pg_catalog.pg_attribute_encoding).
- * If the database appears to be GPDB and has that table, we assume it is 4.2 or later.
- *
- * Return true if GPDB version 4.2 or later, false otherwise.
- */
-static bool isGPDB4200OrLater(void)
-{
-	bool       retValue = false;
-
-	if (isGPDB() == true)
-	{
-		PGresult  *result;
-
-		result = PSQLexec("select oid from pg_catalog.pg_class where relnamespace = 11 and relname  = 'pg_attribute_encoding'");
-		if (PQgetisnull(result, 0, 0))
-			 retValue = false;
-		else
-			retValue = true;
-	}
-	return retValue;
-}
-
-/*
- * Returns true if GPDB version 4.3 or later, false otherwise.
- */
-static bool
-isGPDB4300OrLater(void)
-{
-	bool       retValue = false;
-
-	if (isGPDB() == true)
-	{
-		PGresult  *result;
-
-		result = PSQLexec(
-				"select attnum from pg_catalog.pg_attribute "
-				"where attrelid = 'pg_catalog.pg_proc'::regclass and "
-				"attname = 'prodataaccess'");
-		retValue = PQntuples(result) > 0;
-	}
-	return retValue;
-}
-
-
-/*
- * If GPDB version is 5.0, pg_proc has provariadic as column number 20.
- * When we have version() returns GPDB version instead of "main build dev" or
- * something similar, we'll fix this function.
- */
-static bool isGPDB5000OrLater(void)
-{
-	bool	retValue = false;
-
-	if (isGPDB() == true)
-	{
-		PGresult   *res;
-
-		res = PSQLexec("select attnum from pg_catalog.pg_attribute where attrelid = 1255 and attname = 'provariadic'");
-		if (PQntuples(res) == 1)
-			retValue = true;
-	}
-	return retValue;
-}
-
-static bool
-isGPDB6000OrLater(void)
-{
-	if (!isGPDB())
-		return false;		/* Not Greenplum at all. */
-
-	/* GPDB 6 is based on PostgreSQL 9.4 */
-	return pset.sversion >= 90400;
-}
-
-static bool
-isGPDB6000OrBelow(void)
-{
-	if (!isGPDB())
-		return false;		/* Not Greenplum at all. */
-
-	/* GPDB 6 is based on PostgreSQL 9.4 */
-	return pset.sversion <= 90400;
-}
 
 static bool
 isGPDB7000OrLater(void)
@@ -500,7 +412,7 @@ describeFunctions(const char *functypes, const char *func_pattern,
 
 	if (verbose)
 	{
-		if (isGPDB4300OrLater())
+		if (isGPDB())
 			appendPQExpBuffer(&buf,
 						  ",\n CASE\n"
 						  "  WHEN p.prodataaccess = 'n' THEN '%s'\n"
@@ -513,7 +425,7 @@ describeFunctions(const char *functypes, const char *func_pattern,
 						  gettext_noop("reads sql data"),
 						  gettext_noop("modifies sql data"),
 						  gettext_noop("Data access"));
-		if (isGPDB6000OrLater())
+		if (isGPDB())
 			appendPQExpBuffer(&buf,
 						  ",\n CASE\n"
 						  "  WHEN p.proexeclocation = 'a' THEN '%s'\n"
@@ -767,7 +679,7 @@ describeTypes(const char *pattern, bool verbose, bool showSystem)
 	PQExpBufferData buf;
 	PGresult   *res;
 	printQueryOpt myopt = pset.popt;
-	bool isGE42 = isGPDB4200OrLater();
+	bool is_gpdb = isGPDB();
 
 	initPQExpBuffer(&buf);
 
@@ -798,7 +710,7 @@ describeTypes(const char *pattern, bool verbose, bool showSystem)
 						  gettext_noop("Internal name"),
 						  gettext_noop("Size"),
 						  gettext_noop("Elements"));
-		if (isGE42 == true)
+		if (is_gpdb)
 			appendPQExpBuffer(&buf, " pg_catalog.array_to_string(te.typoptions, ',') AS \"%s\",\n", gettext_noop("Type Options"));
 		appendPQExpBuffer(&buf,
 						  "  pg_catalog.pg_get_userbyid(t.typowner) AS \"%s\",\n",
@@ -813,7 +725,7 @@ describeTypes(const char *pattern, bool verbose, bool showSystem)
 
 	appendPQExpBufferStr(&buf, "FROM pg_catalog.pg_type t\n"
 						 "     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace\n");
-	if (verbose && isGE42 == true)
+	if (verbose && is_gpdb)
 		appendPQExpBuffer(&buf, "\n   LEFT OUTER JOIN pg_catalog.pg_type_encoding te ON te.typid = t.oid ");
 
 	/*
@@ -1696,7 +1608,7 @@ describeOneTableDetails(const char *schemaname,
 	tableinfo.blockSize        = NULL;
 	tableinfo.checksum         = NULL;
 
-	bool isGE42 = isGPDB4200OrLater();
+	bool is_gpdb = isGPDB();
 
 	myopt.default_footer = false;
 	/* This output looks confusing in expanded mode. */
@@ -2097,7 +2009,7 @@ describeOneTableDetails(const char *schemaname,
 
 		if (greenplum_is_ao_column(tableinfo.relstorage, tableinfo.relam))
 		{
-			if (isGE42 == true)
+			if (is_gpdb)
 			{
 				appendPQExpBufferStr(&buf, ",\n  pg_catalog.array_to_string(e.attoptions, ',')");
 				attoptions_col = cols++;
@@ -2121,7 +2033,7 @@ describeOneTableDetails(const char *schemaname,
 	}
 
 	appendPQExpBufferStr(&buf, "\nFROM pg_catalog.pg_attribute a");
-	if (isGE42 == true)
+	if (is_gpdb)
 	{
 		appendPQExpBufferStr(&buf, "\nLEFT OUTER JOIN pg_catalog.pg_attribute_encoding e");
 		appendPQExpBufferStr(&buf, "\nON   e.attrelid = a .attrelid AND e.attnum = a.attnum");
@@ -3793,11 +3705,10 @@ add_external_table_footer(printTableContent *const cont, const char *oid)
 	PQExpBufferData buf;
 	PQExpBufferData tmpbuf;
 	PGresult   *result = NULL;
-	bool	    gpdb5OrLater = isGPDB5000OrLater();
-	bool	    gpdb6OrLater = isGPDB6000OrLater();
+	bool	    is_gpdb = isGPDB();
 	bool		gpdb7OrLater = isGPDB7000OrLater();
-	char	   *optionsName = gpdb5OrLater ? ", x.options " : "";
-	char	   *execLocations = gpdb5OrLater ? "x.urilocation, x.execlocation" : "x.location";
+	char	   *optionsName = is_gpdb ? ", x.options " : "";
+	char	   *execLocations = is_gpdb ? "x.urilocation, x.execlocation" : "x.location";
 	char	   *urislocation = NULL;
 	char	   *execlocation = NULL;
 	char	   *fmttype = NULL;
@@ -3817,7 +3728,7 @@ add_external_table_footer(printTableContent *const cont, const char *oid)
 	initPQExpBuffer(&buf);
 	initPQExpBuffer(&tmpbuf);
 
-	if (gpdb6OrLater)
+	if (is_gpdb)
 	{
 		printfPQExpBuffer(&buf,
 						  "SELECT %s, x.fmttype, x.fmtopts, x.command, x.logerrors, "
@@ -3852,7 +3763,7 @@ add_external_table_footer(printTableContent *const cont, const char *oid)
 	{
 		exttaboptions = PQgetvalue(result, 0, 0);
 	}
-	else if (gpdb6OrLater)
+	else if (is_gpdb)
 	{
 		urislocation = PQgetvalue(result, 0, 0);
 		execlocation = PQgetvalue(result, 0, 1);
@@ -3865,21 +3776,6 @@ add_external_table_footer(printTableContent *const cont, const char *oid)
 		writable = PQgetvalue(result, 0, 8);
 		extencoding = PQgetvalue(result, 0, 9);
 		options = PQgetvalue(result, 0, 10);
-	}
-	else if (gpdb5OrLater)
-	{
-		urislocation = PQgetvalue(result, 0, 0);
-		execlocation = PQgetvalue(result, 0, 1);
-		fmttype = PQgetvalue(result, 0, 2);
-		fmtopts = PQgetvalue(result, 0, 3);
-		command = PQgetvalue(result, 0, 4);
-		rejlim =  PQgetvalue(result, 0, 5);
-		rejlimtype = PQgetvalue(result, 0, 6);
-		writable = PQgetvalue(result, 0, 7);
-		errtblname = PQgetvalue(result, 0, 8);
-		extencoding = PQgetvalue(result, 0, 9);
-		errortofile = PQgetvalue(result, 0, 10);
-		options = PQgetvalue(result, 0, 11);
 	}
 	else
 	{
@@ -3955,7 +3851,7 @@ add_external_table_footer(printTableContent *const cont, const char *oid)
 		printfPQExpBuffer(&tmpbuf, _("External options: %s"), exttaboptions);
 		printTableAddFooter(cont, tmpbuf.data);
 	}
-	else if (gpdb5OrLater)
+	else if (is_gpdb)
 	{
 		/* external table options */
 		printfPQExpBuffer(&tmpbuf, _("External options: %s"), options);
@@ -3969,7 +3865,7 @@ add_external_table_footer(printTableContent *const cont, const char *oid)
 		printfPQExpBuffer(&tmpbuf, _("Command: %s"), command);
 		printTableAddFooter(cont, tmpbuf.data);
 
-		char* on_clause = gpdb5OrLater ? execlocation : urislocation;
+		char* on_clause = is_gpdb ? execlocation : urislocation;
 		on_clause[strlen(on_clause) - 1] = '\0'; /* don't print the '}' character */
 		on_clause++; /* don't print the '{' character */
 
@@ -4002,7 +3898,7 @@ add_external_table_footer(printTableContent *const cont, const char *oid)
 		printfPQExpBuffer(&tmpbuf, _("External location: %s"), urislocation);
 		printTableAddFooter(cont, tmpbuf.data);
 
-		if (gpdb5OrLater)
+		if (is_gpdb)
 		{
 			execlocation[strlen(execlocation) - 1] = '\0'; /* don't print the '}' character */
 			execlocation++; /* don't print the '{' character */
@@ -4072,7 +3968,7 @@ add_distributed_by_footer(printTableContent *const cont, const char *oid)
 	initPQExpBuffer(&buf);
 	initPQExpBuffer(&tempbuf);
 
-	if (isGPDB6000OrLater())
+	if (isGPDB())
 	{
 		printfPQExpBuffer(&tempbuf,
 						  "SELECT pg_catalog.pg_get_table_distributedby('%s')",
@@ -4166,7 +4062,7 @@ add_distributed_by_footer(printTableContent *const cont, const char *oid)
 				PQclear(result2);
 				dist_colname = NULL;
 
-				if (!isGPDB6000OrLater())
+				if (!isGPDB())
 					col = strchr(dist_columns, ',');
 				else
 					col = strchr(dist_columns, ' ');
@@ -4190,7 +4086,7 @@ add_distributed_by_footer(printTableContent *const cont, const char *oid)
 					appendPQExpBuffer(&buf, ", %s", dist_colname);
 					PQclear(result2);
 
-					if (!isGPDB6000OrLater())
+					if (!isGPDB())
 						col = strchr(col, ',');
 					else
 						col = strchr(col, ' ');
@@ -4755,7 +4651,7 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 
 	appendPQExpBufferStr(&buf, "\nWHERE c.relkind IN (");
 	if (showTables ||
-		(showExternal && isGPDB6000OrBelow()))
+		(showExternal && isGPDB() && !isGPDB7000OrLater()))
 	{
 		appendPQExpBufferStr(&buf, CppAsString2(RELKIND_RELATION) ","
 							 CppAsString2(RELKIND_PARTITIONED_TABLE) ",");
@@ -4785,7 +4681,7 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 	 * external and other kinds of tables. It's gone in GPDB 6, we use relkind and
 	 * relam fields now.
 	 */
-	if (isGPDB6000OrBelow())   /* GPDB? */
+	if (isGPDB() && !isGPDB7000OrLater())   /* GPDB? */
 	{
 		appendPQExpBuffer(&buf, "AND c.relstorage IN (");
 		if (showTables || showIndexes || showSeq || (showSystem && showTables) || showMatViews)
