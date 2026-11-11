@@ -554,7 +554,6 @@ FETCH ABSOLUTE 4 FROM foo25ns;
 
 FETCH ABSOLUTE 4 FROM foo25ns; -- fail
 ERROR:  cursor can only scan forward
-HINT:  Declare it with SCROLL option to enable backward scan.
 SELECT name, statement, is_holdable, is_binary, is_scrollable FROM pg_cursors;
   name   |                                      statement                                       | is_holdable | is_binary | is_scrollable 
 ---------+--------------------------------------------------------------------------------------+-------------+-----------+---------------
