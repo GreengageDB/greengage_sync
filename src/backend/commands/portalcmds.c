@@ -476,45 +476,43 @@ PersistHoldablePortal(Portal portal)
 		PushActiveSnapshot(queryDesc->snapshot);
 
 		/*
-		 * We don't allow scanning backwards in MPP! Skip this call (and
-		 * the reset position call a few lines down) except in utility
-		 * mode, where we behave like a plain PostgreSQL backend.
+		 * If the portal is marked scrollable, we need to store the entire
+		 * result set in the tuplestore, so that subsequent backward FETCHs
+		 * can be processed.  Otherwise, store only the not-yet-fetched rows.
+		 * (The latter is not only more efficient, but avoids semantic
+		 * problems if the query's output isn't stable.)
+		 *
+		 * In the no-scroll case, tuple indexes in the tuplestore will not
+		 * match the cursor's nominal position (portalPos).  Currently this
+		 * causes no difficulty because we only navigate in the tuplestore by
+		 * relative position, except for the tuplestore_skiptuples call below
+		 * and the tuplestore_rescan call in DoPortalRewind, both of which are
+		 * disabled for no-scroll cursors.  But someday we might need to track
+		 * the offset between the holdStore and the cursor's nominal position
+		 * explicitly.
 		 */
-		if (Gp_role == GP_ROLE_UTILITY)
+		if (portal->cursorOptions & CURSOR_OPT_SCROLL)
 		{
 			/*
-			 * If the portal is marked scrollable, we need to store the entire
-			 * result set in the tuplestore, so that subsequent backward FETCHs
-			 * can be processed.  Otherwise, store only the not-yet-fetched rows.
-			 * (The latter is not only more efficient, but avoids semantic
-			 * problems if the query's output isn't stable.)
-			 *
-			 * In the no-scroll case, tuple indexes in the tuplestore will not
-			 * match the cursor's nominal position (portalPos).  Currently this
-			 * causes no difficulty because we only navigate in the tuplestore by
-			 * relative position, except for the tuplestore_skiptuples call below
-			 * and the tuplestore_rescan call in DoPortalRewind, both of which are
-			 * disabled for no-scroll cursors.  But someday we might need to track
-			 * the offset between the holdStore and the cursor's nominal position
-			 * explicitly.
+			 * We don't allow scanning backwards in MPP! Skip this call (and
+			 * the reset position call a few lines down) except in utility
+			 * mode, where we behave like a plain PostgreSQL backend.
 			 */
-			if (portal->cursorOptions & CURSOR_OPT_SCROLL)
-			{
+			if (Gp_role == GP_ROLE_UTILITY)
 				ExecutorRewind(queryDesc);
-			}
-			else
-			{
-				/*
-				 * If we already reached end-of-query, set the direction to
-				 * NoMovement to avoid trying to fetch any tuples.  (This check
-				 * exists because not all plan node types are robust about being
-				 * called again if they've already returned NULL once.)  We'll
-				 * still set up an empty tuplestore, though, to keep this from
-				 * being a special case later.
-				 */
-				if (portal->atEnd)
-					direction = NoMovementScanDirection;
-			}
+		}
+		else
+		{
+			/*
+			 * If we already reached end-of-query, set the direction to
+			 * NoMovement to avoid trying to fetch any tuples.  (This check
+			 * exists because not all plan node types are robust about being
+			 * called again if they've already returned NULL once.)  We'll
+			 * still set up an empty tuplestore, though, to keep this from
+			 * being a special case later.
+			 */
+			if (portal->atEnd)
+				direction = NoMovementScanDirection;
 		}
 
 		/*
