@@ -85,9 +85,6 @@
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
 
-/* GPDB */
-#include "miscadmin.h"
-
 /*
  * A TapeBlockTrailer is stored at the end of each BLCKSZ block.
  *
