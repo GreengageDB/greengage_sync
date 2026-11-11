@@ -99,11 +99,56 @@ static void
 test__incompatible_module_error__struct_size_mismatch(void **state)
 {
 	Pg_magic_struct module_magic = PG_MODULE_MAGIC_DATA;
+	int			product = PgMagicProductGreenplum;
 
-	/* Simulate a smaller structure for the module's Pg_magic_struct */
-	module_magic.len = offsetof(Pg_magic_struct, version);
+	/*
+	 * Simulate a legacy Greengage module: its magic block predates
+	 * abi_extra and stored the product code where abi_extra begins now
+	 * (see get_magic_product_code()).
+	 */
+	module_magic.len = offsetof(Pg_magic_struct, abi_extra) +
+		sizeof(module_magic.product);
+	memcpy(module_magic.abi_extra, &product, sizeof(product));
 
 	snprintf(expectedErrorMsg, 255, "Magic block has unexpected length or padding difference.");
+
+	EXPECT_EREPORT(ERROR);
+
+	PG_TRY();
+	{
+		incompatible_module_error("test", &module_magic);
+		assert_true(false);
+	}
+	PG_CATCH();
+	{
+	}
+	PG_END_TRY();
+}
+
+/*
+ * Tests that a module magic block without a product code (i.e. a plain
+ * PostgreSQL module) is rejected with the version/product mismatch error
+ */
+static void
+test__incompatible_module_error__postgres_module(void **state)
+{
+	Pg_magic_struct module_magic = PG_MODULE_MAGIC_DATA;
+	char		library_version[32];
+
+	/* A PostgreSQL magic block ends before the product code. */
+	module_magic.len = offsetof(Pg_magic_struct, abi_extra);
+
+	/* build the expected detail message the same way the code does */
+	if (module_magic.version >= 1000)
+		snprintf(library_version, sizeof(library_version), "%d",
+				 module_magic.version / 100);
+	else
+		snprintf(library_version, sizeof(library_version), "%d.%d",
+				 module_magic.version / 100, module_magic.version % 100);
+
+	snprintf(expectedErrorMsg, 255,
+			 "Server is version Greenplum %d, library is version PostgreSQL %s.",
+			 magic_data.version / 100, library_version);
 
 	EXPECT_EREPORT(ERROR);
 
@@ -223,6 +268,7 @@ main(int argc, char* argv[])
 
         const UnitTest tests[] = {
         		unit_test_setup_teardown(test__incompatible_module_error__struct_size_mismatch, SetupDataStructures, TeardownDataStructures),
+	        		unit_test_setup_teardown(test__incompatible_module_error__postgres_module, SetupDataStructures, TeardownDataStructures),
         		unit_test_setup_teardown(test__incompatible_module_error__headerversion_mismatch, SetupDataStructures, TeardownDataStructures),
         		unit_test_setup_teardown(test__incompatible_module_error__headerversion_identical, SetupDataStructures, TeardownDataStructures),
         };
