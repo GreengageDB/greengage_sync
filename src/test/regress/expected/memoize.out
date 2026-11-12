@@ -147,8 +147,8 @@ SET enable_seqscan TO off;
 -- Ensure memoize operates in logical mode
 SELECT explain_memoize('
 SELECT * FROM flt f1 INNER JOIN flt f2 ON f1.f = f2.f;', false);
-                                explain_memoize                                
--------------------------------------------------------------------------------
+                                   explain_memoize                                   
+-------------------------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1) (actual rows=4 loops=N)
    ->  Nested Loop (actual rows=4 loops=N)
          ->  Index Only Scan using flt_f_idx on flt f1 (actual rows=2 loops=N)

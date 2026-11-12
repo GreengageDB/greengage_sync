@@ -152,8 +152,8 @@ SELECT * FROM flt f1 INNER JOIN flt f2 ON f1.f = f2.f;', false);
 -- Ensure memoize operates in binary mode
 SELECT explain_memoize('
 SELECT * FROM flt f1 INNER JOIN flt f2 ON f1.f >= f2.f;', false);
-                                 explain_memoize                                 
----------------------------------------------------------------------------------
+                               explain_memoize                               
+-----------------------------------------------------------------------------
  Gather Motion 1:1  (slice1; segments: 1) (actual rows=4 loops=N)
    ->  Nested Loop (actual rows=4 loops=N)
          Join Filter: true

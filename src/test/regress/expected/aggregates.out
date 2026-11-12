@@ -2608,7 +2608,6 @@ select pg_typeof(cleast_agg(variadic array[4.5,f1])) from int4_tbl;
 -- parallel.  The NOTICEs show the state sharing, so don't trace fallbacks in
 -- this and the next block.
 SET optimizer_trace_fallback = off;
-SET
 begin work;
 create type avg_state as (total bigint, count bigint);
 create or replace function avg_transfn(state avg_state, n int) returns avg_state as
@@ -2855,7 +2854,6 @@ NOTICE:  sum_transfn called with 4
 
 rollback;
 SET optimizer_trace_fallback = on;
-SET
 -- test that the aggregate transition logic correctly handles
 -- transition / combine functions returning NULL
 -- First test the case of a normal transition function returning NULL
