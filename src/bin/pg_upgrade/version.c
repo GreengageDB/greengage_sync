@@ -85,45 +85,13 @@ check_for_data_types_usage(ClusterInfo *cluster,
 						  "				  t.oid = c.reltype AND "
 						  "				  c.oid = a.attrelid AND "
 						  "				  NOT a.attisdropped AND "
-<<<<<<< HEAD
-						  "				  a.atttypid = x.oid ",
-						  base_query);
-
-		/* Ranges were introduced in 9.2 */
-		if (GET_MAJOR_VERSION(cluster->major_version) >= 902)
-			appendPQExpBufferStr(&querybuf,
-								 "			UNION ALL "
-			/* ranges containing any type selected so far */
-								 "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
-								 "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid");
-
-		appendPQExpBufferStr(&querybuf,
-							 "	) "
-							 ") "
-||||||| 3b231596ccf
-						  "				  a.atttypid = x.oid ",
-						  base_query);
-
-		/* Ranges were introduced in 9.2 */
-		if (GET_MAJOR_VERSION(cluster->major_version) >= 902)
-			appendPQExpBufferStr(&querybuf,
-								 "			UNION ALL "
-			/* ranges containing any type selected so far */
-								 "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
-								 "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid");
-
-		appendPQExpBufferStr(&querybuf,
-							 "	) foo "
-							 ") "
-=======
 						  "				  a.atttypid = x.oid "
 						  "			UNION ALL "
 		/* ranges containing any type selected so far */
 						  "			SELECT t.oid FROM pg_catalog.pg_type t, pg_catalog.pg_range r, x "
 						  "			WHERE t.typtype = 'r' AND r.rngtypid = t.oid AND r.rngsubtype = x.oid"
-						  "	) foo "
+						  "	) "
 						  ") "
->>>>>>> c4cc2850f4d
 		/* now look for stored columns of any such type */
 						  "SELECT n.nspname, c.relname, a.attname "
 						  "FROM	pg_catalog.pg_class c, "
@@ -206,39 +174,6 @@ check_for_data_type_usage(ClusterInfo *cluster,
 	free(base_query);
 
 	return found;
-}
-
-
-/*
- * old_9_3_check_for_line_data_type_usage()
- *	9.3 -> 9.4
- *	Fully implement the 'line' data type in 9.4, which previously returned
- *	"not enabled" by default and was only functionally enabled with a
- *	compile-time switch; as of 9.4 "line" has a different on-disk
- *	representation format.
- */
-void
-old_9_3_check_for_line_data_type_usage(ClusterInfo *cluster)
-{
-	char		output_path[MAXPGPATH];
-
-	prep_status("Checking for incompatible \"line\" data type");
-
-	snprintf(output_path, sizeof(output_path), "tables_using_line.txt");
-
-	if (check_for_data_type_usage(cluster, "pg_catalog.line", output_path))
-	{
-		pg_log(PG_REPORT, "fatal\n");
-		pg_fatal("Your installation contains the \"line\" data type in user tables.\n"
-				 "This data type changed its internal and input/output format\n"
-				 "between your old and new versions so this\n"
-				 "cluster cannot currently be upgraded.  You can\n"
-				 "drop the problem columns and restart the upgrade.\n"
-				 "A list of the problem columns is in the file:\n"
-				 "    %s\n\n", output_path);
-	}
-	else
-		check_ok();
 }
 
 

@@ -259,27 +259,11 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 	}
 
 	snprintf(cmd, sizeof(cmd),
-<<<<<<< HEAD
-			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -c %s %s%s %s%s %s\" start",
-||||||| 3b231596ccf
-			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d%s%s %s%s\" start",
-=======
-			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -b%s %s%s\" start",
->>>>>>> c4cc2850f4d
+			 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -c %s -b%s %s%s %s\" start",
 			 cluster->bindir, SERVER_LOG_FILE, cluster->pgconfig, cluster->port,
-<<<<<<< HEAD
 			 (GET_MAJOR_VERSION(cluster->major_version) < 1200) ?
 			 "gp_session_role=utility" :
 			 "gp_role=utility",
-			 (cluster->controldata.cat_ver >=
-			  BINARY_UPGRADE_SERVER_FLAG_CAT_VER) ? " -b" :
-			 " -c autovacuum=off -c autovacuum_freeze_max_age=2000000000",
-||||||| 3b231596ccf
-			 (cluster->controldata.cat_ver >=
-			  BINARY_UPGRADE_SERVER_FLAG_CAT_VER) ? " -b" :
-			 " -c autovacuum=off -c autovacuum_freeze_max_age=2000000000",
-=======
->>>>>>> c4cc2850f4d
 			 (cluster == &new_cluster) ?
 			 " -c synchronous_commit=off -c fsync=off -c full_page_writes=off -c vacuum_defer_cleanup_age=0" : "",
 			 cluster->pgopts ? cluster->pgopts : "", socket_string, version_opts);
