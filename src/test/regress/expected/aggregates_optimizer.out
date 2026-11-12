@@ -2714,7 +2714,7 @@ DETAIL:  GPDB Expression type: Query Parameter not supported in DXL
 (1 row)
 
 -- test aggregates with common transition functions share the same states
--- GPDB: with optimizer=on, every plan of the plpgsql transition functions'
+-- GGDB: with optimizer=on, every plan of the plpgsql transition functions'
 -- statements is an ORCA fallback (Query Parameter), and how often they are
 -- re-planned depends on plan cache invalidations from the tests running in
 -- parallel.  The NOTICEs show the state sharing, so don't trace fallbacks in
