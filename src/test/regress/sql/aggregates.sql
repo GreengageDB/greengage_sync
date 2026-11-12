@@ -990,9 +990,7 @@ select pg_typeof(cleast_agg(variadic array[4.5,f1])) from int4_tbl;
 -- re-planned depends on plan cache invalidations from the tests running in
 -- parallel.  The NOTICEs show the state sharing, so don't trace fallbacks in
 -- this and the next block.
--- start_ignore
 SET optimizer_trace_fallback = off;
--- end_ignore
 begin work;
 
 create type avg_state as (total bigint, count bigint);
@@ -1179,9 +1177,7 @@ create aggregate my_half_sum(int4)
 select my_sum(one),my_half_sum(one) from (values(1),(2),(3),(4)) t(one);
 
 rollback;
--- start_ignore
 SET optimizer_trace_fallback = on;
--- end_ignore
 
 
 -- test that the aggregate transition logic correctly handles
