@@ -46,12 +46,7 @@
 #include "catalog/namespace.h"
 #include "commands/async.h"
 #include "commands/prepare.h"
-<<<<<<< HEAD
-#include "commands/extension.h"
-||||||| 3b231596ccf
-=======
 #include "common/pg_prng.h"
->>>>>>> c4cc2850f4d
 #include "executor/spi.h"
 #include "jit/jit.h"
 #include "libpq/libpq.h"
