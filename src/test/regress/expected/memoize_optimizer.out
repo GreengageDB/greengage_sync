@@ -129,7 +129,9 @@ WHERE t2.unique1 < 1200;', true);
 (12 rows)
 
 RESET enable_sort;
-CREATE TABLE flt (f float);
+-- GGDB: replicate the table so the planner keeps the upstream Memoize nodes
+-- instead of replacing them with motions around a distributed join.
+CREATE TABLE flt (f float) DISTRIBUTED REPLICATED;
 CREATE INDEX flt_f_idx ON flt (f);
 INSERT INTO flt VALUES('-0.0'::float),('+0.0'::float);
 ANALYZE flt;
@@ -139,7 +141,7 @@ SELECT explain_memoize('
 SELECT * FROM flt f1 INNER JOIN flt f2 ON f1.f = f2.f;', false);
                                explain_memoize                               
 -----------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3) (actual rows=4 loops=N)
+ Gather Motion 1:1  (slice1; segments: 1) (actual rows=4 loops=N)
    ->  Nested Loop (actual rows=4 loops=N)
          Join Filter: true
          ->  Seq Scan on flt (actual rows=2 loops=N)
@@ -152,14 +154,13 @@ SELECT explain_memoize('
 SELECT * FROM flt f1 INNER JOIN flt f2 ON f1.f >= f2.f;', false);
                                  explain_memoize                                 
 ---------------------------------------------------------------------------------
- Gather Motion 3:1  (slice1; segments: 3) (actual rows=4 loops=N)
+ Gather Motion 1:1  (slice1; segments: 1) (actual rows=4 loops=N)
    ->  Nested Loop (actual rows=4 loops=N)
          Join Filter: true
-         ->  Broadcast Motion 3:3  (slice2; segments: 3) (actual rows=2 loops=N)
-               ->  Seq Scan on flt (actual rows=2 loops=N)
+         ->  Seq Scan on flt (actual rows=2 loops=N)
          ->  Index Scan using flt_f_idx on flt flt_1 (actual rows=2 loops=N)
                Index Cond: (f <= flt.f)
-(8 rows)
+(7 rows)
 
 DROP TABLE flt;
 -- Exercise Memoize in binary mode with a large fixed width type and a
