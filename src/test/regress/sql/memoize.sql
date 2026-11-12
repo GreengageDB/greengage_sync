@@ -74,7 +74,9 @@ INNER JOIN tenk1 t2 ON t1.unique1 = t2.thousand
 WHERE t2.unique1 < 1200;', true);
 RESET enable_sort;
 
-CREATE TABLE flt (f float);
+-- GGDB: replicate the table so the planner keeps the upstream Memoize nodes
+-- instead of replacing them with motions around a distributed join.
+CREATE TABLE flt (f float) DISTRIBUTED REPLICATED;
 CREATE INDEX flt_f_idx ON flt (f);
 INSERT INTO flt VALUES('-0.0'::float),('+0.0'::float);
 ANALYZE flt;

@@ -589,6 +589,8 @@ CREATE TABLE tab_core_types AS SELECT
   '{(2020-01-02 03:04:05, 2021-02-03 06:07:08)}'::tsmultirange,
   '(2020-01-02 03:04:05, 2021-02-03 06:07:08)'::tstzrange,
   '{(2020-01-02 03:04:05, 2021-02-03 06:07:08)}'::tstzmultirange,
+  '2 + 4i'::complex,
+  gp_hyperloglog_accum(1),
   arrayrange(ARRAY[1,2], ARRAY[2,1]),
   arraymultirange(arrayrange(ARRAY[1,2], ARRAY[2,1]));
 
@@ -620,4 +622,5 @@ SELECT oid, typname, typtype, typelem, typarray, typarray
                     FROM pg_attribute a
                     WHERE a.atttypid=t.oid AND
                           a.attnum > 0 AND
-                          a.attrelid='tab_core_types'::regclass);
+                          a.attrelid='tab_core_types'::regclass)
+  ORDER BY oid;
