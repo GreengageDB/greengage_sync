@@ -312,7 +312,7 @@ get_magic_product(const Pg_magic_struct *module_magic_data)
 	 */
 	if (module_magic_data->len <= offsetof(Pg_magic_struct, product))
 		return "PostgreSQL";
-
+	
 	switch (module_magic_data->product)
 	{
 		case PgMagicProductNone:
