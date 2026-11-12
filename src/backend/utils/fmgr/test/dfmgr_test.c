@@ -136,7 +136,7 @@ test__incompatible_module_error__postgres_module(void **state)
 	char		library_version[32];
 
 	/* A PostgreSQL magic block ends before the product code. */
-	module_magic.len = offsetof(Pg_magic_struct, abi_extra);
+	module_magic.len = offsetof(Pg_magic_struct, product);
 
 	/* build the expected detail message the same way the code does */
 	if (module_magic.version >= 1000)
