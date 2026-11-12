@@ -985,7 +985,7 @@ select cleast_agg(variadic array[4.5,f1]) from int4_tbl;
 select pg_typeof(cleast_agg(variadic array[4.5,f1])) from int4_tbl;
 
 -- test aggregates with common transition functions share the same states
--- GPDB: with optimizer=on, every plan of the plpgsql transition functions'
+-- GGDB: with optimizer=on, every plan of the plpgsql transition functions'
 -- statements is an ORCA fallback (Query Parameter), and how often they are
 -- re-planned depends on plan cache invalidations from the tests running in
 -- parallel.  The NOTICEs show the state sharing, so don't trace fallbacks in
