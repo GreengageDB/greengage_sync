@@ -54,22 +54,7 @@ get_tablespace_paths(void)
 			 "SELECT pg_catalog.pg_tablespace_location(oid) AS spclocation "
 			 "FROM	pg_catalog.pg_tablespace "
 			 "WHERE	spcname != 'pg_default' AND "
-<<<<<<< HEAD
-			 "		spcname != 'pg_global'",
-	/*
-	 * 9.2 removed the spclocation column in upstream postgres, in GPDB it was
-	 * removed in 6.0.0 during the 8.4 merge
-	 */
-			 (GET_MAJOR_VERSION(old_cluster.major_version) == 803) ?
-			 "spclocation" : "pg_catalog.pg_tablespace_location(oid) AS spclocation");
-||||||| 3b231596ccf
-			 "		spcname != 'pg_global'",
-	/* 9.2 removed the spclocation column */
-			 (GET_MAJOR_VERSION(old_cluster.major_version) <= 901) ?
-			 "spclocation" : "pg_catalog.pg_tablespace_location(oid) AS spclocation");
-=======
 			 "		spcname != 'pg_global'");
->>>>>>> c4cc2850f4d
 
 	res = executeQueryOrDie(conn, "%s", query);
 
