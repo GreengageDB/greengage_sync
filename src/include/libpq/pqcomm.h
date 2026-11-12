@@ -62,13 +62,7 @@ struct sockaddr_storage
 typedef struct
 {
 	struct sockaddr_storage addr;
-<<<<<<< HEAD
-	socklen_t salen;
-||||||| 3b231596ccf
-	ACCEPT_TYPE_ARG3 salen;
-=======
 	socklen_t	salen;
->>>>>>> c4cc2850f4d
 } SockAddr;
 
 /* Configure the UNIX socket location for the well known port. */
