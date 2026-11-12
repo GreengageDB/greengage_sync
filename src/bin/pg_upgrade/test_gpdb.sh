@@ -15,13 +15,11 @@
 # upgrade it performs another pg_dumpall, if the two dumps match then the
 # upgrade created a new identical copy of the cluster.
 
-# Here is an example run for a 6 cluster:
+# Example run:
 # bash test_gpdb.sh -b /usr/local/gpdb/bin -o ~/workspace/gpdb/gpAux/gpdemo/datadirs
 #
 # Keep in mind this script is relatively fragile since it depends on specific
 # paths and locations relative to the standard gpdemo cluster.
-#
-# It has been tested on demo clusters transitioning from 6 to 6.
 
 OLD_BINDIR=
 OLD_DATADIR=
