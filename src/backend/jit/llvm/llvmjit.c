@@ -171,14 +171,7 @@ static void
 llvm_release_context(JitContext *context)
 {
 	LLVMJitContext *llvm_context = (LLVMJitContext *) context;
-<<<<<<< HEAD
-||||||| 3b231596ccf
-
-	llvm_enter_fatal_on_oom();
-
-=======
 	ListCell   *lc;
->>>>>>> c4cc2850f4d
 
 	/*
 	 * When this backend is exiting, don't clean up LLVM. As an error might
