@@ -462,20 +462,6 @@ set_plan_references(PlannerInfo *root, Plan *plan)
 	}
 
 	/* Now fix the Plan tree */
-<<<<<<< HEAD
-	Plan *retPlan = set_plan_refs(root, plan, rtoffset);
-
-#ifdef USE_ASSERT_CHECKING
-	/**
-	 * Ensuring that the output of setrefs behaves as expected.
-	 */
-	set_plan_references_output_asserts(glob, retPlan);
-#endif
-
-	return retPlan;
-||||||| 3b231596ccf
-	return set_plan_refs(root, plan, rtoffset);
-=======
 	result = set_plan_refs(root, plan, rtoffset);
 
 	/*
@@ -503,8 +489,14 @@ set_plan_references(PlannerInfo *root, Plan *plan)
 		}
 	}
 
+#ifdef USE_ASSERT_CHECKING
+	/**
+	 * Ensuring that the output of setrefs behaves as expected.
+	 */
+	set_plan_references_output_asserts(glob, result);
+#endif
+
 	return result;
->>>>>>> c4cc2850f4d
 }
 
 /*
