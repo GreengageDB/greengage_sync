@@ -17368,14 +17368,6 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		char	   *tablespace = NULL;
 		char	   *tableam = NULL;
 
-<<<<<<< HEAD
-		if (tbinfo->relkind == RELKIND_RELATION ||
-			tbinfo->relkind == RELKIND_PARTITIONED_TABLE ||
-			tbinfo->relkind == RELKIND_MATVIEW)
-||||||| 3b231596ccf
-		if (tbinfo->relkind == RELKIND_RELATION ||
-			tbinfo->relkind == RELKIND_MATVIEW)
-=======
 		/*
 		 * _selectTablespace() relies on tablespace-enabled objects in the
 		 * default tablespace to have a tablespace of "" (empty string) versus
@@ -17386,8 +17378,9 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		if (RELKIND_HAS_TABLESPACE(tbinfo->relkind))
 			tablespace = tbinfo->reltablespace;
 
-		if (RELKIND_HAS_TABLE_AM(tbinfo->relkind))
->>>>>>> c4cc2850f4d
+		/* GGDB: partitioned tables can have an access method, which must be dumped */
+		if (RELKIND_HAS_TABLE_AM(tbinfo->relkind) ||
+			tbinfo->relkind == RELKIND_PARTITIONED_TABLE)
 			tableam = tbinfo->amname;
 
 		ArchiveEntry(fout, tbinfo->dobj.catId, tbinfo->dobj.dumpId,

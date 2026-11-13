@@ -253,23 +253,9 @@ pgstat_relation(Relation rel, FunctionCallInfo fcinfo)
 				 errmsg("cannot access temporary tables of other sessions")));
 
 	if (RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind) ||
-		rel->rd_rel->relkind == RELKIND_SEQUENCE)
+		rel->rd_rel->relkind == RELKIND_SEQUENCE ||
+		RELKIND_IS_AO_AUX(rel->rd_rel->relkind))
 	{
-<<<<<<< HEAD
-		case RELKIND_RELATION:
-		case RELKIND_MATVIEW:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_SEQUENCE:
-		case RELKIND_AOSEGMENTS:
-		case RELKIND_AOBLOCKDIR:
-		case RELKIND_AOVISIMAP:
-||||||| 3b231596ccf
-		case RELKIND_RELATION:
-		case RELKIND_MATVIEW:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_SEQUENCE:
-=======
->>>>>>> c4cc2850f4d
 			return pgstat_heap(rel, fcinfo);
 	}
 	else if (rel->rd_rel->relkind == RELKIND_INDEX)
