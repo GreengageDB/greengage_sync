@@ -6761,7 +6761,11 @@ make_indexonlyscan(List *qptlist,
 	node->scan.scanrelid = scanrelid;
 	node->indexid = indexid;
 	node->indexqual = indexqual;
-	node->indexqualorig = recheckqual;	/* GGDB: same quals, kept for direct dispatch */
+	/*
+	 * GGDB: direct-dispatch form; recheckqual is rewritten separately in
+	 * setrefs.c.
+	 */
+	node->indexqualorig = recheckqual;
 	node->recheckqual = recheckqual;
 	node->indexorderby = indexorderby;
 	node->indextlist = indextlist;
