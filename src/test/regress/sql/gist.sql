@@ -168,9 +168,13 @@ select p from gist_tbl where circle(p,1) @> circle(point(0,0),0.95);
 select p from gist_tbl where circle(p,1) @> circle(point(0,0),0.95);
 
 -- This case isn't supported, but it should at least EXPLAIN correctly.
+-- GGDB: point(-1,-1) is outside every circle, so all distances are unique.
+-- With point(0,0), 15 rows tie at distance 0 and ORCA, which does not use
+-- expression indexes, returns an arbitrary one.  The Postgres planner still
+-- raises the lossy distance error.
 explain (verbose, costs off)
-select p from gist_tbl order by circle(p,1) <-> point(0,0) limit 1;
-select p from gist_tbl order by circle(p,1) <-> point(0,0) limit 1;
+select p from gist_tbl order by circle(p,1) <-> point(-1,-1) limit 1;
+select p from gist_tbl order by circle(p,1) <-> point(-1,-1) limit 1;
 
 -- Clean up
 reset enable_seqscan;

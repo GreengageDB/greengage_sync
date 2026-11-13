@@ -715,12 +715,8 @@ _copyIndexOnlyScan(const IndexOnlyScan *from)
 	 */
 	COPY_SCALAR_FIELD(indexid);
 	COPY_NODE_FIELD(indexqual);
-<<<<<<< HEAD
 	COPY_NODE_FIELD(indexqualorig);
-||||||| 3b231596ccf
-=======
 	COPY_NODE_FIELD(recheckqual);
->>>>>>> c4cc2850f4d
 	COPY_NODE_FIELD(indexorderby);
 	COPY_NODE_FIELD(indextlist);
 	COPY_SCALAR_FIELD(indexorderdir);
