@@ -40,13 +40,7 @@
 #include "utils/builtins.h"
 #include "utils/float.h"
 #include "utils/guc.h"
-<<<<<<< HEAD
-#include "utils/int8.h"
 #include "utils/memutils.h"
-||||||| 3b231596ccf
-#include "utils/int8.h"
-=======
->>>>>>> c4cc2850f4d
 #include "utils/numeric.h"
 #include "utils/pg_lsn.h"
 #include "utils/sortsupport.h"
