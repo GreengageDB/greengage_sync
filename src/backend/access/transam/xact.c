@@ -4029,6 +4029,9 @@ CommitTransactionCommand(void)
 			s->blockState = TBLOCK_DEFAULT;
 			if (s->chain)
 			{
+				/* GPDB: as in StartTransactionCommand() */
+				if (Gp_role == GP_ROLE_DISPATCH)
+					setupRegularDtxContext();
 				StartTransaction();
 				s->blockState = TBLOCK_INPROGRESS;
 				s->chain = false;
@@ -4055,6 +4058,9 @@ CommitTransactionCommand(void)
 			s->blockState = TBLOCK_DEFAULT;
 			if (s->chain)
 			{
+				/* GPDB: as in StartTransactionCommand() */
+				if (Gp_role == GP_ROLE_DISPATCH)
+					setupRegularDtxContext();
 				StartTransaction();
 				s->blockState = TBLOCK_INPROGRESS;
 				s->chain = false;
@@ -4073,6 +4079,9 @@ CommitTransactionCommand(void)
 			s->blockState = TBLOCK_DEFAULT;
 			if (s->chain)
 			{
+				/* GPDB: as in StartTransactionCommand() */
+				if (Gp_role == GP_ROLE_DISPATCH)
+					setupRegularDtxContext();
 				StartTransaction();
 				s->blockState = TBLOCK_INPROGRESS;
 				s->chain = false;
@@ -4140,6 +4149,9 @@ CommitTransactionCommand(void)
 				s->blockState = TBLOCK_DEFAULT;
 				if (s->chain)
 				{
+					/* GPDB: as in StartTransactionCommand() */
+					if (Gp_role == GP_ROLE_DISPATCH)
+						setupRegularDtxContext();
 					StartTransaction();
 					s->blockState = TBLOCK_INPROGRESS;
 					s->chain = false;
