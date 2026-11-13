@@ -3,15 +3,9 @@
  * tablecmds.c
  *	  Commands for creating and altering table structures and settings
  *
-<<<<<<< HEAD
  * Portions Copyright (c) 2005-2010, Greenplum inc
  * Portions Copyright (c) 2012-Present VMware, Inc. or its affiliates.
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-||||||| 3b231596ccf
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-=======
  * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
->>>>>>> c4cc2850f4d
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -1118,16 +1112,6 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		if (accessMethodId != AO_COLUMN_TABLE_AM_OID && relkind != RELKIND_PARTITIONED_TABLE)
 			stmt->attr_encodings = NIL;
 	}
-<<<<<<< HEAD
-||||||| 3b231596ccf
-	else if (relkind == RELKIND_RELATION ||
-			 relkind == RELKIND_TOASTVALUE ||
-			 relkind == RELKIND_MATVIEW)
-		accessMethod = default_table_access_method;
-=======
-	else if (RELKIND_HAS_TABLE_AM(relkind))
-		accessMethod = default_table_access_method;
->>>>>>> c4cc2850f4d
 
 	/*
 	 * In executor mode, we received all the defaults and constraints
@@ -4312,17 +4296,6 @@ RenameRelation(RenameStmt *stmt)
 	 */
 	for (;;)
 	{
-<<<<<<< HEAD
-		ereport((Gp_role == GP_ROLE_EXECUTE) ? DEBUG1 : NOTICE,
-				(errmsg("relation \"%s\" does not exist, skipping",
-						stmt->relation->relname)));
-		return InvalidObjectAddress;
-||||||| 3b231596ccf
-		ereport(NOTICE,
-				(errmsg("relation \"%s\" does not exist, skipping",
-						stmt->relation->relname)));
-		return InvalidObjectAddress;
-=======
 		LOCKMODE	lockmode;
 		char		relkind;
 		bool		obj_is_index;
@@ -4336,7 +4309,7 @@ RenameRelation(RenameStmt *stmt)
 
 		if (!OidIsValid(relid))
 		{
-			ereport(NOTICE,
+			ereport((Gp_role == GP_ROLE_EXECUTE) ? DEBUG1 : NOTICE,
 					(errmsg("relation \"%s\" does not exist, skipping",
 							stmt->relation->relname)));
 			return InvalidObjectAddress;
@@ -4356,14 +4329,13 @@ RenameRelation(RenameStmt *stmt)
 
 		UnlockRelationOid(relid, lockmode);
 		is_index_stmt = obj_is_index;
->>>>>>> c4cc2850f4d
 	}
 
 	/*
-	 * Grab an exclusive lock on the target table, index, sequence
-	 * or view, which we will NOT release until end of transaction.
+	 * Open the relation using the lock acquired above, which we will NOT
+	 * release until end of transaction.
 	 */
-	targetrelation = relation_open(relid, AccessExclusiveLock);
+	targetrelation = relation_open(relid, NoLock);
 	oldrelname = pstrdup(RelationGetRelationName(targetrelation));
 
 	/* Do the work */
@@ -4373,7 +4345,7 @@ RenameRelation(RenameStmt *stmt)
 		GpRenameChildPartitions(targetrelation, oldrelname, stmt->newname);
 
 	/*
-	 * Close rel, but keep exclusive lock!
+	 * Close rel, but keep lock!
 	 */
 	relation_close(targetrelation, NoLock);
 
@@ -16654,20 +16626,8 @@ ATExecSetTableSpace(Oid tableOid, Oid newTableSpace, LOCKMODE lockmode)
 	}
 	else
 	{
-<<<<<<< HEAD
-		Assert(rel->rd_rel->relkind == RELKIND_RELATION ||
-			   rel->rd_rel->relkind == RELKIND_MATVIEW ||
-			   rel->rd_rel->relkind == RELKIND_TOASTVALUE ||
-			   rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||
-			   rel->rd_rel->relkind == RELKIND_AOBLOCKDIR ||
-			   rel->rd_rel->relkind == RELKIND_AOVISIMAP);
-||||||| 3b231596ccf
-		Assert(rel->rd_rel->relkind == RELKIND_RELATION ||
-			   rel->rd_rel->relkind == RELKIND_MATVIEW ||
-			   rel->rd_rel->relkind == RELKIND_TOASTVALUE);
-=======
-		Assert(RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind));
->>>>>>> c4cc2850f4d
+		Assert(RELKIND_HAS_TABLE_AM(rel->rd_rel->relkind) ||
+			   RELKIND_IS_AO_AUX(rel->rd_rel->relkind));
 		table_relation_copy_data(rel, &newrnode);
 	}
 
@@ -22729,14 +22689,12 @@ DetachPartitionFinalize(Relation rel, Relation partRel, bool concurrent,
 	 */
 	CacheInvalidateRelcache(rel);
 
-<<<<<<< HEAD
 	/* MPP-6929: metadata tracking */
 	MetaTrackUpdObject(RelationRelationId,
 					   RelationGetRelid(partRel),
 					   GetUserId(),
 					   "PARTITION", "DETACH");
-||||||| 3b231596ccf
-=======
+
 	/*
 	 * If the partition we just detached is partitioned itself, invalidate
 	 * relcache for all descendent partitions too to ensure that their
@@ -22755,7 +22713,6 @@ DetachPartitionFinalize(Relation rel, Relation partRel, bool concurrent,
 			CacheInvalidateRelcacheByRelid(lfirst_oid(cell));
 		}
 	}
->>>>>>> c4cc2850f4d
 }
 
 /*

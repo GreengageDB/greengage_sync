@@ -469,7 +469,7 @@ typedef struct
 
 /*
  * List of product codes for products that support some level of compatability
- * with the postgres contrib module format. 
+ * with the postgres contrib module format.
  *
  * GPDB: A patch for this has been supplied to Postgres in the hope of improved
  * cross product compatibility.  It is currently unknown if they will accept
