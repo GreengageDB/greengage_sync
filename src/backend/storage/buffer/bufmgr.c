@@ -3992,7 +3992,7 @@ CreateAndCopyRelationData(RelFileNode src_rnode, RelFileNode dst_rnode,
 			 * init fork of an unlogged relation.
 			 */
 			if (permanent || forkNum == INIT_FORKNUM)
-				log_smgrcreate(&dst_rnode, forkNum);
+				log_smgrcreate(&dst_rnode, forkNum, SMGR_MD);
 
 			/* Copy a fork's data, block by block. */
 			RelationCopyStorageUsingBuffer(src_rel, dst_rel, forkNum,

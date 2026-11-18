@@ -397,8 +397,14 @@ ScanSourceDatabasePgClassPage(Page page, Buffer buf, Oid tbid, Oid dbid,
 		tuple.t_len = ItemIdGetLength(itemid);
 		tuple.t_tableOid = RelationRelationId;
 
-		/* Skip tuples that are not visible to this snapshot. */
-		if (HeapTupleSatisfiesVisibility(&tuple, snapshot, buf))
+		/*
+		 * Skip tuples that are not visible to this snapshot.
+		 *
+		 * GG: there is no relcache entry for a relation in another database,
+		 * and markDirty() copes with a NULL relation by always dirtying the
+		 * buffer -- which is what it would do for a catalog page anyway.
+		 */
+		if (HeapTupleSatisfiesVisibility(NULL, &tuple, snapshot, buf))
 		{
 			CreateDBRelInfo *relinfo;
 
