@@ -7,13 +7,7 @@ use File::Basename qw(basename dirname);
 use File::Path qw(rmtree);
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-<<<<<<< HEAD
-use Test::More tests => 115 + 15;
-||||||| c4cc2850f4d
-use Test::More tests => 115;
-=======
 use Test::More;
->>>>>>> 2c7ea57e56c
 
 program_help_ok('pg_basebackup');
 program_version_ok('pg_basebackup');
@@ -27,7 +21,17 @@ my $node = PostgreSQL::Test::Cluster->new('main');
 # to keep test times reasonable. Using @pg_basebackup_defs as the first
 # element of the array passed to IPC::Run interpolate the array (as it is
 # not a reference to an array)...
-my @pg_basebackup_defs = ('pg_basebackup', '--no-sync', '-cfast');
+#
+# GPDB: --target-gp-dbid is mandatory -- pg_basebackup exits with "no target
+# dbid specified" for anything <= 0 -- so it belongs in the defaults too.  A
+# tablespace's contents land in a <dbid> subdirectory of the (mapped)
+# tablespace location, so the dbid chosen here is deliberately not the test
+# server's: a backup taken with it can never collide with the live tablespace.
+# The few tests that must collide, or that assert on the backup's tablespace
+# path, pass '--target-gp-dbid', $node_dbid after @pg_basebackup_defs; the
+# later option wins.
+my @pg_basebackup_defs = ('pg_basebackup', '--no-sync', '-cfast',
+	'--target-gp-dbid', '123');
 
 
 # Set umask so test directories and files are created with default permissions
@@ -43,12 +47,17 @@ $node->command_fails(['pg_basebackup', '--target-gp-dbid', '123'],
 	'pg_basebackup needs target directory specified');
 
 # Sanity checks for options
+#
+# GPDB: these assert on the message a bad --compress produces, so they have to
+# get past the --target-gp-dbid check, which main() reaches first.
 $node->command_fails_like(
-	[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress', 'none:1' ],
+	[ 'pg_basebackup', '--target-gp-dbid', '123',
+	  '-D', "$tempdir/backup", '--compress', 'none:1' ],
 	qr/\Qcompression algorithm "none" does not accept a compression level/,
 	'failure if method "none" specified with compression level');
 $node->command_fails_like(
-	[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress', 'none+' ],
+	[ 'pg_basebackup', '--target-gp-dbid', '123',
+	  '-D', "$tempdir/backup", '--compress', 'none+' ],
 	qr/\Qunrecognized compression algorithm "none+"/,
 	'failure on incorrect separator to define compression level');
 
@@ -155,12 +164,16 @@ for my $cft (@compression_failure_tests)
 {
 	my $cfail = quotemeta($client_fails . $cft->[1]);
 	my $sfail = quotemeta($server_fails . $cft->[1]);
+	# GPDB: --target-gp-dbid as above -- without it every one of these
+	# twenty would assert on the dbid message instead of the compression one.
 	$node->command_fails_like(
-		[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress', $cft->[0] ],
+		[ 'pg_basebackup', '--target-gp-dbid', '123',
+		  '-D', "$tempdir/backup", '--compress', $cft->[0] ],
 		qr/$cfail/,
 		'client '. $cft->[2]);
 	$node->command_fails_like(
-		[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress',
+		[ 'pg_basebackup', '--target-gp-dbid', '123',
+		  '-D', "$tempdir/backup", '--compress',
 		   'server-' . $cft->[0] ],
 		qr/$sfail/,
 		'server ' . $cft->[2]);
@@ -483,7 +496,7 @@ ok(-f "$pgdata/$tblspc1UnloggedPath", 'unlogged main fork in tablespace');
 
 # Create files that look like temporary relations to ensure they are ignored
 # in a tablespace.
-@tempRelationFiles = qw(t888_888 t888888_888888_vm.1);
+@tempRelationFiles = qw(t_888 t_888888_vm.1);
 my $tblSpc1Id = basename(
 	dirname(
 		dirname(
@@ -503,6 +516,11 @@ foreach my $filename (@tempRelationFiles)
 		'TEMP_RELATION');
 }
 
+# GPDB: this has to run with the test server's own dbid.  pg_basebackup
+# refuses a plain-format backup whose tablespace directory is already
+# populated, and that directory is <location>/<target dbid>/<version dir> --
+# with the default dbid of @pg_basebackup_defs it would be a fresh path and
+# the backup would succeed.
 $node->command_fails(
 <<<<<<< HEAD
 	[ 'pg_basebackup', '-D', "$tempdir/backup1", '-Fp',
@@ -517,6 +535,8 @@ $node->command_fails(
 	'plain format with tablespaces fails without tablespace mapping');
 >>>>>>> 2c7ea57e56c
 
+# GPDB: likewise the test server's dbid, because every assertion below reads
+# the backup's tablespace contents out of .../tbackup/tblspc1/$node_dbid.
 $node->command_ok(
 	[
 <<<<<<< HEAD
@@ -547,7 +567,7 @@ SKIP:
 	ok( (   grep {
 				-l "$tempdir/backup1/pg_tblspc/$_"
 				  and readlink "$tempdir/backup1/pg_tblspc/$_" eq
-				  "$tempdir/tbackup/tblspc1/1"
+				  "$tempdir/tbackup/tblspc1/$node_dbid"
 			} readdir($dh)),
 		"tablespace symlink was updated");
 	closedir $dh;
@@ -567,17 +587,15 @@ SKIP:
 my ($tblspc1UnloggedBackupPath) =
   $tblspc1UnloggedPath =~ /[^\/]*\/[^\/]*\/[^\/]*$/g;
 
-ok(-f "$tempdir/tbackup/tblspc1/1/${tblspc1UnloggedBackupPath}_init",
+ok( -f "$tempdir/tbackup/tblspc1/$node_dbid/${tblspc1UnloggedBackupPath}_init",
 	'unlogged init fork in tablespace backup');
-ok(!-f "$tempdir/tbackup/tblspc1/1/$tblspc1UnloggedBackupPath",
+ok(!-f "$tempdir/tbackup/tblspc1/$node_dbid/$tblspc1UnloggedBackupPath",
 	'unlogged main fork not in tablespace backup');
 
 # Temp relations should not be copied.
 foreach my $filename (@tempRelationFiles)
 {
-	# GPDB_14_MERGE_FIXME: File is copied, but should not be copied at previous execution pg_basebackup
-	# Add "!" before "-f" to get correct check
-	ok( -f "$tempdir/tbackup/tblspc1/1/$tblSpc1Id/$postgresOid/$filename",
+	ok(!-f "$tempdir/tbackup/tblspc1/$node_dbid/$tblSpc1Id/$postgresOid/$filename",
 		"[tblspc1]/$tblSpc1Id/$postgresOid/$filename not copied");
 
 	# Also remove temp relation files or tablespace drop will fail.
@@ -770,14 +788,7 @@ rmtree("$tempdir/backuponserver");
 
 $node->command_fails(
 	[
-<<<<<<< HEAD
-		'pg_basebackup', '--target-gp-dbid', '123',
-        '-D',
-||||||| c4cc2850f4d
-		'pg_basebackup',             '-D',
-=======
 		@pg_basebackup_defs,         '-D',
->>>>>>> 2c7ea57e56c
 		"$tempdir/backupxs_sl_fail", '-X',
 		'stream',                    '-S',
 		'slot0'
@@ -785,13 +796,7 @@ $node->command_fails(
 	'pg_basebackup fails with nonexistent replication slot');
 
 $node->command_fails(
-<<<<<<< HEAD
-	[ 'pg_basebackup', '--target-gp-dbid', '123', '-D', "$tempdir/backupxs_slot", '-C' ],
-||||||| c4cc2850f4d
-	[ 'pg_basebackup', '-D', "$tempdir/backupxs_slot", '-C' ],
-=======
 	[ @pg_basebackup_defs, '-D', "$tempdir/backupxs_slot", '-C' ],
->>>>>>> 2c7ea57e56c
 	'pg_basebackup -C fails without slot name');
 
 $node->command_fails(
