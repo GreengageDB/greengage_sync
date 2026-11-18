@@ -204,8 +204,10 @@ preprocess_targetlist(PlannerInfo *root)
 			MergeAction *action = (MergeAction *) lfirst(l);
 
 			if (action->commandType == CMD_INSERT)
-				action->targetList = expand_insert_targetlist(action->targetList,
-															  target_relation);
+				action->targetList = expand_targetlist(action->targetList,
+													   CMD_INSERT,
+													   result_relation,
+													   target_relation);
 			else if (action->commandType == CMD_UPDATE)
 				action->updateColnos =
 					extract_update_targetlist_colnos(action->targetList);
