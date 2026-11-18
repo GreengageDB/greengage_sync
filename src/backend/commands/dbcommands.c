@@ -1363,10 +1363,16 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 			dboid = GetNewOidWithIndex(pg_database_rel, DatabaseOidIndexId,
 									   Anum_pg_database_oid);
 		} while (check_db_file_conflict(dboid));
-
-		if (Gp_role == GP_ROLE_DISPATCH)
-			RememberAssignedOidForDatabase(dbname, dboid);
 	}
+
+	/*
+	 * Whichever way we arrived at the OID, the segments have to be told about
+	 * it, including when the user chose it with the OID option: the executors
+	 * read it back with GetPreassignedOidForDatabase() and have no other
+	 * source for it.
+	 */
+	if (Gp_role == GP_ROLE_DISPATCH)
+		RememberAssignedOidForDatabase(dbname, dboid);
 
 	/*
 	 * Insert a new tuple into pg_database.  This establishes our ownership of
