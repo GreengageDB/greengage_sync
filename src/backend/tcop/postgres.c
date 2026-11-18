@@ -171,8 +171,12 @@ static long max_stack_depth_bytes = 100 * 1024L;
 /*
  * Stack base pointer -- initialized by PostmasterMain and inherited by
  * subprocesses (but see also InitPostmasterChild).
+ *
+ * GG: upstream made this static in de447bb8e6f; Greengage keeps it extern
+ * (declared in utils/elog.h) because the stack-trace printer in elog.c uses
+ * it to tell where the stack ends.
  */
-static char *stack_base_ptr = NULL;
+char	   *stack_base_ptr = NULL;
 
 /*
  * On IA64 we also have to remember the register stack base.
