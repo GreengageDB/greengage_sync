@@ -44,6 +44,9 @@ extern int2vector *buildint2vector(const int16 *int2s, int n);
 extern void namestrcpy(Name name, const char *str);
 extern int	namestrcmp(Name name, const char *str);
 
+/* int8.c (GG) */
+extern bool scanint8(const char *str, bool errorOK, int64 *result);
+
 /* numutils.c */
 extern int16 pg_strtoint16(const char *s);
 extern int32 pg_strtoint32(const char *s);
