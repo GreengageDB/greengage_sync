@@ -188,13 +188,15 @@ typedef struct SavedTransactionCharacteristics
 #define XACT_XINFO_HAS_ORIGIN			(1U << 5)
 #define XACT_XINFO_HAS_AE_LOCKS			(1U << 6)
 #define XACT_XINFO_HAS_GID				(1U << 7)
-<<<<<<< HEAD
 #define XACT_XINFO_HAS_DISTRIB			(1U << 8)
 #define XACT_XINFO_HAS_DELDBS			(1U << 9)
-||||||| c4cc2850f4d
-=======
-#define XACT_XINFO_HAS_DROPPED_STATS	(1U << 8)
->>>>>>> 2c7ea57e56c
+/*
+ * GPDB: upstream numbers this bit (1U << 8), which is taken here by
+ * XACT_XINFO_HAS_DISTRIB.  The flag is only ever read back from a WAL record
+ * written by the same build, so the value itself does not matter -- it only
+ * has to be free.
+ */
+#define XACT_XINFO_HAS_DROPPED_STATS	(1U << 10)
 
 /*
  * Also stored in xinfo, these indicating a variety of additional actions that
@@ -350,12 +352,8 @@ typedef struct xl_xact_abort
 	/* xl_xact_dbinfo follows if XINFO_HAS_DBINFO */
 	/* xl_xact_subxacts follows if XINFO_HAS_SUBXACT */
 	/* xl_xact_relfilenodes follows if XINFO_HAS_RELFILENODES */
-<<<<<<< HEAD
 	/* xl_xact_deldbs follows if XACT_XINFO_HAS_DELDBS */
-||||||| c4cc2850f4d
-=======
 	/* xl_xact_stats_items follows if XINFO_HAS_DROPPED_STATS */
->>>>>>> 2c7ea57e56c
 	/* No invalidation messages needed. */
 	/* xl_xact_twophase follows if XINFO_HAS_TWOPHASE */
 	/* twophase_gid follows if XINFO_HAS_GID. As a null-terminated string. */
@@ -374,14 +372,10 @@ typedef struct xl_xact_prepare
 	int32		nsubxacts;		/* number of following subxact XIDs */
 	int32		ncommitrels;	/* number of delete-on-commit rels */
 	int32		nabortrels;		/* number of delete-on-abort rels */
-<<<<<<< HEAD
-	int32		ncommitdbs;		/* number of delete-on-commit dbs */
-	int32		nabortdbs;		/* number of delete-on-abort dbs */
-||||||| c4cc2850f4d
-=======
 	int32		ncommitstats;	/* number of stats to drop on commit */
 	int32		nabortstats;	/* number of stats to drop on abort */
->>>>>>> 2c7ea57e56c
+	int32		ncommitdbs;		/* number of delete-on-commit dbs */
+	int32		nabortdbs;		/* number of delete-on-abort dbs */
 	int32		ninvalmsgs;		/* number of cache invalidation messages */
 	bool		initfileinval;	/* does relcache init file need invalidation? */
 	Oid			tablespace_oid_to_delete_on_abort;
@@ -424,15 +418,9 @@ typedef struct xl_xact_parsed_commit
 	TransactionId twophase_xid; /* only for 2PC */
 	char		twophase_gid[GIDSIZE];	/* only for 2PC */
 	int			nabortrels;		/* only for 2PC */
-<<<<<<< HEAD
 	RelFileNodePendingDelete *abortnodes;	/* only for 2PC */
-||||||| c4cc2850f4d
-	RelFileNode *abortnodes;	/* only for 2PC */
-=======
-	RelFileNode *abortnodes;	/* only for 2PC */
 	int			nabortstats;		/* only for 2PC */
 	xl_xact_stats_item *abortstats; /* only for 2PC */
->>>>>>> 2c7ea57e56c
 
 	XLogRecPtr	origin_lsn;
 	TimestampTz origin_timestamp;
@@ -569,15 +557,9 @@ extern int	xactGetCommittedChildren(TransactionId **ptr);
 extern XLogRecPtr XactLogCommitRecord(TimestampTz commit_time,
 									  Oid tablespace_oid_to_delete_on_commit,
 									  int nsubxacts, TransactionId *subxacts,
-<<<<<<< HEAD
 									  int nrels, RelFileNodePendingDelete *rels,
-||||||| c4cc2850f4d
-									  int nrels, RelFileNode *rels,
-=======
-									  int nrels, RelFileNode *rels,
 									  int nstats,
 									  xl_xact_stats_item *stats,
->>>>>>> 2c7ea57e56c
 									  int nmsgs, SharedInvalidationMessage *msgs,
 									  int ndeldbs, DbDirNode *deldbs,
 									  bool relcacheInval, int xactflags,
@@ -587,16 +569,10 @@ extern XLogRecPtr XactLogCommitRecord(TimestampTz commit_time,
 extern XLogRecPtr XactLogAbortRecord(TimestampTz abort_time,
 									 Oid tablespace_oid_to_abort,
 									 int nsubxacts, TransactionId *subxacts,
-<<<<<<< HEAD
 									 int nrels, RelFileNodePendingDelete *rels,
-									 int ndeldbs, DbDirNode *deldbs,
-||||||| c4cc2850f4d
-									 int nrels, RelFileNode *rels,
-=======
-									 int nrels, RelFileNode *rels,
 									 int nstats,
 									 xl_xact_stats_item *stats,
->>>>>>> 2c7ea57e56c
+									 int ndeldbs, DbDirNode *deldbs,
 									 int xactflags, TransactionId twophase_xid,
 									 const char *twophase_gid);
 extern void xact_redo(XLogReaderState *record);

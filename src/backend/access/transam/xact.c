@@ -1877,19 +1877,7 @@ RecordTransactionCommit(void)
 	/* Reset XactLastRecEnd until the next transaction writes something */
 	XactLastRecEnd = 0;
 cleanup:
-<<<<<<< HEAD
 	/* And clean up local data */
-||||||| c4cc2850f4d
-	/* Clean up local data */
-	if (rels)
-		pfree(rels);
-=======
-	/* Clean up local data */
-	if (rels)
-		pfree(rels);
-	if (ndroppedstats)
-		pfree(droppedstats);
->>>>>>> 2c7ea57e56c
 
 	return latestXid;
 }
@@ -2085,15 +2073,9 @@ RecordTransactionAbort(bool isSubXact)
 	TransactionId xid;
 	TransactionId latestXid;
 	int			nrels;
-<<<<<<< HEAD
 	RelFileNodePendingDelete *rels;
-||||||| c4cc2850f4d
-	RelFileNode *rels;
-=======
-	RelFileNode *rels;
 	int			ndroppedstats = 0;
 	xl_xact_stats_item *droppedstats = NULL;
->>>>>>> 2c7ea57e56c
 	int			nchildren;
 	TransactionId *children;
 	TimestampTz xact_time;
@@ -2173,12 +2155,8 @@ RecordTransactionAbort(bool isSubXact)
 					   GetPendingTablespaceForDeletionForAbort(),
 					   nchildren, children,
 					   nrels, rels,
-<<<<<<< HEAD
-					   ndeldbs, deldbs,
-||||||| c4cc2850f4d
-=======
 					   ndroppedstats, droppedstats,
->>>>>>> 2c7ea57e56c
+					   ndeldbs, deldbs,
 					   MyXactFlags, InvalidTransactionId,
 					   NULL);
 
@@ -2222,20 +2200,8 @@ RecordTransactionAbort(bool isSubXact)
 	if (!isSubXact)
 		XactLastRecEnd = 0;
 
-<<<<<<< HEAD
 	if (max_wal_senders > 0)
 		WalSndWakeup();
-||||||| c4cc2850f4d
-	/* And clean up local data */
-	if (rels)
-		pfree(rels);
-=======
-	/* And clean up local data */
-	if (rels)
-		pfree(rels);
-	if (ndroppedstats)
-		pfree(droppedstats);
->>>>>>> 2c7ea57e56c
 
 	return latestXid;
 }
@@ -6920,14 +6886,8 @@ XLogRecPtr
 XactLogCommitRecord(TimestampTz commit_time,
 					Oid tablespace_oid_to_delete_on_commit,
 					int nsubxacts, TransactionId *subxacts,
-<<<<<<< HEAD
 					int nrels, RelFileNodePendingDelete *rels,
-||||||| c4cc2850f4d
-					int nrels, RelFileNode *rels,
-=======
-					int nrels, RelFileNode *rels,
 					int ndroppedstats, xl_xact_stats_item *droppedstats,
->>>>>>> 2c7ea57e56c
 					int nmsgs, SharedInvalidationMessage *msgs,
 					int ndeldbs, DbDirNode *deldbs,
 					bool relcacheInval,
@@ -7139,15 +7099,9 @@ XLogRecPtr
 XactLogAbortRecord(TimestampTz abort_time,
 				   Oid tablespace_oid_to_delete_on_abort,
 				   int nsubxacts, TransactionId *subxacts,
-<<<<<<< HEAD
 				   int nrels, RelFileNodePendingDelete *rels,
-				   int ndeldbs, DbDirNode *deldbs,
-||||||| c4cc2850f4d
-				   int nrels, RelFileNode *rels,
-=======
-				   int nrels, RelFileNode *rels,
 				   int ndroppedstats, xl_xact_stats_item *droppedstats,
->>>>>>> 2c7ea57e56c
+				   int ndeldbs, DbDirNode *deldbs,
 				   int xactflags, TransactionId twophase_xid,
 				   const char *twophase_gid)
 {
@@ -7155,12 +7109,8 @@ XactLogAbortRecord(TimestampTz abort_time,
 	xl_xact_xinfo xl_xinfo;
 	xl_xact_subxacts xl_subxacts;
 	xl_xact_relfilenodes xl_relfilenodes;
-<<<<<<< HEAD
 	xl_xact_deldbs xl_deldbs;
-||||||| c4cc2850f4d
-=======
 	xl_xact_stats_items xl_dropped_stats;
->>>>>>> 2c7ea57e56c
 	xl_xact_twophase xl_twophase;
 	xl_xact_dbinfo xl_dbinfo;
 	xl_xact_origin xl_origin;
@@ -7199,18 +7149,16 @@ XactLogAbortRecord(TimestampTz abort_time,
 		info |= XLR_SPECIAL_REL_UPDATE;
 	}
 
-<<<<<<< HEAD
 	if (ndeldbs > 0)
 	{
 		xl_xinfo.xinfo |= XACT_XINFO_HAS_DELDBS;
 		xl_deldbs.ndeldbs = ndeldbs;
-||||||| c4cc2850f4d
-=======
+	}
+
 	if (ndroppedstats > 0)
 	{
 		xl_xinfo.xinfo |= XACT_XINFO_HAS_DROPPED_STATS;
 		xl_dropped_stats.nitems = ndroppedstats;
->>>>>>> 2c7ea57e56c
 	}
 
 	if (TransactionIdIsValid(twophase_xid))
@@ -7274,7 +7222,6 @@ XactLogAbortRecord(TimestampTz abort_time,
 						 nrels * sizeof(RelFileNodePendingDelete));
 	}
 
-<<<<<<< HEAD
 	if (xl_xinfo.xinfo & XACT_XINFO_HAS_DELDBS)
 	{
 		XLogRegisterData((char *) (&xl_deldbs),
@@ -7283,8 +7230,6 @@ XactLogAbortRecord(TimestampTz abort_time,
 						 ndeldbs * sizeof(DbDirNode));
 	}
 
-||||||| c4cc2850f4d
-=======
 	if (xl_xinfo.xinfo & XACT_XINFO_HAS_DROPPED_STATS)
 	{
 		XLogRegisterData((char *) (&xl_dropped_stats),
@@ -7292,7 +7237,6 @@ XactLogAbortRecord(TimestampTz abort_time,
 		XLogRegisterData((char *) droppedstats,
 						 ndroppedstats * sizeof(xl_xact_stats_item));
 	}
->>>>>>> 2c7ea57e56c
 
 	if (xl_xinfo.xinfo & XACT_XINFO_HAS_TWOPHASE)
 	{
@@ -7440,7 +7384,6 @@ xact_redo_commit(xl_xact_parsed_commit *parsed,
 		DropRelationFiles(parsed->xnodes, parsed->nrels, true);
 	}
 
-<<<<<<< HEAD
 	if (parsed->ndeldbs > 0)
 	{
 		XLogFlush(lsn);
@@ -7448,8 +7391,7 @@ xact_redo_commit(xl_xact_parsed_commit *parsed,
 	}
 
 	DoTablespaceDeletionForRedoXlog(tablespace_oid_to_delete);
-||||||| c4cc2850f4d
-=======
+
 	if (parsed->nstats > 0)
 	{
 		/* see equivalent call for relations above */
@@ -7457,7 +7399,6 @@ xact_redo_commit(xl_xact_parsed_commit *parsed,
 
 		pgstat_execute_transactional_drops(parsed->nstats, parsed->stats, true);
 	}
->>>>>>> 2c7ea57e56c
 
 	/*
 	 * We issue an XLogFlush() for the same reason we emit ForceSyncCommit()
@@ -7574,7 +7515,6 @@ xact_redo_abort(xl_xact_parsed_abort *parsed, TransactionId xid,
 		DropRelationFiles(parsed->xnodes, parsed->nrels, true);
 	}
 
-<<<<<<< HEAD
 	if (parsed->ndeldbs > 0)
 	{
 		XLogFlush(lsn);
@@ -7583,8 +7523,7 @@ xact_redo_abort(xl_xact_parsed_abort *parsed, TransactionId xid,
 	}
 
 	DoTablespaceDeletionForRedoXlog(parsed->tablespace_oid_to_delete_on_abort);
-||||||| c4cc2850f4d
-=======
+
 	if (parsed->nstats > 0)
 	{
 		/* see equivalent call for relations above */
@@ -7592,7 +7531,6 @@ xact_redo_abort(xl_xact_parsed_abort *parsed, TransactionId xid,
 
 		pgstat_execute_transactional_drops(parsed->nstats, parsed->stats, true);
 	}
->>>>>>> 2c7ea57e56c
 }
 
 void

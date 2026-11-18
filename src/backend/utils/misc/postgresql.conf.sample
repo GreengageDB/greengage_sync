@@ -657,18 +657,12 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 # STATISTICS
 #------------------------------------------------------------------------------
 
-<<<<<<< HEAD
 # - ANALYZE Statistics on Database Contents -
 
 #default_statistics_target = 100	# range 1 - 10000 (target # of
 					# histogram bins)
 
-# - Query and Index Statistics Collector -
-||||||| c4cc2850f4d
-# - Query and Index Statistics Collector -
-=======
 # - Cumulative Query and Index Statistics -
->>>>>>> 2c7ea57e56c
 
 #track_activities = on
 #track_activity_query_size = 1024	# (change requires restart)

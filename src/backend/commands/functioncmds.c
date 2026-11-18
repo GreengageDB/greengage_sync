@@ -1718,13 +1718,9 @@ RemoveFunctionById(Oid funcOid)
 
 	table_close(relation, RowExclusiveLock);
 
-<<<<<<< HEAD
 	/* Remove anything in pg_proc_callback for this function */
 	deleteProcCallbacks(funcOid);
-||||||| c4cc2850f4d
-=======
 	pgstat_drop_function(funcOid);
->>>>>>> 2c7ea57e56c
 
 	/*
 	 * If there's a pg_aggregate tuple, delete that too.
