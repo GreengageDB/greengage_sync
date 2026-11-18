@@ -4008,14 +4008,8 @@ static struct config_string ConfigureNamesString[] =
 	{
 		{"archive_command", PGC_SIGHUP, WAL_ARCHIVING,
 			gettext_noop("Sets the shell command that will be called to archive a WAL file."),
-<<<<<<< HEAD
-			NULL,
+			gettext_noop("This is used only if \"archive_library\" is not set."),
 			GUC_NOT_IN_SAMPLE
-||||||| c4cc2850f4d
-			NULL
-=======
-			gettext_noop("This is used only if \"archive_library\" is not set.")
->>>>>>> 2c7ea57e56c
 		},
 		&XLogArchiveCommand,
 		"",
