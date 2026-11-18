@@ -297,7 +297,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 			if (strlen(defel->defname) > strlen("content") &&
 				strncmp(defel->defname, "content", strlen("content")) == 0)
 			{
-				int contentId = pg_atoi(defel->defname + strlen("content"), sizeof(int16), 0);
+				int contentId = pg_strtoint16(defel->defname + strlen("content"));
 
 				/*
 				 * The master validates the content ids are in [0, segCount)
