@@ -45,17 +45,13 @@ CREATE FUNCTION reverse_name(name)
 -- systems.    This non-func update stuff needs to be examined
 -- more closely.  			- jolly (2/22/96)
 --
-<<<<<<< HEAD
-/* GPDB TODO: This test is disabled for now, because when running with ORCA,
-   you get an error:
-     ERROR:  multiple updates to a row by the same query is not allowed
-||||||| c4cc2850f4d
-=======
 SELECT two, stringu1, ten, string4
    INTO TABLE tmp
    FROM onek;
 
->>>>>>> 2c7ea57e56c
+/* GPDB TODO: This test is disabled for now, because when running with ORCA,
+   you get an error:
+     ERROR:  multiple updates to a row by the same query is not allowed
 UPDATE tmp
    SET stringu1 = reverse_name(onek.stringu1)
    FROM onek

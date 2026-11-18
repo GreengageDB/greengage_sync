@@ -250,19 +250,6 @@ select format_type('bpchar'::regtype, -1);
  bpchar
 (1 row)
 
-<<<<<<< HEAD
--- Create & Drop type as non-superuser
-CREATE USER user_bob;
-NOTICE:  resource queue required -- using default resource queue "pg_default"
-SET SESSION AUTHORIZATION user_bob;
-CREATE TYPE shell; -- not allowed
-ERROR:  must be superuser to create a base type
-CREATE TYPE compfoo as (f1 int, f2 text);
-DROP TYPE compfoo;
-RESET SESSION AUTHORIZATION;
-DROP USER user_bob;
-||||||| c4cc2850f4d
-=======
 -- Test creation of an operator over a user-defined type
 CREATE FUNCTION pt_in_widget(point, widget)
    RETURNS bool
@@ -298,7 +285,17 @@ TABLE city;
  Gotham | (1100,334),(1000,34) | 123456,127,-1000,6789
 (2 rows)
 
->>>>>>> 2c7ea57e56c
+
+-- Create & Drop type as non-superuser
+CREATE USER user_bob;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
+SET SESSION AUTHORIZATION user_bob;
+CREATE TYPE shell; -- not allowed
+ERROR:  must be superuser to create a base type
+CREATE TYPE compfoo as (f1 int, f2 text);
+DROP TYPE compfoo;
+RESET SESSION AUTHORIZATION;
+DROP USER user_bob;
 --
 -- Test CREATE/ALTER TYPE using a type that's compatible with varchar,
 -- so we can re-use those support functions

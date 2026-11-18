@@ -1,10 +1,6 @@
-<<<<<<< HEAD
 set optimizer_print_missing_stats = off;
-||||||| c4cc2850f4d
-=======
 -- directory paths are passed to us in environment variables
 \getenv abs_srcdir PG_ABS_SRCDIR
->>>>>>> 2c7ea57e56c
 --
 -- Sanity checks for text search catalogs
 --
