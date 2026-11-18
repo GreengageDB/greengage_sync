@@ -117,11 +117,6 @@ switch_server_cert($node, certfile => 'server-cn-only');
 # in ~/.postgresql/.
 my $default_ssl_connstr = "sslkey=invalid sslcert=invalid sslrootcert=invalid sslcrl=invalid sslcrldir=invalid";
 
-# Set of default settings for SSL parameters in connection string.  This
-# makes the tests protected against any defaults the environment may have
-# in ~/.postgresql/.
-my $default_ssl_connstr = "sslkey=invalid sslcert=invalid sslrootcert=invalid sslcrl=invalid sslcrldir=invalid";
-
 $common_connstr =
   "$default_ssl_connstr user=ssltestuser dbname=trustdb hostaddr=$SERVERHOSTADDR host=common-name.pg-ssltest.test";
 
@@ -240,10 +235,6 @@ switch_server_cert($node, certfile => 'server-ip-cn-only');
 
 $common_connstr =
   "$default_ssl_connstr user=ssltestuser dbname=trustdb sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR sslmode=verify-full";
-<<<<<<< HEAD
-||||||| c4cc2850f4d
-  "user=ssltestuser dbname=trustdb sslcert=invalid sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR sslmode=verify-full";
-=======
 
 $node->connect_ok("$common_connstr host=192.0.2.1",
 	"IP address in the Common Name");
@@ -267,7 +258,6 @@ switch_server_cert($node, certfile => 'server-multiple-alt-names');
 
 $common_connstr =
   "$default_ssl_connstr user=ssltestuser dbname=trustdb sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR sslmode=verify-full";
->>>>>>> 2c7ea57e56c
 
 $node->connect_ok(
 	"$common_connstr host=dns1.alt-name.pg-ssltest.test",
@@ -506,13 +496,7 @@ $node->connect_fails(
 note "running server tests";
 
 $common_connstr =
-<<<<<<< HEAD
-  "$default_ssl_connstr sslrootcert=ssl/root+server_ca.crt sslmode=require dbname=certdb hostaddr=$SERVERHOSTADDR";
-||||||| c4cc2850f4d
-  "sslrootcert=ssl/root+server_ca.crt sslmode=require dbname=certdb hostaddr=$SERVERHOSTADDR";
-=======
   "$default_ssl_connstr sslrootcert=ssl/root+server_ca.crt sslmode=require dbname=certdb hostaddr=$SERVERHOSTADDR host=localhost";
->>>>>>> 2c7ea57e56c
 
 # no client cert
 $node->connect_fails(
@@ -689,13 +673,7 @@ $node->connect_fails(
 # works, iff username matches Common Name
 # fails, iff username doesn't match Common Name.
 $common_connstr =
-<<<<<<< HEAD
-  "$default_ssl_connstr sslrootcert=ssl/root+server_ca.crt sslmode=require dbname=verifydb hostaddr=$SERVERHOSTADDR";
-||||||| c4cc2850f4d
-  "sslrootcert=ssl/root+server_ca.crt sslmode=require dbname=verifydb hostaddr=$SERVERHOSTADDR";
-=======
   "$default_ssl_connstr sslrootcert=ssl/root+server_ca.crt sslmode=require dbname=verifydb hostaddr=$SERVERHOSTADDR host=localhost";
->>>>>>> 2c7ea57e56c
 
 $node->connect_ok(
 	"$common_connstr user=ssltestuser sslcert=ssl/client.crt " . sslkey('client.key'),
@@ -722,13 +700,7 @@ $node->connect_ok(
 # intermediate client_ca.crt is provided by client, and isn't in server's ssl_ca_file
 switch_server_cert($node, certfile => 'server-cn-only', cafile => 'root_ca');
 $common_connstr =
-<<<<<<< HEAD
-  "$default_ssl_connstr user=ssltestuser dbname=certdb sslkey=$key{'client.key'} sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR";
-||||||| c4cc2850f4d
-  "user=ssltestuser dbname=certdb sslkey=$key{'client.key'} sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR";
-=======
   "$default_ssl_connstr user=ssltestuser dbname=certdb " . sslkey('client.key') . " sslrootcert=ssl/root+server_ca.crt hostaddr=$SERVERHOSTADDR host=localhost";
->>>>>>> 2c7ea57e56c
 
 $node->connect_ok(
 	"$common_connstr sslmode=require sslcert=ssl/client+client_ca.crt",
