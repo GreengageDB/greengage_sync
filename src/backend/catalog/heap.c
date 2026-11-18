@@ -481,13 +481,7 @@ heap_create(const char *relname,
 											relfrozenxid, relminmxid);
 		}
 		else if (RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
-<<<<<<< HEAD
-			RelationCreateStorage(rel->rd_node, relpersistence, SMGR_MD);
-||||||| c4cc2850f4d
-			RelationCreateStorage(rel->rd_node, relpersistence);
-=======
-			RelationCreateStorage(rel->rd_node, relpersistence, true);
->>>>>>> 2c7ea57e56c
+			RelationCreateStorage(rel->rd_node, relpersistence, SMGR_MD, true);
 		else
 			Assert(false);
 

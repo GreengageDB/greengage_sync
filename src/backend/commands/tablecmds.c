@@ -17026,13 +17026,8 @@ index_copy_data(Relation rel, RelFileNode newrnode)
 	 * NOTE: any conflict in relfilenode value will be caught in
 	 * RelationCreateStorage().
 	 */
-<<<<<<< HEAD
-	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence, smgr_which);
-||||||| c4cc2850f4d
-	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence);
-=======
-	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence, true);
->>>>>>> 2c7ea57e56c
+	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence, smgr_which,
+						  true);
 
 	/* copy main fork */
 	RelationCopyStorage(RelationGetSmgr(rel), dstrel, MAIN_FORKNUM,

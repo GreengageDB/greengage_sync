@@ -119,14 +119,8 @@ AddPendingSync(const RelFileNode *rnode, SMgrImpl smgr_which)
  * pass register_delete = false.
  */
 SMgrRelation
-<<<<<<< HEAD
-RelationCreateStorage(RelFileNode rnode, char relpersistence, SMgrImpl smgr_which)
-||||||| c4cc2850f4d
-RelationCreateStorage(RelFileNode rnode, char relpersistence)
-=======
 RelationCreateStorage(RelFileNode rnode, char relpersistence,
-					  bool register_delete)
->>>>>>> 2c7ea57e56c
+					  SMgrImpl smgr_which, bool register_delete)
 {
 	SMgrRelation srel;
 	BackendId	backend;
@@ -159,28 +153,6 @@ RelationCreateStorage(RelFileNode rnode, char relpersistence,
 	if (needs_wal)
 		log_smgrcreate(&srel->smgr_rnode.node, MAIN_FORKNUM, smgr_which);
 
-<<<<<<< HEAD
-	/* Add the relation to the list of stuff to delete at abort */
-	pending = (PendingRelDelete *)
-		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDelete));
-	pending->relnode.node = rnode;
-	pending->relnode.isTempRelation = backend == TempRelBackendId;
-	pending->atCommit = false;	/* delete if abort */
-	pending->nestLevel = GetCurrentTransactionNestLevel();
-	pending->relnode.smgr_which = smgr_which;
-	pending->next = pendingDeletes;
-	pendingDeletes = pending;
-||||||| c4cc2850f4d
-	/* Add the relation to the list of stuff to delete at abort */
-	pending = (PendingRelDelete *)
-		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDelete));
-	pending->relnode = rnode;
-	pending->backend = backend;
-	pending->atCommit = false;	/* delete if abort */
-	pending->nestLevel = GetCurrentTransactionNestLevel();
-	pending->next = pendingDeletes;
-	pendingDeletes = pending;
-=======
 	/*
 	 * Add the relation to the list of stuff to delete at abort, if we are
 	 * asked to do so.
@@ -191,14 +163,14 @@ RelationCreateStorage(RelFileNode rnode, char relpersistence,
 
 		pending = (PendingRelDelete *)
 			MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDelete));
-		pending->relnode = rnode;
-		pending->backend = backend;
+		pending->relnode.node = rnode;
+		pending->relnode.isTempRelation = backend == TempRelBackendId;
 		pending->atCommit = false;	/* delete if abort */
 		pending->nestLevel = GetCurrentTransactionNestLevel();
+		pending->relnode.smgr_which = smgr_which;
 		pending->next = pendingDeletes;
 		pendingDeletes = pending;
 	}
->>>>>>> 2c7ea57e56c
 
 	if (relpersistence == RELPERSISTENCE_PERMANENT && !XLogIsNeeded())
 	{

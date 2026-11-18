@@ -1182,7 +1182,7 @@ aoco_relation_set_new_filenode(Relation rel,
 	 *
 	 * Segment files will be created when / if needed.
 	 */
-	srel = RelationCreateStorage(*newrnode, persistence, SMGR_AO);
+	srel = RelationCreateStorage(*newrnode, persistence, SMGR_AO, true);
 
 	/*
 	 * If required, set up an init fork for an unlogged table so that it can
@@ -1257,7 +1257,7 @@ aoco_relation_copy_data(Relation rel, const RelFileNode *newrnode)
 	 * NOTE: any conflict in relfilenode value will be caught in
 	 * RelationCreateStorage().
 	 */
-	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, SMGR_AO);
+	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, SMGR_AO, true);
 
 	copy_append_only_data(rel->rd_node, *newrnode, rel->rd_backend, rel->rd_rel->relpersistence);
 
