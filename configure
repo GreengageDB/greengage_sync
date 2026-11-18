@@ -727,9 +727,6 @@ with_apr_config
 with_libcurl
 with_rt
 with_quicklz
-ZSTD_LIBS
-ZSTD_CFLAGS
-with_zstd
 with_libbz2
 with_zlib
 with_system_tzdata
@@ -915,7 +912,6 @@ with_libxslt
 with_system_tzdata
 with_zlib
 with_libbz2
-with_zstd
 with_quicklz
 with_rt
 with_libcurl
@@ -949,8 +945,6 @@ ICU_LIBS
 XML2_CONFIG
 XML2_CFLAGS
 XML2_LIBS
-ZSTD_CFLAGS
-ZSTD_LIBS
 LZ4_CFLAGS
 LZ4_LIBS
 ZSTD_CFLAGS
@@ -1644,14 +1638,13 @@ Optional Packages:
                           use system time zone data in DIR
   --without-zlib          do not use Zlib
   --without-libbz2        do not use bzip2
-  --without-zstd          do not build with Zstandard
   --with-quicklz          build with QuickLZ support (requires quicklz
                           library)
   --without-rt            do not use Realtime Library
   --without-libcurl       do not use libcurl
   --with-apr-config=PATH  path to apr-1-config utility
   --with-lz4              build with LZ4 support
-  --with-zstd             build with ZSTD support
+  --without-zstd          do not build with Zstandard
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
   --with-ssl=LIB          use LIB for SSL/TLS support (openssl)
   --with-openssl          obsolete spelling of --with-ssl=openssl
@@ -1679,8 +1672,6 @@ Some influential environment variables:
   XML2_CONFIG path to xml2-config utility
   XML2_CFLAGS C compiler flags for XML2, overriding pkg-config
   XML2_LIBS   linker flags for XML2, overriding pkg-config
-  ZSTD_CFLAGS C compiler flags for ZSTD, overriding pkg-config
-  ZSTD_LIBS   linker flags for ZSTD, overriding pkg-config
   LZ4_CFLAGS  C compiler flags for LZ4, overriding pkg-config
   LZ4_LIBS    linker flags for LZ4, overriding pkg-config
   ZSTD_CFLAGS C compiler flags for ZSTD, overriding pkg-config
@@ -9928,137 +9919,6 @@ fi
 
 
 #
-# zstd
-#
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with ZSTD support" >&5
-$as_echo_n "checking whether to build with ZSTD support... " >&6; }
-
-
-
-# Check whether --with-zstd was given.
-if test "${with_zstd+set}" = set; then :
-  withval=$with_zstd;
-  case $withval in
-    yes)
-
-$as_echo "#define USE_ZSTD 1" >>confdefs.h
-
-      ;;
-    no)
-      :
-      ;;
-    *)
-      as_fn_error $? "no argument expected for --with-zstd option" "$LINENO" 5
-      ;;
-  esac
-
-else
-  with_zstd=yes
-
-$as_echo "#define USE_ZSTD 1" >>confdefs.h
-
-fi
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_zstd" >&5
-$as_echo "$with_zstd" >&6; }
-
-
-if test "$with_zstd" = yes; then
-
-pkg_failed=no
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libzstd >= 1.1.1" >&5
-$as_echo_n "checking for libzstd >= 1.1.1... " >&6; }
-
-if test -n "$ZSTD_CFLAGS"; then
-    pkg_cv_ZSTD_CFLAGS="$ZSTD_CFLAGS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libzstd >= 1.1.1\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libzstd >= 1.1.1") 2>&5
-  ac_status=$?
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_ZSTD_CFLAGS=`$PKG_CONFIG --cflags "libzstd >= 1.1.1" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-if test -n "$ZSTD_LIBS"; then
-    pkg_cv_ZSTD_LIBS="$ZSTD_LIBS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libzstd >= 1.1.1\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libzstd >= 1.1.1") 2>&5
-  ac_status=$?
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_ZSTD_LIBS=`$PKG_CONFIG --libs "libzstd >= 1.1.1" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-
-
-
-if test $pkg_failed = yes; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-        _pkg_short_errors_supported=yes
-else
-        _pkg_short_errors_supported=no
-fi
-        if test $_pkg_short_errors_supported = yes; then
-	        ZSTD_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libzstd >= 1.1.1" 2>&1`
-        else
-	        ZSTD_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libzstd >= 1.1.1" 2>&1`
-        fi
-	# Put the nasty error message in config.log where it belongs
-	echo "$ZSTD_PKG_ERRORS" >&5
-
-	as_fn_error $? "Package requirements (libzstd >= 1.1.1) were not met:
-
-$ZSTD_PKG_ERRORS
-
-Consider adjusting the PKG_CONFIG_PATH environment variable if you
-installed software in a non-standard prefix.
-
-Alternatively, you may set the environment variables ZSTD_CFLAGS
-and ZSTD_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details." "$LINENO" 5
-elif test $pkg_failed = untried; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
-is in your PATH or set the PKG_CONFIG environment variable to the full
-path to pkg-config.
-
-Alternatively, you may set the environment variables ZSTD_CFLAGS
-and ZSTD_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-
-To get pkg-config, see <http://pkg-config.freedesktop.org/>.
-See \`config.log' for more details" "$LINENO" 5; }
-else
-	ZSTD_CFLAGS=$pkg_cv_ZSTD_CFLAGS
-	ZSTD_LIBS=$pkg_cv_ZSTD_LIBS
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
-fi
-fi
-
-#
 # quicklz
 #
 
@@ -10346,7 +10206,9 @@ $as_echo "#define USE_ZSTD 1" >>confdefs.h
   esac
 
 else
-  with_zstd=no
+  with_zstd=yes
+
+$as_echo "#define USE_ZSTD 1" >>confdefs.h
 
 fi
 
@@ -16138,7 +16000,6 @@ fi
 
 fi
 
-<<<<<<< HEAD
 # Check for bzlib.h
 if test "$with_libbz2" = yes ; then
   ac_fn_c_check_header_mongrel "$LINENO" "bzlib.h" "ac_cv_header_bzlib_h" "$ac_includes_default"
@@ -16161,8 +16022,8 @@ else
 fi
 
 
-||||||| c4cc2850f4d
-=======
+fi
+
 if test -z "$LZ4"; then
   for ac_prog in lz4
 do
@@ -16215,7 +16076,6 @@ else
 $as_echo_n "checking for LZ4... " >&6; }
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: $LZ4" >&5
 $as_echo "$LZ4" >&6; }
->>>>>>> 2c7ea57e56c
 fi
 
 if test "$with_lz4" = yes; then
