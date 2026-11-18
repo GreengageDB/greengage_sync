@@ -89,14 +89,8 @@
 #include "utils/syscache.h"
 #include "utils/timeout.h"
 
-<<<<<<< HEAD
 #include "utils/resource_manager.h"
 #include "utils/session_state.h"
-||||||| c4cc2850f4d
-=======
-static int MaxBackends = 0;
-static int MaxBackendsInitialized = false;
->>>>>>> 2c7ea57e56c
 
 static HeapTuple GetDatabaseTuple(const char *dbname);
 static HeapTuple GetDatabaseTupleByOid(Oid dboid);
