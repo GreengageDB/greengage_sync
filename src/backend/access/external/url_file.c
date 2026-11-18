@@ -61,7 +61,7 @@ url_file_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts, 
 	fo.eol_type = eol_type;
 	fo.header = opts->header_line;
 	fo.bufsize = 32 * 1024;
-	opts->header_line = 0;
+	opts->header_line = COPY_HEADER_FALSE;
 
 	/*
 	 * Open the file stream. This includes opening the first file to be read

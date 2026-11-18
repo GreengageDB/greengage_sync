@@ -1238,7 +1238,7 @@ url_curl_fopen(char *url, bool forwrite, extvar_t *ev, CopyFormatOptions *opts)
 		 * line it receives, which is just an arbitrary data row.
 		 * (url_file_fopen does the same after handing 'header' to fstream.)
 		 */
-		opts->header_line = 0;
+		opts->header_line = COPY_HEADER_FALSE;
 	}
 
 	/* initialize a curl session and get a libcurl handle for it */
