@@ -414,7 +414,7 @@ ok(-f "$pgdata/$tblspc1UnloggedPath", 'unlogged main fork in tablespace');
 
 # Create files that look like temporary relations to ensure they are ignored
 # in a tablespace.
-@tempRelationFiles = qw(t888_888 t888888_888888_vm.1);
+@tempRelationFiles = qw(t_888 t_888888_vm.1);
 my $tblSpc1Id = basename(
 	dirname(
 		dirname(
@@ -490,9 +490,7 @@ ok(!-f "$tempdir/tbackup/tblspc1/$node_dbid/$tblspc1UnloggedBackupPath",
 # Temp relations should not be copied.
 foreach my $filename (@tempRelationFiles)
 {
-	# GPDB_14_MERGE_FIXME: File is copied, but should not be copied at previous execution pg_basebackup
-	# Add "!" before "-f" to get correct check
-	ok( -f "$tempdir/tbackup/tblspc1/$node_dbid/$tblSpc1Id/$postgresOid/$filename",
+	ok(!-f "$tempdir/tbackup/tblspc1/$node_dbid/$tblSpc1Id/$postgresOid/$filename",
 		"[tblspc1]/$tblSpc1Id/$postgresOid/$filename not copied");
 
 	# Also remove temp relation files or tablespace drop will fail.
