@@ -1567,15 +1567,9 @@ vac_update_relstats(Relation relation,
 					BlockNumber num_all_visible_pages,
 					bool hasindex, TransactionId frozenxid,
 					MultiXactId minmulti,
-<<<<<<< HEAD
+					bool *frozenxid_updated, bool *minmulti_updated,
 					bool in_outer_xact,
 					bool isvacuum)
-||||||| c4cc2850f4d
-					bool in_outer_xact)
-=======
-					bool *frozenxid_updated, bool *minmulti_updated,
-					bool in_outer_xact)
->>>>>>> 2c7ea57e56c
 {
 	Oid			relid = RelationGetRelid(relation);
 	Relation	rd;
@@ -1725,26 +1719,13 @@ vac_update_relstats(Relation relation,
 	 * GPDB: We check if pgcform->relfrozenxid is valid because AO and CO
 	 * tables should have relfrozenxid as InvalidTransactionId.
 	 */
-<<<<<<< HEAD
-	if (TransactionIdIsNormal(frozenxid) &&
-		TransactionIdIsValid(pgcform->relfrozenxid) &&
-		pgcform->relfrozenxid != frozenxid &&
-		(TransactionIdPrecedes(pgcform->relfrozenxid, frozenxid) ||
-		 TransactionIdPrecedes(ReadNextTransactionId(),
-							   pgcform->relfrozenxid)))
-||||||| c4cc2850f4d
-	if (TransactionIdIsNormal(frozenxid) &&
-		pgcform->relfrozenxid != frozenxid &&
-		(TransactionIdPrecedes(pgcform->relfrozenxid, frozenxid) ||
-		 TransactionIdPrecedes(ReadNextTransactionId(),
-							   pgcform->relfrozenxid)))
-=======
 	oldfrozenxid = pgcform->relfrozenxid;
 	futurexid = false;
 	if (frozenxid_updated)
 		*frozenxid_updated = false;
-	if (TransactionIdIsNormal(frozenxid) && oldfrozenxid != frozenxid)
->>>>>>> 2c7ea57e56c
+	if (TransactionIdIsNormal(frozenxid) &&
+		TransactionIdIsValid(oldfrozenxid) &&
+		oldfrozenxid != frozenxid)
 	{
 		bool	update = false;
 
@@ -3223,6 +3204,7 @@ vac_update_relstats_from_list(VacuumStatsContext *stats_context)
 								rel->rd_rel->relhasindex,
 								InvalidTransactionId,
 								InvalidMultiXactId,
+								NULL, NULL,
 								false,
 								false /* isvacuum */);
 		}

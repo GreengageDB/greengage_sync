@@ -1111,6 +1111,7 @@ appendonly_relation_copy_for_cluster(Relation OldHeap, Relation NewHeap,
 	Datum	   *values;
 	bool	   *isnull;
 	TransactionId FreezeXid;
+	MultiXactId OldestMxact;
 	MultiXactId MultiXactCutoff;
 	Tuplesortstate *tuplesort;
 	PGRUsage	ru0;
@@ -1176,9 +1177,8 @@ appendonly_relation_copy_for_cluster(Relation OldHeap, Relation NewHeap,
 	 * Compute sane values for FreezeXid and CutoffMulti with regular
 	 * VACUUM machinery to avoidconfising existing CLUSTER code.
 	 */
-	vacuum_set_xid_limits(OldHeap, 0, 0, 0, 0,
-						  &OldestXmin, &FreezeXid, NULL, &MultiXactCutoff,
-						  NULL);
+	vacuum_set_xid_limits(OldHeap, 0, 0, 0, 0, &OldestXmin, &OldestMxact,
+						  &FreezeXid, &MultiXactCutoff);
 
 	/*
 	 * FreezeXid will become the table's new relfrozenxid, and that mustn't go
