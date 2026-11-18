@@ -282,11 +282,9 @@ bool		report_per_command = false;	/* report per-command latencies, retries
 										 * without retrying) */
 int			main_pid;			/* main process id used in log filename */
 
-<<<<<<< HEAD
 int			use_unique_key=1;	/* indexes will be primary key if set, otherwise non-unique indexes */
 char	   *storage_clause = "appendonly=false";
-||||||| c4cc2850f4d
-=======
+
 /*
  * There are different types of restrictions for deciding that the current
  * transaction with a serialization/deadlock error can no longer be retried and
@@ -309,7 +307,6 @@ uint32		max_tries = 1;
 
 bool		failures_detailed = false;	/* whether to group failures in reports
 										 * or logs by basic types */
->>>>>>> 2c7ea57e56c
 
 const char *pghost = NULL;
 const char *pgport = NULL;
