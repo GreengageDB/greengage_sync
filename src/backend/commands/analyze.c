@@ -789,7 +789,6 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		HeapTuple *validRows = (HeapTuple *) palloc(numrows * sizeof(HeapTuple));
 		MemoryContext col_context,
 					old_context;
-		bool		build_ext_stats;
 
 		pgstat_progress_update_param(PROGRESS_ANALYZE_PHASE,
 									 PROGRESS_ANALYZE_PHASE_COMPUTE_STATS);
@@ -1040,15 +1039,9 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 							hasindex,
 							InvalidTransactionId,
 							InvalidMultiXactId,
-<<<<<<< HEAD
+							NULL, NULL,
 							in_outer_xact,
 							false /* isVacuum */);
-||||||| c4cc2850f4d
-							in_outer_xact);
-=======
-							NULL, NULL,
-							in_outer_xact);
->>>>>>> 2c7ea57e56c
 
 		/* Same for indexes */
 		for (ind = 0; ind < nindexes; ind++)
@@ -1088,15 +1081,9 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 								false,
 								InvalidTransactionId,
 								InvalidMultiXactId,
-<<<<<<< HEAD
+								NULL, NULL,
 								in_outer_xact,
 								false /* isVacuum */);
-||||||| c4cc2850f4d
-								in_outer_xact);
-=======
-								NULL, NULL,
-								in_outer_xact);
->>>>>>> 2c7ea57e56c
 		}
 	}
 	else if (onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
@@ -1108,14 +1095,8 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		vac_update_relstats(onerel, -1, totalrows,
 							0, hasindex, InvalidTransactionId,
 							InvalidMultiXactId,
-<<<<<<< HEAD
-							in_outer_xact, false);
-||||||| c4cc2850f4d
-							in_outer_xact);
-=======
 							NULL, NULL,
-							in_outer_xact);
->>>>>>> 2c7ea57e56c
+							in_outer_xact, false);
 	}
 
 	/*

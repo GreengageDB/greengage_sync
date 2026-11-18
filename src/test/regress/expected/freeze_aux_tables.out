@@ -20,9 +20,9 @@ end;
 $$ language 'plpgsql';
 CREATE FUNCTION classify_age(age integer) RETURNS text AS $$
   SELECT CASE WHEN $1 < 0 THEN 'negative'
-              WHEN $1 = 0 THEN 'zero'
+              WHEN $1 = 0 THEN 'zero' -- just frozen: vacuum leaves relfrozenxid at the oldest extant XID
 	      WHEN $1 < 50 THEN 'very young' -- less than vacuum_freeze_min_age=50 that we use below
-	      WHEN $1 < 100 THEN 'young' -- recently processed by vacuum freeze
+	      WHEN $1 < 100 THEN 'young' -- what 'just frozen' looked like when vacuum left relfrozenxid at FreezeLimit
 	      ELSE 'old' END; -- not frozen
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 CREATE TYPE rel_ages AS (segid integer, relname text, age integer);
@@ -159,7 +159,7 @@ select segid = -1 as is_master, relname, classify_age(age) from aux_rel_ages('te
 group by segid = -1, relname, classify_age(age);
  is_master |     relname     | classify_age 
 -----------+-----------------+--------------
- f         | test_table_heap | young
+ f         | test_table_heap | zero
  t         | test_table_heap | very young
 (2 rows)
 
@@ -168,8 +168,8 @@ group by segid = -1, relname, classify_age(age);
  is_master |          relname           | classify_age 
 -----------+----------------------------+--------------
  t         | test_table_heap_with_toast | very young
- f         | test_table_heap_with_toast | young
- f         | pg_toast_<oid>             | young
+ f         | test_table_heap_with_toast | zero
+ f         | pg_toast_<oid>             | zero
  t         | pg_toast_<oid>             | very young
 (4 rows)
 
@@ -177,11 +177,11 @@ select segid = -1 as is_master, relname, classify_age(age) from aux_rel_ages('te
 group by segid = -1, relname, classify_age(age);
  is_master |      relname       | classify_age 
 -----------+--------------------+--------------
- f         | pg_aoblkdir_<oid>  | young
- f         | pg_aovisimap_<oid> | young
+ f         | pg_aoblkdir_<oid>  | zero
+ f         | pg_aovisimap_<oid> | zero
  t         | pg_aovisimap_<oid> | very young
  t         | pg_aoseg_<oid>     | very young
- f         | pg_aoseg_<oid>     | young
+ f         | pg_aoseg_<oid>     | zero
  t         | pg_aoblkdir_<oid>  | very young
 (6 rows)
 
@@ -189,13 +189,13 @@ select segid = -1 as is_master, relname, classify_age(age) from aux_rel_ages('te
 group by segid = -1, relname, classify_age(age);
  is_master |      relname       | classify_age 
 -----------+--------------------+--------------
- f         | pg_aoblkdir_<oid>  | young
- f         | pg_toast_<oid>     | young
+ f         | pg_aoblkdir_<oid>  | zero
+ f         | pg_toast_<oid>     | zero
  t         | pg_toast_<oid>     | very young
- f         | pg_aovisimap_<oid> | young
+ f         | pg_aovisimap_<oid> | zero
  t         | pg_aovisimap_<oid> | very young
  t         | pg_aoseg_<oid>     | very young
- f         | pg_aoseg_<oid>     | young
+ f         | pg_aoseg_<oid>     | zero
  t         | pg_aoblkdir_<oid>  | very young
 (8 rows)
 
@@ -204,9 +204,9 @@ group by segid = -1, relname, classify_age(age);
  is_master |      relname       | classify_age 
 -----------+--------------------+--------------
  t         | pg_aocsseg_<oid>   | very young
- f         | pg_aocsseg_<oid>   | young
- f         | pg_aoblkdir_<oid>  | young
- f         | pg_aovisimap_<oid> | young
+ f         | pg_aocsseg_<oid>   | zero
+ f         | pg_aoblkdir_<oid>  | zero
+ f         | pg_aovisimap_<oid> | zero
  t         | pg_aovisimap_<oid> | very young
  t         | pg_aoblkdir_<oid>  | very young
 (6 rows)
