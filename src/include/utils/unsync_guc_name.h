@@ -126,7 +126,6 @@
 		"enable_async_append",
 		"enable_bitmapscan",
 		"enable_gathermerge",
-		"enable_group_by_reordering",
 		"enable_groupagg",
 		"enable_hashagg",
 		"enable_hashjoin",

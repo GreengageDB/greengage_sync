@@ -1273,16 +1273,6 @@ typedef struct PathKey
 } PathKey;
 
 /*
- * Combines information about pathkeys and the associated clauses.
- */
-typedef struct PathKeyInfo
-{
-	NodeTag		type;
-	List	   *pathkeys;
-	List	   *clauses;
-} PathKeyInfo;
-
-/*
  * DistributionKeys
  *
  * Like PathKey, but is used to represent data distribution by hash across

@@ -1254,16 +1254,6 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	{
-		{"enable_group_by_reordering", PGC_USERSET, QUERY_TUNING_METHOD,
-			gettext_noop("enable reordering of GROUP BY key"),
-			NULL,
-			GUC_EXPLAIN
-		},
-		&enable_group_by_reordering,
-		true,
-		NULL, NULL, NULL
-	},
-	{
 		{"geqo", PGC_USERSET, DEFUNCT_OPTIONS,
 			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
             NULL,
