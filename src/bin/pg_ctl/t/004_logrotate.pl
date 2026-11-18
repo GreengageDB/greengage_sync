@@ -6,13 +6,7 @@ use warnings;
 
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-<<<<<<< HEAD
-use Test::More tests => 6;
-||||||| c4cc2850f4d
-use Test::More tests => 10;
-=======
 use Test::More;
->>>>>>> 2c7ea57e56c
 use Time::HiRes qw(usleep);
 
 # Extract the file name of a $format from the contents of
@@ -71,14 +65,8 @@ $node->init();
 $node->append_conf(
 	'postgresql.conf', qq(
 logging_collector = on
-<<<<<<< HEAD
 # GGDB: log_destination is defunct; the logging collector always writes one
 # CSV file, which current_logfiles lists as "stderr".
-||||||| c4cc2850f4d
-log_destination = 'stderr, csvlog'
-=======
-log_destination = 'stderr, csvlog, jsonlog'
->>>>>>> 2c7ea57e56c
 # these ensure stability of test results:
 log_rotation_age = 0
 lc_messages = 'C'
@@ -108,30 +96,11 @@ note "current_logfiles = $current_logfiles";
 
 like(
 	$current_logfiles,
-<<<<<<< HEAD
 	qr|^stderr log/gpdb-.*csv$|,
-||||||| c4cc2850f4d
-	qr|^stderr log/postgresql-.*log
-csvlog log/postgresql-.*csv$|,
-=======
-	qr|^stderr log/postgresql-.*log
-csvlog log/postgresql-.*csv
-jsonlog log/postgresql-.*json$|,
->>>>>>> 2c7ea57e56c
 	'current_logfiles is sane');
 
-<<<<<<< HEAD
 check_log_pattern('stderr', $current_logfiles, 'division by zero', $node);
-# GGDB: no separate csvlog destination
-#check_log_pattern('csvlog', $current_logfiles, 'division by zero', $node);
-||||||| c4cc2850f4d
-check_log_pattern('stderr', $current_logfiles, 'division by zero', $node);
-check_log_pattern('csvlog', $current_logfiles, 'division by zero', $node);
-=======
-check_log_pattern('stderr',  $current_logfiles, 'division by zero', $node);
-check_log_pattern('csvlog',  $current_logfiles, 'division by zero', $node);
-check_log_pattern('jsonlog', $current_logfiles, 'division by zero', $node);
->>>>>>> 2c7ea57e56c
+# GGDB: no separate csvlog or jsonlog destination
 
 # Sleep 2 seconds and ask for log rotation; this should result in
 # output into a different log file name.
@@ -152,33 +121,14 @@ note "now current_logfiles = $new_current_logfiles";
 
 like(
 	$new_current_logfiles,
-<<<<<<< HEAD
 	qr|^stderr log/gpdb-.*csv$|,
-||||||| c4cc2850f4d
-	qr|^stderr log/postgresql-.*log
-csvlog log/postgresql-.*csv$|,
-=======
-	qr|^stderr log/postgresql-.*log
-csvlog log/postgresql-.*csv
-jsonlog log/postgresql-.*json$|,
->>>>>>> 2c7ea57e56c
 	'new current_logfiles is sane');
 
 # Verify that log output gets to this file, too
 $node->psql('postgres', 'fee fi fo fum');
 
-<<<<<<< HEAD
 check_log_pattern('stderr', $new_current_logfiles, 'syntax error', $node);
-# GGDB: no separate csvlog destination
-#check_log_pattern('csvlog', $new_current_logfiles, 'syntax error', $node);
-||||||| c4cc2850f4d
-check_log_pattern('stderr', $new_current_logfiles, 'syntax error', $node);
-check_log_pattern('csvlog', $new_current_logfiles, 'syntax error', $node);
-=======
-check_log_pattern('stderr',  $new_current_logfiles, 'syntax error', $node);
-check_log_pattern('csvlog',  $new_current_logfiles, 'syntax error', $node);
-check_log_pattern('jsonlog', $new_current_logfiles, 'syntax error', $node);
->>>>>>> 2c7ea57e56c
+# GGDB: no separate csvlog or jsonlog destination
 
 $node->stop();
 
