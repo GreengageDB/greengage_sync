@@ -1963,6 +1963,7 @@ DETAIL:  Feature not supported: ROW EXPRESSION
 
 -- test the knapsack
 set enable_indexscan = false;
+set hash_mem_multiplier = 1.0;
 set work_mem = '64kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 set hash_mem_multiplier = 2;
@@ -2552,6 +2553,7 @@ NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entr
 set enable_sort = true;
 set work_mem to default;
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set hash_mem_multiplier to default;
 -- GPDB_12_MERGE_FIXME: the following comparison query has an ORCA plan that
 -- relies on "IS NOT DISTINCT FROM" Hash Join, a variant that we likely have
 -- lost during the merge with upstream Postgres 12. Disable ORCA for this query

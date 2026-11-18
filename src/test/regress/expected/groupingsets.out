@@ -2160,16 +2160,12 @@ select g100, g10, sum(g::numeric), count(*), max(g::text)
 from gs_data_1 group by cube (g1000, g100,g10);
 set enable_sort = true;
 set work_mem to default;
-<<<<<<< HEAD
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set hash_mem_multiplier to default;
 -- GPDB_12_MERGE_FIXME: the following comparison query has an ORCA plan that
 -- relies on "IS NOT DISTINCT FROM" Hash Join, a variant that we likely have
 -- lost during the merge with upstream Postgres 12. Disable ORCA for this query
 SET optimizer TO off;
-||||||| c4cc2850f4d
-=======
-set hash_mem_multiplier to default;
->>>>>>> 2c7ea57e56c
 -- Compare results
 (select * from gs_hash_1 except select * from gs_group_1)
   union all

@@ -55,17 +55,11 @@ SELECT COUNT(*),AVG(t2.unique1) FROM tenk1 t1,
 LATERAL (SELECT t2.unique1 FROM tenk1 t2 WHERE t1.twenty = t2.unique1) t2
 WHERE t1.unique1 < 1000;
 
-<<<<<<< HEAD
 -- Reduce work_mem so that we see some cache evictions.  Memoize sizes its
 -- cache from get_hash_memory_limit() (work_mem * hash_mem_multiplier), so
 -- work_mem is the knob here, not statement_mem.  GPDB note: the eviction
 -- counters are computed on the segments and not sent to the QD, so we can
 -- only check the plan shape here, not the Hits/Misses/Evictions line.
-||||||| c4cc2850f4d
--- Reduce work_mem so that we see some cache evictions
-=======
--- Reduce work_mem and hash_mem_multiplier so that we see some cache evictions
->>>>>>> 2c7ea57e56c
 SET work_mem TO '64kB';
 SET hash_mem_multiplier TO 1.0;
 SET enable_mergejoin TO off;
@@ -143,15 +137,7 @@ WHERE unique1 < 3
 RESET enable_seqscan;
 RESET enable_mergejoin;
 RESET work_mem;
-<<<<<<< HEAD
-||||||| c4cc2850f4d
-RESET enable_bitmapscan;
-RESET enable_hashjoin;
-=======
 RESET hash_mem_multiplier;
-RESET enable_bitmapscan;
-RESET enable_hashjoin;
->>>>>>> 2c7ea57e56c
 
 -- Test Memoize plans.  GPDB has no intra-segment parallel workers, so
 -- upstream's "parallel plan" is just the ordinary distributed plan here.  We
