@@ -18,6 +18,7 @@
 #include "catalog/catalog.h"
 #include "catalog/indexing.h"
 #include "catalog/objectaccess.h"
+#include "catalog/oid_dispatch.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_parameter_acl.h"
 #include "utils/builtins.h"
@@ -100,9 +101,10 @@ ParameterAclCreate(const char *parameter)
 	tupDesc = RelationGetDescr(rel);
 	MemSet(values, 0, sizeof(values));
 	MemSet(nulls, false, sizeof(nulls));
-	parameterId = GetNewOidWithIndex(rel,
-									 ParameterAclOidIndexId,
-									 Anum_pg_parameter_acl_oid);
+	parameterId = GetNewOidForParameterAcl(rel,
+										   ParameterAclOidIndexId,
+										   Anum_pg_parameter_acl_oid,
+										   parname);
 	values[Anum_pg_parameter_acl_oid - 1] = ObjectIdGetDatum(parameterId);
 	values[Anum_pg_parameter_acl_parname - 1] =
 		PointerGetDatum(cstring_to_text(parname));

@@ -660,15 +660,12 @@ main(int argc, char *argv[])
 			/* Dump role memberships */
 			dumpRoleMembership(conn);
 
-<<<<<<< HEAD
-			/* Dump role constraints */
-			dumpRoleConstraints(conn);
-||||||| c4cc2850f4d
-=======
 			/* Dump role GUC privileges */
 			if (server_version >= 150000 && !skip_acls)
 				dumpRoleGUCPrivs(conn);
->>>>>>> 2c7ea57e56c
+
+			/* Dump role constraints */
+			dumpRoleConstraints(conn);
 		}
 
 		/* Dump tablespaces */
