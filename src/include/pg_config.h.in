@@ -1050,12 +1050,7 @@
 /* Define to select Win32-style shared memory. */
 #undef USE_WIN32_SHARED_MEMORY
 
-<<<<<<< HEAD
-/* Define to build with zstd support. (--with-zstd) */
-||||||| c4cc2850f4d
-=======
 /* Define to 1 to build with ZSTD support. (--with-zstd) */
->>>>>>> 2c7ea57e56c
 #undef USE_ZSTD
 
 /* Define to 1 if `wcstombs_l' requires <xlocale.h>. */

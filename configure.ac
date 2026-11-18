@@ -1176,20 +1176,6 @@ PGAC_ARG_BOOL(with, libbz2, yes,
 AC_SUBST(with_libbz2)
 
 #
-# zstd
-#
-AC_MSG_CHECKING([whether to build with ZSTD support])
-PGAC_ARG_BOOL(with, zstd, yes, [do not build with Zstandard],
-              [AC_DEFINE([USE_ZSTD], 1, [Define to build with zstd support. (--with-zstd)])])
-AC_MSG_RESULT([$with_zstd])
-AC_SUBST(with_zstd)
-
-if test "$with_zstd" = yes; then
-  dnl zstd_errors.h was renamed from error_public.h in v1.1.1
-  PKG_CHECK_MODULES([ZSTD], [libzstd >= 1.1.1])
-fi
-
-#
 # quicklz
 #
 PGAC_ARG_BOOL(with, quicklz, no,
@@ -1254,7 +1240,10 @@ fi
 # ZSTD
 #
 AC_MSG_CHECKING([whether to build with ZSTD support])
-PGAC_ARG_BOOL(with, zstd, no, [build with ZSTD support],
+dnl Greengage builds with Zstandard by default -- append-optimized storage and
+dnl gpfdist compress with it -- so --with-zstd keeps the "yes" default it has
+dnl had since the Greenplum import, where upstream defaults to "no".
+PGAC_ARG_BOOL(with, zstd, yes, [do not build with Zstandard],
               [AC_DEFINE([USE_ZSTD], 1, [Define to 1 to build with ZSTD support. (--with-zstd)])])
 AC_MSG_RESULT([$with_zstd])
 AC_SUBST(with_zstd)
@@ -1801,7 +1790,6 @@ failure.  It is possible the compiler isn't looking in the proper directory.
 Use --without-zlib to disable zlib support.])])
 fi
 
-<<<<<<< HEAD
 # Check for bzlib.h
 if test "$with_libbz2" = yes ; then
   AC_CHECK_HEADER(bzlib.h, [], [AC_MSG_ERROR([header file <bzlib.h> is required for bzip2 support])], [])
@@ -1812,10 +1800,7 @@ if test "$with_quicklz" = yes; then
   AC_CHECK_HEADER(quicklz.h, [], [AC_MSG_ERROR([header file <quicklz.h> is required for QuickLZ support])])
 fi
 
-||||||| c4cc2850f4d
-=======
 PGAC_PATH_PROGS(LZ4, lz4)
->>>>>>> 2c7ea57e56c
 if test "$with_lz4" = yes; then
   AC_CHECK_HEADERS(lz4.h, [], [AC_MSG_ERROR([lz4.h header file is required for LZ4])])
 fi
