@@ -7,20 +7,14 @@ use warnings;
 
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-<<<<<<< HEAD
+use Test::More;
 
 # GPDB: Effectively disable this TAP test. We cannot run PREPARE
 # TRANSACTION in utility-mode. We need at least 1 test so create a
 # dummy one.
-#use Test::More tests => 12;
-use Test::More tests => 1;
 is(-1, -1, "Disable this TAP test");
+done_testing();
 exit;
-||||||| c4cc2850f4d
-use Test::More tests => 12;
-=======
-use Test::More;
->>>>>>> 2c7ea57e56c
 
 # Setup primary node
 my $node_primary = PostgreSQL::Test::Cluster->new("primary");
