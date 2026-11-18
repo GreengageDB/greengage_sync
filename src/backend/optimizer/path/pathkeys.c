@@ -19,12 +19,8 @@
  */
 #include "postgres.h"
 
-<<<<<<< HEAD
-#include "access/hash.h"
-||||||| c4cc2850f4d
-=======
 #include "miscadmin.h"
->>>>>>> 2c7ea57e56c
+#include "access/hash.h"
 #include "access/stratnum.h"
 #include "catalog/pg_opfamily.h"
 #include "nodes/makefuncs.h"
@@ -38,7 +34,6 @@
 #include "utils/lsyscache.h"
 #include "utils/selfuncs.h"
 
-<<<<<<< HEAD
 #include "cdb/cdbhash.h"
 #include "cdb/cdbpullup.h"		/* cdbpullup_expr(), cdbpullup_make_var() */
 #include "optimizer/clauses.h"
@@ -46,11 +41,9 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "parser/parsetree.h"
-||||||| c4cc2850f4d
-=======
+
 /* Consider reordering of GROUP BY keys? */
 bool enable_group_by_reordering = true;
->>>>>>> 2c7ea57e56c
 
 static bool pathkey_is_redundant(PathKey *new_pathkey, List *pathkeys);
 static bool matches_boolean_partition_clause(RestrictInfo *rinfo,
