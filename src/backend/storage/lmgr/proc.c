@@ -1036,32 +1036,12 @@ ProcKill(int code, Datum arg)
 	/* Cancel any pending condition variable sleep, too */
 	ConditionVariableCancelSleep();
 
-<<<<<<< HEAD
 	MyProc->localDistribXactData.state = LOCALDISTRIBXACT_STATE_NONE;
     MyProc->mppLocalProcessSerial = 0;
 	MyProc->mppSessionId = InvalidGpSessionId;
     MyProc->mppIsWriter = false;
 	MyProc->pid = 0;
-	/* Cancel any pending condition variable sleep, too */
-	ConditionVariableCancelSleep();
 
-	/* Make sure active replication slots are released */
-	if (MyReplicationSlot != NULL)
-		ReplicationSlotRelease();
-
-	/* Also cleanup all the temporary slots. */
-	ReplicationSlotCleanup();
-
-||||||| c4cc2850f4d
-	/* Make sure active replication slots are released */
-	if (MyReplicationSlot != NULL)
-		ReplicationSlotRelease();
-
-	/* Also cleanup all the temporary slots. */
-	ReplicationSlotCleanup();
-
-=======
->>>>>>> 2c7ea57e56c
 	/*
 	 * Detach from any lock group of which we are a member.  If the leader
 	 * exist before all other group members, its PGPROC will remain allocated
