@@ -8225,13 +8225,8 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 		case T_NextValueExpr:
 		case T_NullIfExpr:
 		case T_Aggref:
-<<<<<<< HEAD
-||||||| c4cc2850f4d
-		case T_WindowFunc:
-=======
 		case T_GroupingFunc:
 		case T_WindowFunc:
->>>>>>> 2c7ea57e56c
 		case T_FuncExpr:
 		case T_JsonConstructorExpr:
 		case T_JsonExpr:
