@@ -4996,7 +4996,6 @@ free_sort_tuple(Tuplesortstate *state, SortTuple *stup)
 	}
 }
 
-<<<<<<< HEAD
 /*
  * tuplesort_set_instrument
  *
@@ -5037,8 +5036,8 @@ tuplesort_finalize_stats(Tuplesortstate *state,
 		state->instrument->execmemused += MemoryContextGetPeakSpace(state->maincontext);
 	}
 	tuplesort_get_stats(state, stats);
-||||||| c4cc2850f4d
-=======
+}
+
 int
 ssup_datum_unsigned_cmp(Datum x, Datum y, SortSupport ssup)
 {
@@ -5081,5 +5080,4 @@ ssup_datum_int32_cmp(Datum x, Datum y, SortSupport ssup)
 		return 1;
 	else
 		return 0;
->>>>>>> 2c7ea57e56c
 }
