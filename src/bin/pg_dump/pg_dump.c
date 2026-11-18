@@ -5027,30 +5027,8 @@ binary_upgrade_set_type_oids_by_type_oid(Archive *fout,
 	 */
 	if (include_multirange_type && fout->remoteVersion >= 140000)
 	{
-<<<<<<< HEAD
 		Oid			pg_type_multirange_oid;
 		Oid			pg_type_multirange_array_oid;
-||||||| c4cc2850f4d
-		if (fout->remoteVersion >= 140000)
-		{
-			appendPQExpBuffer(upgrade_query,
-							  "SELECT t.oid, t.typarray "
-							  "FROM pg_catalog.pg_type t "
-							  "JOIN pg_catalog.pg_range r "
-							  "ON t.oid = r.rngmultitypid "
-							  "WHERE r.rngtypid = '%u'::pg_catalog.oid;",
-							  pg_type_oid);
-=======
-		if (fout->remoteVersion >= 140000)
-		{
-			printfPQExpBuffer(upgrade_query,
-							  "SELECT t.oid, t.typarray "
-							  "FROM pg_catalog.pg_type t "
-							  "JOIN pg_catalog.pg_range r "
-							  "ON t.oid = r.rngmultitypid "
-							  "WHERE r.rngtypid = '%u'::pg_catalog.oid;",
-							  pg_type_oid);
->>>>>>> 2c7ea57e56c
 
 		printfPQExpBuffer(upgrade_query,
 						  "SELECT t.oid, t.typname, t.typnamespace, "
