@@ -9564,7 +9564,7 @@ div_var_int(const NumericVar *var, int ival, int ival_weight,
 	}
 
 	/* Store the quotient in result */
-	digitbuf_free(result->buf);
+	digitbuf_free(result);
 	result->ndigits = res_ndigits;
 	result->buf = res_buf;
 	result->digits = res_digits;
