@@ -347,14 +347,13 @@ xact_desc_subxacts(StringInfo buf, int nsubxacts, TransactionId *subxacts)
 }
 
 static void
-<<<<<<< HEAD
-xact_desc_deldbs(StringInfo buf, int ndeldbs, DbDirNode *deldbs)
+xact_desc_deldbs(StringInfo buf, char *label, int ndeldbs, DbDirNode *deldbs)
 {
 	int		i;
 
 	if (ndeldbs > 0)
 	{
-		appendStringInfoString(buf, "; deldbs:");
+		appendStringInfo(buf, "; %s:", label);
 		for (i = 0; i < ndeldbs; i++)
 		{
 			char *path =
@@ -362,8 +361,11 @@ xact_desc_deldbs(StringInfo buf, int ndeldbs, DbDirNode *deldbs)
 
 			appendStringInfo(buf, " %s", path);
 			pfree(path);
-||||||| c4cc2850f4d
-=======
+		}
+	}
+}
+
+static void
 xact_desc_stats(StringInfo buf, const char *label,
 				int ndropped, xl_xact_stats_item *dropped_stats)
 {
@@ -378,7 +380,6 @@ xact_desc_stats(StringInfo buf, const char *label,
 							 dropped_stats[i].kind,
 							 dropped_stats[i].dboid,
 							 dropped_stats[i].objoid);
->>>>>>> 2c7ea57e56c
 		}
 	}
 }

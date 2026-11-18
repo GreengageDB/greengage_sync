@@ -312,6 +312,24 @@ static const PgStat_KindInfo pgstat_kind_infos[PGSTAT_NUM_KINDS] = {
 		.from_serialized_name = pgstat_replslot_from_serialized_name_cb,
 	},
 
+	/* GPDB: per-resource-queue statistics, keyed by queue OID, global */
+	[PGSTAT_KIND_RESQUEUE] = {
+		.name = "resqueue",
+
+		.fixed_amount = false,
+		.accessed_across_databases = true,
+
+		.shared_size = sizeof(PgStatShared_Resqueue),
+		.shared_data_off = offsetof(PgStatShared_Resqueue, stats),
+		.shared_data_len = sizeof(((PgStatShared_Resqueue *) 0)->stats),
+
+		/*
+		 * Reported synchronously straight into shared memory at statement end
+		 * (pgstat_report_queuestat), so there is no per-backend pending state
+		 * and no flush callback -- same model as replication-slot stats.
+		 */
+	},
+
 	[PGSTAT_KIND_SUBSCRIPTION] = {
 		.name = "subscription",
 
@@ -837,9 +855,12 @@ pgstat_fetch_entry(PgStat_Kind kind, Oid dboid, Oid objoid)
 	else
 		stats_data = MemoryContextAlloc(pgStatLocal.snapshot.context,
 										kind_info->shared_data_len);
+
+	pgstat_lock_entry_shared(entry_ref, false);
 	memcpy(stats_data,
 		   pgstat_get_entry_data(kind, entry_ref->shared_stats),
 		   kind_info->shared_data_len);
+	pgstat_unlock_entry(entry_ref);
 
 	if (pgstat_fetch_consistency > PGSTAT_FETCH_CONSISTENCY_NONE)
 	{
@@ -976,9 +997,15 @@ pgstat_build_snapshot(void)
 
 		entry->data = MemoryContextAlloc(pgStatLocal.snapshot.context,
 										 kind_info->shared_size);
+		/*
+		 * Acquire the LWLock directly instead of using
+		 * pg_stat_lock_entry_shared() which requires a reference.
+		 */
+		LWLockAcquire(&stats_data->lock, LW_SHARED);
 		memcpy(entry->data,
 			   pgstat_get_entry_data(kind, stats_data),
 			   kind_info->shared_size);
+		LWLockRelease(&stats_data->lock);
 	}
 	dshash_seq_term(&hstat);
 
@@ -1053,7 +1080,7 @@ pgstat_prep_pending_entry(PgStat_Kind kind, Oid dboid, Oid objoid, bool *created
 	if (unlikely(!pgStatPendingContext))
 	{
 		pgStatPendingContext =
-			AllocSetContextCreate(CacheMemoryContext,
+			AllocSetContextCreate(TopMemoryContext,
 								  "PgStat Pending",
 								  ALLOCSET_SMALL_SIZES);
 	}
@@ -1351,7 +1378,7 @@ pgstat_write_statsfile(void)
 			/* stats entry identified by name on disk (e.g. slots) */
 			NameData	name;
 
-			kind_info->to_serialized_name(shstats, &name);
+			kind_info->to_serialized_name(&ps->key, shstats, &name);
 
 			fputc('N', fpout);
 			write_chunk_s(fpout, &ps->key.kind);

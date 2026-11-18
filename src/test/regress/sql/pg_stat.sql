@@ -32,11 +32,25 @@ update pg_stat_test set a = 1000 where a > 90;
 
 set enable_seqscan to off;
 
-select pg_sleep(10);
-
 select * from pg_stat_test where a = 1;
 
 reset enable_seqscan;
+
+-- PostgreSQL 15 keeps cumulative statistics in shared memory instead of
+-- sending them to a collector, and every backend flushes its own pending
+-- counters at most once per PGSTAT_MIN_INTERVAL, retrying once it has been
+-- idle for PGSTAT_IDLE_INTERVAL (10s).  The wait therefore has to come after
+-- the query whose counters are read below, not before it: ahead of it, the
+-- index scan's own counters are still pending when they are read.
+--
+-- Greengage: for a user table the pg_stat_* views read each segment's shared
+-- statistics through gp_dist_random(), and the sequential scan of the UPDATE
+-- above is pending in this session's writer gang, which gets no further
+-- command.  pg_stat_force_next_flush() dispatched to the segments only ever
+-- reaches the reader gangs, so it cannot flush that one; waiting past
+-- PGSTAT_IDLE_INTERVAL flushes every backend of the session, which is what
+-- makes all four reads below settled.
+select pg_sleep(11);
 
 select
     schemaname, relname, seq_scan, seq_tup_read, idx_scan, idx_tup_fetch, n_tup_ins, n_tup_upd,

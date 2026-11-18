@@ -34,12 +34,14 @@
 #include "access/tableam.h"
 #include "access/xact.h"
 #include "access/xloginsert.h"
+#include "access/xlogrecovery.h"
 #include "access/xlogutils.h"
 #include "catalog/catalog.h"
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
 #include "catalog/indexing.h"
 #include "catalog/objectaccess.h"
+#include "catalog/pg_am.h"
 #include "catalog/pg_authid.h"
 <<<<<<< HEAD
 #include "catalog/pg_class.h"
@@ -58,7 +60,9 @@
 #include "commands/dbcommands_xlog.h"
 #include "commands/defrem.h"
 #include "commands/seclabel.h"
+#include "commands/tablecmds.h"
 #include "commands/tablespace.h"
+#include "common/file_perm.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
 #include "pgstat.h"
@@ -169,6 +173,7 @@ static void CreateDirAndVersionFile(char *dbpath, Oid dbid, Oid tsid,
 									bool isRedo);
 static void CreateDatabaseUsingFileCopy(Oid src_dboid, Oid dboid, Oid src_tsid,
 										Oid dst_tsid);
+static void recovery_create_dbdir(char *path, bool only_tblspc);
 
 /*
  * Create a new database using the WAL_LOG strategy.
@@ -195,6 +200,14 @@ CreateDatabaseUsingWalLog(Oid src_dboid, Oid dst_dboid,
 
 	/* Create database directory and write PG_VERSION file. */
 	CreateDirAndVersionFile(dstpath, dst_dboid, dst_tsid, false);
+
+	/*
+	 * Register the new database directory for deletion if the transaction
+	 * aborts.  Greengage cleans a failed CREATE DATABASE up through the
+	 * pendingDbDeletes list instead of the upstream failure callback, which
+	 * cannot work with two-phase commit (see createdb_failure_callback).
+	 */
+	ScheduleDbDirDelete(dst_dboid, dst_tsid, false);
 
 	/* Copy relmap file from source database to the destination database. */
 	RelationMapCopy(dst_dboid, dst_tsid, srcpath, dstpath);
@@ -394,8 +407,14 @@ ScanSourceDatabasePgClassPage(Page page, Buffer buf, Oid tbid, Oid dbid,
 		tuple.t_len = ItemIdGetLength(itemid);
 		tuple.t_tableOid = RelationRelationId;
 
-		/* Skip tuples that are not visible to this snapshot. */
-		if (HeapTupleSatisfiesVisibility(&tuple, snapshot, buf))
+		/*
+		 * Skip tuples that are not visible to this snapshot.
+		 *
+		 * GG: there is no relcache entry for a relation in another database,
+		 * and markDirty() copes with a NULL relation by always dirtying the
+		 * buffer -- which is what it would do for a catalog page anyway.
+		 */
+		if (HeapTupleSatisfiesVisibility(NULL, &tuple, snapshot, buf))
 		{
 			CreateDBRelInfo *relinfo;
 
@@ -448,6 +467,19 @@ ScanSourceDatabasePgClassTuple(HeapTupleData *tuple, Oid tbid, Oid dbid,
 		!RELKIND_HAS_STORAGE(classForm->relkind) ||
 		classForm->relpersistence == RELPERSISTENCE_TEMP)
 		return NULL;
+
+	/*
+	 * An append-optimized relation keeps its data in segment files that are
+	 * not read through the buffer cache, so the block-by-block copy below
+	 * would silently produce an empty relation in the new database.  Refuse
+	 * the WAL_LOG strategy rather than lose the data; the file-copy strategy,
+	 * which Greengage uses by default, copies the segment files as well.
+	 */
+	if (IsAccessMethodAO(classForm->relam))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot copy a database containing append-optimized tables with STRATEGY = wal_log"),
+				 errhint("Use STRATEGY = file_copy instead.")));
 
 	/*
 	 * If relfilenode is valid then directly use it.  Otherwise, consult the
@@ -640,11 +672,19 @@ CreateDatabaseUsingFileCopy(Oid src_dboid, Oid dst_dboid, Oid src_tsid,
 		dstpath = GetDatabasePath(dst_dboid, dsttablespace);
 
 		/*
+		 * Register the database directory for deletion if the transaction
+		 * aborts, the way Greengage cleans up a failed CREATE DATABASE.
+		 */
+		ScheduleDbDirDelete(dst_dboid, dsttablespace, false);
+
+		/*
 		 * Copy this subdirectory to the new location
 		 *
 		 * We don't need to copy subdirectories
 		 */
 		copydir(srcpath, dstpath, false);
+
+		SIMPLE_FAULT_INJECTOR("create_db_after_file_copy");
 
 		/* Record the filesystem change in XLOG */
 		{
@@ -663,6 +703,9 @@ CreateDatabaseUsingFileCopy(Oid src_dboid, Oid dst_dboid, Oid src_tsid,
 							  XLOG_DBASE_CREATE_FILE_COPY | XLR_SPECIAL_REL_UPDATE);
 		}
 	}
+
+	SIMPLE_FAULT_INJECTOR("after_xlog_create_database");
+
 	table_endscan(scan);
 	table_close(rel, AccessShareLock);
 
@@ -763,7 +806,13 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	char	   *dbcollversion = NULL;
 	int			notherbackends;
 	int			npreparedxacts;
-	CreateDBStrategy dbstrategy = CREATEDB_WAL_LOG;
+	/*
+	 * Greengage keeps upstream's pre-15 behaviour as the default: the WAL_LOG
+	 * strategy copies relations through the buffer cache, which does not reach
+	 * append-optimized segment files, and only the file-copy strategy is
+	 * dispatch- and pendingDbDeletes-aware.
+	 */
+	CreateDBStrategy dbstrategy = CREATEDB_FILE_COPY;
 	createdb_failure_params fparms;
 	bool		shouldDispatch = (Gp_role == GP_ROLE_DISPATCH);
 
@@ -860,7 +909,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 		}
 		else if (strcmp(defel->defname, "oid") == 0)
 		{
-			dboid = defGetInt32(defel);
+			dboid = defGetObjectId(defel);
 
 			/*
 			 * We don't normally permit new databases to be created with
@@ -1356,6 +1405,15 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 		} while (check_db_file_conflict(dboid));
 >>>>>>> 2c7ea57e56c
 	}
+
+	/*
+	 * Whichever way we arrived at the OID, the segments have to be told about
+	 * it, including when the user chose it with the OID option: the executors
+	 * read it back with GetPreassignedOidForDatabase() and have no other
+	 * source for it.
+	 */
+	if (Gp_role == GP_ROLE_DISPATCH)
+		RememberAssignedOidForDatabase(dbname, dboid);
 
 	/*
 	 * Insert a new tuple into pg_database.  This establishes our ownership of
@@ -2012,15 +2070,10 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	 * Tell the cumulative stats system to forget it immediately, too.
 	 */
 	pgstat_drop_database(db_id);
-	
+
 	/* MPP-6929: metadata tracking */
 	if (Gp_role == GP_ROLE_DISPATCH)
 		MetaTrackDropObject(DatabaseRelationId, db_id);
-
-	/*
-	 * Tell the stats collector to forget it immediately, too.
-	 */
-	pgstat_drop_database(db_id);
 
 	/*
 	 * Tell checkpointer to forget any pending fsync and unlink requests for
@@ -3430,6 +3483,45 @@ get_database_name(Oid dbid)
 }
 
 /*
+ * recovery_create_dbdir()
+ *
+ * During recovery, there's a case where we validly need to recover a missing
+ * tablespace directory so that recovery can continue.  This happens when
+ * recovery wants to create a database but the holding tablespace has been
+ * removed before the server stopped.  Since we expect that the directory will
+ * be gone before reaching recovery consistency, and we have no knowledge about
+ * the tablespace other than its OID here, we create a real directory under
+ * pg_tblspc here instead of restoring the symlink.
+ *
+ * If only_tblspc is true, then the requested directory must be in pg_tblspc/
+ */
+static void
+recovery_create_dbdir(char *path, bool only_tblspc)
+{
+	struct stat st;
+
+	Assert(RecoveryInProgress());
+
+	if (stat(path, &st) == 0)
+		return;
+
+	if (only_tblspc && strstr(path, "pg_tblspc/") == NULL)
+		elog(PANIC, "requested to created invalid directory: %s", path);
+
+	if (reachedConsistency && !allow_in_place_tablespaces)
+		ereport(PANIC,
+				errmsg("missing directory \"%s\"", path));
+
+	elog(reachedConsistency ? WARNING : DEBUG1,
+		 "creating missing directory: %s", path);
+
+	if (pg_mkdir_p(path, pg_dir_create_mode) != 0)
+		ereport(PANIC,
+				errmsg("could not create missing directory \"%s\": %m", path));
+}
+
+
+/*
  * DATABASE resource manager's routines
  */
 void
@@ -3446,7 +3538,7 @@ dbase_redo(XLogReaderState *record)
 		(xl_dbase_create_file_copy_rec *) XLogRecGetData(record);
 		char	   *src_path;
 		char	   *dst_path;
-		char	   *parentdir;
+		char	   *parent_path;
 		struct stat st;
 
 		src_path = GetDatabasePath(xlrec->src_db_id, xlrec->src_tablespace_id);
@@ -3467,28 +3559,32 @@ dbase_redo(XLogReaderState *record)
 		}
 
 		/*
-		 * It is possible that the tablespace was later dropped, but we are
-		 * re-redoing database create before that. In that case,
-		 * either src_path or dst_path is probably missing here and needs to
-		 * be created. We create directories here so that copy_dir() won't
-		 * fail, but do not bother to create the symlink under pg_tblspc
-		 * if the tablespace is not global/default.
+		 * If the parent of the target path doesn't exist, create it now. This
+		 * enables us to create the target underneath later.  Note that if
+		 * the database dir is not in a tablespace, the parent will always
+		 * exist, so this never runs in that case.
 		 */
-		if (stat(src_path, &st) != 0 && pg_mkdir_p(src_path, S_IRWXU) != 0)
+		parent_path = pstrdup(dst_path);
+		get_parent_directory(parent_path);
+		if (stat(parent_path, &st) < 0)
 		{
-			ereport(WARNING,
-					(errmsg("can not recursively create directory \"%s\"",
-							src_path)));
+			if (errno != ENOENT)
+				ereport(FATAL,
+						errmsg("could not stat directory \"%s\": %m",
+							   dst_path));
+
+			recovery_create_dbdir(parent_path, true);
 		}
-		parentdir = pstrdup(dst_path);
-		get_parent_directory(parentdir);
-		if (stat(parentdir, &st) != 0 && pg_mkdir_p(parentdir, S_IRWXU) != 0)
-		{
-			ereport(WARNING,
-					(errmsg("can not recursively create directory \"%s\"",
-							parentdir)));
-		}
-		pfree(parentdir);
+		pfree(parent_path);
+
+		/*
+		 * There's a case where the copy source directory is missing for the
+		 * same reason above.  Create the emtpy source directory so that
+		 * copydir below doesn't fail.  The directory will be dropped soon by
+		 * recovery.
+		 */
+		if (stat(src_path, &st) < 0 && errno == ENOENT)
+			recovery_create_dbdir(src_path, false);
 
 		/*
 		 * Force dirty buffers out to disk, to ensure source database is
@@ -3508,8 +3604,14 @@ dbase_redo(XLogReaderState *record)
 		xl_dbase_create_wal_log_rec *xlrec =
 		(xl_dbase_create_wal_log_rec *) XLogRecGetData(record);
 		char	   *dbpath;
+		char	   *parent_path;
 
 		dbpath = GetDatabasePath(xlrec->db_id, xlrec->tablespace_id);
+
+		/* create the parent directory if needed and valid */
+		parent_path = pstrdup(dbpath);
+		get_parent_directory(parent_path);
+		recovery_create_dbdir(parent_path, true);
 
 		/* Create the database directory with the version file. */
 		CreateDirAndVersionFile(dbpath, xlrec->db_id, xlrec->tablespace_id,

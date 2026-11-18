@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 -- Suppress NOTICE messages when schema doesn't exist
 SET client_min_messages TO 'warning';
 DROP SCHEMA IF EXISTS test_util CASCADE;
@@ -43,8 +42,6 @@ SELECT
 end;
 $$ language plpgsql;
 
-||||||| c4cc2850f4d
-=======
 --
 -- TEST_SETUP --- prepare environment expected by regression test scripts
 --
@@ -65,7 +62,6 @@ $$ language plpgsql;
 SET synchronous_commit = on;
 
 --
->>>>>>> 2c7ea57e56c
 -- Postgres formerly made the public schema read/write by default,
 -- and most of the core regression tests still expect that.
 --
@@ -182,7 +178,10 @@ CREATE TABLE onek (
 COPY onek FROM :'filename';
 VACUUM ANALYZE onek;
 
-CREATE TABLE onek2 AS SELECT * FROM onek;
+-- GPDB: give the CTAS copies the same distribution key as their source.
+-- Without it they fall back to a randomly distributed policy, and ORCA then
+-- produces different EXPLAIN ANALYZE output for tests that read them.
+CREATE TABLE onek2 AS SELECT * FROM onek DISTRIBUTED BY (unique1);
 VACUUM ANALYZE onek2;
 
 CREATE TABLE tenk1 (
@@ -208,7 +207,7 @@ CREATE TABLE tenk1 (
 COPY tenk1 FROM :'filename';
 VACUUM ANALYZE tenk1;
 
-CREATE TABLE tenk2 AS SELECT * FROM tenk1;
+CREATE TABLE tenk2 AS SELECT * FROM tenk1 DISTRIBUTED BY (unique1);
 VACUUM ANALYZE tenk2;
 
 CREATE TABLE person (
@@ -299,7 +298,7 @@ CREATE FUNCTION binary_coercible(oid, oid)
 CREATE FUNCTION ttdummy ()
     RETURNS trigger
     AS :'regresslib'
-    LANGUAGE C;
+    LANGUAGE C READS SQL DATA;
 
 CREATE FUNCTION get_column_offset (oid[])
     RETURNS int
@@ -328,3 +327,75 @@ create function part_hashtext_length(value text, seed int8)
 create operator class part_test_text_ops for type text using hash as
     operator 1 =,
     function 2 part_hashtext_length(text, int8);
+
+--
+-- GPDB: statistics for every table this script creates.
+--
+-- The tables above are analyzed right after they are loaded, so their tabstat
+-- counters have not been flushed to the shared stats yet and
+-- n_mod_since_analyze stays non-zero.  Later test scripts build indexes on
+-- these tables, which triggers an auto-ANALYZE, and ORCA, which is very
+-- sensitive to statistics, then picks different plans for some queries.
+-- Sleep past PGSTAT_MIN_INTERVAL so pgstat_report_stat() flushes the
+-- tabstats, then analyze once more so the counters end up at zero.
+--
+-- The small *_TBL tables get no ANALYZE at all upstream.  Without statistics
+-- ORCA emits a "columns do not have statistics" NOTICE into the output of
+-- every test that reads them, so analyze them here too.
+--
+select pg_sleep(1.5);
+
+ANALYZE CHAR_TBL;
+ANALYZE FLOAT8_TBL;
+ANALYZE INT2_TBL;
+ANALYZE INT4_TBL;
+ANALYZE INT8_TBL;
+ANALYZE POINT_TBL;
+ANALYZE TEXT_TBL;
+ANALYZE VARCHAR_TBL;
+ANALYZE onek;
+ANALYZE onek2;
+ANALYZE tenk1;
+ANALYZE tenk2;
+ANALYZE person;
+ANALYZE emp;
+ANALYZE student;
+ANALYZE stud_emp;
+ANALYZE road;
+ANALYZE ihighway;
+ANALYZE shighway;
+
+--
+-- GPDB: give relallvisible back, because the ANALYZEs above just zeroed it.
+--
+-- Upstream vacuums these tables before the tests read them, so the planner
+-- sees allvisfrac = 1 and can cost an index-only scan; a good number of its
+-- expected plans are index-only scans for that reason.  On a cluster only the
+-- segments know how many pages are all-visible: VACUUM collects the number
+-- from them and sums it into the coordinator's pg_class, while ANALYZE counts
+-- the visibility map of the coordinator's own copy of a distributed table,
+-- which is empty, and therefore stores relallvisible = 0.  That is a
+-- long-standing limitation -- see the GPDB_92_MERGE_FIXME in
+-- commands/analyze.c -- and it means the ANALYZE pass above undoes the
+-- visibility half of upstream's VACUUM ANALYZE.  So vacuum once more, last.
+--
+-- POINT_TBL is skipped here for the same reason upstream skips it above.
+--
+VACUUM CHAR_TBL;
+VACUUM FLOAT8_TBL;
+VACUUM INT2_TBL;
+VACUUM INT4_TBL;
+VACUUM INT8_TBL;
+VACUUM TEXT_TBL;
+VACUUM VARCHAR_TBL;
+VACUUM onek;
+VACUUM onek2;
+VACUUM tenk1;
+VACUUM tenk2;
+VACUUM person;
+VACUUM emp;
+VACUUM student;
+VACUUM stud_emp;
+VACUUM road;
+VACUUM ihighway;
+VACUUM shighway;

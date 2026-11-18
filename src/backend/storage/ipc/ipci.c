@@ -404,7 +404,7 @@ CreateSharedMemoryAndSemaphores(void)
 	BTreeShmemInit();
 	SyncScanShmemInit();
 	AsyncShmemInit();
-<<<<<<< HEAD
+	StatsShmemInit();
 	BackendCancelShmemInit();
 	WorkFileShmemInit();
 	ShareInputShmemInit();
@@ -416,10 +416,6 @@ CreateSharedMemoryAndSemaphores(void)
 		InstrShmemInit();
 
 	GpExpandVersionShmemInit();
-||||||| c4cc2850f4d
-=======
-	StatsShmemInit();
->>>>>>> 2c7ea57e56c
 
 #ifdef EXEC_BACKEND
 

@@ -242,7 +242,8 @@ typedef struct PgStat_KindInfo
 	/*
 	 * For variable-numbered stats with named_on_disk. Optional.
 	 */
-	void		(*to_serialized_name) (const PgStatShared_Common *header, NameData *name);
+	void		(*to_serialized_name) (const PgStat_HashKey *key,
+									   const PgStatShared_Common *header, NameData *name);
 	bool		(*from_serialized_name) (const NameData *name, PgStat_HashKey *key);
 
 	/*
@@ -382,6 +383,13 @@ typedef struct PgStatShared_ReplSlot
 	PgStatShared_Common header;
 	PgStat_StatReplSlotEntry stats;
 } PgStatShared_ReplSlot;
+
+/* GPDB: shared per-resource-queue statistics (keyed by queue OID) */
+typedef struct PgStatShared_Resqueue
+{
+	PgStatShared_Common header;
+	PgStat_StatQueueEntry stats;
+} PgStatShared_Resqueue;
 
 
 /*
@@ -567,7 +575,7 @@ extern void pgstat_relation_delete_pending_cb(PgStat_EntryRef *entry_ref);
  */
 
 extern void pgstat_replslot_reset_timestamp_cb(PgStatShared_Common *header, TimestampTz ts);
-extern void pgstat_replslot_to_serialized_name_cb(const PgStatShared_Common *tmp, NameData *name);
+extern void pgstat_replslot_to_serialized_name_cb(const PgStat_HashKey *key, const PgStatShared_Common *header, NameData *name);
 extern bool pgstat_replslot_from_serialized_name_cb(const NameData *name, PgStat_HashKey *key);
 
 
@@ -581,6 +589,7 @@ extern void pgstat_detach_shmem(void);
 extern PgStat_EntryRef *pgstat_get_entry_ref(PgStat_Kind kind, Oid dboid, Oid objoid,
 											 bool create, bool *found);
 extern bool pgstat_lock_entry(PgStat_EntryRef *entry_ref, bool nowait);
+extern bool pgstat_lock_entry_shared(PgStat_EntryRef *entry_ref, bool nowait);
 extern void pgstat_unlock_entry(PgStat_EntryRef *entry_ref);
 extern bool pgstat_drop_entry(PgStat_Kind kind, Oid dboid, Oid objoid);
 extern void pgstat_drop_all_entries(void);
@@ -630,6 +639,8 @@ extern void pgstat_subscription_reset_timestamp_cb(PgStatShared_Common *header, 
  */
 
 extern PgStat_SubXactStatus *pgstat_get_xact_stack_level(int nest_level);
+/* GPDB: needed by the QD/QE tabstat combine code in pgstat_relation.c */
+extern PgStat_SubXactStatus *pgStatXactStack;
 extern void pgstat_drop_transactional(PgStat_Kind kind, Oid dboid, Oid objoid);
 extern void pgstat_create_transactional(PgStat_Kind kind, Oid dboid, Oid objoid);
 

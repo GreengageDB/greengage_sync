@@ -343,8 +343,8 @@ SystemAttributeByName(const char *attname)
  *		heap_create		- Create an uncataloged heap relation
  *
  *		Note API change: the caller must now always provide the OID
- *		to use for the relation.  The relfilenode may be (and in
- *		the simplest cases is) left unspecified.
+ *		to use for the relation.  The relfilenode may (and, normally,
+ *		should) be left unspecified.
  *
  *		create_storage indicates whether or not to create the storage.
  *		However, even if create_storage is true, no storage will be
@@ -507,6 +507,9 @@ heap_create(const char *relname,
 	if (!create_storage && reltablespace != InvalidOid)
 		recordDependencyOnTablespace(RelationRelationId, relid,
 									 reltablespace);
+
+	/* ensure that stats are dropped if transaction aborts */
+	pgstat_create_relation(rel);
 
 	return rel;
 }
@@ -1497,8 +1500,6 @@ heap_create_with_catalog(const char *relname,
 	Oid			old_type_oid;
 	Oid			new_type_oid;
 
-	/* By default set to InvalidOid unless overridden by binary-upgrade */
-	Oid			relfilenode = InvalidOid;
 	TransactionId relfrozenxid;
 	MultiXactId relminmxid;
 
@@ -1697,7 +1698,7 @@ heap_create_with_catalog(const char *relname,
 							   relnamespace,
 							   reltablespace,
 							   relid,
-							   relfilenode,
+							   InvalidOid,
 							   accessmtd,
 							   tupdesc,
 							   relkind,
@@ -1949,9 +1950,6 @@ heap_create_with_catalog(const char *relname,
 	 */
 	if (oncommit != ONCOMMIT_NOOP)
 		register_on_commit_action(relid, oncommit);
-
-	/* ensure that stats are dropped if transaction aborts */
-	pgstat_create_relation(new_rel_desc);
 
 	/*
 	 * CDB: If caller gave us a distribution policy, store the distribution
