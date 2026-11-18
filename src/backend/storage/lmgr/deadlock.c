@@ -145,7 +145,6 @@ void
 InitDeadLockChecking(void)
 {
 	MemoryContext oldcxt;
-	int max_backends = GetMaxBackends();
 
 	/* Make sure allocations are permanent */
 	oldcxt = MemoryContextSwitchTo(TopMemoryContext);
@@ -154,16 +153,16 @@ InitDeadLockChecking(void)
 	 * FindLockCycle needs at most MaxBackends entries in visitedProcs[] and
 	 * deadlockDetails[].
 	 */
-	visitedProcs = (PGPROC **) palloc(max_backends * sizeof(PGPROC *));
-	deadlockDetails = (DEADLOCK_INFO *) palloc(max_backends * sizeof(DEADLOCK_INFO));
+	visitedProcs = (PGPROC **) palloc(MaxBackends * sizeof(PGPROC *));
+	deadlockDetails = (DEADLOCK_INFO *) palloc(MaxBackends * sizeof(DEADLOCK_INFO));
 
 	/*
 	 * TopoSort needs to consider at most MaxBackends wait-queue entries, and
 	 * it needn't run concurrently with FindLockCycle.
 	 */
 	topoProcs = visitedProcs;	/* re-use this space */
-	beforeConstraints = (int *) palloc(max_backends * sizeof(int));
-	afterConstraints = (int *) palloc(max_backends * sizeof(int));
+	beforeConstraints = (int *) palloc(MaxBackends * sizeof(int));
+	afterConstraints = (int *) palloc(MaxBackends * sizeof(int));
 
 	/*
 	 * We need to consider rearranging at most MaxBackends/2 wait queues
@@ -172,8 +171,8 @@ InitDeadLockChecking(void)
 	 * MaxBackends total waiters.
 	 */
 	waitOrders = (WAIT_ORDER *)
-		palloc((max_backends / 2) * sizeof(WAIT_ORDER));
-	waitOrderProcs = (PGPROC **) palloc(max_backends * sizeof(PGPROC *));
+		palloc((MaxBackends / 2) * sizeof(WAIT_ORDER));
+	waitOrderProcs = (PGPROC **) palloc(MaxBackends * sizeof(PGPROC *));
 
 	/*
 	 * Allow at most MaxBackends distinct constraints in a configuration. (Is
@@ -183,7 +182,7 @@ InitDeadLockChecking(void)
 	 * limits the maximum recursion depth of DeadLockCheckRecurse. Making it
 	 * really big might potentially allow a stack-overflow problem.
 	 */
-	maxCurConstraints = max_backends;
+	maxCurConstraints = MaxBackends;
 	curConstraints = (EDGE *) palloc(maxCurConstraints * sizeof(EDGE));
 
 	/*
@@ -194,7 +193,7 @@ InitDeadLockChecking(void)
 	 * last MaxBackends entries in possibleConstraints[] are reserved as
 	 * output workspace for FindLockCycle.
 	 */
-	maxPossibleConstraints = max_backends * 4;
+	maxPossibleConstraints = MaxBackends * 4;
 	possibleConstraints =
 		(EDGE *) palloc(maxPossibleConstraints * sizeof(EDGE));
 
@@ -333,7 +332,7 @@ DeadLockCheckRecurse(PGPROC *proc)
 	if (nCurConstraints >= maxCurConstraints)
 		return true;			/* out of room for active constraints? */
 	oldPossibleConstraints = nPossibleConstraints;
-	if (nPossibleConstraints + nEdges + GetMaxBackends() <= maxPossibleConstraints)
+	if (nPossibleConstraints + nEdges + MaxBackends <= maxPossibleConstraints)
 	{
 		/* We can save the edge list in possibleConstraints[] */
 		nPossibleConstraints += nEdges;
@@ -394,7 +393,7 @@ TestConfiguration(PGPROC *startProc)
 	/*
 	 * Make sure we have room for FindLockCycle's output.
 	 */
-	if (nPossibleConstraints + GetMaxBackends() > maxPossibleConstraints)
+	if (nPossibleConstraints + MaxBackends > maxPossibleConstraints)
 		return -1;
 
 	/*
@@ -492,7 +491,7 @@ FindLockCycleRecurse(PGPROC *checkProc,
 				 * record total length of cycle --- outer levels will now fill
 				 * deadlockDetails[]
 				 */
-				Assert(depth <= GetMaxBackends());
+				Assert(depth <= MaxBackends);
 				nDeadlockDetails = depth;
 
 				return true;
@@ -506,7 +505,7 @@ FindLockCycleRecurse(PGPROC *checkProc,
 		}
 	}
 	/* Mark proc as seen */
-	Assert(nVisitedProcs < GetMaxBackends());
+	Assert(nVisitedProcs < MaxBackends);
 	visitedProcs[nVisitedProcs++] = checkProc;
 
 	/*
@@ -704,7 +703,7 @@ FindLockCycleRecurseMember(PGPROC *checkProc,
 					/*
 					 * Add this edge to the list of soft edges in the cycle
 					 */
-					Assert(*nSoftEdges < GetMaxBackends());
+					Assert(*nSoftEdges < MaxBackends);
 					softEdges[*nSoftEdges].waiter = checkProcLeader;
 					softEdges[*nSoftEdges].blocker = leader;
 					softEdges[*nSoftEdges].lock = lock;
@@ -777,7 +776,7 @@ FindLockCycleRecurseMember(PGPROC *checkProc,
 					/*
 					 * Add this edge to the list of soft edges in the cycle
 					 */
-					Assert(*nSoftEdges < GetMaxBackends());
+					Assert(*nSoftEdges < MaxBackends);
 					softEdges[*nSoftEdges].waiter = checkProcLeader;
 					softEdges[*nSoftEdges].blocker = leader;
 					softEdges[*nSoftEdges].lock = lock;
@@ -840,7 +839,7 @@ ExpandConstraints(EDGE *constraints,
 		waitOrders[nWaitOrders].procs = waitOrderProcs + nWaitOrderProcs;
 		waitOrders[nWaitOrders].nProcs = lock->waitProcs.size;
 		nWaitOrderProcs += lock->waitProcs.size;
-		Assert(nWaitOrderProcs <= GetMaxBackends());
+		Assert(nWaitOrderProcs <= MaxBackends);
 
 		/*
 		 * Do the topo sort.  TopoSort need not examine constraints after this
