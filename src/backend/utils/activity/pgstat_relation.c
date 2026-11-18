@@ -26,7 +26,8 @@
 #include "utils/rel.h"
 #include "utils/timestamp.h"
 
-/* GPDB: for the QD/QE table-statistics combine code at the end of this file */
+/* GG: for the QD/QE table-statistics combine code at the end of this file */
+#include "libpq-int.h"			/* must precede cdbconn.h, which uses PGconn */
 #include "catalog/gp_distribution_policy.h"
 #include "cdb/cdbconn.h"
 #include "cdb/cdbdispatchresult.h"
@@ -35,7 +36,6 @@
 #include "libpq/pqformat.h"
 #include "utils/faultinjector.h"
 #include "utils/lsyscache.h"
-#include "libpq-int.h"
 
 
 /* Record that's written to 2PC state file when pgstat state is persisted */
