@@ -53,13 +53,11 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
-<<<<<<< HEAD
 #include "catalog/heap.h"
 #include "catalog/oid_dispatch.h"
 #include "cdb/cdbdisp_query.h"
 #include "cdb/cdbvars.h"
-||||||| c4cc2850f4d
-=======
+
 /*
  * Information used to validate the columns in the row filter expression. See
  * contain_invalid_rfcolumn_walker for details.
@@ -72,7 +70,6 @@ typedef struct rf_context
 	Oid			relid;			/* relid of the relation */
 	Oid			parentid;		/* relid of the parent relation */
 } rf_context;
->>>>>>> 2c7ea57e56c
 
 static List *OpenRelIdList(List *relids);
 static List *OpenTableList(List *tables);
