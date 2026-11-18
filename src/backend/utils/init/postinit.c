@@ -69,13 +69,9 @@
 #include "storage/sync.h"
 #include "tcop/tcopprot.h"
 #include "utils/acl.h"
-<<<<<<< HEAD
 #include "utils/backend_cancel.h"
-#include "utils/faultinjector.h"
-||||||| c4cc2850f4d
-=======
 #include "utils/builtins.h"
->>>>>>> 2c7ea57e56c
+#include "utils/faultinjector.h"
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
