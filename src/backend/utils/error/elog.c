@@ -782,7 +782,7 @@ errfinish(const char *filename, int lineno, const char *funcname)
 		fflush(stderr);
 
 		/*
-		 * Let the statistics collector know. Only mark the session as
+		 * Let the cumulative stats system know. Only mark the session as
 		 * terminated by fatal error if there is no other known cause.
 		 */
 		if (pgStatSessionEndCause == DISCONNECT_NORMAL)
@@ -4420,6 +4420,22 @@ send_message_to_server_log(ErrorData *edata)
 			fallback_to_stderr = true;
 	}
 
+	/* Write to JSON log, if enabled */
+	if (Log_destination & LOG_DESTINATION_JSONLOG)
+	{
+		/*
+		 * Send JSON data if it's safe to do so (syslogger doesn't need the
+		 * pipe).  If this is not possible, fallback to an entry written to
+		 * stderr.
+		 */
+		if (redirection_done || MyBackendType == B_LOGGER)
+		{
+			write_jsonlog(edata);
+		}
+		else
+			fallback_to_stderr = true;
+	}
+
 	/*
 	 * Write to stderr, if enabled or if required because of a previous
 	 * limitation.
@@ -4489,6 +4505,7 @@ write_pipe_chunks(char *data, int len, int dest)
 
 	Assert(len > 0);
 
+<<<<<<< HEAD
 	p.hdr.zero = 0;
 	p.hdr.pid = MyProcPid;
 	p.hdr.thid = mythread();
@@ -4497,6 +4514,25 @@ write_pipe_chunks(char *data, int len, int dest)
 	p.hdr.log_format = (dest == LOG_DESTINATION_CSVLOG ? 'c' : 't');
 	p.hdr.is_segv_msg = 'f';
 	p.hdr.next = -1;
+||||||| c4cc2850f4d
+	p.proto.nuls[0] = p.proto.nuls[1] = '\0';
+	p.proto.pid = MyProcPid;
+	p.proto.flags = 0;
+	if (dest == LOG_DESTINATION_STDERR)
+		p.proto.flags |= PIPE_PROTO_DEST_STDERR;
+	else if (dest == LOG_DESTINATION_CSVLOG)
+		p.proto.flags |= PIPE_PROTO_DEST_CSVLOG;
+=======
+	p.proto.nuls[0] = p.proto.nuls[1] = '\0';
+	p.proto.pid = MyProcPid;
+	p.proto.flags = 0;
+	if (dest == LOG_DESTINATION_STDERR)
+		p.proto.flags |= PIPE_PROTO_DEST_STDERR;
+	else if (dest == LOG_DESTINATION_CSVLOG)
+		p.proto.flags |= PIPE_PROTO_DEST_CSVLOG;
+	else if (dest == LOG_DESTINATION_JSONLOG)
+		p.proto.flags |= PIPE_PROTO_DEST_JSONLOG;
+>>>>>>> 2c7ea57e56c
 
 	/* write all but the last chunk */
 	while (len > PIPE_MAX_PAYLOAD)

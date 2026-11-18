@@ -488,7 +488,12 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 		case T_FromExpr:
 		case T_OnConflictExpr:
 		case T_SortGroupClause:
+<<<<<<< HEAD
 		case T_WindowClause:
+||||||| c4cc2850f4d
+=======
+		case T_MergeAction:
+>>>>>>> 2c7ea57e56c
 			(void) expression_tree_walker(node,
 										  assign_collations_walker,
 										  (void *) &loccontext);
@@ -695,6 +700,10 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 							(void) assign_collations_walker((Node *) sbsref->refassgnexpr,
 															&loccontext);
 						}
+						break;
+					case T_JsonExpr:
+						/* Context item and PASSING arguments are already
+						 * marked with collations in parse_expr.c. */
 						break;
 					default:
 

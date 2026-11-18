@@ -6,7 +6,7 @@
  * Copyright (c) 2015-2022, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
- *		pgoutput.h
+ *		src/include/replication/pgoutput.h
  *
  *-------------------------------------------------------------------------
  */
@@ -19,6 +19,7 @@ typedef struct PGOutputData
 {
 	MemoryContext context;		/* private memory context for transient
 								 * allocations */
+	MemoryContext cachectx;		/* private memory context for cache data */
 
 	/* client-supplied info: */
 	uint32		protocol_version;

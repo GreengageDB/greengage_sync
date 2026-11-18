@@ -28,6 +28,7 @@
 #include "storage/latch.h"
 #include "storage/proc.h"
 #include "storage/shmem.h"
+#include "storage/smgr.h"
 #include "storage/sinval.h"
 #include "tcop/tcopprot.h"
 #include "utils/memutils.h"
@@ -83,13 +84,6 @@ typedef struct
 	ProcSignalSlot psh_slot[FLEXIBLE_ARRAY_MEMBER];
 } ProcSignalHeader;
 
-/*
- * We reserve a slot for each possible BackendId, plus one for each
- * possible auxiliary process type.  (This scheme assumes there is not
- * more than one of any auxiliary process type at a time.)
- */
-#define NumProcSignalSlots	(MaxBackends + NUM_AUXPROCTYPES)
-
 /* Check whether the relevant type bit is set in the flags. */
 #define BARRIER_SHOULD_CHECK(flags, type) \
 	(((flags) & (((uint32) 1) << (uint32) (type))) != 0)
@@ -104,7 +98,20 @@ static ProcSignalSlot *MyProcSignalSlot = NULL;
 static bool CheckProcSignal(ProcSignalReason reason);
 static void CleanupProcSignalState(int status, Datum arg);
 static void ResetProcSignalBarrierBits(uint32 flags);
-static bool ProcessBarrierPlaceholder(void);
+static inline int GetNumProcSignalSlots(void);
+
+/*
+ * GetNumProcSignalSlots
+ *
+ * We reserve a slot for each possible BackendId, plus one for each possible
+ * auxiliary process type.  (This scheme assume there is not more than one of
+ * any auxiliary process type at a time.)
+ */
+static inline int
+GetNumProcSignalSlots(void)
+{
+	return GetMaxBackends() + NUM_AUXPROCTYPES;
+}
 
 /*
  * ProcSignalShmemSize
@@ -115,7 +122,7 @@ ProcSignalShmemSize(void)
 {
 	Size		size;
 
-	size = mul_size(NumProcSignalSlots, sizeof(ProcSignalSlot));
+	size = mul_size(GetNumProcSignalSlots(), sizeof(ProcSignalSlot));
 	size = add_size(size, offsetof(ProcSignalHeader, psh_slot));
 	return size;
 }
@@ -129,6 +136,7 @@ ProcSignalShmemInit(void)
 {
 	Size		size = ProcSignalShmemSize();
 	bool		found;
+	int			numProcSignalSlots = GetNumProcSignalSlots();
 
 	ProcSignal = (ProcSignalHeader *)
 		ShmemInitStruct("ProcSignal", size, &found);
@@ -140,7 +148,7 @@ ProcSignalShmemInit(void)
 
 		pg_atomic_init_u64(&ProcSignal->psh_barrierGeneration, 0);
 
-		for (i = 0; i < NumProcSignalSlots; ++i)
+		for (i = 0; i < numProcSignalSlots; ++i)
 		{
 			ProcSignalSlot *slot = &ProcSignal->psh_slot[i];
 
@@ -166,7 +174,7 @@ ProcSignalInit(int pss_idx)
 	ProcSignalSlot *slot;
 	uint64		barrier_generation;
 
-	Assert(pss_idx >= 1 && pss_idx <= NumProcSignalSlots);
+	Assert(pss_idx >= 1 && pss_idx <= GetNumProcSignalSlots());
 
 	slot = &ProcSignal->psh_slot[pss_idx - 1];
 
@@ -295,7 +303,7 @@ SendProcSignal(pid_t pid, ProcSignalReason reason, BackendId backendId)
 		 */
 		int			i;
 
-		for (i = NumProcSignalSlots - 1; i >= 0; i--)
+		for (i = GetNumProcSignalSlots() - 1; i >= 0; i--)
 		{
 			slot = &ProcSignal->psh_slot[i];
 
@@ -336,6 +344,7 @@ EmitProcSignalBarrier(ProcSignalBarrierType type)
 {
 	uint32		flagbit = 1 << (uint32) type;
 	uint64		generation;
+	int			numProcSignalSlots = GetNumProcSignalSlots();
 
 	/*
 	 * Set all the flags.
@@ -345,7 +354,7 @@ EmitProcSignalBarrier(ProcSignalBarrierType type)
 	 * anything that we do afterwards. (This is also true of the later call to
 	 * pg_atomic_add_fetch_u64.)
 	 */
-	for (int i = 0; i < NumProcSignalSlots; i++)
+	for (int i = 0; i < numProcSignalSlots; i++)
 	{
 		volatile ProcSignalSlot *slot = &ProcSignal->psh_slot[i];
 
@@ -371,7 +380,7 @@ EmitProcSignalBarrier(ProcSignalBarrierType type)
 	 * backends that need to update state - but they won't actually need to
 	 * change any state.
 	 */
-	for (int i = NumProcSignalSlots - 1; i >= 0; i--)
+	for (int i = numProcSignalSlots - 1; i >= 0; i--)
 	{
 		volatile ProcSignalSlot *slot = &ProcSignal->psh_slot[i];
 		pid_t		pid = slot->pss_pid;
@@ -396,7 +405,7 @@ WaitForProcSignalBarrier(uint64 generation)
 {
 	Assert(generation <= pg_atomic_read_u64(&ProcSignal->psh_barrierGeneration));
 
-	for (int i = NumProcSignalSlots - 1; i >= 0; i--)
+	for (int i = GetNumProcSignalSlots() - 1; i >= 0; i--)
 	{
 		ProcSignalSlot *slot = &ProcSignal->psh_slot[i];
 		uint64		oldval;
@@ -530,8 +539,8 @@ ProcessProcSignalBarrier(void)
 				type = (ProcSignalBarrierType) pg_rightmost_one_pos32(flags);
 				switch (type)
 				{
-					case PROCSIGNAL_BARRIER_PLACEHOLDER:
-						processed = ProcessBarrierPlaceholder();
+					case PROCSIGNAL_BARRIER_SMGRRELEASE:
+						processed = ProcessBarrierSmgrRelease();
 						break;
 				}
 
@@ -595,24 +604,6 @@ ResetProcSignalBarrierBits(uint32 flags)
 	pg_atomic_fetch_or_u32(&MyProcSignalSlot->pss_barrierCheckMask, flags);
 	ProcSignalBarrierPending = true;
 	InterruptPending = true;
-}
-
-static bool
-ProcessBarrierPlaceholder(void)
-{
-	/*
-	 * XXX. This is just a placeholder until the first real user of this
-	 * machinery gets committed. Rename PROCSIGNAL_BARRIER_PLACEHOLDER to
-	 * PROCSIGNAL_BARRIER_SOMETHING_ELSE where SOMETHING_ELSE is something
-	 * appropriately descriptive. Get rid of this function and instead have
-	 * ProcessBarrierSomethingElse. Most likely, that function should live in
-	 * the file pertaining to that subsystem, rather than here.
-	 *
-	 * The return value should be 'true' if the barrier was successfully
-	 * absorbed and 'false' if not. Note that returning 'false' can lead to
-	 * very frequent retries, so try hard to make that an uncommon case.
-	 */
-	return true;
 }
 
 /*

@@ -2022,8 +2022,8 @@ ExecHashGetHashValue(HashState *hashState, HashJoinTable hashtable,
 		Datum		keyval;
 		bool		isNull = false;
 
-		/* rotate hashkey left 1 bit at each step */
-		hashkey = (hashkey << 1) | ((hashkey & 0x80000000) ? 1 : 0);
+		/* combine successive hashkeys by rotating */
+		hashkey = pg_rotate_left32(hashkey, 1);
 
 		/*
 		 * Get the join attribute value of the tuple

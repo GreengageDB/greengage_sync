@@ -7,6 +7,7 @@ use warnings;
 
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
+<<<<<<< HEAD
 
 # GPDB: Effectively disable this TAP test. We cannot run PREPARE
 # TRANSACTION in utility-mode. We need at least 1 test so create a
@@ -15,6 +16,11 @@ use PostgreSQL::Test::Utils;
 use Test::More tests => 1;
 is(-1, -1, "Disable this TAP test");
 exit;
+||||||| c4cc2850f4d
+use Test::More tests => 12;
+=======
+use Test::More;
+>>>>>>> 2c7ea57e56c
 
 # Setup primary node
 my $node_primary = PostgreSQL::Test::Cluster->new("primary");
@@ -110,8 +116,7 @@ $node_primary->psql(
 	BEGIN;
 	SELECT hs_subxids(127);
 	COMMIT;");
-$node_primary->wait_for_catchup($node_standby, 'replay',
-	$node_primary->lsn('insert'));
+$node_primary->wait_for_catchup($node_standby);
 $node_standby->psql(
 	'postgres',
 	"SELECT coalesce(sum(id),-1) FROM t_012_tbl",
@@ -157,8 +162,7 @@ $node_primary->psql(
 	BEGIN;
 	SELECT hs_subxids(127);
 	PREPARE TRANSACTION 'xact_012_1';");
-$node_primary->wait_for_catchup($node_standby, 'replay',
-	$node_primary->lsn('insert'));
+$node_primary->wait_for_catchup($node_standby);
 $node_standby->psql(
 	'postgres',
 	"SELECT coalesce(sum(id),-1) FROM t_012_tbl",
@@ -194,8 +198,7 @@ $node_primary->psql(
 	BEGIN;
 	SELECT hs_subxids(201);
 	PREPARE TRANSACTION 'xact_012_1';");
-$node_primary->wait_for_catchup($node_standby, 'replay',
-	$node_primary->lsn('insert'));
+$node_primary->wait_for_catchup($node_standby);
 $node_standby->psql(
 	'postgres',
 	"SELECT coalesce(sum(id),-1) FROM t_012_tbl",
@@ -224,3 +227,5 @@ $node_primary->psql(
 	"SELECT coalesce(sum(id),-1) FROM t_012_tbl",
 	stdout => \$psql_out);
 is($psql_out, '-1', "Not visible");
+
+done_testing();

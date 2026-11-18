@@ -24,7 +24,13 @@ extern int	wal_skip_threshold;
 
 extern SMgrRelation RelationCreateStorage(RelFileNode rnode,
 										  char relpersistence,
+<<<<<<< HEAD
 										  SMgrImpl smgr_which);
+||||||| c4cc2850f4d
+extern SMgrRelation RelationCreateStorage(RelFileNode rnode, char relpersistence);
+=======
+										  bool register_delete);
+>>>>>>> 2c7ea57e56c
 extern void RelationDropStorage(Relation rel);
 extern void RelationPreserveStorage(RelFileNode rnode, bool atCommit);
 extern void RelationPreTruncate(Relation rel);

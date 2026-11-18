@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 53;
+use Test::More;
 
 # Initialize primary node
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
@@ -43,15 +43,14 @@ $node_standby_2->init_from_backup($node_standby_1, $backup_name,
 	has_streaming => 1);
 $node_standby_2->start;
 
-# Create some content on primary and check its presence in standby 1
+# Create some content on primary and check its presence in standby nodes
 $node_primary->safe_psql('postgres',
 	"CREATE TABLE tab_int AS SELECT generate_series(1,1002) AS a");
 
 # Wait for standbys to catch up
-$node_primary->wait_for_catchup($node_standby_1, 'replay',
-	$node_primary->lsn('insert'));
-$node_standby_1->wait_for_catchup($node_standby_2, 'replay',
-	$node_standby_1->lsn('replay'));
+my $primary_lsn = $node_primary->lsn('write');
+$node_primary->wait_for_catchup($node_standby_1, 'replay', $primary_lsn);
+$node_standby_1->wait_for_catchup($node_standby_2, 'replay', $primary_lsn);
 
 my $result =
   $node_standby_1->safe_psql('postgres', "SELECT count(*) FROM tab_int");
@@ -62,6 +61,23 @@ $result =
   $node_standby_2->safe_psql('postgres', "SELECT count(*) FROM tab_int");
 print "standby 2: $result\n";
 is($result, qq(1002), 'check streamed content on standby 2');
+
+# Likewise, but for a sequence
+$node_primary->safe_psql('postgres',
+	"CREATE SEQUENCE seq1; SELECT nextval('seq1')");
+
+# Wait for standbys to catch up
+$primary_lsn = $node_primary->lsn('write');
+$node_primary->wait_for_catchup($node_standby_1, 'replay', $primary_lsn);
+$node_standby_1->wait_for_catchup($node_standby_2, 'replay', $primary_lsn);
+
+$result = $node_standby_1->safe_psql('postgres', "SELECT * FROM seq1");
+print "standby 1: $result\n";
+is($result, qq(33|0|t), 'check streamed sequence content on standby 1');
+
+$result = $node_standby_2->safe_psql('postgres', "SELECT * FROM seq1");
+print "standby 2: $result\n";
+is($result, qq(33|0|t), 'check streamed sequence content on standby 2');
 
 # Check that only READ-only queries can run on standbys
 is($node_standby_1->psql('postgres', 'INSERT INTO tab_int VALUES (1)'),
@@ -357,10 +373,10 @@ sub replay_check
 	my $newval = $node_primary->safe_psql('postgres',
 		'INSERT INTO replayed(val) SELECT coalesce(max(val),0) + 1 AS newval FROM replayed RETURNING val'
 	);
-	$node_primary->wait_for_catchup($node_standby_1, 'replay',
-		$node_primary->lsn('insert'));
-	$node_standby_1->wait_for_catchup($node_standby_2, 'replay',
-		$node_standby_1->lsn('replay'));
+	my $primary_lsn = $node_primary->lsn('write');
+	$node_primary->wait_for_catchup($node_standby_1, 'replay', $primary_lsn);
+	$node_standby_1->wait_for_catchup($node_standby_2, 'replay', $primary_lsn);
+
 	$node_standby_1->safe_psql('postgres',
 		qq[SELECT 1 FROM replayed WHERE val = $newval])
 	  or die "standby_1 didn't replay primary value $newval";
@@ -464,8 +480,7 @@ $node_standby_1->stop;
 my $newval = $node_primary->safe_psql('postgres',
 	'INSERT INTO replayed(val) SELECT coalesce(max(val),0) + 1 AS newval FROM replayed RETURNING val'
 );
-$node_primary->wait_for_catchup($node_standby_2, 'replay',
-	$node_primary->lsn('insert'));
+$node_primary->wait_for_catchup($node_standby_2);
 my $is_replayed = $node_standby_2->safe_psql('postgres',
 	qq[SELECT 1 FROM replayed WHERE val = $newval]);
 is($is_replayed, qq(1), "standby_2 didn't replay primary value $newval");
@@ -518,3 +533,5 @@ my $primary_data = $node_primary->data_dir;
 # point.
 ok(-f "$primary_data/pg_wal/$segment_removed",
 	"WAL segment $segment_removed recycled after physical slot advancing");
+
+done_testing();

@@ -142,6 +142,14 @@ typedef enum
 typedef void (*SubXactCallback) (SubXactEvent event, SubTransactionId mySubid,
 								 SubTransactionId parentSubid, void *arg);
 
+/* Data structure for Save/RestoreTransactionCharacteristics */
+typedef struct SavedTransactionCharacteristics
+{
+	int			save_XactIsoLevel;
+	bool		save_XactReadOnly;
+	bool		save_XactDeferrable;
+} SavedTransactionCharacteristics;
+
 
 /* ----------------
  *		transaction-related XLOG entries
@@ -180,8 +188,13 @@ typedef void (*SubXactCallback) (SubXactEvent event, SubTransactionId mySubid,
 #define XACT_XINFO_HAS_ORIGIN			(1U << 5)
 #define XACT_XINFO_HAS_AE_LOCKS			(1U << 6)
 #define XACT_XINFO_HAS_GID				(1U << 7)
+<<<<<<< HEAD
 #define XACT_XINFO_HAS_DISTRIB			(1U << 8)
 #define XACT_XINFO_HAS_DELDBS			(1U << 9)
+||||||| c4cc2850f4d
+=======
+#define XACT_XINFO_HAS_DROPPED_STATS	(1U << 8)
+>>>>>>> 2c7ea57e56c
 
 /*
  * Also stored in xinfo, these indicating a variety of additional actions that
@@ -232,7 +245,7 @@ typedef struct xl_xact_assignment
 typedef struct xl_xact_xinfo
 {
 	/*
-	 * Even though we right now only require 1 byte of space in xinfo we use
+	 * Even though we right now only require two bytes of space in xinfo we use
 	 * four so following records don't have to care about alignment. Commit
 	 * records can be large, so copying large portions isn't attractive.
 	 */
@@ -263,6 +276,27 @@ typedef struct xl_xact_relfilenodes
 	RelFileNodePendingDelete xnodes[FLEXIBLE_ARRAY_MEMBER];
 } xl_xact_relfilenodes;
 #define MinSizeOfXactRelfilenodes offsetof(xl_xact_relfilenodes, xnodes)
+
+/*
+ * A transactionally dropped statistics entry.
+ *
+ * Declared here rather than pgstat.h because pgstat.h can't be included from
+ * frontend code, but the WAL format needs to be readable by frontend
+ * programs.
+ */
+typedef struct xl_xact_stats_item
+{
+	int			kind;
+	Oid			dboid;
+	Oid			objoid;
+} xl_xact_stats_item;
+
+typedef struct xl_xact_stats_items
+{
+	int		nitems;
+	xl_xact_stats_item items[FLEXIBLE_ARRAY_MEMBER];
+} xl_xact_stats_items;
+#define MinSizeOfXactStatsItems offsetof(xl_xact_stats_items, items)
 
 typedef struct xl_xact_invals
 {
@@ -298,6 +332,7 @@ typedef struct xl_xact_commit
 	/* xl_xact_dbinfo follows if XINFO_HAS_DBINFO */
 	/* xl_xact_subxacts follows if XINFO_HAS_SUBXACT */
 	/* xl_xact_relfilenodes follows if XINFO_HAS_RELFILENODES */
+	/* xl_xact_stats_items follows if XINFO_HAS_DROPPED_STATS */
 	/* xl_xact_invals follows if XINFO_HAS_INVALS */
 	/* xl_xact_deldbs follows if XACT_XINFO_HAS_DELDBS */
 	/* xl_xact_twophase follows if XINFO_HAS_TWOPHASE */
@@ -315,7 +350,12 @@ typedef struct xl_xact_abort
 	/* xl_xact_dbinfo follows if XINFO_HAS_DBINFO */
 	/* xl_xact_subxacts follows if XINFO_HAS_SUBXACT */
 	/* xl_xact_relfilenodes follows if XINFO_HAS_RELFILENODES */
+<<<<<<< HEAD
 	/* xl_xact_deldbs follows if XACT_XINFO_HAS_DELDBS */
+||||||| c4cc2850f4d
+=======
+	/* xl_xact_stats_items follows if XINFO_HAS_DROPPED_STATS */
+>>>>>>> 2c7ea57e56c
 	/* No invalidation messages needed. */
 	/* xl_xact_twophase follows if XINFO_HAS_TWOPHASE */
 	/* twophase_gid follows if XINFO_HAS_GID. As a null-terminated string. */
@@ -334,8 +374,14 @@ typedef struct xl_xact_prepare
 	int32		nsubxacts;		/* number of following subxact XIDs */
 	int32		ncommitrels;	/* number of delete-on-commit rels */
 	int32		nabortrels;		/* number of delete-on-abort rels */
+<<<<<<< HEAD
 	int32		ncommitdbs;		/* number of delete-on-commit dbs */
 	int32		nabortdbs;		/* number of delete-on-abort dbs */
+||||||| c4cc2850f4d
+=======
+	int32		ncommitstats;	/* number of stats to drop on commit */
+	int32		nabortstats;	/* number of stats to drop on abort */
+>>>>>>> 2c7ea57e56c
 	int32		ninvalmsgs;		/* number of cache invalidation messages */
 	bool		initfileinval;	/* does relcache init file need invalidation? */
 	Oid			tablespace_oid_to_delete_on_abort;
@@ -366,6 +412,9 @@ typedef struct xl_xact_parsed_commit
 	int			nrels;
 	RelFileNodePendingDelete *xnodes;
 
+	int			nstats;
+	xl_xact_stats_item *stats;
+
 	int			nmsgs;
 	SharedInvalidationMessage *msgs;
 
@@ -375,7 +424,15 @@ typedef struct xl_xact_parsed_commit
 	TransactionId twophase_xid; /* only for 2PC */
 	char		twophase_gid[GIDSIZE];	/* only for 2PC */
 	int			nabortrels;		/* only for 2PC */
+<<<<<<< HEAD
 	RelFileNodePendingDelete *abortnodes;	/* only for 2PC */
+||||||| c4cc2850f4d
+	RelFileNode *abortnodes;	/* only for 2PC */
+=======
+	RelFileNode *abortnodes;	/* only for 2PC */
+	int			nabortstats;		/* only for 2PC */
+	xl_xact_stats_item *abortstats; /* only for 2PC */
+>>>>>>> 2c7ea57e56c
 
 	XLogRecPtr	origin_lsn;
 	TimestampTz origin_timestamp;
@@ -402,6 +459,9 @@ typedef struct xl_xact_parsed_abort
 
 	int			ndeldbs;
 	DbDirNode	*deldbs;
+
+	int			nstats;
+	xl_xact_stats_item *stats;
 
 	TransactionId twophase_xid; /* only for 2PC */
 	char		twophase_gid[GIDSIZE];	/* only for 2PC */
@@ -460,8 +520,8 @@ extern bool TransactionIdIsCurrentTransactionId(TransactionId xid);
 extern void CommandCounterIncrement(void);
 extern void ForceSyncCommit(void);
 extern void StartTransactionCommand(void);
-extern void SaveTransactionCharacteristics(void);
-extern void RestoreTransactionCharacteristics(void);
+extern void SaveTransactionCharacteristics(SavedTransactionCharacteristics *s);
+extern void RestoreTransactionCharacteristics(const SavedTransactionCharacteristics *s);
 extern void CommitTransactionCommand(void);
 extern void AbortCurrentTransaction(void);
 extern void BeginTransactionBlock(void);
@@ -509,7 +569,15 @@ extern int	xactGetCommittedChildren(TransactionId **ptr);
 extern XLogRecPtr XactLogCommitRecord(TimestampTz commit_time,
 									  Oid tablespace_oid_to_delete_on_commit,
 									  int nsubxacts, TransactionId *subxacts,
+<<<<<<< HEAD
 									  int nrels, RelFileNodePendingDelete *rels,
+||||||| c4cc2850f4d
+									  int nrels, RelFileNode *rels,
+=======
+									  int nrels, RelFileNode *rels,
+									  int nstats,
+									  xl_xact_stats_item *stats,
+>>>>>>> 2c7ea57e56c
 									  int nmsgs, SharedInvalidationMessage *msgs,
 									  int ndeldbs, DbDirNode *deldbs,
 									  bool relcacheInval, int xactflags,
@@ -519,8 +587,16 @@ extern XLogRecPtr XactLogCommitRecord(TimestampTz commit_time,
 extern XLogRecPtr XactLogAbortRecord(TimestampTz abort_time,
 									 Oid tablespace_oid_to_abort,
 									 int nsubxacts, TransactionId *subxacts,
+<<<<<<< HEAD
 									 int nrels, RelFileNodePendingDelete *rels,
 									 int ndeldbs, DbDirNode *deldbs,
+||||||| c4cc2850f4d
+									 int nrels, RelFileNode *rels,
+=======
+									 int nrels, RelFileNode *rels,
+									 int nstats,
+									 xl_xact_stats_item *stats,
+>>>>>>> 2c7ea57e56c
 									 int xactflags, TransactionId twophase_xid,
 									 const char *twophase_gid);
 extern void xact_redo(XLogReaderState *record);

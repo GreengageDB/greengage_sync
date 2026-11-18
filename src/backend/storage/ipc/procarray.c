@@ -109,7 +109,7 @@ typedef struct ProcArrayStruct
 	/* oldest catalog xmin of any replication slot */
 	TransactionId replication_slot_catalog_xmin;
 
-	/* indexes into allProcs[], has PROCARRAY_MAXPROCS entries */
+	/* indexes into allProcs[], has ProcArrayMaxProcs entries */
 	int			pgprocnos[FLEXIBLE_ARRAY_MEMBER];
 } ProcArrayStruct;
 
@@ -368,6 +368,17 @@ static void MaintainLatestCompletedXidRecovery(TransactionId latestXid);
 static inline FullTransactionId FullXidRelativeTo(FullTransactionId rel,
 												  TransactionId xid);
 static void GlobalVisUpdateApply(ComputeXidHorizonsResult *horizons);
+static inline int GetProcArrayMaxProcs(void);
+
+
+/*
+ * Retrieve the number of slots in the ProcArray structure.
+ */
+static inline int
+GetProcArrayMaxProcs(void)
+{
+	return GetMaxBackends() + max_prepared_xacts;
+}
 
 /*
  * Report shared-memory space needed by CreateSharedProcArray.
@@ -378,10 +389,8 @@ ProcArrayShmemSize(void)
 	Size		size;
 
 	/* Size of the ProcArray structure itself */
-#define PROCARRAY_MAXPROCS	(MaxBackends + max_prepared_xacts)
-
 	size = offsetof(ProcArrayStruct, pgprocnos);
-	size = add_size(size, mul_size(sizeof(int), PROCARRAY_MAXPROCS));
+	size = add_size(size, mul_size(sizeof(int), GetProcArrayMaxProcs()));
 
 	/*
 	 * During Hot Standby processing we have a data structure called
@@ -397,7 +406,7 @@ ProcArrayShmemSize(void)
 	 * shared memory is being set up.
 	 */
 #define TOTAL_MAX_CACHED_SUBXIDS \
-	((PGPROC_MAX_CACHED_SUBXIDS + 1) * PROCARRAY_MAXPROCS)
+	((PGPROC_MAX_CACHED_SUBXIDS + 1) * GetProcArrayMaxProcs())
 
 	if (EnableHotStandby)
 	{
@@ -424,7 +433,7 @@ CreateSharedProcArray(void)
 		ShmemInitStruct("Proc Array",
 						add_size(offsetof(ProcArrayStruct, pgprocnos),
 								 mul_size(sizeof(int),
-										  PROCARRAY_MAXPROCS)),
+										  GetProcArrayMaxProcs())),
 						&found);
 
 	if (!found)
@@ -433,7 +442,7 @@ CreateSharedProcArray(void)
 		 * We're the first - initialize.
 		 */
 		procArray->numProcs = 0;
-		procArray->maxProcs = PROCARRAY_MAXPROCS;
+		procArray->maxProcs = GetProcArrayMaxProcs();
 		procArray->maxKnownAssignedXids = TOTAL_MAX_CACHED_SUBXIDS;
 		procArray->numKnownAssignedXids = 0;
 		procArray->tailKnownAssignedXids = 0;
@@ -766,12 +775,69 @@ ProcArrayEndTransaction(PGPROC *proc, TransactionId latestXid)
 	/* avoid unnecessarily dirtying shared cachelines */
 	if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
 	{
+<<<<<<< HEAD
 		Assert(!LWLockHeldByMe(ProcArrayLock));
 		LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
 		Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
 		proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
 		ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
 		LWLockRelease(ProcArrayLock);
+||||||| c4cc2850f4d
+		/*
+		 * If we have no XID, we don't need to lock, since we won't affect
+		 * anyone else's calculation of a snapshot.  We might change their
+		 * estimate of global xmin, but that's OK.
+		 */
+		Assert(!TransactionIdIsValid(proc->xid));
+		Assert(proc->subxidStatus.count == 0);
+		Assert(!proc->subxidStatus.overflowed);
+
+		proc->lxid = InvalidLocalTransactionId;
+		proc->xmin = InvalidTransactionId;
+		proc->delayChkpt = false;	/* be sure this is cleared in abort */
+		proc->recoveryConflictPending = false;
+
+		/* must be cleared with xid/xmin: */
+		/* avoid unnecessarily dirtying shared cachelines */
+		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
+		{
+			Assert(!LWLockHeldByMe(ProcArrayLock));
+			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
+			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
+			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
+			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
+			LWLockRelease(ProcArrayLock);
+		}
+=======
+		/*
+		 * If we have no XID, we don't need to lock, since we won't affect
+		 * anyone else's calculation of a snapshot.  We might change their
+		 * estimate of global xmin, but that's OK.
+		 */
+		Assert(!TransactionIdIsValid(proc->xid));
+		Assert(proc->subxidStatus.count == 0);
+		Assert(!proc->subxidStatus.overflowed);
+
+		proc->lxid = InvalidLocalTransactionId;
+		proc->xmin = InvalidTransactionId;
+
+		/* be sure this is cleared in abort */
+		proc->delayChkpt = 0;
+
+		proc->recoveryConflictPending = false;
+
+		/* must be cleared with xid/xmin: */
+		/* avoid unnecessarily dirtying shared cachelines */
+		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
+		{
+			Assert(!LWLockHeldByMe(ProcArrayLock));
+			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
+			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
+			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
+			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
+			LWLockRelease(ProcArrayLock);
+		}
+>>>>>>> 2c7ea57e56c
 	}
 
 	resetTmGxact();
@@ -799,7 +865,10 @@ ProcArrayEndTransactionInternal(PGPROC *proc, TransactionId latestXid)
 	proc->xid = InvalidTransactionId;
 	proc->lxid = InvalidLocalTransactionId;
 	proc->xmin = InvalidTransactionId;
-	proc->delayChkpt = false;	/* be sure this is cleared in abort */
+
+	/* be sure this is cleared in abort */
+	proc->delayChkpt = 0;
+
 	proc->recoveryConflictPending = false;
 
 	/* must be cleared with xid/xmin: */
@@ -1243,8 +1312,13 @@ ProcArrayApplyRecoveryInfo(RunningTransactions running)
 		/*
 		 * Sort the array so that we can add them safely into
 		 * KnownAssignedXids.
+		 *
+		 * We have to sort them logically, because in KnownAssignedXidsAdd we
+		 * call TransactionIdFollowsOrEquals and so on. But we know these XIDs
+		 * come from RUNNING_XACTS, which means there are only normal XIDs from
+		 * the same epoch, so this is safe.
 		 */
-		qsort(xids, nxids, sizeof(TransactionId), xidComparator);
+		qsort(xids, nxids, sizeof(TransactionId), xidLogicalComparator);
 
 		/*
 		 * Add the sorted snapshot into KnownAssignedXids.  The running-xacts
@@ -3922,7 +3996,8 @@ GetOldestSafeDecodingTransactionId(bool catalogOnly)
  * delaying checkpoint because they have critical actions in progress.
  *
  * Constructs an array of VXIDs of transactions that are currently in commit
- * critical sections, as shown by having delayChkpt set in their PGPROC.
+ * critical sections, as shown by having specified delayChkpt bits set in their
+ * PGPROC.
  *
  * Returns a palloc'd array that should be freed by the caller.
  * *nvxids is the number of valid entries.
@@ -3936,12 +4011,14 @@ GetOldestSafeDecodingTransactionId(bool catalogOnly)
  * for clearing of delayChkpt to propagate is unimportant for correctness.
  */
 VirtualTransactionId *
-GetVirtualXIDsDelayingChkpt(int *nvxids)
+GetVirtualXIDsDelayingChkpt(int *nvxids, int type)
 {
 	VirtualTransactionId *vxids;
 	ProcArrayStruct *arrayP = procArray;
 	int			count = 0;
 	int			index;
+
+	Assert(type != 0);
 
 	/* allocate what's certainly enough result space */
 	vxids = (VirtualTransactionId *)
@@ -3954,7 +4031,7 @@ GetVirtualXIDsDelayingChkpt(int *nvxids)
 		int			pgprocno = arrayP->pgprocnos[index];
 		PGPROC	   *proc = &allProcs[pgprocno];
 
-		if (proc->delayChkpt)
+		if ((proc->delayChkpt & type) != 0)
 		{
 			VirtualTransactionId vxid;
 
@@ -3980,11 +4057,13 @@ GetVirtualXIDsDelayingChkpt(int *nvxids)
  * those numbers should be small enough for it not to be a problem.
  */
 bool
-HaveVirtualXIDsDelayingChkpt(VirtualTransactionId *vxids, int nvxids)
+HaveVirtualXIDsDelayingChkpt(VirtualTransactionId *vxids, int nvxids, int type)
 {
 	bool		result = false;
 	ProcArrayStruct *arrayP = procArray;
 	int			index;
+
+	Assert(type != 0);
 
 	LWLockAcquire(ProcArrayLock, LW_SHARED);
 
@@ -3996,7 +4075,8 @@ HaveVirtualXIDsDelayingChkpt(VirtualTransactionId *vxids, int nvxids)
 
 		GET_VXID_FROM_PGPROC(vxid, *proc);
 
-		if (proc->delayChkpt && VirtualTransactionIdIsValid(vxid))
+		if ((proc->delayChkpt & type) != 0 &&
+			VirtualTransactionIdIsValid(vxid))
 		{
 			int			i;
 
@@ -5620,7 +5700,7 @@ KnownAssignedXidsCompress(bool force)
 		 */
 		int			nelements = head - tail;
 
-		if (nelements < 4 * PROCARRAY_MAXPROCS ||
+		if (nelements < 4 * GetProcArrayMaxProcs() ||
 			nelements < 2 * pArray->numKnownAssignedXids)
 			return;
 	}

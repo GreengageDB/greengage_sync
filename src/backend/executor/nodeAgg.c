@@ -551,8 +551,16 @@ initialize_phase(AggState *aggstate, int newphase)
 												  sortnode->sortOperators,
 												  sortnode->collations,
 												  sortnode->nullsFirst,
+<<<<<<< HEAD
 												  PlanStateOperatorMemKB((PlanState *) aggstate),
 												  NULL, false);
+||||||| c4cc2850f4d
+												  work_mem,
+												  NULL, false);
+=======
+												  work_mem,
+												  NULL, TUPLESORT_NONE);
+>>>>>>> 2c7ea57e56c
 	}
 
 	aggstate->current_phase = newphase;
@@ -629,7 +637,13 @@ initialize_aggregate(AggState *aggstate, AggStatePerTrans pertrans,
 									  pertrans->sortOperators[0],
 									  pertrans->sortCollations[0],
 									  pertrans->sortNullsFirst[0],
+<<<<<<< HEAD
 									  PlanStateOperatorMemKB((PlanState *) aggstate), NULL, false);
+||||||| c4cc2850f4d
+									  work_mem, NULL, false);
+=======
+									  work_mem, NULL, TUPLESORT_NONE);
+>>>>>>> 2c7ea57e56c
 		}
 		else
 			pertrans->sortstates[aggstate->current_set] =
@@ -639,7 +653,13 @@ initialize_aggregate(AggState *aggstate, AggStatePerTrans pertrans,
 									 pertrans->sortOperators,
 									 pertrans->sortCollations,
 									 pertrans->sortNullsFirst,
+<<<<<<< HEAD
 									 PlanStateOperatorMemKB((PlanState *) aggstate), NULL, false);
+||||||| c4cc2850f4d
+									 work_mem, NULL, false);
+=======
+									 work_mem, NULL, TUPLESORT_NONE);
+>>>>>>> 2c7ea57e56c
 	}
 
 	/*

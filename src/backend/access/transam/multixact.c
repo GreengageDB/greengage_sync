@@ -281,12 +281,11 @@ typedef struct MultiXactStateData
 } MultiXactStateData;
 
 /*
- * Last element of OldestMemberMXactId and OldestVisibleMXactId arrays.
- * Valid elements are (1..MaxOldestSlot); element 0 is never used.
+ * Pointers to the state data in shared memory
+ *
+ * The index of the last element of the OldestMemberMXactId and
+ * OldestVisibleMXactId arrays can be obtained with GetMaxOldestSlot().
  */
-#define MaxOldestSlot	(MaxBackends + max_prepared_xacts)
-
-/* Pointers to the state data in shared memory */
 static MultiXactStateData *MultiXactState;
 static MultiXactId *OldestMemberMXactId;
 static MultiXactId *OldestVisibleMXactId;
@@ -341,6 +340,7 @@ static void MultiXactIdSetOldestVisible(void);
 static void RecordNewMultiXact(MultiXactId multi, MultiXactOffset offset,
 							   int nmembers, MultiXactMember *members);
 static MultiXactId GetNewMultiXactId(int nmembers, MultiXactOffset *offset);
+static inline int GetMaxOldestSlot(void);
 
 /* MultiXact cache management */
 static int	mxactMemberComparator(const void *arg1, const void *arg2);
@@ -662,6 +662,17 @@ MultiXactIdSetOldestMember(void)
 }
 
 /*
+ * Retrieve the index of the last element of the OldestMemberMXactId and
+ * OldestVisibleMXactId arrays.  Valid elements are (1..MaxOldestSlot); element
+ * 0 is never used.
+ */
+static inline int
+GetMaxOldestSlot(void)
+{
+	return GetMaxBackends() + max_prepared_xacts;
+}
+
+/*
  * MultiXactIdSetOldestVisible
  *		Save the oldest MultiXactId this transaction considers possibly live.
  *
@@ -683,6 +694,7 @@ MultiXactIdSetOldestVisible(void)
 	if (!MultiXactIdIsValid(OldestVisibleMXactId[MyBackendId]))
 	{
 		MultiXactId oldestMXact;
+		int			maxOldestSlot = GetMaxOldestSlot();
 		int			i;
 
 		LWLockAcquire(MultiXactGenLock, LW_EXCLUSIVE);
@@ -696,7 +708,7 @@ MultiXactIdSetOldestVisible(void)
 		if (oldestMXact < FirstMultiXactId)
 			oldestMXact = FirstMultiXactId;
 
-		for (i = 1; i <= MaxOldestSlot; i++)
+		for (i = 1; i <= maxOldestSlot; i++)
 		{
 			MultiXactId thisoldest = OldestMemberMXactId[i];
 
@@ -1830,7 +1842,7 @@ MultiXactShmemSize(void)
 	/* We need 2*MaxOldestSlot + 1 perBackendXactIds[] entries */
 #define SHARED_MULTIXACT_STATE_SIZE \
 	add_size(offsetof(MultiXactStateData, perBackendXactIds) + sizeof(MultiXactId), \
-			 mul_size(sizeof(MultiXactId) * 2, MaxOldestSlot))
+			 mul_size(sizeof(MultiXactId) * 2, GetMaxOldestSlot()))
 
 	size = SHARED_MULTIXACT_STATE_SIZE;
 	size = add_size(size, SimpleLruShmemSize(NUM_MULTIXACTOFFSET_BUFFERS, 0));
@@ -1881,7 +1893,7 @@ MultiXactShmemInit(void)
 	 * since we only use indexes 1..MaxOldestSlot in each array.
 	 */
 	OldestMemberMXactId = MultiXactState->perBackendXactIds;
-	OldestVisibleMXactId = OldestMemberMXactId + MaxOldestSlot;
+	OldestVisibleMXactId = OldestMemberMXactId + GetMaxOldestSlot();
 }
 
 /*
@@ -2506,6 +2518,7 @@ GetOldestMultiXactId(void)
 {
 	MultiXactId oldestMXact;
 	MultiXactId nextMXact;
+	int			maxOldestSlot = GetMaxOldestSlot();
 	int			i;
 
 	/*
@@ -2524,7 +2537,7 @@ GetOldestMultiXactId(void)
 		nextMXact = FirstMultiXactId;
 
 	oldestMXact = nextMXact;
-	for (i = 1; i <= MaxOldestSlot; i++)
+	for (i = 1; i <= maxOldestSlot; i++)
 	{
 		MultiXactId thisoldest;
 
@@ -3074,8 +3087,8 @@ TruncateMultiXact(MultiXactId newOldestMulti, Oid newOldestMultiDB)
 	 * crash/basebackup, even though the state of the data directory would
 	 * require it.
 	 */
-	Assert(!MyProc->delayChkpt);
-	MyProc->delayChkpt = true;
+	Assert((MyProc->delayChkpt & DELAY_CHKPT_START) == 0);
+	MyProc->delayChkpt |= DELAY_CHKPT_START;
 
 	/* WAL log truncation */
 	WriteMTruncateXlogRec(newOldestMultiDB,
@@ -3101,7 +3114,7 @@ TruncateMultiXact(MultiXactId newOldestMulti, Oid newOldestMultiDB)
 	/* Then offsets */
 	PerformOffsetsTruncation(oldestMulti, newOldestMulti);
 
-	MyProc->delayChkpt = false;
+	MyProc->delayChkpt &= ~DELAY_CHKPT_START;
 
 	END_CRIT_SECTION();
 	LWLockRelease(MultiXactTruncationLock);

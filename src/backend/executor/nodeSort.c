@@ -100,6 +100,19 @@ ExecSort(PlanState *pstate)
 
 	if (!node->sort_Done)
 	{
+<<<<<<< HEAD
+||||||| c4cc2850f4d
+		Sort	   *plannode = (Sort *) node->ss.ps.plan;
+		PlanState  *outerNode;
+		TupleDesc	tupDesc;
+
+=======
+		Sort	   *plannode = (Sort *) node->ss.ps.plan;
+		PlanState  *outerNode;
+		TupleDesc	tupDesc;
+		int			tuplesortopts = TUPLESORT_NONE;
+
+>>>>>>> 2c7ea57e56c
 		SO1_printf("ExecSort: %s\n",
 				   "sorting subplan");
 
@@ -118,6 +131,11 @@ ExecSort(PlanState *pstate)
 		outerNode = outerPlanState(node);
 		tupDesc = ExecGetResultType(outerNode);
 
+		if (node->randomAccess)
+			tuplesortopts |= TUPLESORT_RANDOMACCESS;
+		if (node->bounded)
+			tuplesortopts |= TUPLESORT_ALLOWBOUNDED;
+
 		if (node->datumSort)
 			tuplesortstate = tuplesort_begin_datum(TupleDescAttr(tupDesc, 0)->atttypid,
 												   plannode->sortOperators[0],
@@ -125,7 +143,7 @@ ExecSort(PlanState *pstate)
 												   plannode->nullsFirst[0],
 												   PlanStateOperatorMemKB((PlanState *) node),
 												   NULL,
-												   node->randomAccess);
+												   tuplesortopts);
 		else
 			tuplesortstate = tuplesort_begin_heap(tupDesc,
 												  plannode->numCols,
@@ -135,7 +153,7 @@ ExecSort(PlanState *pstate)
 												  plannode->nullsFirst,
 												  PlanStateOperatorMemKB((PlanState *) node),
 												  NULL,
-												  node->randomAccess);
+												  tuplesortopts);
 		if (node->bounded)
 			tuplesort_set_bound(tuplesortstate, node->bound);
 		node->tuplesortstate = (void *) tuplesortstate;

@@ -194,6 +194,7 @@ dumpOptionsFromRestoreOptions(RestoreOptions *ropt)
 	dopt->outputSuperuser = ropt->superuser;
 	dopt->outputCreateDB = ropt->createDB;
 	dopt->outputNoOwner = ropt->noOwner;
+	dopt->outputNoTableAm = ropt->noTableAm;
 	dopt->outputNoTablespaces = ropt->noTablespace;
 	dopt->disable_triggers = ropt->disable_triggers;
 	dopt->use_setsessauth = ropt->use_setsessauth;
@@ -2542,6 +2543,7 @@ ReadToc(ArchiveHandle *AH)
 	int			depIdx;
 	int			depSize;
 	TocEntry   *te;
+	bool		is_supported;
 
 	AH->tocCount = ReadInt(AH);
 	AH->maxDumpId = 0;
@@ -2622,7 +2624,20 @@ ReadToc(ArchiveHandle *AH)
 			te->tableam = ReadStr(AH);
 
 		te->owner = ReadStr(AH);
-		if (AH->version < K_VERS_1_9 || strcmp(ReadStr(AH), "true") == 0)
+		is_supported = true;
+		if (AH->version < K_VERS_1_9)
+			is_supported = false;
+		else
+		{
+				tmp = ReadStr(AH);
+
+				if (strcmp(tmp, "true") == 0)
+					is_supported = false;
+
+				free(tmp);
+		}
+
+		if (!is_supported)
 			pg_log_warning("restoring tables WITH OIDS is not supported anymore");
 
 		/* Read TOC entry dependencies */
@@ -3232,6 +3247,11 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 	if (AH->currSchema)
 		free(AH->currSchema);
 	AH->currSchema = NULL;
+
+	if (AH->currTableAm)
+		free(AH->currTableAm);
+	AH->currTableAm = NULL;
+
 	if (AH->currTablespace)
 		free(AH->currTablespace);
 	AH->currTablespace = NULL;
@@ -3401,9 +3421,14 @@ _selectTablespace(ArchiveHandle *AH, const char *tablespace)
 static void
 _selectTableAccessMethod(ArchiveHandle *AH, const char *tableam)
 {
+	RestoreOptions *ropt = AH->public.ropt;
 	PQExpBuffer cmd;
 	const char *want,
 			   *have;
+
+	/* do nothing in --no-table-access-method mode */
+	if (ropt->noTableAm)
+		return;
 
 	have = AH->currTableAm;
 	want = tableam;
@@ -4855,6 +4880,7 @@ CloneArchive(ArchiveHandle *AH)
 	clone->connCancel = NULL;
 	clone->currUser = NULL;
 	clone->currSchema = NULL;
+	clone->currTableAm = NULL;
 	clone->currTablespace = NULL;
 
 	/* savedPassword must be local in case we change it while connecting */

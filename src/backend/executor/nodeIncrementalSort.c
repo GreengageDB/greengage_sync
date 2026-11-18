@@ -316,7 +316,7 @@ switchToPresortedPrefixMode(PlanState *pstate)
 												&(plannode->sort.nullsFirst[nPresortedCols]),
 												work_mem,
 												NULL,
-												false);
+												node->bounded ? TUPLESORT_ALLOWBOUNDED : TUPLESORT_NONE);
 		node->prefixsort_state = prefixsort_state;
 	}
 	else
@@ -617,7 +617,9 @@ ExecIncrementalSort(PlanState *pstate)
 												  plannode->sort.nullsFirst,
 												  work_mem,
 												  NULL,
-												  false);
+												  node->bounded ?
+												  TUPLESORT_ALLOWBOUNDED :
+												  TUPLESORT_NONE);
 			node->fullsort_state = fullsort_state;
 		}
 		else

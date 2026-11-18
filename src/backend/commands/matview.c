@@ -380,6 +380,7 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 		refresh_by_heap_swap(matviewOid, OIDNewHeap, relpersistence);
 
 		/*
+<<<<<<< HEAD
 		 * Inform stats collector about our activity: basically, we truncated
 		 * the matview and inserted some new data.  (The concurrent code path
 		 * above doesn't need to worry about this because the inserts and
@@ -392,6 +393,17 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 		 * the current comment to avoid futher upstream merge issues.
 		 * The pgstat is updated in function transientrel_shutdown on QE side.
 		 * This related to issue: https://github.com/greenplum-db/gpdb/issues/11375
+||||||| c4cc2850f4d
+		 * Inform stats collector about our activity: basically, we truncated
+		 * the matview and inserted some new data.  (The concurrent code path
+		 * above doesn't need to worry about this because the inserts and
+		 * deletes it issues get counted by lower-level code.)
+=======
+		 * Inform cumulative stats system about our activity: basically, we
+		 * truncated the matview and inserted some new data.  (The concurrent
+		 * code path above doesn't need to worry about this because the inserts
+		 * and deletes it issues get counted by lower-level code.)
+>>>>>>> 2c7ea57e56c
 		 */
 		// pgstat_count_truncate(matviewRel);
 		// if (!stmt->skipData)

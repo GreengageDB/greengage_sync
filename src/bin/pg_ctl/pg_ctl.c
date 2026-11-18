@@ -165,8 +165,16 @@ static void free_readfile(char **optlines);
 static pgpid_t start_postmaster(void);
 static void read_post_opts(void);
 
+<<<<<<< HEAD
 static bool is_secondary_instance(const char *pg_data);
 static WaitPMResult wait_for_postmaster(pgpid_t pm_pid, bool do_checkpoint);
+||||||| c4cc2850f4d
+static WaitPMResult wait_for_postmaster(pgpid_t pm_pid, bool do_checkpoint);
+=======
+static WaitPMResult wait_for_postmaster_start(pgpid_t pm_pid, bool do_checkpoint);
+static bool wait_for_postmaster_stop(void);
+static bool wait_for_postmaster_promote(void);
+>>>>>>> 2c7ea57e56c
 static bool postmaster_is_alive(pid_t pid);
 
 #if defined(HAVE_GETRLIMIT) && defined(RLIMIT_CORE)
@@ -628,7 +636,7 @@ is_secondary_instance(const char *pg_data)
  * manager checkpoint, it's got nothing to do with database checkpoints!!
  */
 static WaitPMResult
-wait_for_postmaster(pgpid_t pm_pid, bool do_checkpoint)
+wait_for_postmaster_start(pgpid_t pm_pid, bool do_checkpoint)
 {
 	int			i;
 	bool		is_coordinator;
@@ -744,6 +752,76 @@ wait_for_postmaster(pgpid_t pm_pid, bool do_checkpoint)
 
 	/* out of patience; report that postmaster is still starting up */
 	return POSTMASTER_STILL_STARTING;
+}
+
+
+/*
+ * Wait for the postmaster to stop.
+ *
+ * Returns true if the postmaster stopped cleanly (i.e., removed its pidfile).
+ * Returns false if the postmaster dies uncleanly, or if we time out.
+ */
+static bool
+wait_for_postmaster_stop(void)
+{
+	int			cnt;
+
+	for (cnt = 0; cnt < wait_seconds * WAITS_PER_SEC; cnt++)
+	{
+		pgpid_t		pid;
+
+		if ((pid = get_pgpid(false)) == 0)
+			return true;		/* pid file is gone */
+
+		if (kill((pid_t) pid, 0) != 0)
+		{
+			/*
+			 * Postmaster seems to have died.  Check the pid file once more to
+			 * avoid a race condition, but give up waiting.
+			 */
+			if (get_pgpid(false) == 0)
+				return true;	/* pid file is gone */
+			return false;		/* postmaster died untimely */
+		}
+
+		if (cnt % WAITS_PER_SEC == 0)
+			print_msg(".");
+		pg_usleep(USEC_PER_SEC / WAITS_PER_SEC);
+	}
+	return false;				/* timeout reached */
+}
+
+
+/*
+ * Wait for the postmaster to promote.
+ *
+ * Returns true on success, else false.
+ * To avoid waiting uselessly, we check for postmaster death here too.
+ */
+static bool
+wait_for_postmaster_promote(void)
+{
+	int			cnt;
+
+	for (cnt = 0; cnt < wait_seconds * WAITS_PER_SEC; cnt++)
+	{
+		pgpid_t		pid;
+		DBState		state;
+
+		if ((pid = get_pgpid(false)) == 0)
+			return false;		/* pid file is gone */
+		if (kill((pid_t) pid, 0) != 0)
+			return false;		/* postmaster died */
+
+		state = get_control_dbstate();
+		if (state == DB_IN_PRODUCTION)
+			return true;		/* successful promotion */
+
+		if (cnt % WAITS_PER_SEC == 0)
+			print_msg(".");
+		pg_usleep(USEC_PER_SEC / WAITS_PER_SEC);
+	}
+	return false;				/* timeout reached */
 }
 
 
@@ -960,7 +1038,7 @@ do_start(void)
 
 		print_msg(_("waiting for server to start..."));
 
-		switch (wait_for_postmaster(pm_pid, false))
+		switch (wait_for_postmaster_start(pm_pid, false))
 		{
 			case POSTMASTER_READY:
 				print_msg(_(" done\n"));
@@ -995,9 +1073,7 @@ do_start(void)
 static void
 do_stop(void)
 {
-	int			cnt;
 	pgpid_t		pid;
-	struct stat statbuf;
 
 	pid = get_pgpid(false);
 
@@ -1030,35 +1106,9 @@ do_stop(void)
 	}
 	else
 	{
-		/*
-		 * If backup_label exists, an online backup is running. Warn the user
-		 * that smart shutdown will wait for it to finish. However, if the
-		 * server is in archive recovery, we're recovering from an online
-		 * backup instead of performing one.
-		 */
-		if (shutdown_mode == SMART_MODE &&
-			stat(backup_file, &statbuf) == 0 &&
-			get_control_dbstate() != DB_IN_ARCHIVE_RECOVERY)
-		{
-			print_msg(_("WARNING: online backup mode is active\n"
-						"Shutdown will not complete until pg_stop_backup() is called.\n\n"));
-		}
-
 		print_msg(_("waiting for server to shut down..."));
 
-		for (cnt = 0; cnt < wait_seconds * WAITS_PER_SEC; cnt++)
-		{
-			if ((pid = get_pgpid(false)) != 0)
-			{
-				if (cnt % WAITS_PER_SEC == 0)
-					print_msg(".");
-				pg_usleep(USEC_PER_SEC / WAITS_PER_SEC);
-			}
-			else
-				break;
-		}
-
-		if (pid != 0)			/* pid file still exists */
+		if (!wait_for_postmaster_stop())
 		{
 			print_msg(_(" failed\n"));
 
@@ -1082,9 +1132,7 @@ do_stop(void)
 static void
 do_restart(void)
 {
-	int			cnt;
 	pgpid_t		pid;
-	struct stat statbuf;
 
 	pid = get_pgpid(false);
 
@@ -1119,37 +1167,10 @@ do_restart(void)
 			exit(1);
 		}
 
-		/*
-		 * If backup_label exists, an online backup is running. Warn the user
-		 * that smart shutdown will wait for it to finish. However, if the
-		 * server is in archive recovery, we're recovering from an online
-		 * backup instead of performing one.
-		 */
-		if (shutdown_mode == SMART_MODE &&
-			stat(backup_file, &statbuf) == 0 &&
-			get_control_dbstate() != DB_IN_ARCHIVE_RECOVERY)
-		{
-			print_msg(_("WARNING: online backup mode is active\n"
-						"Shutdown will not complete until pg_stop_backup() is called.\n\n"));
-		}
-
 		print_msg(_("waiting for server to shut down..."));
 
 		/* always wait for restart */
-
-		for (cnt = 0; cnt < wait_seconds * WAITS_PER_SEC; cnt++)
-		{
-			if ((pid = get_pgpid(false)) != 0)
-			{
-				if (cnt % WAITS_PER_SEC == 0)
-					print_msg(".");
-				pg_usleep(USEC_PER_SEC / WAITS_PER_SEC);
-			}
-			else
-				break;
-		}
-
-		if (pid != 0)			/* pid file still exists */
+		if (!wait_for_postmaster_stop())
 		{
 			print_msg(_(" failed\n"));
 
@@ -1269,21 +1290,8 @@ do_promote(void)
 
 	if (do_wait)
 	{
-		DBState		state = DB_STARTUP;
-		int			cnt;
-
 		print_msg(_("waiting for server to promote..."));
-		for (cnt = 0; cnt < wait_seconds * WAITS_PER_SEC; cnt++)
-		{
-			state = get_control_dbstate();
-			if (state == DB_IN_PRODUCTION)
-				break;
-
-			if (cnt % WAITS_PER_SEC == 0)
-				print_msg(".");
-			pg_usleep(USEC_PER_SEC / WAITS_PER_SEC);
-		}
-		if (state == DB_IN_PRODUCTION)
+		if (wait_for_postmaster_promote())
 		{
 			print_msg(_(" done\n"));
 			print_msg(_("server promoted\n"));
@@ -1702,7 +1710,7 @@ pgwin32_ServiceMain(DWORD argc, LPTSTR *argv)
 	if (do_wait)
 	{
 		write_eventlog(EVENTLOG_INFORMATION_TYPE, _("Waiting for server startup...\n"));
-		if (wait_for_postmaster(postmasterPID, true) != POSTMASTER_READY)
+		if (wait_for_postmaster_start(postmasterPID, true) != POSTMASTER_READY)
 		{
 			write_eventlog(EVENTLOG_ERROR_TYPE, _("Timed out waiting for server startup\n"));
 			pgwin32_SetServiceStatus(SERVICE_STOPPED);
@@ -1723,7 +1731,7 @@ pgwin32_ServiceMain(DWORD argc, LPTSTR *argv)
 			{
 				/*
 				 * status.dwCheckPoint can be incremented by
-				 * wait_for_postmaster(), so it might not start from 0.
+				 * wait_for_postmaster_start(), so it might not start from 0.
 				 */
 				int			maxShutdownCheckPoint = status.dwCheckPoint + 12;
 

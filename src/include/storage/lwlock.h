@@ -121,6 +121,7 @@ extern void LWLockReleaseClearVar(LWLock *lock, uint64 *valptr, uint64 val);
 extern void LWLockReleaseAll(void);
 extern bool LWLockHeldByMe(LWLock *lock);
 extern bool LWLockHeldByMeInMode(LWLock *lock, LWLockMode mode);
+extern int LWLockHeldCount(void);
 
 extern bool LWLockWaitForVar(LWLock *lock, uint64 *valptr, uint64 oldval, uint64 *newval);
 extern void LWLockUpdateVar(LWLock *lock, uint64 *valptr, uint64 value);
@@ -189,7 +190,14 @@ typedef enum BuiltinTrancheIds
 	LWTRANCHE_SHARED_TIDBITMAP,
 	LWTRANCHE_PARALLEL_APPEND,
 	LWTRANCHE_PER_XACT_PREDICATE_LIST,
+<<<<<<< HEAD
 	LWTRANCHE_DISTRIBUTEDLOG_BUFFERS,
+||||||| c4cc2850f4d
+=======
+	LWTRANCHE_PGSTATS_DSA,
+	LWTRANCHE_PGSTATS_HASH,
+	LWTRANCHE_PGSTATS_DATA,
+>>>>>>> 2c7ea57e56c
 	LWTRANCHE_FIRST_USER_DEFINED
 }			BuiltinTrancheIds;
 
