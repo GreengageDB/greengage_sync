@@ -75,21 +75,11 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 /* non-export function prototypes */
 static void EndCopy(CopyToState cstate);
 static void ClosePipeToProgram(CopyToState cstate);
-<<<<<<< HEAD
 static uint64 CopyTo(CopyToState cstate);
 static uint64 CopyToDispatch(CopyToState cstate);
 static void CopyToDispatchFlush(CopyToState cstate);
-static void CopyAttributeOutText(CopyToState cstate, char *string);
-static void CopyAttributeOutCSV(CopyToState cstate, char *string,
-||||||| c4cc2850f4d
-static void CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot);
-static void CopyAttributeOutText(CopyToState cstate, char *string);
-static void CopyAttributeOutCSV(CopyToState cstate, char *string,
-=======
-static void CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot);
 static void CopyAttributeOutText(CopyToState cstate, const char *string);
 static void CopyAttributeOutCSV(CopyToState cstate, const char *string,
->>>>>>> 2c7ea57e56c
 								bool use_quote, bool single_attr);
 
 /* Low-level communications functions */
@@ -731,7 +721,6 @@ BeginCopyToCommon(ParseState *pstate,
 
 	cstate->copy_dest = COPY_FILE;	/* default */
 
-<<<<<<< HEAD
 	MemoryContextSwitchTo(oldcontext);
 
 	return cstate;
@@ -891,8 +880,11 @@ BeginCopyToOnSegment(QueryDesc *queryDesc)
 
 				colname = NameStr(attr[attnum - 1].attname);
 
-				CopyAttributeOutCSV(cstate, colname, false,
+				if (cstate->opts.csv_mode)
+					CopyAttributeOutCSV(cstate, colname, false,
 									list_length(cstate->attnumlist) == 1);
+				else
+					CopyAttributeOutText(cstate, colname);
 			}
 
 			CopySendEndOfRow(cstate);
@@ -995,13 +987,6 @@ BeginCopyTo(ParseState *pstate,
 					 errmsg("STDOUT is not supported by 'COPY ON SEGMENT'")));
 	}
 	else if (pipe)
-||||||| c4cc2850f4d
-	MemoryContextSwitchTo(oldcontext);
-
-	if (pipe)
-=======
-	if (pipe)
->>>>>>> 2c7ea57e56c
 	{
 		progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
 		Assert(!is_program || Gp_role == GP_ROLE_EXECUTE);	/* the grammar does not allow this */
@@ -1328,8 +1313,11 @@ CopyToDispatch(CopyToState cstate)
 
 				colname = NameStr(attr[attnum - 1].attname);
 
-				CopyAttributeOutCSV(cstate, colname, false,
+				if (cstate->opts.csv_mode)
+					CopyAttributeOutCSV(cstate, colname, false,
 									list_length(cstate->attnumlist) == 1);
+				else
+					CopyAttributeOutText(cstate, colname);
 			}
 
 			/* add a newline and flush the data */
