@@ -36,29 +36,15 @@
 #include "access/relation.h"
 #include "access/table.h"
 #include "access/tableam.h"
-<<<<<<< HEAD
 #include "access/toast_compression.h"
 #include "access/transam.h"
 #include "access/reloptions.h"
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "catalog/binary_upgrade.h"
-||||||| c4cc2850f4d
-#include "access/toast_compression.h"
-#include "access/transam.h"
-#include "access/xact.h"
-#include "access/xlog.h"
-#include "catalog/binary_upgrade.h"
-=======
->>>>>>> 2c7ea57e56c
 #include "catalog/catalog.h"
-<<<<<<< HEAD
 #include "catalog/dependency.h"
 #include "catalog/gp_distribution_policy.h"
-||||||| c4cc2850f4d
-#include "catalog/dependency.h"
-=======
->>>>>>> 2c7ea57e56c
 #include "catalog/heap.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
@@ -115,7 +101,6 @@
 #include "utils/relcache.h"
 #include "utils/timestamp.h"
 
-<<<<<<< HEAD
 
 static void MetaTrackAddUpdInternal(Oid			classid,
 									Oid			objoid,
@@ -124,17 +109,6 @@ static void MetaTrackAddUpdInternal(Oid			classid,
 									char*		subtype,
 									Relation	rel,
 									HeapTuple	old_tuple);
-||||||| c4cc2850f4d
-/* Potentially set by pg_upgrade_support functions */
-Oid			binary_upgrade_next_heap_pg_class_oid = InvalidOid;
-Oid			binary_upgrade_next_toast_pg_class_oid = InvalidOid;
-=======
-/* Potentially set by pg_upgrade_support functions */
-Oid			binary_upgrade_next_heap_pg_class_oid = InvalidOid;
-Oid			binary_upgrade_next_heap_pg_class_relfilenode = InvalidOid;
-Oid			binary_upgrade_next_toast_pg_class_oid = InvalidOid;
-Oid			binary_upgrade_next_toast_pg_class_relfilenode = InvalidOid;
->>>>>>> 2c7ea57e56c
 
 static void AddNewRelationTuple(Relation pg_class_desc,
 								Relation new_rel_desc,
@@ -343,8 +317,8 @@ SystemAttributeByName(const char *attname)
  *		heap_create		- Create an uncataloged heap relation
  *
  *		Note API change: the caller must now always provide the OID
- *		to use for the relation.  The relfilenode may be (and in
- *		the simplest cases is) left unspecified.
+ *		to use for the relation.  The relfilenode may (and, normally,
+ *		should) be left unspecified.
  *
  *		create_storage indicates whether or not to create the storage.
  *		However, even if create_storage is true, no storage will be
@@ -411,26 +385,16 @@ heap_create(const char *relname,
 		create_storage = false;
 	else
 	{
-<<<<<<< HEAD
-		create_storage = true;
 		/*
 		 * In PostgreSQL, the relation OID is used as the relfilenode initially.
 		 * In GPDB, relfilenode is assigned using a separate counter. Pass '1'
 		 * to RelationBuildLocalRelation() to signal that it should assign a
-		 * a new value.
-		 */
-		relfilenode = 1;
-||||||| c4cc2850f4d
-		create_storage = true;
-		relfilenode = relid;
-=======
-		/*
-		 * If relfilenode is unspecified by the caller then create storage
-		 * with oid same as relid.
+		 * a new value.  A caller that specified a relfilenode of its own keeps
+		 * it; its storage exists already, which is why create_storage is false
+		 * in that case.
 		 */
 		if (!OidIsValid(relfilenode))
-			relfilenode = relid;
->>>>>>> 2c7ea57e56c
+			relfilenode = 1;
 	}
 
 	/*
@@ -1491,8 +1455,6 @@ heap_create_with_catalog(const char *relname,
 	Oid			old_type_oid;
 	Oid			new_type_oid;
 
-	/* By default set to InvalidOid unless overridden by binary-upgrade */
-	Oid			relfilenode = InvalidOid;
 	TransactionId relfrozenxid;
 	MultiXactId relminmxid;
 
@@ -1556,99 +1518,8 @@ heap_create_with_catalog(const char *relname,
 	 */
 	if (!OidIsValid(relid))
 	{
-<<<<<<< HEAD
 		relid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId, Anum_pg_class_oid,
 									 pstrdup(relname), relnamespace);
-||||||| c4cc2850f4d
-		/* Use binary-upgrade override for pg_class.oid/relfilenode? */
-		if (IsBinaryUpgrade)
-		{
-			/*
-			 * Indexes are not supported here; they use
-			 * binary_upgrade_next_index_pg_class_oid.
-			 */
-			Assert(relkind != RELKIND_INDEX);
-			Assert(relkind != RELKIND_PARTITIONED_INDEX);
-
-			if (relkind == RELKIND_TOASTVALUE)
-			{
-				/* There might be no TOAST table, so we have to test for it. */
-				if (OidIsValid(binary_upgrade_next_toast_pg_class_oid))
-				{
-					relid = binary_upgrade_next_toast_pg_class_oid;
-					binary_upgrade_next_toast_pg_class_oid = InvalidOid;
-				}
-			}
-			else
-			{
-				if (!OidIsValid(binary_upgrade_next_heap_pg_class_oid))
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							 errmsg("pg_class heap OID value not set when in binary upgrade mode")));
-
-				relid = binary_upgrade_next_heap_pg_class_oid;
-				binary_upgrade_next_heap_pg_class_oid = InvalidOid;
-			}
-		}
-
-		if (!OidIsValid(relid))
-			relid = GetNewRelFileNode(reltablespace, pg_class_desc,
-									  relpersistence);
-=======
-		/* Use binary-upgrade override for pg_class.oid and relfilenode */
-		if (IsBinaryUpgrade)
-		{
-			/*
-			 * Indexes are not supported here; they use
-			 * binary_upgrade_next_index_pg_class_oid.
-			 */
-			Assert(relkind != RELKIND_INDEX);
-			Assert(relkind != RELKIND_PARTITIONED_INDEX);
-
-			if (relkind == RELKIND_TOASTVALUE)
-			{
-				/* There might be no TOAST table, so we have to test for it. */
-				if (OidIsValid(binary_upgrade_next_toast_pg_class_oid))
-				{
-					relid = binary_upgrade_next_toast_pg_class_oid;
-					binary_upgrade_next_toast_pg_class_oid = InvalidOid;
-
-					if (!OidIsValid(binary_upgrade_next_toast_pg_class_relfilenode))
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								  errmsg("toast relfilenode value not set when in binary upgrade mode")));
-
-					relfilenode = binary_upgrade_next_toast_pg_class_relfilenode;
-					binary_upgrade_next_toast_pg_class_relfilenode = InvalidOid;
-				}
-			}
-			else
-			{
-				if (!OidIsValid(binary_upgrade_next_heap_pg_class_oid))
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							 errmsg("pg_class heap OID value not set when in binary upgrade mode")));
-
-				relid = binary_upgrade_next_heap_pg_class_oid;
-				binary_upgrade_next_heap_pg_class_oid = InvalidOid;
-
-				if (RELKIND_HAS_STORAGE(relkind))
-				{
-					if (!OidIsValid(binary_upgrade_next_heap_pg_class_relfilenode))
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("relfilenode value not set when in binary upgrade mode")));
-
-					relfilenode = binary_upgrade_next_heap_pg_class_relfilenode;
-					binary_upgrade_next_heap_pg_class_relfilenode = InvalidOid;
-				}
-			}
-		}
-
-		if (!OidIsValid(relid))
-			relid = GetNewRelFileNode(reltablespace, pg_class_desc,
-									  relpersistence);
->>>>>>> 2c7ea57e56c
 	}
 
 	/*
@@ -1691,7 +1562,7 @@ heap_create_with_catalog(const char *relname,
 							   relnamespace,
 							   reltablespace,
 							   relid,
-							   relfilenode,
+							   InvalidOid,
 							   accessmtd,
 							   tupdesc,
 							   relkind,
