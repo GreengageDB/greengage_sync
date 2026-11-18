@@ -1491,7 +1491,7 @@ insertedDistributedCommitted(void)
 	 * We don't have to hold ProcArrayLock here because needIncludedInCkpt is used
 	 * during creating checkpoint and we already set delayChkpt before we got here.
 	 */
-	Assert(MyProc->delayChkpt);
+	Assert((MyProc->delayChkpt & DELAY_CHKPT_START) != 0);
 	if (IS_QUERY_DISPATCHER())
 		MyTmGxact->includeInCkpt = true;
 }

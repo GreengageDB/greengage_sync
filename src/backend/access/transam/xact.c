@@ -29,12 +29,8 @@
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"
-<<<<<<< HEAD
 #include "access/xact_storage_tablespace.h"
-||||||| c4cc2850f4d
-=======
 #include "access/xlogrecovery.h"
->>>>>>> 2c7ea57e56c
 #include "access/xlogutils.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"

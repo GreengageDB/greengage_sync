@@ -1305,34 +1305,20 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	 */
 	pg_database_rel = table_open(DatabaseRelationId, RowExclusiveLock);
 
-<<<<<<< HEAD
 	if (Gp_role == GP_ROLE_EXECUTE)
-		dboid = GetPreassignedOidForDatabase(dbname);
-	else
-||||||| c4cc2850f4d
-	do
-=======
-	/*
-	 * If database OID is configured, check if the OID is already in use or
-	 * data directory already exists.
-	 */
-	if (OidIsValid(dboid))
->>>>>>> 2c7ea57e56c
 	{
-<<<<<<< HEAD
-		do
-		{
-			dboid = GetNewOidWithIndex(pg_database_rel, DatabaseOidIndexId,
-									   Anum_pg_database_oid);
-		} while (check_db_file_conflict(dboid));
-
-		if (Gp_role == GP_ROLE_DISPATCH)
-			RememberAssignedOidForDatabase(dbname, dboid);
-||||||| c4cc2850f4d
-		dboid = GetNewOidWithIndex(pg_database_rel, DatabaseOidIndexId,
-								   Anum_pg_database_oid);
-	} while (check_db_file_conflict(dboid));
-=======
+		/*
+		 * The dispatcher has already chosen the OID of the new database, so
+		 * that every segment stores it under the same OID.
+		 */
+		dboid = GetPreassignedOidForDatabase(dbname);
+	}
+	else if (OidIsValid(dboid))
+	{
+		/*
+		 * If database OID is configured, check if the OID is already in use or
+		 * data directory already exists.
+		 */
 		char	   *existing_dbname = get_database_name(dboid);
 
 		if (existing_dbname != NULL)
@@ -1354,7 +1340,6 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 			dboid = GetNewOidWithIndex(pg_database_rel, DatabaseOidIndexId,
 									   Anum_pg_database_oid);
 		} while (check_db_file_conflict(dboid));
->>>>>>> 2c7ea57e56c
 	}
 
 	/*
