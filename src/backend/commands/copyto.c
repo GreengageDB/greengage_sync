@@ -1048,10 +1048,10 @@ BeginCopyTo(ParseState *pstate,
 						 (save_errno == ENOENT || save_errno == EACCES) ?
 						 errhint("COPY TO instructs the PostgreSQL server process to write a file. "
 								 "You may want a client-side facility such as psql's \\copy.") : 0));
+			}
 
 			// Increase buffer size to improve performance  (cmcdevitt)
 			setvbuf(cstate->copy_file, NULL, _IOFBF, 393216); // 384 Kbytes
-			}
 
 			if (fstat(fileno(cstate->copy_file), &st))
 				ereport(ERROR,
