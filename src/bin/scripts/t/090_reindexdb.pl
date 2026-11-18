@@ -214,10 +214,6 @@ $node->command_checks_all(
 		qr/^reindexdb: warning: cannot reindex system catalogs concurrently, skipping all/s
 	],
 	'parallel reindexdb for system with --concurrently skips catalogs');
-<<<<<<< HEAD
 } # end SKIP
-||||||| c4cc2850f4d
-=======
 
 done_testing();
->>>>>>> 2c7ea57e56c

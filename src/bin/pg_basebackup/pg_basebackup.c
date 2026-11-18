@@ -2628,13 +2628,7 @@ main(int argc, char **argv)
 	num_exclude_from = 0;
 	atexit(cleanup_directories_atexit);
 
-<<<<<<< HEAD
-	while ((c = getopt_long(argc, argv, "CD:F:r:RT:xX:l:zZ:d:c:h:p:U:s:S:wWvPE:",
-||||||| c4cc2850f4d
-	while ((c = getopt_long(argc, argv, "CD:F:r:RS:T:X:l:nNzZ:d:c:h:p:U:s:wWkvP",
-=======
-	while ((c = getopt_long(argc, argv, "CD:F:r:RS:t:T:X:l:nNzZ:d:c:h:p:U:s:wWkvP",
->>>>>>> 2c7ea57e56c
+	while ((c = getopt_long(argc, argv, "CD:F:r:RT:t:xX:l:zZ:d:c:h:p:U:s:S:wWvPE:",
 							long_options, &option_index)) != -1)
 	{
 		switch (c)

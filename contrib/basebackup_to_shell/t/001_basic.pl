@@ -33,7 +33,12 @@ $node->safe_psql('postgres', 'CREATE ROLE trustworthy');
 # to keep test times reasonable. Using @pg_basebackup_defs as the first
 # element of the array passed to IPC::Run interpolate the array (as it is
 # not a reference to an array)...
-my @pg_basebackup_defs = ('pg_basebackup', '--no-sync', '-cfast');
+#
+# GPDB: --target-gp-dbid is mandatory and main() validates it before it looks
+# at anything else, so it has to be in the defaults for the message assertions
+# below to reach their own messages.
+my @pg_basebackup_defs =
+  ('pg_basebackup', '--no-sync', '-cfast', '--target-gp-dbid', '1');
 
 # This particular test module generally wants to run with -Xfetch, because
 # -Xstream is not supported with a backup target, and with -U backupuser.

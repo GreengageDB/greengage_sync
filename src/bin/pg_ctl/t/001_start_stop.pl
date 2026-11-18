@@ -6,13 +6,7 @@ use warnings;
 
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-<<<<<<< HEAD
-use Test::More tests => 26;
-||||||| c4cc2850f4d
-use Test::More tests => 24;
-=======
 use Test::More;
->>>>>>> 2c7ea57e56c
 
 my $tempdir       = PostgreSQL::Test::Utils::tempdir;
 my $tempdir_short = PostgreSQL::Test::Utils::tempdir_short;
@@ -109,7 +103,6 @@ command_ok([ 'pg_ctl', 'restart', '-D', "$tempdir/data" ],
 
 system_or_bail 'pg_ctl', 'stop', '-D', "$tempdir/data";
 
-<<<<<<< HEAD
 # gpdb specific: verify that --wrapper and --wrapper-args work as expected
 if (not $windows_os)
 {
@@ -133,7 +126,5 @@ if (not $windows_os)
 
 	system_or_bail 'pg_ctl', 'stop', '-D', "$tempdir/data", '-m', 'fast';
 }
-||||||| c4cc2850f4d
-=======
+
 done_testing();
->>>>>>> 2c7ea57e56c

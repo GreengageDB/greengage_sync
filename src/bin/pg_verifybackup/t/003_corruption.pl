@@ -112,17 +112,9 @@ for my $scenario (@scenario)
 		local $ENV{MSYS2_ARG_CONV_EXCL} = $source_ts_prefix;
 		$primary->command_ok(
 			[
-<<<<<<< HEAD
-				'pg_basebackup', '-D', $backup_path, '--no-sync',
+				'pg_basebackup', '-D', $backup_path, '--no-sync', '-cfast',
 				'-T', "${source_ts_path}=${backup_ts_path}",
 				'--target-gp-dbid', '1'
-||||||| c4cc2850f4d
-				'pg_basebackup', '-D', $backup_path, '--no-sync',
-				'-T', "${source_ts_path}=${backup_ts_path}"
-=======
-				'pg_basebackup', '-D', $backup_path, '--no-sync', '-cfast',
-				'-T', "${source_ts_path}=${backup_ts_path}"
->>>>>>> 2c7ea57e56c
 			],
 			"base backup ok");
 		command_ok([ 'pg_verifybackup', $backup_path ],

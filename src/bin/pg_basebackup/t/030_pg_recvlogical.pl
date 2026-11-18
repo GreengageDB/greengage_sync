@@ -112,10 +112,6 @@ $node->command_ok(
 		'--start', '--endpos', "$nextlsn", '--no-loop', '-f', '-'
 	],
 	'replayed a two-phase transaction');
-<<<<<<< HEAD
 }
-||||||| c4cc2850f4d
-=======
 
 done_testing();
->>>>>>> 2c7ea57e56c

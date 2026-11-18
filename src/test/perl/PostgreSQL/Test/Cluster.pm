@@ -111,7 +111,6 @@ use Scalar::Util qw(blessed);
 our ($use_tcp, $test_localhost, $test_pghost, $last_host_assigned,
 	$last_port_assigned, @all_nodes, $died);
 
-<<<<<<< HEAD
 our ($last_dbid);
 
 # Windows path to virtual file system root
@@ -122,12 +121,10 @@ if ($Config{osname} eq 'msys')
 	$vfs_path = `cd / && pwd -W`;
 	chomp $vfs_path;
 }
-||||||| c4cc2850f4d
-=======
+
 # the minimum version we believe to be compatible with this package without
 # subclassing.
 our $min_compat = 12;
->>>>>>> 2c7ea57e56c
 
 INIT
 {
@@ -1207,13 +1204,8 @@ sub _update_pid
 		print "# Postmaster PID for node \"$name\" is $self->{_pid}\n";
 
 		# If we found a pidfile when there shouldn't be one, complain.
-<<<<<<< HEAD
-		BAIL_OUT("postmaster.pid unexpectedly present") unless $is_running or $fail_ok;
-||||||| c4cc2850f4d
-		BAIL_OUT("postmaster.pid unexpectedly present") unless $is_running;
-=======
-		BAIL_OUT("postmaster.pid unexpectedly present") if $is_running == 0;
->>>>>>> 2c7ea57e56c
+		BAIL_OUT("postmaster.pid unexpectedly present")
+		  if $is_running == 0 and !$fail_ok;
 		return;
 	}
 
@@ -1221,13 +1213,8 @@ sub _update_pid
 	print "# No postmaster PID for node \"$name\"\n";
 
 	# Complain if we expected to find a pidfile.
-<<<<<<< HEAD
-	BAIL_OUT("postmaster.pid unexpectedly not present") if $is_running and !$fail_ok;
-||||||| c4cc2850f4d
-	BAIL_OUT("postmaster.pid unexpectedly not present") if $is_running;
-=======
-	BAIL_OUT("postmaster.pid unexpectedly not present") if $is_running == 1;
->>>>>>> 2c7ea57e56c
+	BAIL_OUT("postmaster.pid unexpectedly not present")
+	  if $is_running == 1 and !$fail_ok;
 	return;
 }
 
