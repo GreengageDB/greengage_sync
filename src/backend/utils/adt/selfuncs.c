@@ -3989,17 +3989,6 @@ estimate_multivariate_ndistinct(PlannerInfo *root, RelOptInfo *rel,
 	if (!rel->statlist)
 		return false;
 
-	/*
-	 * When dealing with regular inheritance trees, ignore extended stats
-	 * (which were built without data from child rels, and thus do not
-	 * represent them). For partitioned tables data there's no data in the
-	 * non-leaf relations, so we build stats only for the inheritance tree.
-	 * So for partitioned tables we do consider extended stats.
-	 */
-	rte = planner_rt_fetch(rel->relid, root);
-	if (rte->inh && rte->relkind != RELKIND_PARTITIONED_TABLE)
-		return false;
-
 	/* look for the ndistinct statistics object matching the most vars */
 	nmatches_vars = 0;			/* we require at least two matches */
 	nmatches_exprs = 0;
