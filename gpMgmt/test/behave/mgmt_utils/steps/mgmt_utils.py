@@ -3130,6 +3130,31 @@ def impl(context):
     xid = cursor.fetchone()[0]
     context.long_run_xid = xid
 
+def coordinator_log_has_fatal(dbname, backend_pid, msg):
+    """
+    Did backend_pid log a FATAL carrying msg into the coordinator log?
+
+    The fourth field of a CSV log line is the backend pid prefixed with 'p'
+    (write_csvlog() in src/backend/utils/error/elog.c), which is what ties an entry to
+    one particular session.  The data directory is read back from the server rather than
+    from the environment, because a scenario may have built its own cluster somewhere
+    other than COORDINATOR_DATA_DIRECTORY.
+    """
+    with closing(dbconn.connect(dbconn.DbURL(dbname=dbname), unsetSearchPath=False)) as conn:
+        datadir = dbconn.querySingleton(conn, "show data_directory")
+
+    logfiles = glob.glob(os.path.join(datadir, 'log', '*.csv'))
+    if not logfiles:
+        raise Exception("no CSV log files under %s/log, cannot check for: %s" % (datadir, msg))
+
+    pid_field = ',p%d,' % backend_pid
+    for logfile in logfiles:
+        with open(logfile, errors='replace') as f:
+            for line in f:
+                if pid_field in line and '"FATAL"' in line and msg in line:
+                    return True
+    return False
+
 @then('verify that long-run transaction aborted for changing the catalog by creating table {table_name}')
 def impl(context, table_name):
     cursor = context.long_run_cursor
@@ -3141,12 +3166,22 @@ def impl(context, table_name):
         raise Exception("Incorrect xid of long run transaction: before %s, after %s" %
                         (context.long_run_xid, xid));
 
+    # gp_expand_protect_catalog_changes() reports the expansion as FATAL, so the backend
+    # is already gone by the time psycopg2 raises.  libpq used to repeat the server's
+    # error text in the connection-loss result it manufactures afterwards, which is
+    # where this step read it from; since 618c16707a6 "Rearrange libpq's error reporting
+    # to avoid duplicated error text" already-reported text is not repeated, so the
+    # exception carries nothing but "server closed the connection unexpectedly" and the
+    # reason has to be read out of the coordinator log instead.
+    key_msg = "cluster is expanded from"
+    backend_pid = context.long_run_conn.get_backend_pid()
+
     query = """CREATE TABLE %s (a INT)""" % table_name
     try:
         cursor.execute(query)
     except Exception as e:
-        key_msg = "cluster is expanded from"
-        if key_msg not in str(e):
+        if (key_msg not in str(e) and
+                not coordinator_log_has_fatal('gptest', backend_pid, key_msg)):
             raise Exception("transaction not abort correctly, errmsg:%s" % str(e))
     else:
         raise Exception("transaction not abort")
