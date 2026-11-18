@@ -4981,15 +4981,10 @@ _complete_from_query(const char *simple_query,
 				num_query_other,
 				num_keywords;
 	static PGresult *result = NULL;
-<<<<<<< HEAD
-||||||| c4cc2850f4d
-
-=======
 	static bool non_empty_object;
 	static bool schemaquoted;
 	static bool objectquoted;
 
->>>>>>> 2c7ea57e56c
 	/*
 	 * If this is the first time for this completion, we fetch a list of our
 	 * "things" from the backend.
@@ -5056,34 +5051,11 @@ _complete_from_query(const char *simple_query,
 			Assert(simple_query == NULL);
 
 			/*
-<<<<<<< HEAD
-			 * When fetching relation names, suppress system catalogs unless
-			 * the input-so-far begins with "pg_" or "gp_".	 This is a compromise
-			 * between not offering system catalogs for completion at all, and
-			 * having them swamp the result when the input is just "p".
-||||||| c4cc2850f4d
-			 * When fetching relation names, suppress system catalogs unless
-			 * the input-so-far begins with "pg_".  This is a compromise
-			 * between not offering system catalogs for completion at all, and
-			 * having them swamp the result when the input is just "p".
-=======
 			 * We issue different queries depending on whether the input is
 			 * already qualified or not.  schema_query gives us the pieces to
 			 * assemble.
->>>>>>> 2c7ea57e56c
 			 */
-<<<<<<< HEAD
-			if (strcmp(schema_query->catname,
-					   "pg_catalog.pg_class c") == 0 &&
-				strncmp(text, "pg_", 3) != 0 &&
-				strncmp(text, "gp_", 3) != 0)
-||||||| c4cc2850f4d
-			if (strcmp(schema_query->catname,
-					   "pg_catalog.pg_class c") == 0 &&
-				strncmp(text, "pg_", 3) != 0)
-=======
 			if (schemaname == NULL || schema_query->namespace == NULL)
->>>>>>> 2c7ea57e56c
 			{
 				/* Get unqualified names matching the input-so-far */
 				appendPQExpBufferStr(&query_buffer, "SELECT ");

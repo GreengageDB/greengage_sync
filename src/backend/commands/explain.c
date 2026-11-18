@@ -4906,8 +4906,17 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 	}
 	else if (node->operation == CMD_MERGE)
 	{
-		/* EXPLAIN ANALYZE display of tuples processed */
-		if (es->analyze && mtstate->ps.instrument)
+		/*
+		 * EXPLAIN ANALYZE display of tuples processed.
+		 *
+		 * GGDB: the per-action counters live in the ModifyTableState of the
+		 * process that ran the MERGE.  On the QD of a plan whose ModifyTable
+		 * runs on the segments they are all zero, which would report every
+		 * source row as skipped, so leave the breakdown out there.
+		 */
+		if (es->analyze && mtstate->ps.instrument &&
+			!(Gp_role == GP_ROLE_DISPATCH && es->currentSlice &&
+			  !sliceRunsOnQD(es->currentSlice)))
 		{
 			double		total;
 			double		insert_path;

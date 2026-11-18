@@ -546,7 +546,7 @@ AllocSetContextCreateInternal(MemoryContext parent,
 								parent,
 								name);
 
-			if (parent)
+			if (parent && IsA(parent, AllocSetContext))
 				set->accountingParent = ((AllocSet) parent)->accountingParent;
 			else
 				set->accountingParent = set;
@@ -649,7 +649,11 @@ AllocSetContextCreateInternal(MemoryContext parent,
 						parent,
 						name);
 
-	if (parent)
+	/*
+	 * An account can only be inherited from an AllocSetContext; under a
+	 * context of any other type this one becomes an account of its own.
+	 */
+	if (parent && IsA(parent, AllocSetContext))
 		set->accountingParent = ((AllocSet) parent)->accountingParent;
 	else
 		set->accountingParent = set;
@@ -690,10 +694,11 @@ AllocSetReset(MemoryContext context)
 #endif
 
 	/*
-	 * Make sure all children have been deleted,
-	 * or the accounting data is incorrect.
+	 * A reset leaves any child context alone, as MemoryContextResetOnly()
+	 * promises, and that is accounting-neutral: localAllocated covers this
+	 * context alone, so discharging it leaves every child's own charge, and
+	 * the account's currentAllocated, exactly as correct as they were.
 	 */
-	Assert(context->firstchild == NULL);
 	MEMORY_ACCOUNT_DEC_ALLOCATED(set, set->localAllocated);
 
 	/* Clear chunk freelists */
@@ -767,9 +772,15 @@ AllocSetDelete(MemoryContext context, MemoryContext parent)
 	/* Make sure all children have been deleted */
 	Assert(context->firstchild == NULL);
 	MEMORY_ACCOUNT_DEC_ALLOCATED(set, set->localAllocated);
-	if (IS_MEMORY_ACCOUNT(set))
+	/*
+	 * Roll up our peak value to the parent, before this context goes away.
+	 * Only a parent of our own type has an account to roll it up into;
+	 * mixing AllocSetContexts and other contexts loses the accounting info,
+	 * as AllocSetTransferAccounting() puts it.
+	 */
+	if (IS_MEMORY_ACCOUNT(set) && parent != NULL &&
+		IsA(parent, AllocSetContext))
 	{
-		/* Roll up our peak value to the parent, before this context goes away. */
 		AllocSet	parentset = (AllocSet) parent;
 
 		parentset->accountingParent->peakAllocated =
@@ -1642,7 +1653,22 @@ AllocSetGetPeakUsage_recurse(MemoryContext parent, MemoryContext context)
 		 child != NULL;
 		 child = child->nextchild)
 	{
-		AllocSet	childset = (AllocSet) child;
+		AllocSet	childset;
+
+		/*
+		 * Only an AllocSetContext carries an accountingParent, so a context
+		 * of any other type has to be walked past rather than read: a sort
+		 * keeps its caller tuples in a generation.c context, for one. Its own
+		 * allocations never reached an account, but an AllocSetContext
+		 * underneath it still can be an account of its own.
+		 */
+		if (!IsA(child, AllocSetContext))
+		{
+			total += AllocSetGetPeakUsage_recurse(parent, child);
+			continue;
+		}
+
+		childset = (AllocSet) child;
 
 		if (childset->accountingParent == (AllocSet) parent)
 			AllocSetGetPeakUsage_recurse(parent, child);

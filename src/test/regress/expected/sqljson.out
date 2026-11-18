@@ -72,46 +72,58 @@ SELECT JSON('{"a": 1, "a": 2}' WITHOUT UNIQUE KEYS);
 (1 row)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON('123');
-         QUERY PLAN          
------------------------------
+             QUERY PLAN              
+-------------------------------------
  Result
    Output: JSON('123'::json)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON('123' FORMAT JSON);
-         QUERY PLAN          
------------------------------
+             QUERY PLAN              
+-------------------------------------
  Result
    Output: JSON('123'::json)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON('123'::bytea FORMAT JSON);
                   QUERY PLAN                   
 -----------------------------------------------
  Result
    Output: JSON('\x313233'::bytea FORMAT JSON)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON('123'::bytea FORMAT JSON ENCODING UTF8);
                          QUERY PLAN                          
 -------------------------------------------------------------
  Result
    Output: JSON('\x313233'::bytea FORMAT JSON ENCODING UTF8)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON('123' WITH UNIQUE KEYS);
                   QUERY PLAN                  
 ----------------------------------------------
  Result
    Output: JSON('123'::text WITH UNIQUE KEYS)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON('123' WITHOUT UNIQUE KEYS);
-         QUERY PLAN          
------------------------------
+             QUERY PLAN              
+-------------------------------------
  Result
    Output: JSON('123'::json)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 SELECT JSON('123' RETURNING text);
 ERROR:  cannot use RETURNING type text in JSON()
@@ -234,18 +246,22 @@ SELECT JSON_SCALAR('{}'::jsonb);
 (1 row)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON_SCALAR(123);
-         QUERY PLAN         
-----------------------------
+             QUERY PLAN              
+-------------------------------------
  Result
    Output: JSON_SCALAR(123)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON_SCALAR('123');
-             QUERY PLAN             
-------------------------------------
+             QUERY PLAN              
+-------------------------------------
  Result
    Output: JSON_SCALAR('123'::text)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON_SCALAR(123 RETURNING json);
          QUERY PLAN         
@@ -313,14 +329,18 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON_SERIALIZE('{}');
 -----------------------------------------------------
  Result
    Output: JSON_SERIALIZE('{}'::json RETURNING text)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT JSON_SERIALIZE('{}' RETURNING bytea);
                       QUERY PLAN                      
 ------------------------------------------------------
  Result
    Output: JSON_SERIALIZE('{}'::json RETURNING bytea)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 -- JSON_OBJECT()
 SELECT JSON_OBJECT();
@@ -951,7 +971,9 @@ SELECT JSON_OBJECT('foo' : '1' FORMAT JSON, 'bar' : 'baz' RETURNING json);
 ------------------------------------------------------------------------------
  Result
    Output: JSON_OBJECT('foo' : '1'::json, 'bar' : 'baz'::text RETURNING json)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 CREATE VIEW json_object_view AS
 SELECT JSON_OBJECT('foo' : '1' FORMAT JSON, 'bar' : 'baz' RETURNING json);
@@ -966,7 +988,9 @@ SELECT JSON_ARRAY('1' FORMAT JSON, 2 RETURNING json);
 ---------------------------------------------------
  Result
    Output: JSON_ARRAY('1'::json, 2 RETURNING json)
-(2 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(4 rows)
 
 CREATE VIEW json_array_view AS
 SELECT JSON_ARRAY('1' FORMAT JSON, 2 RETURNING json);
@@ -985,7 +1009,9 @@ FROM generate_series(1,5) i;
    ->  Function Scan on pg_catalog.generate_series i
          Output: i
          Function Call: generate_series(1, 5)
-(5 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(7 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF)
 SELECT JSON_OBJECTAGG(i: ('111' || i)::bytea FORMAT JSON WITH UNIQUE RETURNING text) OVER (PARTITION BY i % 2)
@@ -994,13 +1020,16 @@ FROM generate_series(1,5) i;
 -----------------------------------------------------------------------------------------------------------------------------------
  WindowAgg
    Output: JSON_OBJECTAGG(i : (('111'::text || (i)::text))::bytea FORMAT JSON WITH UNIQUE KEYS RETURNING text) OVER (?), ((i % 2))
+   Partition By: ((i.i % 2))
    ->  Sort
          Output: ((i % 2)), i
          Sort Key: ((i.i % 2))
          ->  Function Scan on pg_catalog.generate_series i
                Output: (i % 2), i
                Function Call: generate_series(1, 5)
-(8 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(11 rows)
 
 CREATE VIEW json_objectagg_view AS
 SELECT JSON_OBJECTAGG(i: ('111' || i)::bytea FORMAT JSON WITH UNIQUE RETURNING text) FILTER (WHERE i > 3)
@@ -1021,7 +1050,9 @@ FROM generate_series(1,5) i;
    ->  Function Scan on pg_catalog.generate_series i
          Output: i
          Function Call: generate_series(1, 5)
-(5 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(7 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF)
 SELECT JSON_ARRAYAGG(('111' || i)::bytea FORMAT JSON NULL ON NULL RETURNING text) OVER (PARTITION BY i % 2)
@@ -1030,13 +1061,16 @@ FROM generate_series(1,5) i;
 --------------------------------------------------------------------------------------------------------------------------
  WindowAgg
    Output: JSON_ARRAYAGG((('111'::text || (i)::text))::bytea FORMAT JSON NULL ON NULL RETURNING text) OVER (?), ((i % 2))
+   Partition By: ((i.i % 2))
    ->  Sort
          Output: ((i % 2)), i
          Sort Key: ((i.i % 2))
          ->  Function Scan on pg_catalog.generate_series i
                Output: (i % 2), i
                Function Call: generate_series(1, 5)
-(8 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(11 rows)
 
 CREATE VIEW json_arrayagg_view AS
 SELECT JSON_ARRAYAGG(('111' || i)::bytea FORMAT JSON NULL ON NULL RETURNING text) FILTER (WHERE i > 3)
@@ -1058,7 +1092,9 @@ SELECT JSON_ARRAY(SELECT i FROM (VALUES (1), (2), (NULL), (4)) foo(i) RETURNING 
            Output: JSON_ARRAYAGG("*VALUES*".column1 RETURNING jsonb)
            ->  Values Scan on "*VALUES*"
                  Output: "*VALUES*".column1
-(7 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(9 rows)
 
 CREATE VIEW json_array_subquery_view AS
 SELECT JSON_ARRAY(SELECT i FROM (VALUES (1), (2), (NULL), (4)) foo(i) RETURNING jsonb);

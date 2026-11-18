@@ -322,16 +322,8 @@ extern ModifyTablePath *create_modifytable_path(PlannerInfo *root,
 												List *updateColnosLists,
 												List *withCheckOptionLists, List *returningLists,
 												List *rowMarks, OnConflictExpr *onconflict,
-<<<<<<< HEAD
-												int epqParam);
-extern Path *create_limit_path(PlannerInfo *root, RelOptInfo *rel,
-||||||| c4cc2850f4d
-												int epqParam);
-extern LimitPath *create_limit_path(PlannerInfo *root, RelOptInfo *rel,
-=======
 												List *mergeActionLists, int epqParam);
-extern LimitPath *create_limit_path(PlannerInfo *root, RelOptInfo *rel,
->>>>>>> 2c7ea57e56c
+extern Path *create_limit_path(PlannerInfo *root, RelOptInfo *rel,
 									Path *subpath,
 									Node *limitOffset, Node *limitCount,
 									LimitOption limitOption,

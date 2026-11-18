@@ -356,13 +356,9 @@ _copyModifyTable(const ModifyTable *from)
 	COPY_NODE_FIELD(onConflictWhere);
 	COPY_SCALAR_FIELD(exclRelRTI);
 	COPY_NODE_FIELD(exclRelTlist);
-<<<<<<< HEAD
 	COPY_SCALAR_FIELD(isSplitUpdate);
 	COPY_SCALAR_FIELD(forceTupleRouting);
-||||||| c4cc2850f4d
-=======
 	COPY_NODE_FIELD(mergeActionLists);
->>>>>>> 2c7ea57e56c
 
 	return newnode;
 }

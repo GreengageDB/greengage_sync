@@ -240,34 +240,8 @@ ProcessQuery(Portal portal,
 	 */
 	ExecutorRun(queryDesc, ForwardScanDirection, 0L, true);
 
-<<<<<<< HEAD
 	autostats_get_cmdtype(queryDesc, &cmdType, &relationOid);
-||||||| c4cc2850f4d
-	/*
-	 * Build command completion status data, if caller wants one.
-	 */
-	if (qc)
-	{
-		switch (queryDesc->operation)
-		{
-			case CMD_SELECT:
-				SetQueryCompletion(qc, CMDTAG_SELECT, queryDesc->estate->es_processed);
-				break;
-			case CMD_INSERT:
-				SetQueryCompletion(qc, CMDTAG_INSERT, queryDesc->estate->es_processed);
-				break;
-			case CMD_UPDATE:
-				SetQueryCompletion(qc, CMDTAG_UPDATE, queryDesc->estate->es_processed);
-				break;
-			case CMD_DELETE:
-				SetQueryCompletion(qc, CMDTAG_DELETE, queryDesc->estate->es_processed);
-				break;
-			default:
-				SetQueryCompletion(qc, CMDTAG_UNKNOWN, queryDesc->estate->es_processed);
-				break;
-		}
-	}
-=======
+
 	/*
 	 * Build command completion status data, if caller wants one.
 	 */
@@ -295,7 +269,6 @@ ProcessQuery(Portal portal,
 				break;
 		}
 	}
->>>>>>> 2c7ea57e56c
 
 	/*
 	 * Now, we close down all the scans and free allocated resources.
@@ -321,6 +294,9 @@ ProcessQuery(Portal portal,
 				break;
 			case CMD_DELETE:
 				SetQueryCompletion(qc, CMDTAG_DELETE, queryDesc->es_processed);
+				break;
+			case CMD_MERGE:
+				SetQueryCompletion(qc, CMDTAG_MERGE, queryDesc->es_processed);
 				break;
 			default:
 				SetQueryCompletion(qc, CMDTAG_UNKNOWN, queryDesc->es_processed);
