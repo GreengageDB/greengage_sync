@@ -348,15 +348,9 @@ static ModifyTable *make_modifytable(PlannerInfo *root, Plan *subplan,
 									 List *resultRelations,
 									 List *updateColnosLists,
 									 List *withCheckOptionLists, List *returningLists,
-<<<<<<< HEAD
 									 bool isSplitUpdate,
-									 List *rowMarks, OnConflictExpr *onconflict, int epqParam);
-||||||| c4cc2850f4d
-									 List *rowMarks, OnConflictExpr *onconflict, int epqParam);
-=======
 									 List *rowMarks, OnConflictExpr *onconflict,
 									 List *mergeActionList, int epqParam);
->>>>>>> 2c7ea57e56c
 static GatherMerge *create_gather_merge_plan(PlannerInfo *root,
 											 GatherMergePath *best_path);
 
@@ -8404,15 +8398,9 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 				 List *resultRelations,
 				 List *updateColnosLists,
 				 List *withCheckOptionLists, List *returningLists,
-<<<<<<< HEAD
 				 bool isSplitUpdate,
-				 List *rowMarks, OnConflictExpr *onconflict, int epqParam)
-||||||| c4cc2850f4d
-				 List *rowMarks, OnConflictExpr *onconflict, int epqParam)
-=======
 				 List *rowMarks, OnConflictExpr *onconflict,
 				 List *mergeActionLists, int epqParam)
->>>>>>> 2c7ea57e56c
 {
 	ModifyTable *node = makeNode(ModifyTable);
 	List	   *fdw_private_list;
