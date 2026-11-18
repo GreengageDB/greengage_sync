@@ -147,7 +147,6 @@ int			IntervalStyle = INTSTYLE_POSTGRES;
 
 bool		enableFsync = true;
 bool		allowSystemTableMods = false;
-<<<<<<< HEAD
 int			planner_work_mem = 32768;
 int			work_mem = 32768;
 int			statement_mem = 256000;
@@ -157,14 +156,7 @@ int			max_statement_mem = 2048000;
  * do not enforce per-query memory limit
  */
 int			gp_vmem_limit_per_query = 0;
-double		hash_mem_multiplier = 1.0;
-||||||| c4cc2850f4d
-int			work_mem = 4096;
-double		hash_mem_multiplier = 1.0;
-=======
-int			work_mem = 4096;
 double		hash_mem_multiplier = 2.0;
->>>>>>> 2c7ea57e56c
 int			maintenance_work_mem = 65536;
 int			max_parallel_maintenance_workers = 2;
 
