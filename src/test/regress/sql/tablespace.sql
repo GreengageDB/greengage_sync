@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 -- start_matchignore
 -- m/WARNING:  tablespace location ".*" is too long for TAR/
 -- m/DETAIL:  The location is used to create a symlink target from pg_tblspc\. Symlink targets are truncated to 100 characters when sending a TAR \(e.g the BASE_BACKUP protocol response\)\./
@@ -6,32 +5,12 @@
 -- directory paths are passed to us in environment variables
 \getenv abs_builddir PG_ABS_BUILDDIR
 \getenv tablespacedir PG_TABLESPACE_DIR
-||||||| c4cc2850f4d
--- directory paths are passed to us in environment variables
-\getenv abs_builddir PG_ABS_BUILDDIR
-=======
--- relative tablespace locations are not allowed
-CREATE TABLESPACE regress_tblspace LOCATION 'relative'; -- fail
->>>>>>> 2c7ea57e56c
 
-<<<<<<< HEAD
 \set testtablespace :tablespacedir '/testtablespace'
-||||||| c4cc2850f4d
-\set testtablespace :abs_builddir '/testtablespace'
-=======
--- empty tablespace locations are not usually allowed
-CREATE TABLESPACE regress_tblspace LOCATION ''; -- fail
-
--- as a special developer-only option to allow us to use tablespaces
--- with streaming replication on the same server, an empty location
--- can be allowed as a way to say that the tablespace should be created
--- as a directory in pg_tblspc, rather than being a symlink
-SET allow_in_place_tablespaces = true;
->>>>>>> 2c7ea57e56c
 
 -- create a tablespace using WITH clause
-CREATE TABLESPACE regress_tblspacewith LOCATION '' WITH (some_nonexistent_parameter = true); -- fail
-CREATE TABLESPACE regress_tblspacewith LOCATION '' WITH (random_page_cost = 3.0); -- ok
+CREATE TABLESPACE regress_tblspacewith LOCATION :'testtablespace' WITH (some_nonexistent_parameter = true); -- fail
+CREATE TABLESPACE regress_tblspacewith LOCATION :'testtablespace' WITH (random_page_cost = 3.0); -- ok
 
 -- check to see the parameter was used
 SELECT spcoptions FROM pg_tablespace WHERE spcname = 'regress_tblspacewith';
@@ -40,11 +19,7 @@ SELECT spcoptions FROM pg_tablespace WHERE spcname = 'regress_tblspacewith';
 DROP TABLESPACE regress_tblspacewith;
 
 -- create a tablespace we can use
-CREATE TABLESPACE regress_tblspace LOCATION '';
--- This returns a relative path as of an effect of allow_in_place_tablespaces,
--- masking the tablespace OID used in the path name.
-SELECT regexp_replace(pg_tablespace_location(oid), '(pg_tblspc)/(\d+)', '\1/NNN')
-  FROM pg_tablespace  WHERE spcname = 'regress_tblspace';
+CREATE TABLESPACE regress_tblspace LOCATION :'testtablespace';
 
 -- try setting and resetting some properties for the new tablespace
 ALTER TABLESPACE regress_tblspace SET (random_page_cost = 1.0, seq_page_cost = 1.1);

@@ -502,7 +502,6 @@ string_matches_pattern(const char *str, const char *pattern)
 }
 
 /*
-<<<<<<< HEAD
  * Replace all occurrences of "replace" in "string" with "replacement".
  * The StringInfo will be suitably enlarged if necessary.
  *
@@ -992,35 +991,6 @@ prepare_testtablespace_dir(void)
 }
 
 /*
-||||||| c4cc2850f4d
- * Clean out the test tablespace dir, or create it if it doesn't exist.
- *
- * On Windows, doing this cleanup here makes it possible to run the
- * regression tests under a Windows administrative user account with the
- * restricted token obtained when starting pg_regress.
- */
-static void
-prepare_testtablespace_dir(void)
-{
-	char		testtablespace[MAXPGPATH];
-
-	snprintf(testtablespace, MAXPGPATH, "%s/testtablespace", outputdir);
-
-	if (directory_exists(testtablespace))
-	{
-		if (!rmtree(testtablespace, true))
-		{
-			fprintf(stderr, _("\n%s: could not remove test tablespace \"%s\"\n"),
-					progname, testtablespace);
-			exit(2);
-		}
-	}
-	make_directory(testtablespace);
-}
-
-/*
-=======
->>>>>>> 2c7ea57e56c
  * Scan resultmap file to find which platform-specific expected files to use.
  *
  * The format of each line of the file is
@@ -2886,6 +2856,7 @@ help(void)
 	printf(_("      --launcher=CMD            use CMD as launcher of psql\n"));
 	printf(_("      --load-extension=EXT      load the named extension before running the\n"));
 	printf(_("                                tests; can appear multiple times\n"));
+	printf(_("      --make-testtablespace-dir create testtablespace directory\n"));
 	printf(_("      --max-connections=N       maximum number of concurrent connections\n"));
 	printf(_("                                (default is 0, meaning unlimited)\n"));
 	printf(_("      --max-concurrent-tests=N  maximum number of concurrent tests in schedule\n"));
@@ -2954,7 +2925,6 @@ regression_main(int argc, char *argv[],
 		{"load-extension", required_argument, NULL, 22},
 		{"config-auth", required_argument, NULL, 24},
 		{"max-concurrent-tests", required_argument, NULL, 25},
-<<<<<<< HEAD
 		{"make-testtablespace-dir", no_argument, NULL, 26},
 		{"init-file", required_argument, NULL, 80},
 		{"exclude-tests", required_argument, NULL, 81},
@@ -2964,14 +2934,11 @@ regression_main(int argc, char *argv[],
 		{"tablespace-dir", required_argument, NULL, 85},
 		{"exclude-file", required_argument, NULL, 87}, /* 86 conflicts with 'V' */
 		{"sslmode", required_argument, NULL, 88},
-||||||| c4cc2850f4d
-		{"make-testtablespace-dir", no_argument, NULL, 26},
-=======
->>>>>>> 2c7ea57e56c
 		{NULL, 0, NULL, 0}
 	};
 
 	bool		use_unix_sockets;
+	bool		make_testtablespace_dir = false;
 	_stringlist *sl;
 	int			c;
 	int			i;
@@ -3097,7 +3064,6 @@ regression_main(int argc, char *argv[],
 			case 25:
 				max_concurrent_tests = atoi(optarg);
 				break;
-<<<<<<< HEAD
 			case 26:
 				make_testtablespace_dir = true;
 				break;
@@ -3129,12 +3095,6 @@ regression_main(int argc, char *argv[],
 				sslmode = strdup(optarg);
 				break;
 
-||||||| c4cc2850f4d
-			case 26:
-				make_testtablespace_dir = true;
-				break;
-=======
->>>>>>> 2c7ea57e56c
 			default:
 				/* getopt_long already emitted a complaint */
 				fprintf(stderr, _("\nTry \"%s -h\" for more information.\n"),
@@ -3205,6 +3165,9 @@ regression_main(int argc, char *argv[],
 #if defined(HAVE_GETRLIMIT) && defined(RLIMIT_CORE)
 	unlimit_core_size();
 #endif
+
+	if (make_testtablespace_dir)
+		prepare_testtablespace_dir();
 
 	if (temp_instance)
 	{
