@@ -11263,7 +11263,7 @@
   prosrc => 'binary_upgrade_set_missing_value' },
 { oid => '4548', descr => 'for use by pg_upgrade',
   proname => 'binary_upgrade_set_next_pg_tablespace_oid', provolatile => 'v',
-  proparallel => 'u', prorettype => 'void', proargtypes => 'oid',
+  proparallel => 'u', prorettype => 'void', proargtypes => 'oid text',
   prosrc => 'binary_upgrade_set_next_pg_tablespace_oid' },
 { oid => '7178', descr => 'for use by pg_upgrade',
   proname => 'binary_upgrade_set_preassigned_oids', provolatile => 'v',

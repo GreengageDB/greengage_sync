@@ -14,17 +14,13 @@
 #ifndef BINARY_UPGRADE_H
 #define BINARY_UPGRADE_H
 
-<<<<<<< HEAD
 /*
  * These are not used in GPDB. We use the generic OID pre-assignment
  * machinery instead.
  */
 #if 0
-||||||| c4cc2850f4d
-=======
 extern PGDLLIMPORT Oid binary_upgrade_next_pg_tablespace_oid;
 
->>>>>>> 2c7ea57e56c
 extern PGDLLIMPORT Oid binary_upgrade_next_pg_type_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_array_pg_type_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_mrng_pg_type_oid;

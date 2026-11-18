@@ -1685,19 +1685,15 @@ dumpTablespaces(PGconn *conn)
 		/* needed for buildACLCommands() */
 		fspcname = pg_strdup(fmtId(spcname));
 
-<<<<<<< HEAD
-		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", spcname);
-||||||| c4cc2850f4d
-		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", fspcname);
-=======
 		if (binary_upgrade)
 		{
 			appendPQExpBufferStr(buf, "\n-- For binary upgrade, must preserve pg_tablespace oid\n");
-			appendPQExpBuffer(buf, "SELECT pg_catalog.binary_upgrade_set_next_pg_tablespace_oid('%u'::pg_catalog.oid);\n", spcoid);
+			appendPQExpBuffer(buf,
+							  "SELECT pg_catalog.binary_upgrade_set_next_pg_tablespace_oid('%u'::pg_catalog.oid, '%s'::text);\n\n",
+							  spcoid, spcname);
 		}
 
-		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", fspcname);
->>>>>>> 2c7ea57e56c
+		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", spcname);
 		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 
 		appendPQExpBufferStr(buf, " LOCATION ");
