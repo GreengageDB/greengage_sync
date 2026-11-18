@@ -1685,25 +1685,11 @@ CREATE VIEW pg_stat_subscription_stats AS
     SELECT
         ss.subid,
         s.subname,
-<<<<<<< HEAD
-        w.subrelid,
-        w.last_error_relid,
-        w.last_error_command,
-        w.last_error_xid,
-        w.last_error_count,
-        w.last_error_message,
-        w.last_error_time
-    FROM (SELECT
-              oid as subid,
-              NULL as relid
-          FROM pg_subscription
-          UNION ALL
-          SELECT
-              srsubid as subid,
-              srrelid as relid
-          FROM pg_subscription_rel) sr,
-          LATERAL pg_stat_get_subscription_worker(sr.subid, sr.relid) w
-          JOIN pg_subscription s ON (w.subid = s.oid);
+        ss.apply_error_count,
+        ss.sync_error_count,
+        ss.stats_reset
+    FROM pg_subscription as s,
+         pg_stat_get_subscription_stats(s.oid) as ss;
 
 --
 -- We have a few function definitions in here, too.
@@ -1721,14 +1707,14 @@ CREATE VIEW pg_stat_subscription_stats AS
 --
 
 CREATE OR REPLACE FUNCTION
-  pg_start_backup(label text, fast boolean DEFAULT false, exclusive boolean DEFAULT true)
-  RETURNS pg_lsn STRICT VOLATILE LANGUAGE internal AS 'pg_start_backup'
+  pg_backup_start(label text, fast boolean DEFAULT false)
+  RETURNS pg_lsn STRICT VOLATILE LANGUAGE internal AS 'pg_backup_start'
   PARALLEL RESTRICTED;
 
-CREATE OR REPLACE FUNCTION pg_stop_backup (
-        exclusive boolean, wait_for_archive boolean DEFAULT true,
-        OUT lsn pg_lsn, OUT labelfile text, OUT spcmapfile text)
-  RETURNS SETOF record STRICT VOLATILE LANGUAGE internal as 'pg_stop_backup_v2'
+CREATE OR REPLACE FUNCTION pg_backup_stop (
+        wait_for_archive boolean DEFAULT true, OUT lsn pg_lsn,
+        OUT labelfile text, OUT spcmapfile text)
+  RETURNS record STRICT VOLATILE LANGUAGE internal as 'pg_backup_stop'
   PARALLEL RESTRICTED;
 
 CREATE OR REPLACE FUNCTION
@@ -1947,9 +1933,8 @@ AS 'unicode_is_normalized';
 -- can later change who can access these functions, or leave them as only
 -- available to superuser / cluster owner, if they choose.
 --
-REVOKE EXECUTE ON FUNCTION pg_start_backup(text, boolean, boolean) FROM public;
-REVOKE EXECUTE ON FUNCTION pg_stop_backup() FROM public;
-REVOKE EXECUTE ON FUNCTION pg_stop_backup(boolean, boolean) FROM public;
+REVOKE EXECUTE ON FUNCTION pg_backup_start(text, boolean) FROM public;
+REVOKE EXECUTE ON FUNCTION pg_backup_stop(boolean) FROM public;
 REVOKE EXECUTE ON FUNCTION pg_create_restore_point(text) FROM public;
 REVOKE EXECUTE ON FUNCTION pg_switch_wal() FROM public;
 REVOKE EXECUTE ON FUNCTION pg_wal_replay_pause() FROM public;
@@ -2070,29 +2055,3 @@ CREATE VIEW gp_suboverflowed_backend(segid, pids) AS
   SELECT -1, gp_get_suboverflowed_backends()
 UNION ALL
   SELECT gp_segment_id, gp_get_suboverflowed_backends() FROM gp_dist_random('gp_id') order by 1;
-||||||| c4cc2850f4d
-        w.subrelid,
-        w.last_error_relid,
-        w.last_error_command,
-        w.last_error_xid,
-        w.last_error_count,
-        w.last_error_message,
-        w.last_error_time
-    FROM (SELECT
-              oid as subid,
-              NULL as relid
-          FROM pg_subscription
-          UNION ALL
-          SELECT
-              srsubid as subid,
-              srrelid as relid
-          FROM pg_subscription_rel) sr,
-          LATERAL pg_stat_get_subscription_worker(sr.subid, sr.relid) w
-          JOIN pg_subscription s ON (w.subid = s.oid);
-=======
-        ss.apply_error_count,
-        ss.sync_error_count,
-        ss.stats_reset
-    FROM pg_subscription as s,
-         pg_stat_get_subscription_stats(s.oid) as ss;
->>>>>>> 2c7ea57e56c

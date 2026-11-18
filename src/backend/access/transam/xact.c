@@ -29,12 +29,8 @@
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"
-<<<<<<< HEAD
 #include "access/xact_storage_tablespace.h"
-||||||| c4cc2850f4d
-=======
 #include "access/xlogrecovery.h"
->>>>>>> 2c7ea57e56c
 #include "access/xlogutils.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
@@ -3982,19 +3978,11 @@ CommitTransactionCommand(void)
 	TransactionState s = CurrentTransactionState;
 	SavedTransactionCharacteristics savetc;
 
-<<<<<<< HEAD
 	if (Gp_role == GP_ROLE_EXECUTE && !Gp_is_writer)
 		elog(DEBUG1,"CommitTransactionCommand: called as segment Reader in state %s",
 		     BlockStateAsString(s->blockState));
 
-	if (s->chain)
-		SaveTransactionCharacteristics();
-||||||| c4cc2850f4d
-	if (s->chain)
-		SaveTransactionCharacteristics();
-=======
 	SaveTransactionCharacteristics(&savetc);
->>>>>>> 2c7ea57e56c
 
 	switch (s->blockState)
 	{

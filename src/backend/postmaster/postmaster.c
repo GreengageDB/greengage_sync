@@ -1209,7 +1209,6 @@ PostmasterMain(int argc, char *argv[])
 	LocalProcessControlFile(false);
 
 	/*
-<<<<<<< HEAD
 	 * CDB: gpdb auxilary process like fts probe, dtx recovery process is
 	 * essential, we need to load them ahead of custom shared preload libraries
 	 * to avoid exceeding max_worker_processes.
@@ -1217,19 +1216,8 @@ PostmasterMain(int argc, char *argv[])
 	load_auxiliary_libraries();
 
 	/*
-	 * Register the apply launcher.  Since it registers a background worker,
-	 * it needs to be called before InitializeMaxBackends(), and it's probably
-	 * a good idea to call it before any modules had chance to take the
-	 * background worker slots.
-||||||| c4cc2850f4d
-	 * Register the apply launcher.  Since it registers a background worker,
-	 * it needs to be called before InitializeMaxBackends(), and it's probably
-	 * a good idea to call it before any modules had chance to take the
-	 * background worker slots.
-=======
 	 * Register the apply launcher.  It's probably a good idea to call this
 	 * before any modules had a chance to take the background worker slots.
->>>>>>> 2c7ea57e56c
 	 */
 	ApplyLauncherRegister();
 
@@ -2837,11 +2825,6 @@ retry1:
 					(errcode(ERRCODE_TOO_MANY_CONNECTIONS),
 					 errmsg("sorry, too many clients already")));
 			break;
-<<<<<<< HEAD
-		case CAC_SUPERUSER:
-			/* Greenplum does not currently use SUPERUSER state. */
-			Assert(port->canAcceptConnections != CAC_SUPERUSER);
-			break;
 		case CAC_MIRROR_READY:
 			if (am_ftshandler || am_faulthandler)
 			{
@@ -2873,12 +2856,6 @@ retry1:
 							   (uint32) (recptr >> 32), (uint32) recptr,
 							   TextDatumGetCString(pgsql_version(NULL)))));
 			break;
-||||||| c4cc2850f4d
-		case CAC_SUPERUSER:
-			/* OK for now, will check in InitPostgres */
-			break;
-=======
->>>>>>> 2c7ea57e56c
 		case CAC_OK:
 			break;
 	}
@@ -4740,16 +4717,8 @@ BackendStartup(Port *port)
 
 	/* Pass down canAcceptConnections state */
 	port->canAcceptConnections = canAcceptConnections(BACKEND_TYPE_NORMAL);
-<<<<<<< HEAD
 	bn->dead_end = (port->canAcceptConnections != CAC_OK &&
-					port->canAcceptConnections != CAC_SUPERUSER &&
 					port->canAcceptConnections != CAC_MIRROR_READY);
-||||||| c4cc2850f4d
-	bn->dead_end = (port->canAcceptConnections != CAC_OK &&
-					port->canAcceptConnections != CAC_SUPERUSER);
-=======
-	bn->dead_end = (port->canAcceptConnections != CAC_OK);
->>>>>>> 2c7ea57e56c
 
 	/*
 	 * Unless it's a dead_end child, assign it a child slot number

@@ -30,12 +30,8 @@
 #include "libpq/pqformat.h"
 #include "replication/basebackup.h"
 #include "replication/basebackup_sink.h"
-<<<<<<< HEAD
 #include "utils/guc.h"
-||||||| c4cc2850f4d
-=======
 #include "utils/timestamp.h"
->>>>>>> 2c7ea57e56c
 
 typedef struct bbsink_copystream
 {
@@ -155,14 +151,8 @@ bbsink_copystream_begin_backup(bbsink *sink)
 
 	/* Send a CommandComplete message */
 	pq_puttextmessage('C', "SELECT");
-<<<<<<< HEAD
 
 	elogif(debug_basebackup, LOG, "basebackup header -- Sent basebackup header.");
-}
-||||||| c4cc2850f4d
-}
-=======
->>>>>>> 2c7ea57e56c
 
 	/* Begin COPY stream. This will be used for all archives + manifest. */
 	SendCopyOutResponse();

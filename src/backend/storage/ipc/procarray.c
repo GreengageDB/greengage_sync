@@ -768,76 +768,22 @@ ProcArrayEndTransaction(PGPROC *proc, TransactionId latestXid)
 
 	proc->lxid = InvalidLocalTransactionId;
 	proc->xmin = InvalidTransactionId;
-	proc->delayChkpt = false;		/* be sure this is cleared in abort */
+
+	/* be sure this is cleared in abort */
+	proc->delayChkpt = 0;
+
 	proc->recoveryConflictPending = false;
 
 	/* must be cleared with xid/xmin: */
 	/* avoid unnecessarily dirtying shared cachelines */
 	if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
 	{
-<<<<<<< HEAD
 		Assert(!LWLockHeldByMe(ProcArrayLock));
 		LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
 		Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
 		proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
 		ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
 		LWLockRelease(ProcArrayLock);
-||||||| c4cc2850f4d
-		/*
-		 * If we have no XID, we don't need to lock, since we won't affect
-		 * anyone else's calculation of a snapshot.  We might change their
-		 * estimate of global xmin, but that's OK.
-		 */
-		Assert(!TransactionIdIsValid(proc->xid));
-		Assert(proc->subxidStatus.count == 0);
-		Assert(!proc->subxidStatus.overflowed);
-
-		proc->lxid = InvalidLocalTransactionId;
-		proc->xmin = InvalidTransactionId;
-		proc->delayChkpt = false;	/* be sure this is cleared in abort */
-		proc->recoveryConflictPending = false;
-
-		/* must be cleared with xid/xmin: */
-		/* avoid unnecessarily dirtying shared cachelines */
-		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
-		{
-			Assert(!LWLockHeldByMe(ProcArrayLock));
-			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
-			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
-			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
-			LWLockRelease(ProcArrayLock);
-		}
-=======
-		/*
-		 * If we have no XID, we don't need to lock, since we won't affect
-		 * anyone else's calculation of a snapshot.  We might change their
-		 * estimate of global xmin, but that's OK.
-		 */
-		Assert(!TransactionIdIsValid(proc->xid));
-		Assert(proc->subxidStatus.count == 0);
-		Assert(!proc->subxidStatus.overflowed);
-
-		proc->lxid = InvalidLocalTransactionId;
-		proc->xmin = InvalidTransactionId;
-
-		/* be sure this is cleared in abort */
-		proc->delayChkpt = 0;
-
-		proc->recoveryConflictPending = false;
-
-		/* must be cleared with xid/xmin: */
-		/* avoid unnecessarily dirtying shared cachelines */
-		if (proc->statusFlags & PROC_VACUUM_STATE_MASK)
-		{
-			Assert(!LWLockHeldByMe(ProcArrayLock));
-			LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-			Assert(proc->statusFlags == ProcGlobal->statusFlags[proc->pgxactoff]);
-			proc->statusFlags &= ~PROC_VACUUM_STATE_MASK;
-			ProcGlobal->statusFlags[proc->pgxactoff] = proc->statusFlags;
-			LWLockRelease(ProcArrayLock);
-		}
->>>>>>> 2c7ea57e56c
 	}
 
 	resetTmGxact();

@@ -476,16 +476,6 @@ XLogReadBufferExtended(RelFileNode rnode, ForkNumber forknum,
 
 	Assert(blkno != P_NEW);
 
-<<<<<<< HEAD
-	/*
-	 * Open the relation at smgr level.  Relations using shared buffers need
-	 * the default SMGR implementation.
-	 */
-	smgr = smgropen(rnode, InvalidBackendId, SMGR_MD);
-||||||| c4cc2850f4d
-	/* Open the relation at smgr level */
-	smgr = smgropen(rnode, InvalidBackendId);
-=======
 	/* Do we have a clue where the buffer might be already? */
 	if (BufferIsValid(recent_buffer) &&
 		mode == RBM_NORMAL &&
@@ -495,9 +485,11 @@ XLogReadBufferExtended(RelFileNode rnode, ForkNumber forknum,
 		goto recent_buffer_fast_path;
 	}
 
-	/* Open the relation at smgr level */
-	smgr = smgropen(rnode, InvalidBackendId);
->>>>>>> 2c7ea57e56c
+	/*
+	 * Open the relation at smgr level.  Relations using shared buffers need
+	 * the default SMGR implementation.
+	 */
+	smgr = smgropen(rnode, InvalidBackendId, SMGR_MD);
 
 	/*
 	 * Create the target file if it doesn't already exist.  This lets us cope

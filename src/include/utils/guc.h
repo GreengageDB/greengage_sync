@@ -814,7 +814,10 @@ extern void assign_search_path(const char *newval, void *extra);
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
 
-<<<<<<< HEAD
+/* in access/transam/xlogprefetcher.c */
+extern bool check_recovery_prefetch(int *new_value, void **extra, GucSource source);
+extern void assign_recovery_prefetch(int new_value, void *extra);
+
 /* in cdb/cdbvars.c */
 extern bool check_gp_role(char **newval, void **extra, GucSource source);
 extern void assign_gp_role(const char *newval, void *extra);
@@ -828,11 +831,5 @@ extern const char *gpvars_show_gp_resqueue_memory_policy(void);
 extern bool gpvars_check_statement_mem(int *newval, void **extra, GucSource source);
 extern int guc_name_compare(const char *namea, const char *nameb);
 extern void DispatchSyncPGVariable(struct config_generic * gconfig);
-||||||| c4cc2850f4d
-=======
-/* in access/transam/xlogprefetcher.c */
-extern bool check_recovery_prefetch(int *new_value, void **extra, GucSource source);
-extern void assign_recovery_prefetch(int new_value, void *extra);
->>>>>>> 2c7ea57e56c
 
 #endif							/* GUC_H */

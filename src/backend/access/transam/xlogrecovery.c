@@ -41,6 +41,7 @@
 #include "access/xlogrecovery.h"
 #include "access/xlogutils.h"
 #include "catalog/pg_control.h"
+#include "cdb/cdbtm.h"
 #include "commands/tablespace.h"
 #include "miscadmin.h"
 #include "pgstat.h"
@@ -811,9 +812,9 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 							 LSN_FORMAT_ARGS(checkPoint.redo),
 							 wasShutdown ? "true" : "false")));
 	ereport(DEBUG1,
-			(errmsg_internal("next transaction ID: " UINT64_FORMAT "; next OID: %u",
+			(errmsg_internal("next transaction ID: " UINT64_FORMAT "; next OID: %u; next relfilenode: %u",
 							 U64FromFullTransactionId(checkPoint.nextXid),
-							 checkPoint.nextOid)));
+							 checkPoint.nextOid, checkPoint.nextRelfilenode)));
 	ereport(DEBUG1,
 			(errmsg_internal("next MultiXactId: %u; next MultiXactOffset: %u",
 							 checkPoint.nextMulti, checkPoint.nextMultiOffset)));
@@ -853,6 +854,8 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	else if (ArchiveRecoveryRequested)
 	{
 		/* force recovery due to presence of recovery signal file */
+		ereport(LOG,
+				(errmsg("setting recovery standby mode active")));
 		InRecovery = true;
 	}
 
@@ -1914,6 +1917,30 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 	XLogRecoveryCtl->lastReplayedTLI = *replayTLI;
 	SpinLockRelease(&XLogRecoveryCtl->info_lck);
 
+	if (create_restartpoint_on_ckpt_record_replay && ArchiveRecoveryRequested)
+	{
+		/*
+		 * Create restartpoint on checkpoint record if requested.
+		 *
+		 * The bgwriter creates restartpoints during archive recovery at its
+		 * own leisure. But gp_replica_check fails with this, because it
+		 * bypasses the shared buffer cache and reads directly from disk. So,
+		 * via GUC it can request to force creating restart point mainly to
+		 * flush the shared buffers to disk.
+		 */
+		uint8		xlogRecInfo = record->xl_info & ~XLR_INFO_MASK;
+
+		if (record->xl_rmid == RM_XLOG_ID &&
+			(xlogRecInfo == XLOG_CHECKPOINT_SHUTDOWN ||
+			 xlogRecInfo == XLOG_CHECKPOINT_ONLINE))
+		{
+			if (IsUnderPostmaster)
+				RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_WAIT);
+			else
+				elog(LOG, "Skipping CreateRestartPoint() as not running under postmaster (standalone mode).");
+		}
+	}
+
 	/*
 	 * If rm_redo called XLogRequestWalReceiverReply, then we wake up the
 	 * receiver so that it notices the updated lastReplayedEndRecPtr and sends
@@ -2261,7 +2288,8 @@ getRecordTimestamp(XLogReaderState *record, TimestampTz *recordXtime)
 		return true;
 	}
 	if (rmid == RM_XACT_ID && (xact_info == XLOG_XACT_COMMIT ||
-							   xact_info == XLOG_XACT_COMMIT_PREPARED))
+							   xact_info == XLOG_XACT_COMMIT_PREPARED ||
+							   xact_info == XLOG_XACT_DISTRIBUTED_COMMIT))
 	{
 		*recordXtime = ((xl_xact_commit *) XLogRecGetData(record))->xact_time;
 		return true;
@@ -2444,7 +2472,8 @@ recoveryStopsBefore(XLogReaderState *record)
 
 	xact_info = XLogRecGetInfo(record) & XLOG_XACT_OPMASK;
 
-	if (xact_info == XLOG_XACT_COMMIT)
+	if (xact_info == XLOG_XACT_COMMIT ||
+		xact_info == XLOG_XACT_DISTRIBUTED_COMMIT)
 	{
 		isCommit = true;
 		recordXid = XLogRecGetXid(record);
@@ -2609,7 +2638,8 @@ recoveryStopsAfter(XLogReaderState *record)
 	if (xact_info == XLOG_XACT_COMMIT ||
 		xact_info == XLOG_XACT_COMMIT_PREPARED ||
 		xact_info == XLOG_XACT_ABORT ||
-		xact_info == XLOG_XACT_ABORT_PREPARED)
+		xact_info == XLOG_XACT_ABORT_PREPARED ||
+		xact_info == XLOG_XACT_DISTRIBUTED_COMMIT)
 	{
 		TransactionId recordXid;
 
@@ -2660,7 +2690,8 @@ recoveryStopsAfter(XLogReaderState *record)
 			recoveryStopName[0] = '\0';
 
 			if (xact_info == XLOG_XACT_COMMIT ||
-				xact_info == XLOG_XACT_COMMIT_PREPARED)
+				xact_info == XLOG_XACT_COMMIT_PREPARED ||
+				xact_info == XLOG_XACT_DISTRIBUTED_COMMIT)
 			{
 				ereport(LOG,
 						(errmsg("recovery stopping after commit of transaction %u, time %s",
@@ -2830,7 +2861,8 @@ recoveryApplyDelay(XLogReaderState *record)
 	xact_info = XLogRecGetInfo(record) & XLOG_XACT_OPMASK;
 
 	if (xact_info != XLOG_XACT_COMMIT &&
-		xact_info != XLOG_XACT_COMMIT_PREPARED)
+		xact_info != XLOG_XACT_COMMIT_PREPARED &&
+		xact_info != XLOG_XACT_DISTRIBUTED_COMMIT)
 		return false;
 
 	if (!getRecordTimestamp(record, &xtime))
@@ -3127,6 +3159,12 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 	if (readFile >= 0 &&
 		!XLByteInSeg(targetPagePtr, readSegNo, wal_segment_size))
 	{
+		elogif(debug_xlog_record_read, LOG,
+			   "xlog page read -- Requested record %X/%X does not exist in"
+			   "current read xlog file (readsegno " UINT64_FORMAT ")",
+			   (uint32) (targetRecPtr >> 32), (uint32) targetRecPtr,
+			   readSegNo);
+
 		/*
 		 * Request a restartpoint if we've replayed too much xlog since the
 		 * last one.
@@ -3147,6 +3185,12 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 	}
 
 	XLByteToSeg(targetPagePtr, readSegNo, wal_segment_size);
+
+	elogif(debug_xlog_record_read, LOG,
+		   "xlog page read -- Requested record %X/%X has "
+		   "targetsegno " UINT64_FORMAT ", targetpageoff %u",
+		   (uint32) (targetRecPtr >> 32), (uint32) targetRecPtr,
+		   readSegNo, targetPageOff);
 
 retry:
 	/* See if we need to retrieve more data */
@@ -3658,6 +3702,10 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 */
 					if (!WalRcvStreaming())
 					{
+						elogif(debug_xlog_record_read, LOG,
+							   "xlog page read -- Xlog from stream is a failed"
+							   "source, hence requesting walreceiver shutdown.");
+
 						lastSourceFailed = true;
 						break;
 					}
@@ -3695,6 +3743,12 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					}
 					if (havedata)
 					{
+						elogif(debug_xlog_record_read, LOG,
+							   "xlog page read -- There is enough xlog data to be "
+							   "read (flushedUpto %X/%X, requestedrec %X/%X)",
+							   (uint32) (flushedUpto >> 32), (uint32) flushedUpto,
+							   (uint32) (RecPtr >> 32), (uint32) RecPtr);
+
 						/*
 						 * Great, streamed far enough.  Open the file if it's
 						 * not open already.  Also read the timeline history
@@ -3741,6 +3795,9 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 */
 					if (CheckForStandbyTrigger())
 					{
+						elogif(debug_xlog_record_read, LOG,
+							   "xlog page read -- Standby trigger was activated");
+
 						/*
 						 * Note that we don't return XLREAD_FAIL immediately
 						 * here. After being triggered, we still want to
@@ -3753,6 +3810,10 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 						lastSourceFailed = true;
 						break;
 					}
+
+					elogif(debug_xlog_record_read, LOG,
+						   "xlog page read -- No xlog data to read as of now. "
+						   "Will Wait on latch till some event occurs");
 
 					/*
 					 * Since we have replayed everything we have received so
@@ -3841,6 +3902,33 @@ emode_for_corrupt_record(int emode, XLogRecPtr RecPtr)
 
 
 /*
+ * Process passed checkpoint record either during normal recovery or
+ * in standby mode.
+ *
+ * If in standby mode, master mirroring information stored by the checkpoint
+ * record is processed as well.
+ */
+static void
+XLogProcessCheckpointRecord(XLogReaderState *rec)
+{
+	CheckpointExtendedRecord ckptExtended;
+
+	UnpackCheckPointRecord(rec, &ckptExtended);
+
+	if (ckptExtended.dtxCheckpoint)
+	{
+		/* Handle the DTX information. */
+		redoDtxCheckPoint(ckptExtended.dtxCheckpoint);
+
+		/*
+		 * Avoid closing the file here as possibly the file was already open
+		 * and above call didn't really open it.  Hence closing the same here
+		 * is incorrect.
+		 */
+	}
+}
+
+/*
  * Subroutine to try to fetch and validate a prior checkpoint record.
  *
  * whichChkpt identifies the checkpoint (merely for reporting purposes).
@@ -3852,6 +3940,11 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 {
 	XLogRecord *record;
 	uint8		info;
+	bool		sizeOk;
+	uint32		chkpt_len;
+	uint32		chkpt_hdr_len_short;
+	uint32		chkpt_hdr_len_long;
+	bool		length_match;
 
 	Assert(xlogreader != NULL);
 
@@ -3886,11 +3979,13 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 		{
 			case 1:
 				ereport(LOG,
-						(errmsg("invalid primary checkpoint record")));
+						(errmsg("invalid primary checkpoint record at location %X/%X",
+								(uint32) (RecPtr >> 32), (uint32) RecPtr)));
 				break;
 			default:
 				ereport(LOG,
-						(errmsg("invalid checkpoint record")));
+						(errmsg("invalid checkpoint record at location %X/%X",
+								(uint32) (RecPtr >> 32), (uint32) RecPtr)));
 				break;
 		}
 		return NULL;
@@ -3901,7 +3996,8 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 		{
 			case 1:
 				ereport(LOG,
-						(errmsg("invalid resource manager ID in primary checkpoint record")));
+						(errmsg("invalid resource manager ID in primary checkpoint record at location %X/%X",
+								(uint32) (RecPtr >> 32), (uint32) RecPtr)));
 				break;
 			default:
 				ereport(LOG,
@@ -3922,12 +4018,36 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 				break;
 			default:
 				ereport(LOG,
-						(errmsg("invalid xl_info in checkpoint record")));
+						(errmsg("invalid xl_info in checkpoint record at location %X/%X",
+								(uint32) (RecPtr >> 32), (uint32) RecPtr)));
 				break;
 		}
 		return NULL;
 	}
-	if (record->xl_tot_len != SizeOfXLogRecord + SizeOfXLogRecordDataHeaderShort + sizeof(CheckPoint))
+	/*
+	 * GPDB: Verify the Checkpoint record length. For an extended Checkpoint
+	 * record (when record total length is greater than regular checkpoint
+	 * record total length, e.g. in the case of containing DTX info), compare
+	 * the difference between the regular checkpoint size and the extended
+	 * variable size.
+	 */
+	sizeOk = false;
+	chkpt_len = XLogRecGetDataLen(xlogreader);
+	chkpt_hdr_len_short = SizeOfXLogRecord + SizeOfXLogRecordDataHeaderShort + sizeof(CheckPoint);
+	chkpt_hdr_len_long = SizeOfXLogRecord + SizeOfXLogRecordDataHeaderLong + sizeof(CheckPoint);
+
+	if (chkpt_len > 255)		/* for XLR_BLOCK_ID_DATA_LONG */
+		length_match = ((chkpt_len - sizeof(CheckPoint)) == (record->xl_tot_len - chkpt_hdr_len_long));
+	else						/* for XLR_BLOCK_ID_DATA_SHORT */
+		length_match = ((chkpt_len - sizeof(CheckPoint)) == (record->xl_tot_len - chkpt_hdr_len_short));
+
+	if ((chkpt_len == sizeof(CheckPoint) && record->xl_tot_len == chkpt_hdr_len_short) ||
+		((chkpt_len > sizeof(CheckPoint) &&
+		  record->xl_tot_len > chkpt_hdr_len_short &&
+		  length_match)))
+		sizeOk = true;
+
+	if (!sizeOk)
 	{
 		switch (whichChkpt)
 		{
@@ -3937,11 +4057,32 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 				break;
 			default:
 				ereport(LOG,
-						(errmsg("invalid length of checkpoint record")));
+						(errmsg("invalid length of checkpoint record at location %X/%X",
+								(uint32) (RecPtr >> 32), (uint32) RecPtr)));
 				break;
 		}
 		return NULL;
 	}
+
+	/*
+	 * We should be wary of conflating "report" parameter.  It is currently
+	 * always true when we want to process the extended checkpoint record.
+	 * For now this seems fine as it avoids a diff with postgres.
+	 */
+	if (report)
+	{
+		CheckpointExtendedRecord ckptExtended;
+
+		UnpackCheckPointRecord(xlogreader, &ckptExtended);
+
+		/*
+		 * Find Xacts that are distributed committed from the checkpoint
+		 * record and store them such that they can utilized later during DTM
+		 * recovery.
+		 */
+		XLogProcessCheckpointRecord(xlogreader);
+	}
+
 	return record;
 }
 
