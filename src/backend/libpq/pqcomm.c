@@ -2066,62 +2066,14 @@ pq_settcpusertimeout(int timeout, Port *port)
 bool
 pq_check_connection(void)
 {
-<<<<<<< HEAD
-	struct pollfd pollfd;
-	int         rc;
-	short		poll_ev_aux;
-
-#if defined(POLLRDHUP)
-	/*
-	 * POLLRDHUP is a Linux extension to poll(2) to detect sockets closed by the
-	 * other end.
-	 * We don't have a portable way to do that without actually trying to read
-	 * or write data on other systems. We don't want to read because that would
-	 * be confused by pipelined queries and COPY data. Perhaps in future we'll
-	 * try to write a heartbeat message instead.
-	 */
-	poll_ev_aux = POLLRDHUP;
-#elif defined(__darwin__)
-	/*
-	 * OSX is able to detect closed sockets via single POSIX-compliant POLLHUP
-	 * option
-	 */
-	poll_ev_aux = 0;
-#else
-	return true;
-#endif
-||||||| c4cc2850f4d
-#if defined(POLLRDHUP)
-	/*
-	 * POLLRDHUP is a Linux extension to poll(2) to detect sockets closed by
-	 * the other end.  We don't have a portable way to do that without
-	 * actually trying to read or write data on other systems.  We don't want
-	 * to read because that would be confused by pipelined queries and COPY
-	 * data. Perhaps in future we'll try to write a heartbeat message instead.
-	 */
-	struct pollfd pollfd;
-	int			rc;
-=======
 	WaitEvent	events[FeBeWaitSetNEvents];
 	int			rc;
->>>>>>> 2c7ea57e56c
 
-<<<<<<< HEAD
-	pollfd.fd = MyProcPort->sock;
-	pollfd.events = POLLOUT | POLLIN | poll_ev_aux;
-
-	pollfd.revents = 0;
-||||||| c4cc2850f4d
-	pollfd.fd = MyProcPort->sock;
-	pollfd.events = POLLOUT | POLLIN | POLLRDHUP;
-	pollfd.revents = 0;
-=======
 	/*
 	 * It's OK to modify the socket event filter without restoring, because
 	 * all FeBeWaitSet socket wait sites do the same.
 	 */
 	ModifyWaitEvent(FeBeWaitSet, FeBeWaitSetSocketPos, WL_SOCKET_CLOSED, NULL);
->>>>>>> 2c7ea57e56c
 
 retry:
 	rc = WaitEventSetWait(FeBeWaitSet, 0, events, lengthof(events), 0);
@@ -2141,15 +2093,6 @@ retry:
 			 goto retry;
 		}
 	}
-<<<<<<< HEAD
-	else if (rc == 1 && (pollfd.revents & (POLLHUP | poll_ev_aux)))
-		return false;
-||||||| c4cc2850f4d
-	else if (rc == 1 && (pollfd.revents & (POLLHUP | POLLRDHUP)))
-		return false;
-#endif
-=======
->>>>>>> 2c7ea57e56c
 
 	return true;
 }
