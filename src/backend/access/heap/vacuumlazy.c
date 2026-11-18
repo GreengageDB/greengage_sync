@@ -2058,7 +2058,8 @@ lazy_scan_noprune(LVRelState *vacrel,
 		tuple.t_len = ItemIdGetLength(itemid);
 		tuple.t_tableOid = RelationGetRelid(vacrel->rel);
 
-		switch (HeapTupleSatisfiesVacuum(&tuple, vacrel->OldestXmin, buf))
+		switch (HeapTupleSatisfiesVacuum(vacrel->rel, &tuple,
+										 vacrel->OldestXmin, buf))
 		{
 			case HEAPTUPLE_DELETE_IN_PROGRESS:
 			case HEAPTUPLE_LIVE:
