@@ -2147,6 +2147,39 @@ readNodeBinary(void)
 			case T_OnConflictExpr:
 				return_value = _readOnConflictExpr();
 				break;
+			case T_JsonFormat:
+				return_value = _readJsonFormat();
+				break;
+			case T_JsonReturning:
+				return_value = _readJsonReturning();
+				break;
+			case T_JsonValueExpr:
+				return_value = _readJsonValueExpr();
+				break;
+			case T_JsonConstructorExpr:
+				return_value = _readJsonConstructorExpr();
+				break;
+			case T_JsonIsPredicate:
+				return_value = _readJsonIsPredicate();
+				break;
+			case T_JsonBehavior:
+				return_value = _readJsonBehavior();
+				break;
+			case T_JsonExpr:
+				return_value = _readJsonExpr();
+				break;
+			case T_JsonCoercion:
+				return_value = _readJsonCoercion();
+				break;
+			case T_JsonItemCoercions:
+				return_value = _readJsonItemCoercions();
+				break;
+			case T_JsonTableParent:
+				return_value = _readJsonTableParent();
+				break;
+			case T_JsonTableSibling:
+				return_value = _readJsonTableSibling();
+				break;
 			case T_GrantStmt:
 				return_value = _readGrantStmt();
 				break;
@@ -2475,6 +2508,12 @@ readNodeBinary(void)
 				break;
 			case T_CommonTableExpr:
 				return_value = _readCommonTableExpr();
+				break;
+			case T_MergeWhenClause:
+				return_value = _readMergeWhenClause();
+				break;
+			case T_MergeAction:
+				return_value = _readMergeAction();
 				break;
 			case T_RoleSpec:
 				return_value = _readRoleSpec();

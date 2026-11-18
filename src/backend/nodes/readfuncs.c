@@ -362,18 +362,10 @@ _readQuery(void)
 	READ_NODE_FIELD(rowMarks);
 	READ_NODE_FIELD(setOperations);
 	READ_NODE_FIELD(constraintDeps);
-<<<<<<< HEAD
-    READ_NODE_FIELD(withCheckOptions);
-    READ_LOCATION_FIELD(stmt_location);
-||||||| c4cc2850f4d
-	READ_NODE_FIELD(withCheckOptions);
-	READ_LOCATION_FIELD(stmt_location);
-=======
 	READ_NODE_FIELD(withCheckOptions);
 	READ_NODE_FIELD(mergeActionList);
 	READ_BOOL_FIELD(mergeUseOuterJoin);
 	READ_LOCATION_FIELD(stmt_location);
->>>>>>> 2c7ea57e56c
 	READ_INT_FIELD(stmt_len);
     READ_BOOL_FIELD(parentStmtType);
 
@@ -604,10 +596,10 @@ _readMergeWhenClause(void)
 
 	READ_BOOL_FIELD(matched);
 	READ_ENUM_FIELD(commandType, CmdType);
+	READ_ENUM_FIELD(override, OverridingKind);
 	READ_NODE_FIELD(condition);
 	READ_NODE_FIELD(targetList);
 	READ_NODE_FIELD(values);
-	READ_ENUM_FIELD(override, OverridingKind);
 
 	READ_DONE();
 }
@@ -822,6 +814,7 @@ _readConstraint(void)
 	READ_STRING_FIELD(cooked_expr);
 	READ_CHAR_FIELD(generated_when);
 
+	READ_BOOL_FIELD(nulls_not_distinct);
 	READ_NODE_FIELD(keys);
 	READ_NODE_FIELD(including);
 
@@ -873,6 +866,7 @@ _readIndexStmt(void)
 	READ_UINT_FIELD(oldCreateSubid);
 	READ_UINT_FIELD(oldFirstRelfilenodeSubid);
 	READ_BOOL_FIELD(unique);
+	READ_BOOL_FIELD(nulls_not_distinct);
 	READ_BOOL_FIELD(primary);
 	READ_BOOL_FIELD(isconstraint);
 	READ_BOOL_FIELD(deferrable);
@@ -3040,13 +3034,9 @@ _readModifyTable(void)
 	READ_NODE_FIELD(onConflictWhere);
 	READ_UINT_FIELD(exclRelRTI);
 	READ_NODE_FIELD(exclRelTlist);
-<<<<<<< HEAD
 	READ_BOOL_FIELD(isSplitUpdate);
 	READ_BOOL_FIELD(forceTupleRouting);
-||||||| c4cc2850f4d
-=======
 	READ_NODE_FIELD(mergeActionLists);
->>>>>>> 2c7ea57e56c
 
 	READ_DONE();
 }
@@ -5285,7 +5275,6 @@ parseNodeString(void)
 		return_value = _readRestrictInfo();
 	else if (MATCH("EXTENSIBLENODE", 14))
 		return_value = _readExtensibleNode();
-<<<<<<< HEAD
 	else if (MATCH("PARTITIONSPEC", 13))
 		return_value = _readPartitionSpec();
 	else if (MATCH("PARTITIONELEM", 13))
@@ -5296,6 +5285,28 @@ parseNodeString(void)
         return_value = _readPartitionRangeDatum();
 	else if (MATCHX("PARTITIONCMD"))
 		return_value = _readPartitionCmd();
+	else if (MATCH("JSONFORMAT", 10))
+		return_value = _readJsonFormat();
+	else if (MATCH("JSONRETURNING", 13))
+		return_value = _readJsonReturning();
+	else if (MATCH("JSONVALUEEXPR", 13))
+		return_value = _readJsonValueExpr();
+	else if (MATCH("JSONCTOREXPR", 12))
+		return_value = _readJsonConstructorExpr();
+	else if (MATCH("JSONISPREDICATE", 15))
+		return_value = _readJsonIsPredicate();
+	else if (MATCH("JSONBEHAVIOR", 12))
+		return_value = _readJsonBehavior();
+	else if (MATCH("JSONEXPR", 8))
+		return_value = _readJsonExpr();
+	else if (MATCH("JSONCOERCION", 12))
+		return_value = _readJsonCoercion();
+	else if (MATCH("JSONITEMCOERCIONS", 17))
+		return_value = _readJsonItemCoercions();
+	else if (MATCH("JSONTABPNODE", 12))
+		return_value = _readJsonTableParent();
+	else if (MATCH("JSONTABSNODE", 12))
+		return_value = _readJsonTableSibling();
 
 	/* GPDB additions */
 	else if (MATCHX("A_ARRAYEXPR"))
@@ -5502,39 +5513,6 @@ parseNodeString(void)
 		return_value = _readGpPartitionListSpec();
 	else if (MATCHX("COLUMNREFERENCESTORAGEDIRECTIVE"))
 		return_value = _readColumnReferenceStorageDirective();
-||||||| c4cc2850f4d
-	else if (MATCH("PARTITIONBOUNDSPEC", 18))
-		return_value = _readPartitionBoundSpec();
-	else if (MATCH("PARTITIONRANGEDATUM", 19))
-		return_value = _readPartitionRangeDatum();
-=======
-	else if (MATCH("PARTITIONBOUNDSPEC", 18))
-		return_value = _readPartitionBoundSpec();
-	else if (MATCH("PARTITIONRANGEDATUM", 19))
-		return_value = _readPartitionRangeDatum();
-	else if (MATCH("JSONFORMAT", 10))
-		return_value = _readJsonFormat();
-	else if (MATCH("JSONRETURNING", 13))
-		return_value = _readJsonReturning();
-	else if (MATCH("JSONVALUEEXPR", 13))
-		return_value = _readJsonValueExpr();
-	else if (MATCH("JSONCTOREXPR", 12))
-		return_value = _readJsonConstructorExpr();
-	else if (MATCH("JSONISPREDICATE", 15))
-		return_value = _readJsonIsPredicate();
-	else if (MATCH("JSONBEHAVIOR", 12))
-		return_value = _readJsonBehavior();
-	else if (MATCH("JSONEXPR", 8))
-		return_value = _readJsonExpr();
-	else if (MATCH("JSONCOERCION", 12))
-		return_value = _readJsonCoercion();
-	else if (MATCH("JSONITEMCOERCIONS", 17))
-		return_value = _readJsonItemCoercions();
-	else if (MATCH("JSONTABPNODE", 12))
-		return_value = _readJsonTableParent();
-	else if (MATCH("JSONTABSNODE", 12))
-		return_value = _readJsonTableSibling();
->>>>>>> 2c7ea57e56c
 	else
 	{
         ereport(ERROR,

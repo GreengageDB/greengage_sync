@@ -3578,7 +3578,32 @@ _equalCommonTableExpr(const CommonTableExpr *a, const CommonTableExpr *b)
 }
 
 static bool
-<<<<<<< HEAD
+_equalMergeWhenClause(const MergeWhenClause *a, const MergeWhenClause *b)
+{
+	COMPARE_SCALAR_FIELD(matched);
+	COMPARE_SCALAR_FIELD(commandType);
+	COMPARE_SCALAR_FIELD(override);
+	COMPARE_NODE_FIELD(condition);
+	COMPARE_NODE_FIELD(targetList);
+	COMPARE_NODE_FIELD(values);
+
+	return true;
+}
+
+static bool
+_equalMergeAction(const MergeAction *a, const MergeAction *b)
+{
+	COMPARE_SCALAR_FIELD(matched);
+	COMPARE_SCALAR_FIELD(commandType);
+	COMPARE_SCALAR_FIELD(override);
+	COMPARE_NODE_FIELD(qual);
+	COMPARE_NODE_FIELD(targetList);
+	COMPARE_NODE_FIELD(updateColnos);
+
+	return true;
+}
+
+static bool
 _equalTableValueExpr(const TableValueExpr *a, const TableValueExpr *b)
 {
 	COMPARE_NODE_FIELD(subquery);
@@ -3609,30 +3634,6 @@ static bool
 _equalRowIdExpr(const RowIdExpr *a, const RowIdExpr *b)
 {
 	COMPARE_SCALAR_FIELD(rowidexpr_id);
-||||||| c4cc2850f4d
-=======
-_equalMergeWhenClause(const MergeWhenClause *a, const MergeWhenClause *b)
-{
-	COMPARE_SCALAR_FIELD(matched);
-	COMPARE_SCALAR_FIELD(commandType);
-	COMPARE_SCALAR_FIELD(override);
-	COMPARE_NODE_FIELD(condition);
-	COMPARE_NODE_FIELD(targetList);
-	COMPARE_NODE_FIELD(values);
-
-	return true;
-}
-
-static bool
-_equalMergeAction(const MergeAction *a, const MergeAction *b)
-{
-	COMPARE_SCALAR_FIELD(matched);
-	COMPARE_SCALAR_FIELD(commandType);
-	COMPARE_SCALAR_FIELD(override);
-	COMPARE_NODE_FIELD(qual);
-	COMPARE_NODE_FIELD(targetList);
-	COMPARE_NODE_FIELD(updateColnos);
->>>>>>> 2c7ea57e56c
 
 	return true;
 }
@@ -4710,11 +4711,9 @@ equal(const void *a, const void *b)
 		case T_PublicationTable:
 			retval = _equalPublicationTable(a, b);
 			break;
-<<<<<<< HEAD
 		case T_DistributionKeyElem:
 			retval = _equalDistributionKeyElem(a, b);
-||||||| c4cc2850f4d
-=======
+			break;
 		case T_JsonKeyValue:
 			retval = _equalJsonKeyValue(a, b);
 			break;
@@ -4753,7 +4752,6 @@ equal(const void *a, const void *b)
 			break;
 		case T_JsonTableColumn:
 			retval = _equalJsonTableColumn(a, b);
->>>>>>> 2c7ea57e56c
 			break;
 
 		default:

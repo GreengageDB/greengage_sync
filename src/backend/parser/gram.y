@@ -870,20 +870,9 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
 	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
-<<<<<<< HEAD
-	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT CONNECTION CONSTRAINT
-	CONCURRENCY
-	CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY COST CREATE
-	CROSS CSV CUBE CURRENT_P
-||||||| c4cc2850f4d
-	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
-	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
-	COST CREATE CROSS CSV CUBE CURRENT_P
-=======
-	COMMITTED COMPRESSION CONCURRENTLY CONDITIONAL CONFIGURATION CONFLICT
-	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
-	COST CREATE CROSS CSV CUBE CURRENT_P
->>>>>>> 2c7ea57e56c
+	COMMITTED COMPRESSION CONCURRENCY CONCURRENTLY CONDITIONAL CONFIGURATION
+	CONFLICT CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P
+	CONVERSION_P COPY COST CREATE CROSS CSV CUBE CURRENT_P
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
@@ -892,16 +881,9 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP
 
-<<<<<<< HEAD
-	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENDPOINT ENUM_P ESCAPE EVENT EXCEPT
-	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
-||||||| c4cc2850f4d
-	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
-	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
-=======
-	EACH ELSE EMPTY_P ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ERROR_P ESCAPE
-	EVENT EXCEPT EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
->>>>>>> 2c7ea57e56c
+	EACH ELSE EMPTY_P ENABLE_P ENCODING ENCRYPTED END_P ENDPOINT ENUM_P ERROR_P
+	ESCAPE EVENT EXCEPT EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN
+	EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
 	FALSE_P FAMILY FETCH FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
@@ -925,15 +907,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
 
-<<<<<<< HEAD
-	MAPPING MATCH MATERIALIZED MAXVALUE MEMORY_LIMIT MEMORY_SHARED_QUOTA MEMORY_SPILL_RATIO
-	METHOD MINUTE_P MINVALUE MODE MONTH_P MOVE
-||||||| c4cc2850f4d
-	MAPPING MATCH MATERIALIZED MAXVALUE METHOD MINUTE_P MINVALUE MODE MONTH_P MOVE
-=======
-	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE METHOD
-	MINUTE_P MINVALUE MODE MONTH_P MOVE
->>>>>>> 2c7ea57e56c
+	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEMORY_LIMIT MEMORY_SHARED_QUOTA
+	MEMORY_SPILL_RATIO MERGE METHOD MINUTE_P MINVALUE MODE MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NESTED NEW NEXT NFC NFD NFKC NFKD NO
 	NONE NORMALIZE NORMALIZED
@@ -995,7 +970,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 	ERRORS EVERY EXCHANGE EXPAND
 
-	FIELDS FILL FORMAT
+	FIELDS FILL
 
 	FULLSCAN
 
@@ -1038,14 +1013,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-<<<<<<< HEAD
-%token		NOT_LA NULLS_LA WITH_LA
-%token		PARTITION_TAIL
-||||||| c4cc2850f4d
-%token		NOT_LA NULLS_LA WITH_LA
-=======
 %token		NOT_LA NULLS_LA WITH_LA WITH_LA_UNIQUE WITHOUT_LA
->>>>>>> 2c7ea57e56c
+%token		PARTITION_TAIL
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -1190,7 +1159,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc FILL
 			%nonassoc FIRST_P
 			%nonassoc FORCE
-			%nonassoc FORMAT
 			%nonassoc FORWARD
 			%nonassoc FUNCTION
 			%nonassoc GLOBAL
@@ -1253,7 +1221,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc NOTIFY
 			%nonassoc NOWAIT
 			%nonassoc NULLS_P
-			%nonassoc OBJECT_P
 			%nonassoc OF
 			%nonassoc OIDS
 			%nonassoc OPTION
@@ -1348,7 +1315,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc VALID
 			%nonassoc VALIDATION
 			%nonassoc VALIDATOR
-			%nonassoc VALUE_P
 			%nonassoc VARYING
 			%nonassoc VERSION_P
 			%nonassoc VIEW
@@ -1356,7 +1322,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc WEB
 			%nonassoc WITH
 			%nonassoc WITHIN
-			%nonassoc WITHOUT
 			%nonassoc WORK
 			%nonassoc WRITABLE
 			%nonassoc WRITE
@@ -1406,7 +1371,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc LOG_P
 			%nonassoc OUTER_P
 			%nonassoc VERBOSE
-			%nonassoc UNKNOWN
 			%nonassoc ZONE
 
 %left		Op OPERATOR		/* multi-character ops and user-defined operators */
@@ -19888,12 +19852,8 @@ unreserved_keyword:
 			| COMMIT
 			| COMMITTED
 			| COMPRESSION
-<<<<<<< HEAD
 			| CONCURRENCY
-||||||| c4cc2850f4d
-=======
 			| CONDITIONAL
->>>>>>> 2c7ea57e56c
 			| CONFIGURATION
 			| CONFLICT
 			| CONNECTION
@@ -19943,12 +19903,8 @@ unreserved_keyword:
 			| ENCRYPTED
 			| ENDPOINT
 			| ENUM_P
-<<<<<<< HEAD
-			| ERRORS
-||||||| c4cc2850f4d
-=======
 			| ERROR_P
->>>>>>> 2c7ea57e56c
+			| ERRORS
 			| ESCAPE
 			| EVENT
 			| EVERY
@@ -20029,14 +19985,10 @@ unreserved_keyword:
 			| MATCHED
 			| MATERIALIZED
 			| MAXVALUE
-<<<<<<< HEAD
 			| MEMORY_LIMIT
 			| MEMORY_SHARED_QUOTA
 			| MEMORY_SPILL_RATIO
-||||||| c4cc2850f4d
-=======
 			| MERGE
->>>>>>> 2c7ea57e56c
 			| METHOD
 			| MINUTE_P
 			| MINVALUE
@@ -20087,14 +20039,10 @@ unreserved_keyword:
 			| PARTITIONS
 			| PASSING
 			| PASSWORD
-<<<<<<< HEAD
+			| PATH
 			| PERCENT
 			| PERSISTENTLY
-||||||| c4cc2850f4d
-=======
-			| PATH
 			| PLAN
->>>>>>> 2c7ea57e56c
 			| PLANS
 			| POLICY
 			| PREPARE
@@ -20110,12 +20058,8 @@ unreserved_keyword:
 			| PUBLICATION
 			| QUEUE
 			| QUOTE
-<<<<<<< HEAD
-			| RANDOMLY /* gp */
-||||||| c4cc2850f4d
-=======
 			| QUOTES
->>>>>>> 2c7ea57e56c
+			| RANDOMLY /* gp */
 			| RANGE
 			| READ
 			| READABLE
@@ -20885,12 +20829,8 @@ bare_label_keyword:
 			| END_P
 			| ENDPOINT
 			| ENUM_P
-<<<<<<< HEAD
-			| ERRORS
-||||||| c4cc2850f4d
-=======
 			| ERROR_P
->>>>>>> 2c7ea57e56c
+			| ERRORS
 			| ESCAPE
 			| EVENT
 			| EXCHANGE
@@ -21004,15 +20944,11 @@ bare_label_keyword:
 			| MATCHED
 			| MATERIALIZED
 			| MAXVALUE
-<<<<<<< HEAD
 			| MEDIAN
 			| MEMORY_LIMIT
 			| MEMORY_SHARED_QUOTA
 			| MEMORY_SPILL_RATIO
-||||||| c4cc2850f4d
-=======
 			| MERGE
->>>>>>> 2c7ea57e56c
 			| METHOD
 			| MINVALUE
 			| MISSING
@@ -21073,13 +21009,9 @@ bare_label_keyword:
 			| PARTITIONS
 			| PASSING
 			| PASSWORD
-<<<<<<< HEAD
+			| PATH
 			| PERCENT
 			| PERSISTENTLY
-||||||| c4cc2850f4d
-=======
-			| PATH
->>>>>>> 2c7ea57e56c
 			| PLACING
 			| PLAN
 			| PLANS
@@ -21100,12 +21032,8 @@ bare_label_keyword:
 			| PUBLICATION
 			| QUEUE
 			| QUOTE
-<<<<<<< HEAD
-			| RANDOMLY
-||||||| c4cc2850f4d
-=======
 			| QUOTES
->>>>>>> 2c7ea57e56c
+			| RANDOMLY
 			| RANGE
 			| READ
 			| READABLE

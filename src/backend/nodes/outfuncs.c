@@ -595,13 +595,9 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	WRITE_NODE_FIELD(onConflictWhere);
 	WRITE_UINT_FIELD(exclRelRTI);
 	WRITE_NODE_FIELD(exclRelTlist);
-<<<<<<< HEAD
 	WRITE_BOOL_FIELD(isSplitUpdate);
 	WRITE_BOOL_FIELD(forceTupleRouting);
-||||||| c4cc2850f4d
-=======
 	WRITE_NODE_FIELD(mergeActionLists);
->>>>>>> 2c7ea57e56c
 }
 
 static void
@@ -2206,7 +2202,6 @@ _outOnConflictExpr(StringInfo str, const OnConflictExpr *node)
 	WRITE_NODE_FIELD(exclRelTlist);
 }
 
-<<<<<<< HEAD
 /* 'flow' is only needed during planning. */
 #ifndef COMPILING_BINARY_FUNCS
 static void
@@ -2239,8 +2234,6 @@ _outCdbPathLocus(StringInfo str, const CdbPathLocus *node)
 	WRITE_INT_FIELD(numsegments);
 }                               /* _outCdbPathLocus */
 #endif /* COMPILING_BINARY_FUNCS */
-||||||| c4cc2850f4d
-=======
 static void
 _outJsonFormat(StringInfo str, const JsonFormat *node)
 {
@@ -2377,7 +2370,6 @@ _outJsonTableSibling(StringInfo str, const JsonTableSibling *node)
 	WRITE_NODE_FIELD(rarg);
 	WRITE_BOOL_FIELD(cross);
 }
->>>>>>> 2c7ea57e56c
 
 /*****************************************************************************
  *
@@ -5359,6 +5351,7 @@ _outConstraint(StringInfo str, const Constraint *node)
 	WRITE_STRING_FIELD(cooked_expr);
 	WRITE_CHAR_FIELD(generated_when);
 
+	WRITE_BOOL_FIELD(nulls_not_distinct);
 	WRITE_NODE_FIELD(keys);
 	WRITE_NODE_FIELD(including);
 
@@ -5382,153 +5375,8 @@ _outConstraint(StringInfo str, const Constraint *node)
 	WRITE_NODE_FIELD(old_conpfeqop);
 	WRITE_OID_FIELD(old_pktable_oid);
 
-<<<<<<< HEAD
 	WRITE_BOOL_FIELD(skip_validation);
 	WRITE_BOOL_FIELD(initially_valid);
-||||||| c4cc2850f4d
-		case CONSTR_PRIMARY:
-			appendStringInfoString(str, "PRIMARY_KEY");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_UNIQUE:
-			appendStringInfoString(str, "UNIQUE");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_EXCLUSION:
-			appendStringInfoString(str, "EXCLUSION");
-			WRITE_NODE_FIELD(exclusions);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			WRITE_STRING_FIELD(access_method);
-			WRITE_NODE_FIELD(where_clause);
-			break;
-
-		case CONSTR_FOREIGN:
-			appendStringInfoString(str, "FOREIGN_KEY");
-			WRITE_NODE_FIELD(pktable);
-			WRITE_NODE_FIELD(fk_attrs);
-			WRITE_NODE_FIELD(pk_attrs);
-			WRITE_CHAR_FIELD(fk_matchtype);
-			WRITE_CHAR_FIELD(fk_upd_action);
-			WRITE_CHAR_FIELD(fk_del_action);
-			WRITE_NODE_FIELD(fk_del_set_cols);
-			WRITE_NODE_FIELD(old_conpfeqop);
-			WRITE_OID_FIELD(old_pktable_oid);
-			WRITE_BOOL_FIELD(skip_validation);
-			WRITE_BOOL_FIELD(initially_valid);
-			break;
-
-		case CONSTR_ATTR_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_NOT_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_NOT_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_DEFERRED:
-			appendStringInfoString(str, "ATTR_DEFERRED");
-			break;
-
-		case CONSTR_ATTR_IMMEDIATE:
-			appendStringInfoString(str, "ATTR_IMMEDIATE");
-			break;
-
-		default:
-			appendStringInfo(str, "<unrecognized_constraint %d>",
-							 (int) node->contype);
-			break;
-	}
-=======
-		case CONSTR_PRIMARY:
-			appendStringInfoString(str, "PRIMARY_KEY");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_UNIQUE:
-			appendStringInfoString(str, "UNIQUE");
-			WRITE_BOOL_FIELD(nulls_not_distinct);
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_EXCLUSION:
-			appendStringInfoString(str, "EXCLUSION");
-			WRITE_NODE_FIELD(exclusions);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			WRITE_STRING_FIELD(access_method);
-			WRITE_NODE_FIELD(where_clause);
-			break;
-
-		case CONSTR_FOREIGN:
-			appendStringInfoString(str, "FOREIGN_KEY");
-			WRITE_NODE_FIELD(pktable);
-			WRITE_NODE_FIELD(fk_attrs);
-			WRITE_NODE_FIELD(pk_attrs);
-			WRITE_CHAR_FIELD(fk_matchtype);
-			WRITE_CHAR_FIELD(fk_upd_action);
-			WRITE_CHAR_FIELD(fk_del_action);
-			WRITE_NODE_FIELD(fk_del_set_cols);
-			WRITE_NODE_FIELD(old_conpfeqop);
-			WRITE_OID_FIELD(old_pktable_oid);
-			WRITE_BOOL_FIELD(skip_validation);
-			WRITE_BOOL_FIELD(initially_valid);
-			break;
-
-		case CONSTR_ATTR_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_NOT_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_NOT_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_DEFERRED:
-			appendStringInfoString(str, "ATTR_DEFERRED");
-			break;
-
-		case CONSTR_ATTR_IMMEDIATE:
-			appendStringInfoString(str, "ATTR_IMMEDIATE");
-			break;
-
-		default:
-			appendStringInfo(str, "<unrecognized_constraint %d>",
-							 (int) node->contype);
-			break;
-	}
->>>>>>> 2c7ea57e56c
 }
 
 #ifndef COMPILING_BINARY_FUNCS
@@ -7031,7 +6879,6 @@ outNode(StringInfo str, const void *obj)
 			case T_PartitionRangeDatum:
 				_outPartitionRangeDatum(str, obj);
 				break;
-<<<<<<< HEAD
 			case T_PartitionCmd:
 				_outPartitionCmd(str, obj);
 				break;
@@ -7186,8 +7033,7 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_GpPartitionListSpec:
 				_outGpPartitionListSpec(str, obj);
-||||||| c4cc2850f4d
-=======
+				break;
 			case T_JsonFormat:
 				_outJsonFormat(str, obj);
 				break;
@@ -7220,7 +7066,6 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_JsonTableSibling:
 				_outJsonTableSibling(str, obj);
->>>>>>> 2c7ea57e56c
 				break;
 
 			default:

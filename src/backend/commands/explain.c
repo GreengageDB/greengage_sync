@@ -739,14 +739,9 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	/* Create textual dump of plan tree */
 	ExplainPrintPlan(es, queryDesc);
 
-<<<<<<< HEAD
 	if (cursorOptions & CURSOR_OPT_PARALLEL_RETRIEVE)
 		ExplainParallelRetrieveCursor(es, queryDesc);
 
-	if (es->verbose && plannedstmt->queryId != UINT64CONST(0))
-||||||| c4cc2850f4d
-	if (es->verbose && plannedstmt->queryId != UINT64CONST(0))
-=======
 	/*
 	 * COMPUTE_QUERY_ID_REGRESS means COMPUTE_QUERY_ID_AUTO, but we don't show
 	 * the queryid in any of the EXPLAIN plans to keep stable the results
@@ -754,7 +749,6 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	 */
 	if (es->verbose && plannedstmt->queryId != UINT64CONST(0) &&
 		compute_query_id != COMPUTE_QUERY_ID_REGRESS)
->>>>>>> 2c7ea57e56c
 	{
 		/*
 		 * Output the queryid as an int64 rather than a uint64 so we match
@@ -4906,8 +4900,17 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 	}
 	else if (node->operation == CMD_MERGE)
 	{
-		/* EXPLAIN ANALYZE display of tuples processed */
-		if (es->analyze && mtstate->ps.instrument)
+		/*
+		 * EXPLAIN ANALYZE display of tuples processed.
+		 *
+		 * GGDB: the per-action counters live in the ModifyTableState of the
+		 * process that ran the MERGE.  On the QD of a plan whose ModifyTable
+		 * runs on the segments they are all zero, which would report every
+		 * source row as skipped, so leave the breakdown out there.
+		 */
+		if (es->analyze && mtstate->ps.instrument &&
+			!(Gp_role == GP_ROLE_DISPATCH && es->currentSlice &&
+			  !sliceRunsOnQD(es->currentSlice)))
 		{
 			double		total;
 			double		insert_path;

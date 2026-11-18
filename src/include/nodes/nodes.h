@@ -257,18 +257,6 @@ typedef enum NodeTag
 	T_FromExpr,
 	T_OnConflictExpr,
 	T_IntoClause,
-<<<<<<< HEAD
-	T_CopyIntoClause,
-	T_RefreshClause,
-	T_Flow,
-	T_GroupId,
-	T_GroupingSetId,
-	T_AggExprId,
-	T_RowIdExpr,
-	T_DistributedBy,
-	T_DMLActionExpr,
-||||||| c4cc2850f4d
-=======
 	T_JsonFormat,
 	T_JsonReturning,
 	T_JsonValueExpr,
@@ -281,7 +269,15 @@ typedef enum NodeTag
 	T_JsonItemCoercions,
 	T_JsonTableParent,
 	T_JsonTableSibling,
->>>>>>> 2c7ea57e56c
+	T_CopyIntoClause,
+	T_RefreshClause,
+	T_Flow,
+	T_GroupId,
+	T_GroupingSetId,
+	T_AggExprId,
+	T_RowIdExpr,
+	T_DistributedBy,
+	T_DMLActionExpr,
 
 	/*
 	 * TAGS FOR EXPRESSION STATE NODES (execnodes.h)
@@ -615,13 +611,9 @@ typedef enum NodeTag
 	T_CTESearchClause,
 	T_CTECycleClause,
 	T_CommonTableExpr,
-<<<<<<< HEAD
+	T_MergeWhenClause,
 	T_ColumnReferenceStorageDirective,
 	T_DistributionKeyElem,
-||||||| c4cc2850f4d
-=======
-	T_MergeWhenClause,
->>>>>>> 2c7ea57e56c
 	T_RoleSpec,
 	T_TriggerTransition,
 	T_PartitionElem,
