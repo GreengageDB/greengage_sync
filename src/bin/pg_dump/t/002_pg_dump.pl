@@ -90,12 +90,15 @@ my %pgdump_runs = (
 			'--format=directory',                   '--compress=1',
 			"--file=$tempdir/compression_gzip_dir", 'postgres',
 		],
-		# Give coverage for manually compressed blob.toc files during
-		# restore.
-		compress_cmd => {
-			program => $ENV{'GZIP_PROGRAM'},
-			args    => [ '-f', "$tempdir/compression_gzip_dir/blobs.toc", ],
-		},
+		# Upstream gives coverage here for manually compressed blob.toc
+		# files during restore, by gzip'ing blobs.toc between the dump and
+		# the restore.
+		#
+		# GPDB: there are no large objects to dump -- every lo_* function
+		# raises "large objects are not supported" (libpq/be-fsstubs.c) --
+		# so pg_dump emits no blobs.toc at all and the gzip would fail with
+		# "No such file or directory".  The directory-format dump and
+		# restore either side of it still run.
 		restore_cmd => [
 			'pg_restore', '--jobs=2',
 			"--file=$tempdir/compression_gzip_dir.sql",
