@@ -504,9 +504,15 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 		return false;
 	}
 
+	/*
+	 * The append-optimized auxiliary heaps get here through VACUUM FULL of
+	 * the table they belong to, which vacuums each of them as a relation of
+	 * its own.
+	 */
 	Assert(OldHeap->rd_rel->relkind == RELKIND_RELATION ||
 		   OldHeap->rd_rel->relkind == RELKIND_MATVIEW ||
-		   OldHeap->rd_rel->relkind == RELKIND_TOASTVALUE);
+		   OldHeap->rd_rel->relkind == RELKIND_TOASTVALUE ||
+		   RELKIND_IS_AO_AUX(OldHeap->rd_rel->relkind));
 
 	/*
 	 * All predicate locks on the tuples or pages are about to be made
