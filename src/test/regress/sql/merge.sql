@@ -1011,10 +1011,19 @@ DROP TABLE pa_target CASCADE;
 CREATE TABLE pa_target (tid integer, balance float, val text)
 	PARTITION BY LIST (tid);
 
-CREATE TABLE part1 (tid integer, balance float, val text);
-CREATE TABLE part2 (balance float, tid integer, val text);
-CREATE TABLE part3 (tid integer, balance float, val text);
-CREATE TABLE part4 (extraid text, tid integer, balance float, val text);
+-- Greengage: ATTACH PARTITION requires the partition's distribution policy to
+-- match the parent's, and with no DISTRIBUTED BY each table takes its first
+-- column as the key -- 'balance' for part2, 'extraid' for part4, against the
+-- parent's 'tid'.  Name the key so the attaches below still succeed and the
+-- block keeps testing what upstream wrote it for: partitions whose columns are
+-- in a different order or have been dropped.  It also has to be named because
+-- a failed ATTACH leaves the table standalone, so DROP TABLE pa_target CASCADE
+-- below does not reach it and it leaks into every later test sharing this
+-- database -- which is how alter_table came to fail on "part2 already exists".
+CREATE TABLE part1 (tid integer, balance float, val text) DISTRIBUTED BY (tid);
+CREATE TABLE part2 (balance float, tid integer, val text) DISTRIBUTED BY (tid);
+CREATE TABLE part3 (tid integer, balance float, val text) DISTRIBUTED BY (tid);
+CREATE TABLE part4 (extraid text, tid integer, balance float, val text) DISTRIBUTED BY (tid);
 ALTER TABLE part4 DROP COLUMN extraid;
 
 ALTER TABLE pa_target ATTACH PARTITION part1 FOR VALUES IN (1,4);
