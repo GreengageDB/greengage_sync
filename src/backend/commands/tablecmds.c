@@ -7795,7 +7795,6 @@ ATSimplePermissions(AlterTableType cmdtype, Relation rel, int allowed_targets)
 		case RELKIND_FOREIGN_TABLE:
 			actual_target = ATT_FOREIGN_TABLE;
 			break;
-<<<<<<< HEAD
 
 		case RELKIND_AOSEGMENTS:
 		case RELKIND_AOBLOCKDIR:
@@ -7810,12 +7809,9 @@ ATSimplePermissions(AlterTableType cmdtype, Relation rel, int allowed_targets)
 				actual_target = 0;
 			break;
 
-||||||| c4cc2850f4d
-=======
 		case RELKIND_SEQUENCE:
 			actual_target = ATT_SEQUENCE;
 			break;
->>>>>>> 2c7ea57e56c
 		default:
 			actual_target = 0;
 			break;

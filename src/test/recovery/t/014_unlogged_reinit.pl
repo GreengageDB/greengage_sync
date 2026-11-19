@@ -20,8 +20,18 @@ my $pgdata = $node->data_dir;
 
 # Create an unlogged table and an unlogged sequence to test that forks
 # other than init are not copied.
+#
+# GPDB: the two sequences this file reads nextval from are created CACHE 1,
+# because our default is 20, not PostgreSQL's 1 ("PostgreSQL default value is
+# 1, GPDB privately bump up to 20", commands/sequence.c).  Each nextval below
+# arrives on its own safe_psql connection, so at the default every one of them
+# would claim twenty values and the next would return 21 -- or 41, once the
+# increment is 2.  These sequences are here to show that an unlogged sequence
+# keeps its init fork and is reset from it after a crash; the width of the
+# cache is no part of that, and leaving it at the default would only move the
+# expected numbers.
 $node->safe_psql('postgres', 'CREATE UNLOGGED TABLE base_unlogged (id int)');
-$node->safe_psql('postgres', 'CREATE UNLOGGED SEQUENCE seq_unlogged');
+$node->safe_psql('postgres', 'CREATE UNLOGGED SEQUENCE seq_unlogged CACHE 1');
 
 my $baseUnloggedPath = $node->safe_psql('postgres',
 	q{select pg_relation_filepath('base_unlogged')});
@@ -56,7 +66,7 @@ ok(-f "$pgdata/${ts1UnloggedPath}_init", 'init fork in tablespace exists');
 ok(-f "$pgdata/$ts1UnloggedPath",        'main fork in tablespace exists');
 
 # Create more unlogged sequences for testing.
-$node->safe_psql('postgres', 'CREATE UNLOGGED SEQUENCE seq_unlogged2');
+$node->safe_psql('postgres', 'CREATE UNLOGGED SEQUENCE seq_unlogged2 CACHE 1');
 # This rewrites the sequence relation in AlterSequence().
 $node->safe_psql('postgres', 'ALTER SEQUENCE seq_unlogged2 INCREMENT 2');
 $node->safe_psql('postgres', "SELECT nextval('seq_unlogged2')");
