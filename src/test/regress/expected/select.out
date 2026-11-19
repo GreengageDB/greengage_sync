@@ -292,17 +292,7 @@ SELECT onek2.unique1, onek2.stringu1 FROM onek2
 RESET enable_seqscan;
 RESET enable_bitmapscan;
 RESET enable_sort;
-<<<<<<< HEAD
 RESET optimizer_enable_tablescan;
-SELECT two, stringu1, ten, string4
-   INTO TABLE tmp
-   FROM onek;
-||||||| c4cc2850f4d
-SELECT two, stringu1, ten, string4
-   INTO TABLE tmp
-   FROM onek;
-=======
->>>>>>> 2c7ea57e56c
 --
 -- awk '{print $1,$2;}' person.data |
 -- awk '{if(NF!=2){print $3,$2;}else{print;}}' - emp.data |
