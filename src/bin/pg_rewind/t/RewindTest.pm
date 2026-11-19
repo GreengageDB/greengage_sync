@@ -280,6 +280,21 @@ sub run_pg_rewind
 		"$primary_pgdata/postgresql.conf",
 		"$tmp_folder/primary-postgresql.conf.tmp");
 
+	# GPDB: postgresql.conf carries "include = 'internal.auto.conf'", and a
+	# relative include resolves against the directory of the file that
+	# contains it (AbsoluteConfigLocation(), guc-file.l), not against
+	# data_directory.  So the copy needs its own internal.auto.conf beside
+	# it, or every --config-file run below dies with
+	#     could not open configuration file ".../internal.auto.conf"
+	#     FATAL: configuration file ".../primary-postgresql.conf.tmp"
+	#            contains errors
+	# before it can do any work.  pg_rewind never overwrites the target's own
+	# copy of the file -- it is in the exclusion list at filemap.c:167 -- so
+	# the primary's gp_dbid is the right one to put here.
+	copy(
+		"$primary_pgdata/internal.auto.conf",
+		"$tmp_folder/internal.auto.conf");
+
 	# Now run pg_rewind
 	if ($test_mode eq "local")
 	{
