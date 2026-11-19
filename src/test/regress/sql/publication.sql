@@ -261,8 +261,15 @@ DROP COLLATION user_collation;
 
 -- ======================================================
 -- More row filter tests for validating column references
-CREATE TABLE rf_tbl_abcd_nopk(a int, b int, c int, d int);
-CREATE TABLE rf_tbl_abcd_pk(a int, b int, c int, d int, PRIMARY KEY(a,b));
+--
+-- DISTRIBUTED REPLICATED: a unique index on a hash-distributed Greengage table
+-- must contain the distribution key, and case 4 below needs REPLICA IDENTITY
+-- USING INDEX on a unique index over (c) while the PK is over (a,b) -- no
+-- single distribution key is contained in both.  A replicated table keeps
+-- every row on every segment, so it carries unique indexes on any columns and
+-- these tests keep asserting exactly what upstream asserts.
+CREATE TABLE rf_tbl_abcd_nopk(a int, b int, c int, d int) DISTRIBUTED REPLICATED;
+CREATE TABLE rf_tbl_abcd_pk(a int, b int, c int, d int, PRIMARY KEY(a,b)) DISTRIBUTED REPLICATED;
 CREATE TABLE rf_tbl_abcd_part_pk (a int PRIMARY KEY, b int) PARTITION by RANGE (a);
 CREATE TABLE rf_tbl_abcd_part_pk_1 (b int, a int PRIMARY KEY);
 ALTER TABLE rf_tbl_abcd_part_pk ATTACH PARTITION rf_tbl_abcd_part_pk_1 FOR VALUES FROM (1) TO (10);
@@ -388,8 +395,10 @@ SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub_fortable FOR TABLE testpub_tbl1;
 CREATE PUBLICATION testpub_fortable_insert WITH (publish = 'insert');
 RESET client_min_messages;
+-- DISTRIBUTED REPLICATED: the unique index over (b, c) below cannot contain
+-- the distribution key of a table whose PK is (a).
 CREATE TABLE testpub_tbl5 (a int PRIMARY KEY, b text, c text,
-	d int generated always as (a + length(b)) stored);
+	d int generated always as (a + length(b)) stored) DISTRIBUTED REPLICATED;
 -- error: column "x" does not exist
 ALTER PUBLICATION testpub_fortable ADD TABLE testpub_tbl5 (a, x);
 -- error: replica identity "a" not included in the column list
@@ -457,8 +466,14 @@ CREATE TABLE testpub_tbl8_0 PARTITION OF testpub_tbl8 FOR VALUES WITH (modulus 2
 ALTER TABLE testpub_tbl8_0 ADD PRIMARY KEY (a);
 ALTER TABLE testpub_tbl8_0 REPLICA IDENTITY USING INDEX testpub_tbl8_0_pkey;
 -- second partition has replica identity "b"
+-- (Greengage: a partition inherits the root's distribution key, "a", and a PK
+-- has to contain it -- so the identity here is (a,b).  Every assertion below
+-- turns on whether the column list covers "b", and (a,b) answers that the
+-- same way (b) does, while the parent's list (a,c) still fails to cover it.
+-- A replicated table is not an option: PARTITION BY and DISTRIBUTED
+-- REPLICATED cannot be combined.)
 CREATE TABLE testpub_tbl8_1 PARTITION OF testpub_tbl8 FOR VALUES WITH (modulus 2, remainder 1);
-ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (b);
+ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (a, b);
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY USING INDEX testpub_tbl8_1_pkey;
 
 -- ok: column list covers both "a" and "b"
@@ -493,7 +508,8 @@ UPDATE testpub_tbl8 SET a = 1;
 
 -- failure: replica identity has to be covered by the column list
 ALTER TABLE testpub_tbl8_1 DROP CONSTRAINT testpub_tbl8_1_pkey;
-ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (c);
+-- Greengage: (a,c), so that the PK contains the distribution key
+ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (a, c);
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY USING INDEX testpub_tbl8_1_pkey;
 UPDATE testpub_tbl8 SET a = 1;
 
@@ -509,7 +525,9 @@ ALTER TABLE testpub_tbl8_0 ADD PRIMARY KEY (a);
 ALTER TABLE testpub_tbl8_0 REPLICA IDENTITY USING INDEX testpub_tbl8_0_pkey;
 -- second partition has replica identity "b"
 CREATE TABLE testpub_tbl8_1 (a int, b text, c text);
-ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (c);
+-- Greengage: (a,c); "a" is this table's distribution key, and it is also the
+-- one the parent's column list (a,b) covers, so "c" still decides the ATTACH
+ALTER TABLE testpub_tbl8_1 ADD PRIMARY KEY (a, c);
 ALTER TABLE testpub_tbl8_1 REPLICA IDENTITY USING INDEX testpub_tbl8_1_pkey;
 
 -- ok: attaching first partition works, because (a) is in column list
@@ -542,8 +560,9 @@ DROP PUBLICATION testpub_both_filters;
 -- ======================================================
 
 -- More column list tests for validating column references
-CREATE TABLE rf_tbl_abcd_nopk(a int, b int, c int, d int);
-CREATE TABLE rf_tbl_abcd_pk(a int, b int, c int, d int, PRIMARY KEY(a,b));
+-- DISTRIBUTED REPLICATED for the same reason as the row filter tests above.
+CREATE TABLE rf_tbl_abcd_nopk(a int, b int, c int, d int) DISTRIBUTED REPLICATED;
+CREATE TABLE rf_tbl_abcd_pk(a int, b int, c int, d int, PRIMARY KEY(a,b)) DISTRIBUTED REPLICATED;
 CREATE TABLE rf_tbl_abcd_part_pk (a int PRIMARY KEY, b int) PARTITION by RANGE (a);
 CREATE TABLE rf_tbl_abcd_part_pk_1 (b int, a int PRIMARY KEY);
 ALTER TABLE rf_tbl_abcd_part_pk ATTACH PARTITION rf_tbl_abcd_part_pk_1 FOR VALUES FROM (1) TO (10);
