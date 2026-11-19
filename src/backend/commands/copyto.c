@@ -880,8 +880,11 @@ BeginCopyToOnSegment(QueryDesc *queryDesc)
 
 				colname = NameStr(attr[attnum - 1].attname);
 
-				CopyAttributeOutCSV(cstate, colname, false,
+				if (cstate->opts.csv_mode)
+					CopyAttributeOutCSV(cstate, colname, false,
 									list_length(cstate->attnumlist) == 1);
+				else
+					CopyAttributeOutText(cstate, colname);
 			}
 
 			CopySendEndOfRow(cstate);
@@ -1310,8 +1313,11 @@ CopyToDispatch(CopyToState cstate)
 
 				colname = NameStr(attr[attnum - 1].attname);
 
-				CopyAttributeOutCSV(cstate, colname, false,
+				if (cstate->opts.csv_mode)
+					CopyAttributeOutCSV(cstate, colname, false,
 									list_length(cstate->attnumlist) == 1);
+				else
+					CopyAttributeOutText(cstate, colname);
 			}
 
 			/* add a newline and flush the data */
