@@ -661,14 +661,19 @@ SELECT circle_center(f1), round(radius(f1)) as radius FROM gcircle_tbl ORDER BY 
 -- gathers the table and sorts instead.  The result rows are still upstream's.
 EXPLAIN (COSTS OFF)
 SELECT point(x,x), (SELECT f1 FROM gpolygon_tbl ORDER BY f1 <-> point(x,x) LIMIT 1) as c FROM generate_series(0,10,1) x;
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
+                                                QUERY PLAN                                                 
+-----------------------------------------------------------------------------------------------------------
  Function Scan on generate_series x
    SubPlan 1
      ->  Limit
-           ->  Index Scan using ggpolygonind on gpolygon_tbl
-                 Order By: (f1 <-> point((x.x)::double precision, (x.x)::double precision))
-(5 rows)
+           ->  Sort
+                 Sort Key: ((gpolygon_tbl.f1 <-> point((x.x)::double precision, (x.x)::double precision)))
+                 ->  Result
+                       ->  Materialize
+                             ->  Gather Motion 3:1  (slice1; segments: 3)
+                                   ->  Seq Scan on gpolygon_tbl
+ Optimizer: Postgres query optimizer
+(10 rows)
 
 SELECT point(x,x), (SELECT f1 FROM gpolygon_tbl ORDER BY f1 <-> point(x,x) LIMIT 1) as c FROM generate_series(0,10,1) x;
   point  |                     c                     
