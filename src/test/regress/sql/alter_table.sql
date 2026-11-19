@@ -3070,6 +3070,11 @@ update bar1 set a = a + 1;
 
 /* Test case for bug #17409 */
 
+-- GG: both ALTER TYPEs on attbl are rejected, because p1 carries a primary
+-- key.  The case is about a clustered or replica-identity constraint index
+-- surviving the rewrite, so dropping the constraint first -- what the HINT
+-- advises, and what the comment_test block above does -- would remove the
+-- very index under test.  Record the restriction instead.
 create table attbl (p1 int constraint pk_attbl primary key);
 create table atref (c1 int references attbl(p1));
 cluster attbl using pk_attbl;
