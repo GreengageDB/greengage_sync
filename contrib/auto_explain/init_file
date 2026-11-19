@@ -24,3 +24,9 @@ m/Buckets: \d+  Batches: 1  Memory Usage: \d+kB/
 s/Buckets: \d+  Batches: 1  Memory Usage: \d+kB/Buckets: 1048576  Batches: 1  Memory Usage: 8192kB/
 
 -- end_matchsubs
+
+# Copied from src/test/regress/init_file, which this suite does not read: the
+# NOTICE CREATE ROLE emits when no resource queue was named.
+-- start_matchignore
+m/^NOTICE:.*resource queue required -- using default resource queue ".*"/
+-- end_matchignore

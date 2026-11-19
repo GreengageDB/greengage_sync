@@ -319,40 +319,6 @@ set default_with_oids to f;
 -- Should not allow to set it to true.
 set default_with_oids to t;
 
-<<<<<<< HEAD
--- GUC name needs quoting when dispatched to segments (see DispatchSetPGVariable);
--- "table" is a reserved word, so an unquoted dispatch would be a syntax error there.
-SET "table.foo" = 'curl/7.29.0';
-SHOW "table.foo";
-
--- Test function with SET search_path
-create schema n1;
-create type ty1 as (i int);
-
-CREATE OR REPLACE FUNCTION n1.drop_table(v_schema character varying, v_table character varying) RETURNS text
-AS $$
-BEGIN
-    EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(v_schema) || '.' || quote_ident(v_table) || ';';
-    RETURN '0';
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN SQLSTATE;
-END;
-$$ LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = n1, pg_temp;
-
-select n1.drop_table('public','t1');
-
--- After funtion drop table, public schema is still in search_path
-create table public.t1(i ty1);
-
-drop table public.t1;
-drop type public.ty1;
-drop function n1.drop_table(v_schema character varying, v_table character varying);
-drop schema n1;
-||||||| c4cc2850f4d
-=======
 -- Test GUC categories and flag patterns
 SELECT pg_settings_get_flags(NULL);
 SELECT pg_settings_get_flags('does_not_exist');
@@ -395,4 +361,35 @@ SELECT name FROM tab_settings_flags
   WHERE no_show_all AND NOT not_in_sample
   ORDER BY 1;
 DROP TABLE tab_settings_flags;
->>>>>>> 2c7ea57e56c
+
+-- GUC name needs quoting when dispatched to segments (see DispatchSetPGVariable);
+-- "table" is a reserved word, so an unquoted dispatch would be a syntax error there.
+SET "table.foo" = 'curl/7.29.0';
+SHOW "table.foo";
+
+-- Test function with SET search_path
+create schema n1;
+create type ty1 as (i int);
+
+CREATE OR REPLACE FUNCTION n1.drop_table(v_schema character varying, v_table character varying) RETURNS text
+AS $$
+BEGIN
+    EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(v_schema) || '.' || quote_ident(v_table) || ';';
+    RETURN '0';
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN SQLSTATE;
+END;
+$$ LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = n1, pg_temp;
+
+select n1.drop_table('public','t1');
+
+-- After funtion drop table, public schema is still in search_path
+create table public.t1(i ty1);
+
+drop table public.t1;
+drop type public.ty1;
+drop function n1.drop_table(v_schema character varying, v_table character varying);
+drop schema n1;
