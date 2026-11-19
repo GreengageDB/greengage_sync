@@ -629,6 +629,14 @@ _outValue(StringInfo str, const Node *value)
 		case T_Float:
 			WRITE_STRING_VAR(((const Float *) value)->fval);
 			break;
+		case T_Boolean:
+			{
+				/* one byte, the same shape WRITE_BOOL_FIELD writes */
+				char		b = ((const Boolean *) value)->boolval ? 1 : 0;
+
+				appendBinaryStringInfo(str, (const char *) &b, 1);
+			}
+			break;
 		case T_String:
 			WRITE_STRING_VAR(((const String *) value)->sval);
 			break;
@@ -933,6 +941,7 @@ _outNode(StringInfo str, void *obj)
 		_outList(str, obj);
 	else if (IsA(obj, Integer) ||
 			 IsA(obj, Float) ||
+			 IsA(obj, Boolean) ||
 			 IsA(obj, String) ||
 			 IsA(obj, BitString))
 	{

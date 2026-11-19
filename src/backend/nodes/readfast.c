@@ -465,6 +465,11 @@ _readAConst(void)
 				local_node->val.ival.ival = (int) ival;
 			}
 				break;
+			case T_Boolean:
+				local_node->val.boolval.boolval = read_str_ptr[0] != 0;
+				Assert(read_str_ptr[0] == 1 || read_str_ptr[0] == 0);
+				read_str_ptr++;
+				break;
 			case T_Float:
 			case T_String:
 			case T_BitString:
@@ -1657,6 +1662,12 @@ _readValue(NodeTag nt)
 		memcpy(&ival, read_str_ptr, sizeof(long)); read_str_ptr+=sizeof(long);
 		result = (Node *) makeInteger(ival);
 	}
+	else if (nt == T_Boolean)
+	{
+		Assert(read_str_ptr[0] == 1 || read_str_ptr[0] == 0);
+		result = (Node *) makeBoolean(read_str_ptr[0] != 0);
+		read_str_ptr++;
+	}
 	else
 	{
 		int slen;
@@ -1770,8 +1781,8 @@ readNodeBinary(void)
 		return l;
 	}
 
-	if (nt == T_Integer || nt == T_Float || nt == T_String ||
-	   	nt == T_BitString)
+	if (nt == T_Integer || nt == T_Float || nt == T_Boolean ||
+		nt == T_String || nt == T_BitString)
 	{
 		return _readValue(nt);
 	}
