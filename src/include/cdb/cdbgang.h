@@ -74,6 +74,8 @@ extern void RecycleGang(Gang *gp, bool forceDestroy);
 extern void DisconnectAndDestroyAllGangs(bool resetSession);
 extern void DisconnectAndDestroyUnusedQEs(void);
 
+extern bool GpHasTempNamespaceForDeletion(void);
+extern void GpResetSessionIfNeeded(void);
 extern void GpDropTempTables(void);
 extern void ResetAllGangs(void);
 
@@ -98,6 +100,7 @@ extern bool segment_failure_due_to_missing_writer(const char *error_message);
  */
 extern void cdbgang_parse_gpqeid_params(struct Port *port, const char *gpqeid_value);
 
+extern void GpScheduleSessionReset(void);
 extern void resetSessionForPrimaryGangLoss(void);
 
 /*
