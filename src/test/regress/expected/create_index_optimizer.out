@@ -3015,3 +3015,17 @@ drop cascades to materialized view matview
 drop cascades to view view
 drop cascades to table reindex_before
 drop cascades to table reindex_after
+-- GPDB: give the indexes built above their statistics.
+-- CREATE INDEX derives the new index's relpages/reltuples from the coordinator's
+-- own copy of the index, and for a distributed table that copy is empty, so each
+-- index above is left with relpages = 0 in the coordinator's pg_class.  The
+-- planner then overprices every index probe, and later tests lose the index
+-- plans they were written to exercise.  Upstream carried a "vacuum tenk1" in the
+-- middle of this file for the same class of reason and dropped it in commit
+-- cc50080a828, because test_setup.sql now vacuums tenk1 -- but that runs before
+-- these indexes exist.  VACUUM is the command that collects index statistics
+-- from the segments, so vacuum both tables here, last.
+-- The REINDEX SCHEMA section above left search_path pointing at a schema that
+-- no longer exists, so qualify the names.
+vacuum public.tenk1;
+vacuum public.tenk2;
