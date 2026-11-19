@@ -53,9 +53,13 @@ for my $tc (@test_configuration)
 			if ! $tc->{'enabled'};
 
 		# Take backup with server compression enabled.
+		#
+		# GPDB: --target-gp-dbid is mandatory, as everywhere else in this
+		# directory; pg_basebackup checks it before it talks to the server.
 		my @backup      = (
 			'pg_basebackup', '-D', $backup_path,
-			'-Xfetch', '--no-sync', '-cfast', '-Fp');
+			'-Xfetch', '--no-sync', '-cfast', '-Fp',
+			'--target-gp-dbid', '1');
 		push @backup, @{$tc->{'backup_flags'}};
 
 		my @verify = ('pg_verifybackup', '-e', $backup_path);

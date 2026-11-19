@@ -47,12 +47,17 @@ $node->command_fails(['pg_basebackup', '--target-gp-dbid', '123'],
 	'pg_basebackup needs target directory specified');
 
 # Sanity checks for options
+#
+# GPDB: these assert on the message a bad --compress produces, so they have to
+# get past the --target-gp-dbid check, which main() reaches first.
 $node->command_fails_like(
-	[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress', 'none:1' ],
+	[ 'pg_basebackup', '--target-gp-dbid', '123',
+	  '-D', "$tempdir/backup", '--compress', 'none:1' ],
 	qr/\Qcompression algorithm "none" does not accept a compression level/,
 	'failure if method "none" specified with compression level');
 $node->command_fails_like(
-	[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress', 'none+' ],
+	[ 'pg_basebackup', '--target-gp-dbid', '123',
+	  '-D', "$tempdir/backup", '--compress', 'none+' ],
 	qr/\Qunrecognized compression algorithm "none+"/,
 	'failure on incorrect separator to define compression level');
 
@@ -153,12 +158,16 @@ for my $cft (@compression_failure_tests)
 {
 	my $cfail = quotemeta($client_fails . $cft->[1]);
 	my $sfail = quotemeta($server_fails . $cft->[1]);
+	# GPDB: --target-gp-dbid as above -- without it every one of these
+	# twenty would assert on the dbid message instead of the compression one.
 	$node->command_fails_like(
-		[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress', $cft->[0] ],
+		[ 'pg_basebackup', '--target-gp-dbid', '123',
+		  '-D', "$tempdir/backup", '--compress', $cft->[0] ],
 		qr/$cfail/,
 		'client '. $cft->[2]);
 	$node->command_fails_like(
-		[ 'pg_basebackup', '-D', "$tempdir/backup", '--compress',
+		[ 'pg_basebackup', '--target-gp-dbid', '123',
+		  '-D', "$tempdir/backup", '--compress',
 		   'server-' . $cft->[0] ],
 		qr/$sfail/,
 		'server ' . $cft->[2]);

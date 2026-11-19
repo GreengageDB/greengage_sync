@@ -65,9 +65,12 @@ for my $tc (@test_configuration)
 		    || $tc->{'decompress_program'} eq '');
 
 		# Take a server-side backup.
+		#
+		# GPDB: --target-gp-dbid is mandatory, as everywhere else in this
+		# directory; pg_basebackup checks it before it talks to the server.
 		my @backup = (
 			'pg_basebackup', '--no-sync', '-cfast', '--target',
-			"server:$backup_path", '-Xfetch'
+			"server:$backup_path", '-Xfetch', '--target-gp-dbid', '1'
 		);
 		push @backup, @{$tc->{'backup_flags'}};
 		$primary->command_ok(\@backup,
