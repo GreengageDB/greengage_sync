@@ -1,6 +1,22 @@
 --
 -- MERGE
 --
+-- GGDB: the two "try updating the partition key column" statements below move
+-- rows between segments, and every segment that holds such a row raises the
+-- error.  Which one wins the race decides both the leaf partition named in the
+-- message and the two segment numbers in its DETAIL -- observed as part1/0/1
+-- and part4/1/2 across six runs of the same build.  Mask all three, the way
+-- atmsort already masks the "(segN ... pid=N)" suffix, so the statements still
+-- assert that MERGE refuses to write a row belonging to another segment.
+--
+-- start_matchsubs
+-- m/MERGE cannot write a row of "[^"]+" that belongs to another segment/
+-- s/of "[^"]+" that belongs/of "XXX" that belongs/
+--
+-- m/The new row's distribution key belongs to segment \d+, but the MERGE action runs on segment \d+/
+-- s/segment \d+, but the MERGE action runs on segment \d+/segment XXX, but the MERGE action runs on segment XXX/
+-- end_matchsubs
+--
 --\set VERBOSITY verbose
 
 --set debug_print_rewritten = true;
@@ -880,6 +896,16 @@ BEGIN
 		  query
     LOOP
         ln := regexp_replace(ln, 'Memory: \S*',  'Memory: xxx');
+        -- GGDB: Greengage's Hash node reports its bucket count and memory, and
+        -- EXPLAIN ANALYZE on a cluster appends a per-segment "Extra Text:" line
+        -- with hash-chain statistics.  Every figure in them moves with the
+        -- memory settings -- CI runs with statement_mem 250MB, a demo cluster
+        -- does not -- and the segment named in "Extra Text:" is whichever one
+        -- reported the maximum.  Mask them the way upstream masks Sort's
+        -- "Memory:", so the blocks keep asserting the plan shape.
+        ln := regexp_replace(ln, 'Buckets: \S*',  'Buckets: xxx');
+        ln := regexp_replace(ln, 'Memory Usage: \S*',  'Memory Usage: xxx');
+        ln := regexp_replace(ln, 'Extra Text: \(seg\d+\).*',  'Extra Text: xxx');
         RETURN NEXT ln;
     END LOOP;
 END;
@@ -1056,7 +1082,13 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
-SELECT * FROM pa_target ORDER BY tid;
+-- GGDB: the tid IN (1, 5) qual leaves most source rows NOT MATCHED, so this
+-- result has two rows for several tids and ORDER BY tid alone does not
+-- determine the order between them.  Add val as a tiebreaker: upstream gets
+-- away with the partial sort because one backend reads one heap in one order,
+-- but here the rows arrive from three segments.  atmsort cannot help -- it
+-- only sorts a result whose query has no ORDER BY at all.
+SELECT * FROM pa_target ORDER BY tid, val;
 ROLLBACK;
 
 -- try updating the partition key column
@@ -1075,8 +1107,15 @@ DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
 
 -- Sub-partitioning
+--
+-- GGDB: with no DISTRIBUTED BY this table would be distributed on logts, its
+-- first column, while the MERGE below joins on tid -- so the rows would have to
+-- be redistributed, and an Explicit Redistribute Motion has no segment to send
+-- a WHEN NOT MATCHED row to.  Distribute on tid, which is what the statement
+-- joins on, and the MERGE runs on the segments the target rows already live on.
+-- pa_source is already distributed on sid by default, so the join is co-located.
 CREATE TABLE pa_target (logts timestamp, tid integer, balance float, val text)
-	PARTITION BY RANGE (logts);
+	PARTITION BY RANGE (logts) DISTRIBUTED BY (tid);
 
 CREATE TABLE part_m01 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-01-01') TO ('2017-02-01')
