@@ -1389,6 +1389,8 @@ RESET maintenance_work_mem;
 -- Test unique null behavior
 --
 CREATE TABLE unique_tbl (i int, t text);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE UNIQUE INDEX unique_idx1 ON unique_tbl (i) NULLS DISTINCT;
 CREATE UNIQUE INDEX unique_idx2 ON unique_tbl (i) NULLS NOT DISTINCT;
 INSERT INTO unique_tbl VALUES (1, 'one');
@@ -1398,14 +1400,14 @@ INSERT INTO unique_tbl VALUES (4, 'four');
 INSERT INTO unique_tbl VALUES (5, 'one');
 INSERT INTO unique_tbl (t) VALUES ('six');
 INSERT INTO unique_tbl (t) VALUES ('seven');  -- error from unique_idx2
-ERROR:  duplicate key value violates unique constraint "unique_idx2"
+ERROR:  duplicate key value violates unique constraint "unique_idx2"  (seg0 172.17.0.4:7002 pid=555042)
 DETAIL:  Key (i)=(null) already exists.
 DROP INDEX unique_idx1, unique_idx2;
 INSERT INTO unique_tbl (t) VALUES ('seven');
 -- build indexes on filled table
 CREATE UNIQUE INDEX unique_idx3 ON unique_tbl (i) NULLS DISTINCT;  -- ok
 CREATE UNIQUE INDEX unique_idx4 ON unique_tbl (i) NULLS NOT DISTINCT;  -- error
-ERROR:  could not create unique index "unique_idx4"
+ERROR:  could not create unique index "unique_idx4"  (seg0 172.17.0.4:7002 pid=555042)
 DETAIL:  Key (i)=(null) is duplicated.
 DELETE FROM unique_tbl WHERE t = 'seven';
 CREATE UNIQUE INDEX unique_idx4 ON unique_tbl (i) NULLS NOT DISTINCT;  -- ok now
@@ -1418,6 +1420,7 @@ CREATE UNIQUE INDEX unique_idx4 ON unique_tbl (i) NULLS NOT DISTINCT;  -- ok now
 Indexes:
     "unique_idx3" UNIQUE, btree (i)
     "unique_idx4" UNIQUE, btree (i) NULLS NOT DISTINCT
+Distributed by: (i)
 
 \d unique_idx3
       Index "public.unique_idx3"
