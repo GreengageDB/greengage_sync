@@ -373,6 +373,16 @@ CheckMyDatabase(const char *name, bool am_superuser, bool override_allow_connect
 	char	   *ctype;
 	char	   *iculocale;
 
+	/*
+	 * Building the syscache entry flattens the row, so a datacl long enough to
+	 * have been pushed out of line is read back from pg_database's TOAST table
+	 * right here.  That needs a registered or active snapshot, and InitPostgres
+	 * takes a transaction snapshot without pushing it; push one ourselves for
+	 * as long as we hold the row, the way upstream does elsewhere for the
+	 * catalogs whose TOAST tables are reached this early.
+	 */
+	PushActiveSnapshot(GetTransactionSnapshot());
+
 	/* Fetch our pg_database row normally, via syscache */
 	tup = SearchSysCache1(DATABASEOID, ObjectIdGetDatum(MyDatabaseId));
 	if (!HeapTupleIsValid(tup))
@@ -531,6 +541,8 @@ CheckMyDatabase(const char *name, bool am_superuser, bool override_allow_connect
 	check_strxfrm_bug();
 
 	ReleaseSysCache(tup);
+
+	PopActiveSnapshot();
 }
 
 
