@@ -782,12 +782,6 @@ SELECT unique1 FROM tenk1
 WHERE unique1 IN (1,42,7)
 ORDER BY unique1;
 
--- GG: upstream keeps the =ANY qual out of the index condition here so that the
--- scan stays ordered on thousand.  Greengage costs the other way round: with
--- the qual in the index condition the per-segment scan reads two index entries
--- instead of twenty, and sorting what is left is cheaper than the ordered scan
--- (12.8 against 32.4 on a three-segment cluster).  The rows below still come
--- out ordered, which is what this test was written to check.
 explain (costs off)
 SELECT thousand, tenthous FROM tenk1
 WHERE thousand < 2 AND tenthous IN (1001,3000)

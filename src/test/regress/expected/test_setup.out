@@ -340,3 +340,37 @@ ANALYZE stud_emp;
 ANALYZE road;
 ANALYZE ihighway;
 ANALYZE shighway;
+--
+-- GPDB: give relallvisible back, because the ANALYZEs above just zeroed it.
+--
+-- Upstream vacuums these tables before the tests read them, so the planner
+-- sees allvisfrac = 1 and can cost an index-only scan; a good number of its
+-- expected plans are index-only scans for that reason.  On a cluster only the
+-- segments know how many pages are all-visible: VACUUM collects the number
+-- from them and sums it into the coordinator's pg_class, while ANALYZE counts
+-- the visibility map of the coordinator's own copy of a distributed table,
+-- which is empty, and therefore stores relallvisible = 0.  That is a
+-- long-standing limitation -- see the GPDB_92_MERGE_FIXME in
+-- commands/analyze.c -- and it means the ANALYZE pass above undoes the
+-- visibility half of upstream's VACUUM ANALYZE.  So vacuum once more, last.
+--
+-- POINT_TBL is skipped here for the same reason upstream skips it above.
+--
+VACUUM CHAR_TBL;
+VACUUM FLOAT8_TBL;
+VACUUM INT2_TBL;
+VACUUM INT4_TBL;
+VACUUM INT8_TBL;
+VACUUM TEXT_TBL;
+VACUUM VARCHAR_TBL;
+VACUUM onek;
+VACUUM onek2;
+VACUUM tenk1;
+VACUUM tenk2;
+VACUUM person;
+VACUUM emp;
+VACUUM student;
+VACUUM stud_emp;
+VACUUM road;
+VACUUM ihighway;
+VACUUM shighway;
