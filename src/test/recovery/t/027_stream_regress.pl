@@ -13,6 +13,16 @@ if (PostgreSQL::Test::Utils::has_wal_read_bug)
 	plan skip_all => 'filesystem bug';
 }
 
+# GPDB: this one cannot run here.  It drives src/test/regress' whole
+# parallel_schedule against a single node, and that node is not a cluster: the
+# answer files in src/test/regress are adapted for MPP, and the Greengage parts
+# of pg_regress expect a real cluster behind them.  The invocation below does
+# not get that far anyway -- it passes "--bindir=" to mean "take the binaries
+# from PATH", which Greengage's pg_regress does not support, and dies in
+# convert_sourcefiles() before the first test runs.  Skip, rather than stub the
+# body out, so that upstream changes to the file keep applying cleanly.
+plan skip_all => 'the upstream regression schedule does not run on a cluster';
+
 # Initialize primary node
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init(allows_streaming => 1);
