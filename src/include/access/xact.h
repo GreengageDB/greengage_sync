@@ -421,6 +421,8 @@ typedef struct xl_xact_parsed_commit
 	RelFileNodePendingDelete *abortnodes;	/* only for 2PC */
 	int			nabortstats;		/* only for 2PC */
 	xl_xact_stats_item *abortstats; /* only for 2PC */
+	int			nabortdbs;		/* only for 2PC */
+	DbDirNode  *abortdbs;		/* only for 2PC */
 
 	XLogRecPtr	origin_lsn;
 	TimestampTz origin_timestamp;

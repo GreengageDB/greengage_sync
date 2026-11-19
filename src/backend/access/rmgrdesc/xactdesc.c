@@ -288,6 +288,8 @@ ParsePrepareRecord(uint8 info, xl_xact_prepare *xlrec, xl_xact_parsed_prepare *p
 	parsed->nabortrels = xlrec->nabortrels;
 	parsed->nstats = xlrec->ncommitstats;
 	parsed->nabortstats = xlrec->nabortstats;
+	parsed->ndeldbs = xlrec->ncommitdbs;
+	parsed->nabortdbs = xlrec->nabortdbs;
 	parsed->nmsgs = xlrec->ninvalmsgs;
 
 	strncpy(parsed->twophase_gid, bufptr, xlrec->gidlen);
@@ -307,6 +309,18 @@ ParsePrepareRecord(uint8 info, xl_xact_prepare *xlrec, xl_xact_parsed_prepare *p
 
 	parsed->abortstats = (xl_xact_stats_item *) bufptr;
 	bufptr += MAXALIGN(xlrec->nabortstats * sizeof(xl_xact_stats_item));
+
+	/*
+	 * GPDB: the two DbDirNode arrays sit here, between the stats and the
+	 * invalidation messages -- see the save_state_data() calls in
+	 * StartPrepare().  Walk past them, or parsed->msgs ends up pointing at
+	 * the first of them.
+	 */
+	parsed->deldbs = (DbDirNode *) bufptr;
+	bufptr += MAXALIGN(xlrec->ncommitdbs * sizeof(DbDirNode));
+
+	parsed->abortdbs = (DbDirNode *) bufptr;
+	bufptr += MAXALIGN(xlrec->nabortdbs * sizeof(DbDirNode));
 
 	parsed->msgs = (SharedInvalidationMessage *) bufptr;
 	bufptr += MAXALIGN(xlrec->ninvalmsgs * sizeof(SharedInvalidationMessage));
@@ -349,13 +363,13 @@ xact_desc_subxacts(StringInfo buf, int nsubxacts, TransactionId *subxacts)
 }
 
 static void
-xact_desc_deldbs(StringInfo buf, int ndeldbs, DbDirNode *deldbs)
+xact_desc_deldbs(StringInfo buf, char *label, int ndeldbs, DbDirNode *deldbs)
 {
 	int		i;
 
 	if (ndeldbs > 0)
 	{
-		appendStringInfoString(buf, "; deldbs:");
+		appendStringInfo(buf, "; %s:", label);
 		for (i = 0; i < ndeldbs; i++)
 		{
 			char *path =
@@ -407,7 +421,7 @@ xact_desc_commit(StringInfo buf, uint8 info, xl_xact_commit *xlrec, RepOriginId 
 							   parsed.tsId,
 							   XactCompletionRelcacheInitFileInval(parsed.xinfo));
 
-	xact_desc_deldbs(buf, parsed.ndeldbs, parsed.deldbs);
+	xact_desc_deldbs(buf, "deldbs", parsed.ndeldbs, parsed.deldbs);
 
 	if (xlrec->tablespace_oid_to_delete_on_commit != InvalidOid)
 		appendStringInfo(buf, "; tablespace_oid_to_delete_on_commit: %u", xlrec->tablespace_oid_to_delete_on_commit);
@@ -458,7 +472,7 @@ xact_desc_abort(StringInfo buf, uint8 info, xl_xact_abort *xlrec, RepOriginId or
 
 	xact_desc_relations(buf, "rels", parsed.nrels, parsed.xnodes);
 	xact_desc_subxacts(buf, parsed.nsubxacts, parsed.subxacts);
-	xact_desc_deldbs(buf, parsed.ndeldbs, parsed.deldbs);
+	xact_desc_deldbs(buf, "deldbs", parsed.ndeldbs, parsed.deldbs);
 
 	if (xlrec->tablespace_oid_to_delete_on_abort != InvalidOid)
 		appendStringInfo(buf, "; tablespace_oid_to_delete_on_abort: %u", xlrec->tablespace_oid_to_delete_on_abort);
@@ -489,6 +503,8 @@ xact_desc_prepare(StringInfo buf, uint8 info, xl_xact_prepare *xlrec, RepOriginI
 						parsed.abortnodes);
 	xact_desc_stats(buf, "commit ", parsed.nstats, parsed.stats);
 	xact_desc_stats(buf, "abort ", parsed.nabortstats, parsed.abortstats);
+	xact_desc_deldbs(buf, "deldbs(commit)", parsed.ndeldbs, parsed.deldbs);
+	xact_desc_deldbs(buf, "deldbs(abort)", parsed.nabortdbs, parsed.abortdbs);
 	xact_desc_subxacts(buf, parsed.nsubxacts, parsed.subxacts);
 
 	standby_desc_invalidations(buf, parsed.nmsgs, parsed.msgs, parsed.dbId,
