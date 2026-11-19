@@ -2186,6 +2186,24 @@ DeleteSystemAttributeTuples(Oid relid)
 }
 
 /*
+ * GG: does this distribution policy hash on the given column?
+ */
+static bool
+policy_distributes_on_attribute(const GpPolicy *policy, AttrNumber attnum)
+{
+	if (!GpPolicyIsPartitioned(policy))
+		return false;
+
+	for (int ia = 0; ia < policy->nattrs; ia++)
+	{
+		if (attnum == policy->attrs[ia])
+			return true;
+	}
+
+	return false;
+}
+
+/*
  *		RemoveAttributeById
  *
  * This is the guts of ALTER TABLE DROP COLUMN: actually mark the attribute
@@ -2296,6 +2314,51 @@ RemoveAttributeById(Oid relid, AttrNumber attnum)
 
 	if (attnum > 0)
 		RemoveStatistics(relid, attnum);
+
+	/*
+	 * GG: a distribution policy cannot outlive a column it distributes on.
+	 * The policy stores attribute numbers, and everything that reads one back
+	 * needs the column's type to resolve its hash operator class with --
+	 * pg_get_table_distributedby() asserts on it, so a pg_dump of the
+	 * database would take the coordinator down.  ALTER TABLE DROP COLUMN
+	 * forces a random distribution before it gets here, so this is for the
+	 * drops that cascade from another object through dependency.c.
+	 */
+	if (attnum > 0 && policy_distributes_on_attribute(rel->rd_cdbpolicy, attnum))
+	{
+		GpPolicy   *policy;
+
+		/*
+		 * The relcache policy only tells us it is worth looking.  ALTER TABLE
+		 * DROP COLUMN writes the random policy before performMultipleDeletions()
+		 * brings us here, but that write stays invisible to the syscache -- and
+		 * so to a relcache entry rebuilt in the meantime -- until the command
+		 * counter moves, so the key column can still appear to be there.
+		 * Updating gp_distribution_policy twice in one command fails with
+		 * "tuple already updated by self", so make the earlier write visible
+		 * and ask the catalog before touching it.
+		 */
+		CommandCounterIncrement();
+
+		policy = GpPolicyFetch(relid);
+		if (policy_distributes_on_attribute(policy, attnum))
+		{
+			MemoryContext oldcontext;
+
+			/* force a random distribution */
+			policy->nattrs = 0;
+			GpPolicyReplace(relid, policy);
+
+			oldcontext = MemoryContextSwitchTo(GetMemoryChunkContext(rel));
+			rel->rd_cdbpolicy = GpPolicyCopy(policy);
+			MemoryContextSwitchTo(oldcontext);
+
+			if (Gp_role != GP_ROLE_EXECUTE)
+				ereport(NOTICE,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("dropping a column that is part of the distribution policy forces a NULL distribution policy")));
+		}
+	}
 
 	relation_close(rel, NoLock);
 }
