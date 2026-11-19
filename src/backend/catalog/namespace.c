@@ -70,6 +70,7 @@
 
 #include "cdb/cdbdisp_query.h"
 #include "cdb/cdbtm.h"
+#include "cdb/cdbgang.h"
 #include "cdb/cdbvars.h"
 #include "tcop/utility.h"
 
@@ -4310,9 +4311,35 @@ DropTempTableNamespaceForResetSession(Oid namespaceOid)
 		elog(ERROR, "Called within a transaction");
 	
 	StartTransactionCommand();
+	PushActiveSnapshot(GetTransactionSnapshot());
 
 	RemoveTempRelations(namespaceOid);
 
+	PopActiveSnapshot();
+	CommitTransactionCommand();
+}
+
+/*
+ * Remove temp namespace entry from pg_namespace.
+ */
+void
+DropTempTableNamespaceEntryForResetSession(Oid namespaceOid, Oid toastNamespaceOid)
+{
+	if (IsTransactionOrTransactionBlock())
+		elog(ERROR, "Called within a transaction");
+
+	StartTransactionCommand();
+	PushActiveSnapshot(GetTransactionSnapshot());
+
+	/* Make sure the temp namespace is valid. */
+	if (SearchSysCacheExists1(NAMESPACEOID,
+							  ObjectIdGetDatum(namespaceOid)))
+	{
+		RemoveSchemaById(namespaceOid);
+		RemoveSchemaById(toastNamespaceOid);
+	}
+
+	PopActiveSnapshot();
 	CommitTransactionCommand();
 }
 
@@ -4587,31 +4614,24 @@ RemoveTempRelationsCallback(int code, Datum arg)
 		return;
 	}
 
+	/*
+	 * If there is a temporary namespace, schedule its deletion.
+	 * This is done with GpScheduleSessionReset (which also
+	 * schedules deletion of temporary tables) even though a full
+	 * session reset is not necessary in this case.
+	 */
 	if (OidIsValid(myTempNamespace))
+		GpScheduleSessionReset();
+	/* If we have a temporary namespace, delete it */
+	if (GpHasTempNamespaceForDeletion())
 	{
-		/* Need to ensure we have a usable transaction. */
+		/* Need to ensure we are not in a transaction. */
 		AbortOutOfAnyTransaction();
-		StartTransactionCommand();
-		PushActiveSnapshot(GetTransactionSnapshot());
-
-		/* 
-		 * Make sure that the schema hasn't been removed. We must do this after
-		 * we start a new transaction (see previous two lines), otherwise we
-		 * wont have a valid CurrentResourceOwner.
+		/*
+		 * Perform the actual table deletion for the tables
+		 * prepared with GpScheduleSessionReset.
 		 */
-		if (TempNamespaceValid(false))
-		{
-			RemoveTempRelations(myTempNamespace);
-
-			/* MPP-3390: drop pg_temp_N schema entry from pg_namespace */
-			RemoveSchemaById(myTempNamespace);
-			RemoveSchemaById(myTempToastNamespace);
-			elog(DEBUG1, "Remove schema entry %u from pg_namespace", 
-				 myTempNamespace); 
-		}
-
-		PopActiveSnapshot();
-		CommitTransactionCommand();
+		GpDropTempTables();
 	}
 }
 
@@ -4623,6 +4643,19 @@ ResetTempTableNamespace(void)
 {
 	if (OidIsValid(myTempNamespace))
 		RemoveTempRelations(myTempNamespace);
+}
+
+/*
+ * Cancels the call to RemoveTempRelationsCallback at backend exit.
+ */
+void
+CancelRemoveTempRelationsCallback(void)
+{
+	if (before_shmem_exit_callback_registered)
+	{
+		before_shmem_exit_callback_registered = false;
+		cancel_before_shmem_exit(RemoveTempRelationsCallback, 0);
+	}
 }
 
 
