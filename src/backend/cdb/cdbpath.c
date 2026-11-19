@@ -2410,6 +2410,7 @@ create_motion_path_for_upddel(PlannerInfo *root, GpPolicy *policy,
 {
 	GpPolicyType	policyType = policy->ptype;
 	CdbPathLocus	targetLocus;
+	ListCell	   *cell;
 
 	if (policyType == POLICYTYPE_PARTITIONED)
 	{
@@ -2444,6 +2445,35 @@ create_motion_path_for_upddel(PlannerInfo *root, GpPolicy *policy,
 		 */
 		if (contain_volatile_functions((Node *) (subpath->pathtarget->exprs)))
 			elog(ERROR, "could not devise a plan.");
+
+		/*
+		 * GGDB: a MERGE's new values are not in that targetlist.  Each WHEN
+		 * clause carries its own, and ExecMerge() evaluates them per row on
+		 * every segment this ModifyTable runs on, so one volatile expression
+		 * there writes a different value into each copy of the table and the
+		 * replicas silently diverge.  A column declared GENERATED AS IDENTITY
+		 * is enough: the rewriter puts a nextval() in every INSERT action.
+		 *
+		 * Reject that here, where the same restriction is already stated for
+		 * UPDATE and DELETE.  A plain INSERT is safe because its row is
+		 * computed below a Broadcast Motion, once, and copied to the segments
+		 * from there; this plan has nothing between the segments to broadcast
+		 * from.
+		 */
+		foreach(cell, root->parse->mergeActionList)
+		{
+			MergeAction *action = lfirst_node(MergeAction, cell);
+
+			if (contain_volatile_functions((Node *) action->targetList) ||
+				contain_volatile_functions(action->qual))
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("MERGE cannot use a volatile expression on replicated table \"%s\"",
+								get_rel_name(planner_rt_fetch(linitial_int(resultRelations),
+															  root)->relid)),
+						 errdetail("Every segment runs the MERGE actions on its own copy of the table, so a volatile expression would store a different value in each copy."),
+						 errhint("Compute the value before the statement, or make the target hash-distributed.")));
+		}
 	}
 	else
 		elog(ERROR, "unrecognized policy type %u", policyType);
