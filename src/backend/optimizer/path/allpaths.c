@@ -491,6 +491,34 @@ set_rel_size(PlannerInfo *root, RelOptInfo *rel,
 }
 
 /*
+ * A path whose index order-by expressions reference the outer query cannot be
+ * moved, because the parameter would have to cross a Motion.  The two
+ * functions below therefore skip such a path -- and when it was the only path
+ * add_path() kept, that leaves the relation with nothing at all and
+ * set_cheapest() fails with "could not devise a query plan for the given
+ * query".  A GiST k-NN scan under enable_seqscan=off is the usual way in: the
+ * ordered index path dominates the sequential one on both cost and pathkeys,
+ * so add_path() drops the sequential path, and then we refuse to use the
+ * winner.
+ *
+ * A plain relation always has that one other option, though -- scan it
+ * sequentially and let a Sort above the Motion do the ordering.  So re-create
+ * the path add_path() discarded, and let the caller decorate it like any
+ * other.  Returns NIL when there is no such fallback, which is every case
+ * but a plain base relation; those cannot reach the skip above, since a
+ * join path is not an IndexPath and a parameterized path never dominates an
+ * unparameterized one.
+ */
+static List *
+seqscan_fallback_pathlist(PlannerInfo *root, RelOptInfo *rel)
+{
+	if (rel->reloptkind != RELOPT_BASEREL || rel->rtekind != RTE_RELATION)
+		return NIL;
+
+	return list_make1(create_seqscan_path(root, rel, NULL, 0));
+}
+
+/*
  * Decorate the Paths of 'rel' with Motions to bring the relation's
  * result to OuterQuery locus. The final plan will look something like
  * this:
@@ -508,6 +536,7 @@ bring_to_outer_query(PlannerInfo *root, RelOptInfo *rel, List *outer_quals)
 {
 	List	   *origpathlist;
 	ListCell   *lc;
+	bool		tried_fallback = false;
 
 	origpathlist = rel->pathlist;
 	rel->cheapest_startup_path = NULL;
@@ -516,6 +545,7 @@ bring_to_outer_query(PlannerInfo *root, RelOptInfo *rel, List *outer_quals)
 	rel->cheapest_parameterized_paths = NIL;
 	rel->pathlist = NIL;
 
+again:
 	foreach(lc, origpathlist)
 	{
 		Path	   *origpath = (Path *) lfirst(lc);
@@ -564,6 +594,16 @@ bring_to_outer_query(PlannerInfo *root, RelOptInfo *rel, List *outer_quals)
 															  true);
 		add_path(rel, path);
 	}
+
+	/* Every path was unusable?  Fall back to a sequential scan. */
+	if (rel->pathlist == NIL && !tried_fallback)
+	{
+		tried_fallback = true;
+		origpathlist = seqscan_fallback_pathlist(root, rel);
+		if (origpathlist != NIL)
+			goto again;
+	}
+
 	set_cheapest(rel);
 }
 
@@ -588,6 +628,7 @@ bring_to_singleQE(PlannerInfo *root, RelOptInfo *rel)
 {
 	List	   *origpathlist;
 	ListCell   *lc;
+	bool		tried_fallback = false;
 
 	origpathlist = rel->pathlist;
 	rel->cheapest_startup_path = NULL;
@@ -596,6 +637,7 @@ bring_to_singleQE(PlannerInfo *root, RelOptInfo *rel)
 	rel->cheapest_parameterized_paths = NIL;
 	rel->pathlist = NIL;
 
+again:
 	foreach(lc, origpathlist)
 	{
 		Path	     *origpath = (Path *) lfirst(lc);
@@ -642,6 +684,16 @@ bring_to_singleQE(PlannerInfo *root, RelOptInfo *rel)
 
 		add_path(rel, path);
 	}
+
+	/* Every path was unusable?  Fall back to a sequential scan. */
+	if (rel->pathlist == NIL && !tried_fallback)
+	{
+		tried_fallback = true;
+		origpathlist = seqscan_fallback_pathlist(root, rel);
+		if (origpathlist != NIL)
+			goto again;
+	}
+
 	set_cheapest(rel);
 }
 
