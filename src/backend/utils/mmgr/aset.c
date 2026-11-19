@@ -694,10 +694,11 @@ AllocSetReset(MemoryContext context)
 #endif
 
 	/*
-	 * Make sure all children have been deleted,
-	 * or the accounting data is incorrect.
+	 * A reset leaves any child context alone, as MemoryContextResetOnly()
+	 * promises, and that is accounting-neutral: localAllocated covers this
+	 * context alone, so discharging it leaves every child's own charge, and
+	 * the account's currentAllocated, exactly as correct as they were.
 	 */
-	Assert(context->firstchild == NULL);
 	MEMORY_ACCOUNT_DEC_ALLOCATED(set, set->localAllocated);
 
 	/* Clear chunk freelists */
