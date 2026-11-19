@@ -163,14 +163,38 @@ select p from
           (box(point(0.8,0.8), point(1.0,1.0)))) as v(bb)
 cross join lateral
   (select p from gist_tbl where p <@ bb order by p <-> bb[0] limit 2) ss;
-ERROR:  could not devise a query plan for the given query (pathnode.c:XXX)
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
+ Nested Loop
+   ->  Values Scan on "*VALUES*"
+   ->  Materialize
+         ->  Limit
+               ->  Sort
+                     Sort Key: ((gist_tbl.p <-> ("*VALUES*".column1)[0]))
+                     ->  Result
+                           Filter: (gist_tbl.p <@ "*VALUES*".column1)
+                           ->  Materialize
+                                 ->  Gather Motion 3:1  (slice1; segments: 3)
+                                       ->  Seq Scan on gist_tbl
+ Optimizer: Postgres query optimizer
+(12 rows)
+
 select p from
   (values (box(point(0,0), point(0.5,0.5))),
           (box(point(0.5,0.5), point(0.75,0.75))),
           (box(point(0.8,0.8), point(1.0,1.0)))) as v(bb)
 cross join lateral
   (select p from gist_tbl where p <@ bb order by p <-> bb[0] limit 2) ss;
-ERROR:  could not devise a query plan for the given query (pathnode.c:XXX)
+      p      
+-------------
+ (0.5,0.5)
+ (0.45,0.45)
+ (0.75,0.75)
+ (0.7,0.7)
+ (1,1)
+ (0.95,0.95)
+(6 rows)
+
 drop index gist_tbl_point_index;
 -- Test index-only scan with box opclass
 create index gist_tbl_box_index on gist_tbl using gist (b);
@@ -381,12 +405,18 @@ select p from gist_tbl where circle(p,1) @> circle(point(0,0),0.95);
 -- Also check that use_physical_tlist doesn't trigger in such cases.
 explain (verbose, costs off)
 select count(*) from gist_tbl;
-                             QUERY PLAN                              
----------------------------------------------------------------------
- Aggregate
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
+ Finalize Aggregate
    Output: count(*)
-   ->  Index Only Scan using gist_tbl_multi_index on public.gist_tbl
-(3 rows)
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         Output: (PARTIAL count(*))
+         ->  Partial Aggregate
+               Output: PARTIAL count(*)
+               ->  Index Only Scan using gist_tbl_multi_index on public.gist_tbl
+ Optimizer: Postgres query optimizer
+ Settings: enable_bitmapscan = 'off', enable_seqscan = 'off', optimizer = 'off'
+(9 rows)
 
 select count(*) from gist_tbl;
  count 
