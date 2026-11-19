@@ -1261,6 +1261,7 @@ exec_mpp_query(const char *query_string,
 		plan->commandType != CMD_INSERT &&
 		plan->commandType != CMD_UPDATE &&
 		plan->commandType != CMD_DELETE &&
+		plan->commandType != CMD_MERGE &&
 		plan->commandType != CMD_UTILITY)
 		elog(ERROR, "MPPEXEC: received non-DML Plan");
 	commandType = plan->commandType;
@@ -1344,6 +1345,8 @@ exec_mpp_query(const char *query_string,
 			commandTag = CMDTAG_MPPEXEC_UPDATE;
 		else if (commandType == CMD_DELETE)
 			commandTag = CMDTAG_MPPEXEC_DELETE;
+		else if (commandType == CMD_MERGE)
+			commandTag = CMDTAG_MPPEXEC_MERGE;
 		else
 			commandTag = CMDTAG_MPPEXEC;
 

@@ -186,7 +186,8 @@ AcquireRewriteLocks(Query *parsetree,
 				 *
 				 * Update|DELETE may have to upgrade the locks to avoid global
 				 * deadlock and CdbOpenRelation will do more check for AO table
-				 * and GDD's status.
+				 * and GDD's status.  MERGE is in the same position: its
+				 * matched actions update or delete existing rows.
 				 */
 				needLockUpgrade = false;
 				if (!forExecute)
@@ -195,7 +196,8 @@ AcquireRewriteLocks(Query *parsetree,
 				{
 					lockmode = RowExclusiveLock;
 					needLockUpgrade = (parsetree->commandType == CMD_UPDATE ||
-						parsetree->commandType == CMD_DELETE);
+						parsetree->commandType == CMD_DELETE ||
+						parsetree->commandType == CMD_MERGE);
 				}
 				else if (forUpdatePushedDown ||
 						 get_parse_rowmark(parsetree, rt_index) != NULL)
