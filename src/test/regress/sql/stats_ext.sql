@@ -132,15 +132,6 @@ SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* WHERE a = 0 AND b = 0');
 CREATE STATISTICS stxdinh ON a, b FROM stxdinh;
 VACUUM ANALYZE stxdinh, stxdinh1, stxdinh2;
-<<<<<<< HEAD
--- Since the stats object does not include inherited stats, it should not
--- affect the estimates
-SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
--- Dependencies are applied at individual relations (within append), so
--- this estimate changes a bit because we improve estimates for the parent
-SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* WHERE a = 0 AND b = 0');
-||||||| c4cc2850f4d
-=======
 -- See if the extended stats affect the estimates
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
 -- Dependencies are applied at individual relations (within append), so
@@ -149,17 +140,17 @@ SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* WHERE a = 0 AND b 
 -- Ensure correct (non-inherited) stats are applied to inherited query
 SELECT * FROM check_estimated_rows('SELECT a, b FROM ONLY stxdinh GROUP BY 1, 2');
 SELECT * FROM check_estimated_rows('SELECT a, b FROM ONLY stxdinh WHERE a = 0 AND b = 0');
->>>>>>> 2c7ea57e56c
 DROP TABLE stxdinh, stxdinh1, stxdinh2;
 
 -- Ensure inherited stats ARE applied to inherited query in partitioned table
 CREATE TABLE stxdinp(i int, a int, b int) PARTITION BY RANGE (i);
 CREATE TABLE stxdinp1 PARTITION OF stxdinp FOR VALUES FROM (1) TO (100);
 INSERT INTO stxdinp SELECT 1, a/100, a/100 FROM generate_series(1, 999) a;
-CREATE STATISTICS stxdinp ON a, b FROM stxdinp;
+CREATE STATISTICS stxdinp ON (a + 1), a, b FROM stxdinp;
 VACUUM ANALYZE stxdinp; -- partitions are processed recursively
 SELECT 1 FROM pg_statistic_ext WHERE stxrelid = 'stxdinp'::regclass;
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinp GROUP BY 1, 2');
+SELECT * FROM check_estimated_rows('SELECT a + 1, b FROM ONLY stxdinp GROUP BY 1, 2');
 DROP TABLE stxdinp;
 
 -- basic test for statistics on expressions
