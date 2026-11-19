@@ -2760,8 +2760,8 @@ SET SESSION AUTHORIZATION regress_rls_bob;
 GRANT SELECT ON rls_view TO regress_rls_carol;
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb
-NOTICE:  f_leak => dad
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.4:7002 pid=1483925)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.4:7002 pid=1483925)
  a |  b  
 ---+-----
  2 | bbb
@@ -2780,6 +2780,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 -- Policy requiring access to another table.
 SET SESSION AUTHORIZATION regress_rls_alice;
 CREATE TABLE z1_blacklist (a int);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO z1_blacklist VALUES (3), (4);
 CREATE POLICY p3 ON z1 AS RESTRICTIVE USING (a NOT IN (SELECT a FROM z1_blacklist));
 -- Query as role that is not owner of table but is owner of view without permissions.
@@ -2799,38 +2801,44 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 GRANT SELECT ON z1_blacklist TO regress_rls_bob;
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.4:7002 pid=1483925)
  a |  b  
 ---+-----
  2 | bbb
 (1 row)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
- Seq Scan on z1
-   Filter: ((NOT (hashed SubPlan 1)) AND ((a % 2) = 0) AND f_leak(b))
-   SubPlan 1
-     ->  Seq Scan on z1_blacklist
-(4 rows)
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: ((NOT (hashed SubPlan 1)) AND ((a % 2) = 0) AND f_leak(b))
+         SubPlan 1
+           ->  Broadcast Motion 3:3  (slice2; segments: 3)
+                 ->  Seq Scan on z1_blacklist
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 -- Query as role that is not the owner of the table or view with permissions.
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.4:7002 pid=1483925)
  a |  b  
 ---+-----
  2 | bbb
 (1 row)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
- Seq Scan on z1
-   Filter: ((NOT (hashed SubPlan 1)) AND ((a % 2) = 0) AND f_leak(b))
-   SubPlan 1
-     ->  Seq Scan on z1_blacklist
-(4 rows)
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: ((NOT (hashed SubPlan 1)) AND ((a % 2) = 0) AND f_leak(b))
+         SubPlan 1
+           ->  Broadcast Motion 3:3  (slice2; segments: 3)
+                 ->  Seq Scan on z1_blacklist
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 SET SESSION AUTHORIZATION regress_rls_alice;
 REVOKE SELECT ON z1_blacklist FROM regress_rls_bob;
@@ -2848,10 +2856,10 @@ GRANT SELECT ON rls_view TO regress_rls_bob;
 GRANT SELECT ON rls_view TO regress_rls_carol;
 -- Query as table owner.  Should return all records.
 SELECT * FROM rls_view;
-NOTICE:  f_leak => aba
-NOTICE:  f_leak => bbb
-NOTICE:  f_leak => ccc
-NOTICE:  f_leak => dad
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.4:7002 pid=1483925)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.4:7003 pid=1483927)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.4:7002 pid=1483925)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.4:7002 pid=1483925)
  a |  b  
 ---+-----
  1 | aba
@@ -2861,18 +2869,20 @@ NOTICE:  f_leak => dad
 (4 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-     QUERY PLAN      
----------------------
- Seq Scan on z1
-   Filter: f_leak(b)
-(2 rows)
+                QUERY PLAN                
+------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: f_leak(b)
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 -- Queries as other users.
 -- Should return records based on current user's policies.
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb
-NOTICE:  f_leak => dad
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.4:7002 pid=1483925)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.4:7002 pid=1483925)
  a |  b  
 ---+-----
  2 | bbb
@@ -2880,16 +2890,18 @@ NOTICE:  f_leak => dad
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-               QUERY PLAN                
------------------------------------------
- Seq Scan on z1
-   Filter: (((a % 2) = 0) AND f_leak(b))
-(2 rows)
+                  QUERY PLAN                   
+-----------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: (((a % 2) = 0) AND f_leak(b))
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => aba
-NOTICE:  f_leak => ccc
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.4:7002 pid=1483925)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.4:7003 pid=1483927)
  a |  b  
 ---+-----
  1 | aba
@@ -2897,11 +2909,13 @@ NOTICE:  f_leak => ccc
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-               QUERY PLAN                
------------------------------------------
- Seq Scan on z1
-   Filter: (((a % 2) = 1) AND f_leak(b))
-(2 rows)
+                  QUERY PLAN                   
+-----------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: (((a % 2) = 1) AND f_leak(b))
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 -- View and table owners are different.
 SET SESSION AUTHORIZATION regress_rls_alice;
@@ -2914,10 +2928,10 @@ GRANT SELECT ON rls_view TO regress_rls_carol;
 -- Query as table owner.  Should return all records.
 SET SESSION AUTHORIZATION regress_rls_alice;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => aba
-NOTICE:  f_leak => bbb
-NOTICE:  f_leak => ccc
-NOTICE:  f_leak => dad
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.4:7002 pid=1483925)
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.4:7003 pid=1483927)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.4:7002 pid=1483925)
+NOTICE:  f_leak => dad  (seg0 slice1 172.17.0.4:7002 pid=1483925)
  a |  b  
 ---+-----
  1 | aba
@@ -2927,11 +2941,13 @@ NOTICE:  f_leak => dad
 (4 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-     QUERY PLAN      
----------------------
- Seq Scan on z1
-   Filter: f_leak(b)
-(2 rows)
+                QUERY PLAN                
+------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: f_leak(b)
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 -- Queries as other users.
 -- Should return records based on current user's policies.
@@ -2954,8 +2970,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
 
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => aba
-NOTICE:  f_leak => ccc
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.4:7003 pid=1483927)
+NOTICE:  f_leak => ccc  (seg0 slice1 172.17.0.4:7002 pid=1483925)
  a |  b  
 ---+-----
  1 | aba
@@ -2963,11 +2979,13 @@ NOTICE:  f_leak => ccc
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-               QUERY PLAN                
------------------------------------------
- Seq Scan on z1
-   Filter: (((a % 2) = 1) AND f_leak(b))
-(2 rows)
+                  QUERY PLAN                   
+-----------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: (((a % 2) = 1) AND f_leak(b))
+ Optimizer: Postgres query optimizer
+(4 rows)
 
 -- Policy requiring access to another table.
 SET SESSION AUTHORIZATION regress_rls_alice;
@@ -2989,20 +3007,23 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 GRANT SELECT ON z1_blacklist TO regress_rls_bob;
 SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => bbb
+NOTICE:  f_leak => bbb  (seg0 slice1 172.17.0.4:7002 pid=1483925)
  a |  b  
 ---+-----
  2 | bbb
 (1 row)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
- Seq Scan on z1
-   Filter: ((NOT (hashed SubPlan 1)) AND ((a % 2) = 0) AND f_leak(b))
-   SubPlan 1
-     ->  Seq Scan on z1_blacklist
-(4 rows)
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: ((NOT (hashed SubPlan 1)) AND ((a % 2) = 0) AND f_leak(b))
+         SubPlan 1
+           ->  Broadcast Motion 3:3  (slice2; segments: 3)
+                 ->  Seq Scan on z1_blacklist
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 -- Query as role that is not the owner of the table or view without permissions.
 SET SESSION AUTHORIZATION regress_rls_carol;
@@ -3015,20 +3036,23 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 GRANT SELECT ON z1_blacklist TO regress_rls_carol;
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
-NOTICE:  f_leak => aba
+NOTICE:  f_leak => aba  (seg1 slice1 172.17.0.4:7003 pid=1483927)
  a |  b  
 ---+-----
  1 | aba
 (1 row)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
- Seq Scan on z1
-   Filter: ((NOT (hashed SubPlan 1)) AND ((a % 2) = 1) AND f_leak(b))
-   SubPlan 1
-     ->  Seq Scan on z1_blacklist
-(4 rows)
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Gather Motion 3:1  (slice1; segments: 3)
+   ->  Seq Scan on z1
+         Filter: ((NOT (hashed SubPlan 1)) AND ((a % 2) = 1) AND f_leak(b))
+         SubPlan 1
+           ->  Broadcast Motion 3:3  (slice2; segments: 3)
+                 ->  Seq Scan on z1_blacklist
+ Optimizer: Postgres query optimizer
+(7 rows)
 
 SET SESSION AUTHORIZATION regress_rls_bob;
 DROP VIEW rls_view;

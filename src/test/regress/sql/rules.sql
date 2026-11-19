@@ -1309,13 +1309,6 @@ SELECT * FROM ruletest2;
 DROP TABLE ruletest1;
 DROP TABLE ruletest2;
 
-<<<<<<< HEAD
--- test rule for select-for-update
-create table t_test_rules_select_for_update (c int) distributed randomly;
-create rule myrule as on insert to t_test_rules_select_for_update
-do instead select * from t_test_rules_select_for_update for update;
-||||||| c4cc2850f4d
-=======
 --
 -- Test non-SELECT rule on security invoker view.
 -- Should use view owner's permissions.
@@ -1343,4 +1336,8 @@ DROP TABLE ruletest_t2;
 DROP TABLE ruletest_t1;
 
 DROP USER regress_rule_user1;
->>>>>>> 2c7ea57e56c
+
+-- test rule for select-for-update
+create table t_test_rules_select_for_update (c int) distributed randomly;
+create rule myrule as on insert to t_test_rules_select_for_update
+do instead select * from t_test_rules_select_for_update for update;
