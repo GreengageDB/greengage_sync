@@ -2191,6 +2191,57 @@ readNodeBinary(void)
 			case T_JsonTableSibling:
 				return_value = _readJsonTableSibling();
 				break;
+			case T_JsonOutput:
+				return_value = _readJsonOutput();
+				break;
+			case T_JsonArgument:
+				return_value = _readJsonArgument();
+				break;
+			case T_JsonCommon:
+				return_value = _readJsonCommon();
+				break;
+			case T_JsonFuncExpr:
+				return_value = _readJsonFuncExpr();
+				break;
+			case T_JsonTableColumn:
+				return_value = _readJsonTableColumn();
+				break;
+			case T_JsonTablePlan:
+				return_value = _readJsonTablePlan();
+				break;
+			case T_JsonTable:
+				return_value = _readJsonTable();
+				break;
+			case T_JsonKeyValue:
+				return_value = _readJsonKeyValue();
+				break;
+			case T_JsonParseExpr:
+				return_value = _readJsonParseExpr();
+				break;
+			case T_JsonScalarExpr:
+				return_value = _readJsonScalarExpr();
+				break;
+			case T_JsonSerializeExpr:
+				return_value = _readJsonSerializeExpr();
+				break;
+			case T_JsonObjectConstructor:
+				return_value = _readJsonObjectConstructor();
+				break;
+			case T_JsonArrayConstructor:
+				return_value = _readJsonArrayConstructor();
+				break;
+			case T_JsonArrayQueryConstructor:
+				return_value = _readJsonArrayQueryConstructor();
+				break;
+			case T_JsonAggConstructor:
+				return_value = _readJsonAggConstructor();
+				break;
+			case T_JsonObjectAgg:
+				return_value = _readJsonObjectAgg();
+				break;
+			case T_JsonArrayAgg:
+				return_value = _readJsonArrayAgg();
+				break;
 			case T_GrantStmt:
 				return_value = _readGrantStmt();
 				break;

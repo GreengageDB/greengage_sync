@@ -1347,6 +1347,57 @@ _outNode(StringInfo str, void *obj)
 			case T_JsonTableSibling:
 				_outJsonTableSibling(str, obj);
 				break;
+			case T_JsonOutput:
+				_outJsonOutput(str, obj);
+				break;
+			case T_JsonArgument:
+				_outJsonArgument(str, obj);
+				break;
+			case T_JsonCommon:
+				_outJsonCommon(str, obj);
+				break;
+			case T_JsonFuncExpr:
+				_outJsonFuncExpr(str, obj);
+				break;
+			case T_JsonTableColumn:
+				_outJsonTableColumn(str, obj);
+				break;
+			case T_JsonTablePlan:
+				_outJsonTablePlan(str, obj);
+				break;
+			case T_JsonTable:
+				_outJsonTable(str, obj);
+				break;
+			case T_JsonKeyValue:
+				_outJsonKeyValue(str, obj);
+				break;
+			case T_JsonParseExpr:
+				_outJsonParseExpr(str, obj);
+				break;
+			case T_JsonScalarExpr:
+				_outJsonScalarExpr(str, obj);
+				break;
+			case T_JsonSerializeExpr:
+				_outJsonSerializeExpr(str, obj);
+				break;
+			case T_JsonObjectConstructor:
+				_outJsonObjectConstructor(str, obj);
+				break;
+			case T_JsonArrayConstructor:
+				_outJsonArrayConstructor(str, obj);
+				break;
+			case T_JsonArrayQueryConstructor:
+				_outJsonArrayQueryConstructor(str, obj);
+				break;
+			case T_JsonAggConstructor:
+				_outJsonAggConstructor(str, obj);
+				break;
+			case T_JsonObjectAgg:
+				_outJsonObjectAgg(str, obj);
+				break;
+			case T_JsonArrayAgg:
+				_outJsonArrayAgg(str, obj);
+				break;
 			case T_CreateExtensionStmt:
 				_outCreateExtensionStmt(str, obj);
 				break;
