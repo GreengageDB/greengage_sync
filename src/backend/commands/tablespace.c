@@ -1315,7 +1315,23 @@ remove_symlink:
 		}
 		else
 		{
-			if(directory_is_empty(link_target_dir) && rmdir(link_target_dir) < 0)
+			link_target_dir[rllen] = '\0';
+
+			/*
+			 * Remove the dbid directory once it has become empty, and let
+			 * rmdir() be the one to decide that: ENOTEMPTY means something is
+			 * still kept under it, and ENOENT means it is already gone.
+			 *
+			 * Probing first -- access(), then directory_is_empty() -- left a
+			 * window for the directory to disappear in between, and
+			 * directory_is_empty() reads it through ReadDir(), which reports
+			 * at ERROR whatever 'redo' says.  Losing that race in the startup
+			 * process was therefore a FATAL that took the segment down, and a
+			 * tablespace location shared by every segment of a host -- the
+			 * regression suite's own layout -- is where it is easiest to lose.
+			 */
+			if (rmdir(link_target_dir) < 0 &&
+				errno != ENOENT && errno != ENOTEMPTY)
 				ereport(redo ? LOG : ERROR,
 						(errcode_for_file_access(),
 								errmsg("could not remove directory \"%s\": %m",
