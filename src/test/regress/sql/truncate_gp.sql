@@ -43,7 +43,13 @@ for dbid, datadir in db_instances.items():
     absolute_path_to_dboid_dir = '%s/base/%d' % (datadir, dboid)
     i = i+1
     try:
-        for relfilenode in os.listdir(absolute_path_to_dboid_dir):
+        # sorted(): os.listdir() hands back directory order, so a segment
+        # holding both a base segfile and a .128 column file emits the two in
+        # whichever order the filesystem happens to keep them.  atmsort cannot
+        # rescue that -- the function is called from the target list, so the
+        # whole record arrives as one column it will not parse -- and the test
+        # then flutters on row order alone.
+        for relfilenode in sorted(os.listdir(absolute_path_to_dboid_dir)):
             relfilenode_prefix = relfilenode.split('.')[0]
             if relfilenodes[i] != relfilenode_prefix:
                 continue
