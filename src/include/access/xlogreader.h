@@ -371,6 +371,9 @@ extern DecodedXLogRecord *XLogReadAhead(XLogReaderState *state,
 extern bool XLogReaderValidatePageHeader(XLogReaderState *state,
 										 XLogRecPtr recptr, char *phdr);
 
+/* Forget error produced by XLogReaderValidatePageHeader(). */
+extern void XLogReaderResetError(XLogReaderState *state);
+
 /* In GPDB, this is needed in the backend, too, for WAL replication tests. */
 /* #ifdef FRONTEND */
 #if 1
