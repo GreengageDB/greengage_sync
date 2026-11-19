@@ -4,12 +4,12 @@ fe-connect.c
 fe-exec.c
 fe-gssapi-common.c
 fe-misc.c
-fe-protocol2.c
 fe-protocol3.c
 fe-secure-common.c
 fe-secure-gssapi.c
 fe-secure-openssl.c
 fe-secure.c
+fe-trace.c
 getpeereid.c
 libpq-events.c
 pqexpbuffer.c
