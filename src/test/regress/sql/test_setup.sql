@@ -332,18 +332,18 @@ create operator class part_test_text_ops for type text using hash as
 -- GPDB: statistics for every table this script creates.
 --
 -- The tables above are analyzed right after they are loaded, so their tabstat
--- counters have not reached the stats collector yet and n_mod_since_analyze
--- stays non-zero.  Later test scripts build indexes on these tables, which
--- triggers an auto-ANALYZE, and ORCA, which is very sensitive to statistics,
--- then picks different plans for some queries.  Sleep to let
--- pgstat_report_stat() flush the tabstats, then analyze once more so the
--- counters end up at zero.
+-- counters have not been flushed to the shared stats yet and
+-- n_mod_since_analyze stays non-zero.  Later test scripts build indexes on
+-- these tables, which triggers an auto-ANALYZE, and ORCA, which is very
+-- sensitive to statistics, then picks different plans for some queries.
+-- Sleep past PGSTAT_MIN_INTERVAL so pgstat_report_stat() flushes the
+-- tabstats, then analyze once more so the counters end up at zero.
 --
 -- The small *_TBL tables get no ANALYZE at all upstream.  Without statistics
 -- ORCA emits a "columns do not have statistics" NOTICE into the output of
 -- every test that reads them, so analyze them here too.
 --
-select pg_sleep(0.77);
+select pg_sleep(1.5);
 
 ANALYZE CHAR_TBL;
 ANALYZE FLOAT8_TBL;
