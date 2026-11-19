@@ -5411,13 +5411,13 @@ AS $$
 $$;
 -- show both
 SELECT 1 AS one \; SELECT warn('1.5') \; SELECT 2 AS two ;
+NOTICE:  warn 1.5
+CONTEXT:  PL/pgSQL function warn(text) line 2 at RAISE
  one 
 -----
    1
 (1 row)
 
-NOTICE:  warn 1.5
-CONTEXT:  PL/pgSQL function warn(text) line 2 at RAISE
  warn 
 ------
  t
@@ -5430,13 +5430,13 @@ CONTEXT:  PL/pgSQL function warn(text) line 2 at RAISE
 
 -- \gset applies to last query only
 SELECT 3 AS three \; SELECT warn('3.5') \; SELECT 4 AS four \gset
+NOTICE:  warn 3.5
+CONTEXT:  PL/pgSQL function warn(text) line 2 at RAISE
  three 
 -------
      3
 (1 row)
 
-NOTICE:  warn 3.5
-CONTEXT:  PL/pgSQL function warn(text) line 2 at RAISE
  warn 
 ------
  t
@@ -5467,7 +5467,11 @@ INSERT INTO psql_comics VALUES ('Calvin'), ('hobbes') \;
 COPY psql_comics FROM STDIN \;
 UPDATE psql_comics SET s = 'Hobbes' WHERE s = 'hobbes' \;
 DELETE FROM psql_comics WHERE s = 'Moe' \;
-COPY psql_comics TO STDOUT \;
+-- Greengage: psql_comics is distributed by s, so its rows come back from the
+-- segments in nondeterministic order.  A COPY TO STDOUT inside a \; chain is
+-- not a SELECT result block, so atmsort cannot sort it -- order the rows in
+-- the query itself instead.
+COPY (SELECT s FROM psql_comics ORDER BY s) TO STDOUT \;
 TRUNCATE psql_comics \;
 DROP TABLE psql_comics \;
 SELECT 'ok' AS "done" ;
@@ -5477,8 +5481,8 @@ SELECT 'ok' AS "done" ;
 (1 row)
 
 Calvin
-Susie
 Hobbes
+Susie
  done 
 ------
  ok

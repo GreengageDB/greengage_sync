@@ -284,7 +284,14 @@ check_completion(
 	qr|tmp_check/somefile |,
 	"filename completion with one possibility");
 
-clear_query();
+# GPDB: clear_line, not clear_query.  clear_query appends "\r" to the line
+# readline has built, so the \lo_import above is run before \r is reached --
+# and lo_import raises "large objects are not supported" here
+# (libpq/be-fsstubs.c), on which psql discards the rest of the line and \r
+# never prints "Query buffer reset".  Control-U drops the line unexecuted,
+# which is all this needs to do; the completion itself is client-side and is
+# what the check above asserts.
+clear_line();
 
 # note: readline might print a bell before the completion
 check_completion(
