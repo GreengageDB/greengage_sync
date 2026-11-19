@@ -251,6 +251,12 @@ EXPLAIN (COSTS OFF)
 SELECT circle_center(f1), round(radius(f1)) as radius FROM gcircle_tbl ORDER BY f1 <-> '(200,300)'::point LIMIT 10;
 SELECT circle_center(f1), round(radius(f1)) as radius FROM gcircle_tbl ORDER BY f1 <-> '(200,300)'::point LIMIT 10;
 
+-- GG: upstream exercises a k-NN index scan rescanned once per row of
+-- generate_series, which is what the query was written for (a memory leak in
+-- the reordering code).  Greengage cannot plan that: the order-by operand
+-- references the outer query, and a parameter cannot cross a Motion, so
+-- bring_to_outer_query() refuses the ordered index path and the subplan
+-- gathers the table and sorts instead.  The result rows are still upstream's.
 EXPLAIN (COSTS OFF)
 SELECT point(x,x), (SELECT f1 FROM gpolygon_tbl ORDER BY f1 <-> point(x,x) LIMIT 1) as c FROM generate_series(0,10,1) x;
 SELECT point(x,x), (SELECT f1 FROM gpolygon_tbl ORDER BY f1 <-> point(x,x) LIMIT 1) as c FROM generate_series(0,10,1) x;
@@ -776,6 +782,12 @@ SELECT unique1 FROM tenk1
 WHERE unique1 IN (1,42,7)
 ORDER BY unique1;
 
+-- GG: upstream keeps the =ANY qual out of the index condition here so that the
+-- scan stays ordered on thousand.  Greengage costs the other way round: with
+-- the qual in the index condition the per-segment scan reads two index entries
+-- instead of twenty, and sorting what is left is cheaper than the ordered scan
+-- (12.8 against 32.4 on a three-segment cluster).  The rows below still come
+-- out ordered, which is what this test was written to check.
 explain (costs off)
 SELECT thousand, tenthous FROM tenk1
 WHERE thousand < 2 AND tenthous IN (1001,3000)
