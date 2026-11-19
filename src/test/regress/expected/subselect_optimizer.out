@@ -821,16 +821,17 @@ select 'foo'::text in (select 'bar'::name union all select 'bar'::name);
 --
 explain (verbose, costs off)
 select row(row(row(1))) = any (select row(row(1)));
-                QUERY PLAN                 
--------------------------------------------
+             QUERY PLAN              
+-------------------------------------
  Result
    Output: (SubPlan 1)
    SubPlan 1
      ->  Materialize
-           Output: '("(1)")'::record
+           Output: (ROW(ROW(1)))
            ->  Result
-                 Output: '("(1)")'::record
-(7 rows)
+                 Output: ROW(ROW(1))
+ Optimizer: Postgres query optimizer
+(8 rows)
 
 select row(row(row(1))) = any (select row(row(1)));
  ?column? 

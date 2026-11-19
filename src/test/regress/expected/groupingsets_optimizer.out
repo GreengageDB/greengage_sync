@@ -2730,21 +2730,24 @@ order by a, b, c;
 -- test handling of outer GroupingFunc within subqueries
 explain (costs off)
 select (select grouping(v1)) from (values ((select 1))) v(v1) group by cube(v1);
-        QUERY PLAN         
----------------------------
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Grouping function with outer references
+             QUERY PLAN              
+-------------------------------------
  MixedAggregate
    Hash Key: $2
    Group Key: ()
-   InitPlan 1 (returns $1)
-     ->  Result
    InitPlan 3 (returns $2)
      ->  Result
    ->  Result
    SubPlan 2
      ->  Result
-(10 rows)
+ Optimizer: Postgres query optimizer
+(9 rows)
 
 select (select grouping(v1)) from (values ((select 1))) v(v1) group by cube(v1);
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Grouping function with outer references
  grouping 
 ----------
         1
@@ -2753,8 +2756,10 @@ select (select grouping(v1)) from (values ((select 1))) v(v1) group by cube(v1);
 
 explain (costs off)
 select (select grouping(v1)) from (values ((select 1))) v(v1) group by v1;
-        QUERY PLAN         
----------------------------
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Grouping function with outer references
+             QUERY PLAN              
+-------------------------------------
  GroupAggregate
    Group Key: $2
    InitPlan 1 (returns $1)
@@ -2764,9 +2769,12 @@ select (select grouping(v1)) from (values ((select 1))) v(v1) group by v1;
    ->  Result
    SubPlan 2
      ->  Result
-(9 rows)
+ Optimizer: Postgres query optimizer
+(10 rows)
 
 select (select grouping(v1)) from (values ((select 1))) v(v1) group by v1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Grouping function with outer references
  grouping 
 ----------
         0
