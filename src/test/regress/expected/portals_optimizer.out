@@ -1070,7 +1070,7 @@ DECLARE c1 CURSOR FOR SELECT stringu1 FROM onek WHERE stringu1 = 'DZAAAA';
                       QUERY PLAN                       
 -------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
-   ->  Index Scan using onek_stringu1 on onek
+   ->  Index Only Scan using onek_stringu1 on onek
          Index Cond: (stringu1 = 'DZAAAA'::name)
  Optimizer: Pivotal Optimizer (GPORCA)
 (4 rows)

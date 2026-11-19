@@ -665,6 +665,11 @@ select box(point(0.05*i, 0.05*i), point(0.05*i, 0.05*i)),
 from generate_series(0,10000) as i;
 vacuum analyze gist_tbl_github9733;
 create index gist_tbl_point_index_github9733 on gist_tbl_github9733 using gist (p);
+-- With enable_seqscan=off that indexpath is also the only path add_path keeps,
+-- so rejecting it used to leave the relation with no path at all and the query
+-- failed with "could not devise a query plan for the given query".  The
+-- sequential path is now re-created in that case, which is why both of the
+-- plans below are the same.
 set enable_seqscan=off;
 set enable_bitmapscan=off;
 explain (costs off)
