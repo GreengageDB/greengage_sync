@@ -1,7 +1,15 @@
--- Mask out segment file name
+-- Mask out segment file name.  Masking the value is not enough on its own:
+-- psql sizes the column from the unmasked text, so a dboid or relfilenode
+-- with a different number of digits shifts the column header's padding even
+-- though every value still reduces to segfile###.  Normalise the header too,
+-- or this test fails on any cluster whose OIDs are a digit wider.  (The
+-- dashed rule needs nothing -- init_file already collapses it.)
 -- start_matchsubs
 -- m/segfile.*,/
 -- s/segfile:\d+\/\d+/segfile###/
+--
+-- m/^\s+stat_table_segfile_size\s*$/
+-- s/^\s+stat_table_segfile_size\s*$/ stat_table_segfile_size/
 -- end_matchsubs
 
 -- start_ignore
