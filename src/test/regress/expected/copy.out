@@ -4,6 +4,16 @@
 -- directory paths are passed to us in environment variables
 \getenv abs_srcdir PG_ABS_SRCDIR
 \getenv abs_builddir PG_ABS_BUILDDIR
+-- GPDB: the shared regression tables (onek, tenk1, ...) are created and
+-- loaded in test_setup.sql.  What is left here is the GPDB-specific
+-- 'singleseg' copy of tenk1, which holds all its rows in a single segment.
+-- This comes handy in making some PostgreSQL tests pass on GPDB, where data
+-- distribution might make a difference to a test result.
+CREATE SCHEMA singleseg;
+create table singleseg.tenk1 (like tenk1, distkey int4) distributed by (distkey);
+\set filename :abs_srcdir '/data/tenk.data'
+COPY singleseg.tenk1 (unique1,unique2,two,four,ten,twenty,hundred,thousand,twothousand,fivethous,tenthous,odd,even,stringu1,stringu2,string4) FROM :'filename';
+ANALYZE singleseg.tenk1;
 --- test copying in CSV mode with various styles
 --- of embedded line ending characters
 create temp table copytest (

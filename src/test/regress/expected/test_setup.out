@@ -277,7 +277,7 @@ CREATE FUNCTION binary_coercible(oid, oid)
 CREATE FUNCTION ttdummy ()
     RETURNS trigger
     AS :'regresslib'
-    LANGUAGE C;
+    LANGUAGE C READS SQL DATA;
 CREATE FUNCTION get_column_offset (oid[])
     RETURNS int
     AS :'regresslib'
