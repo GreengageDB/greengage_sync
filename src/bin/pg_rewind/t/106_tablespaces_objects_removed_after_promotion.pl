@@ -3,7 +3,7 @@ use warnings;
 use File::Path qw(rmtree);
 use Cwd qw(abs_path realpath);
 use PostgreSQL::Test::Utils;
-use Test::More tests => 13;
+use Test::More;
 
 use FindBin;
 use lib $FindBin::RealBin;
@@ -78,5 +78,7 @@ sub run_test
 # Run the test in both modes
 run_test('local');
 run_test('remote');
+
+done_testing();
 
 exit(0);
