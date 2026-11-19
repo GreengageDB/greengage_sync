@@ -845,25 +845,43 @@ CREATE POLICY p4 ON document FOR DELETE
 
 SELECT * FROM document;
 
+-- GGDB: upstream sources every MERGE below from a one-row SELECT with no FROM,
+-- which plans on the entry database.  The ModifyTable subplan then reaches the
+-- segments through a Gather and an Explicit Redistribute Motion, and that
+-- motion routes each row by the gp_segment_id of the target row it matched --
+-- which a WHEN NOT MATCHED row does not have.  Source them from a table
+-- distributed on sdid instead: the join is then on document's own distribution
+-- key did, so it is co-located and the MERGE needs no motion at all.  The rows
+-- the statements select are unchanged, and so is everything the block asserts
+-- about the row-level security policies.
+--
+-- Each statement picks its one source row by the 'which' label rather than by
+-- sdid: a constant qual on sdid would be propagated to did as well, and the
+-- target scan would then be direct-dispatched to a single segment and
+-- redistributed back, which is the motion this is avoiding.
+CREATE TABLE rls_merge_src (sdid int, which text) DISTRIBUTED BY (sdid);
+INSERT INTO rls_merge_src VALUES (1, 'd1'), (3, 'd3'), (4, 'd4'), (12, 'd12');
+GRANT SELECT ON rls_merge_src TO PUBLIC;
+
 SET SESSION AUTHORIZATION regress_rls_bob;
 
 -- Fails, since update violates WITH CHECK qual on dauthor
 MERGE INTO document d
-USING (SELECT 1 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd1') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge1 ', dauthor = 'regress_rls_alice';
 
 -- Should be OK since USING and WITH CHECK quals pass
 MERGE INTO document d
-USING (SELECT 1 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd1') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge2 ';
 
 -- Even when dauthor is updated explicitly, but to the existing value
 MERGE INTO document d
-USING (SELECT 1 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd1') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge3 ', dauthor = 'regress_rls_bob';
@@ -871,7 +889,7 @@ WHEN MATCHED THEN
 -- There is a MATCH for did = 3, but UPDATE's USING qual does not allow
 -- updating an item in category 'science fiction'
 MERGE INTO document d
-USING (SELECT 3 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd3') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge ';
@@ -879,7 +897,7 @@ WHEN MATCHED THEN
 -- The same thing with DELETE action, but fails again because no permissions
 -- to delete items in 'science fiction' category that did 3 belongs to.
 MERGE INTO document d
-USING (SELECT 3 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd3') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	DELETE;
@@ -888,7 +906,7 @@ WHEN MATCHED THEN
 -- deletion. But this fails because the UPDATE action is matched first and
 -- UPDATE policy does not allow updation in the category.
 MERGE INTO document d
-USING (SELECT 4 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd4') s
 ON did = s.sdid
 WHEN MATCHED AND dnotes = '' THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge '
@@ -899,7 +917,7 @@ WHEN MATCHED THEN
 -- DELETE still fails because role regress_rls_bob does not have SELECT
 -- privileges on 'manga' category row in the category table.
 MERGE INTO document d
-USING (SELECT 4 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd4') s
 ON did = s.sdid
 WHEN MATCHED AND dnotes <> '' THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge '
@@ -914,7 +932,7 @@ RESET SESSION AUTHORIZATION;
 SET SESSION AUTHORIZATION regress_rls_carol;
 
 MERGE INTO document d
-USING (SELECT 4 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd4') s
 ON did = s.sdid
 WHEN MATCHED AND dnotes <> '' THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge '
@@ -929,7 +947,7 @@ SET SESSION AUTHORIZATION regress_rls_bob;
 -- dauthor = regress_rls_dave and INSERT's WITH CHECK does not allow
 -- that
 MERGE INTO document d
-USING (SELECT 12 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd12') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	DELETE
@@ -938,7 +956,7 @@ WHEN NOT MATCHED THEN
 
 -- This should be fine
 MERGE INTO document d
-USING (SELECT 12 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd12') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	DELETE
@@ -947,7 +965,7 @@ WHEN NOT MATCHED THEN
 
 -- ok
 MERGE INTO document d
-USING (SELECT 1 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd1') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge4 '
@@ -966,7 +984,7 @@ SET SESSION AUTHORIZATION regress_rls_bob;
 -- MERGE can no longer see the matching row and hence attempts the
 -- NOT MATCHED action, which results in unique key violation
 MERGE INTO document d
-USING (SELECT 1 as sdid) s
+USING (SELECT sdid FROM rls_merge_src WHERE which = 'd1') s
 ON did = s.sdid
 WHEN MATCHED THEN
 	UPDATE SET dnotes = dnotes || ' notes added by merge5 '
@@ -979,6 +997,7 @@ RESET SESSION AUTHORIZATION;
 DROP POLICY p1 ON document;
 -- Just check everything went per plan
 SELECT * FROM document;
+DROP TABLE rls_merge_src;
 
 --
 -- ROLE/GROUP

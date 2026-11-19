@@ -724,6 +724,14 @@ CTranslatorQueryToDXL::TranslateQueryToDXL()
 		case CMD_UPDATE:
 			return TranslateUpdateQueryToDXL();
 
+		case CMD_MERGE:
+			// GPDB_15_MERGE_FIXME: GPORCA cannot translate MERGE yet, so fall
+			// back to the Postgres planner.  Raise rather than reach the
+			// default case below: that one only asserts, so a cassert-off
+			// build carried the nullptr on into COptTasks and crashed.
+			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature,
+					   GPOS_WSZ_LIT("MERGE"));
+
 		default:
 			GPOS_ASSERT(!"Statement type not supported");
 			return nullptr;
