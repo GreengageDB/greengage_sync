@@ -1866,12 +1866,13 @@ tuplesort_putindextuplevalues(Tuplesortstate *state, Relation rel,
 							  ItemPointer self, Datum *values,
 							  bool *isnull)
 {
-	MemoryContext oldcontext = MemoryContextSwitchTo(state->tuplecontext);
+	MemoryContext oldcontext;
 	SortTuple	stup;
 	Datum		original;
 	IndexTuple	tuple;
 
-	stup.tuple = index_form_tuple(RelationGetDescr(rel), values, isnull);
+	stup.tuple = index_form_tuple_context(RelationGetDescr(rel), values,
+										  isnull, state->tuplecontext);
 	tuple = ((IndexTuple) stup.tuple);
 	tuple->t_tid = *self;
 	USEMEM(state, GetMemoryChunkSpace(stup.tuple));
@@ -1881,7 +1882,7 @@ tuplesort_putindextuplevalues(Tuplesortstate *state, Relation rel,
 							 RelationGetDescr(state->indexRel),
 							 &stup.isnull1);
 
-	MemoryContextSwitchTo(state->sortcontext);
+	oldcontext = MemoryContextSwitchTo(state->sortcontext);
 
 	if (!state->sortKeys || !state->sortKeys->abbrev_converter || stup.isnull1)
 	{
@@ -4996,7 +4997,6 @@ free_sort_tuple(Tuplesortstate *state, SortTuple *stup)
 	}
 }
 
-<<<<<<< HEAD
 /*
  * tuplesort_set_instrument
  *
@@ -5037,8 +5037,8 @@ tuplesort_finalize_stats(Tuplesortstate *state,
 		state->instrument->execmemused += MemoryContextGetPeakSpace(state->maincontext);
 	}
 	tuplesort_get_stats(state, stats);
-||||||| c4cc2850f4d
-=======
+}
+
 int
 ssup_datum_unsigned_cmp(Datum x, Datum y, SortSupport ssup)
 {
@@ -5081,5 +5081,4 @@ ssup_datum_int32_cmp(Datum x, Datum y, SortSupport ssup)
 		return 1;
 	else
 		return 0;
->>>>>>> 2c7ea57e56c
 }
