@@ -2343,9 +2343,12 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	 * segment's tablespace directory.
 	 *
 	 * Only possible when the archive was extracted into basedir; tar backups
-	 * need the file to be added manually (see main()).
+	 * need the file to be added manually (see main()).  --target leaves
+	 * basedir NULL -- the backup never passes through this process at all --
+	 * so there is nothing here to rewrite, and the dbid the caller gave is
+	 * not ours to apply to someone else's filesystem.
 	 */
-	if (format == 'p')
+	if (backup_target == NULL && format == 'p')
 		WriteInternalConfFile();
 
 	if (showprogress)
