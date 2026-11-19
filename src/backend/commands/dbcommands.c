@@ -1834,15 +1834,10 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	 * Tell the cumulative stats system to forget it immediately, too.
 	 */
 	pgstat_drop_database(db_id);
-	
+
 	/* MPP-6929: metadata tracking */
 	if (Gp_role == GP_ROLE_DISPATCH)
 		MetaTrackDropObject(DatabaseRelationId, db_id);
-
-	/*
-	 * Tell the stats collector to forget it immediately, too.
-	 */
-	pgstat_drop_database(db_id);
 
 	/*
 	 * Tell checkpointer to forget any pending fsync and unlink requests for
