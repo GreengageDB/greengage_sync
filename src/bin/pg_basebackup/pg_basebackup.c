@@ -1769,15 +1769,6 @@ ReceiveTarFile(PGconn *conn, char *archive_name, char *spclocation,
 	progress_report(tablespacenum, true, false);
 
 	/*
-	 * GPDB: the main tablespace carried the source segment's
-	 * internal.auto.conf; overwrite it with the target segment's dbid.  This
-	 * is only possible when the archive was extracted into basedir; tar
-	 * backups need the file to be added manually (see main()).
-	 */
-	if (format == 'p' && spclocation == NULL)
-		WriteInternalConfFile();
-
-	/*
 	 * Do not sync the resulting tar file yet, all files are synced once at
 	 * the end.
 	 */
@@ -2340,6 +2331,22 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 		if (!writing_to_stdout && manifest)
 			ReceiveBackupManifest(conn);
 	}
+
+	/*
+	 * GPDB: the data directory we just extracted carries the source segment's
+	 * internal.auto.conf; overwrite it with the target segment's dbid.  Do
+	 * this for both protocols above -- a PostgreSQL 15 server sends one
+	 * archive stream for the whole backup and never reaches ReceiveTarFile(),
+	 * where this used to live.  A segment that keeps its source's gp_dbid
+	 * reports the wrong identity to the coordinator and, since a tablespace's
+	 * per-segment files live under <location>/<dbid>/, writes into the other
+	 * segment's tablespace directory.
+	 *
+	 * Only possible when the archive was extracted into basedir; tar backups
+	 * need the file to be added manually (see main()).
+	 */
+	if (format == 'p')
+		WriteInternalConfFile();
 
 	if (showprogress)
 	{
