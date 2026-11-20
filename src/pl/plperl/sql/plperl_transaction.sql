@@ -160,8 +160,18 @@ SELECT * FROM pg_cursors;
 
 
 -- check handling of an error during COMMIT
+-- GPDB: upstream makes the commit fail with a deferred FOREIGN KEY constraint.
+-- Greengage accepts a FOREIGN KEY and then does not enforce it -- CREATE TABLE
+-- answers "referential integrity (FOREIGN KEY) constraints are not supported
+-- ..., will not be enforced" -- so the commit would succeed and the two blocks
+-- below would assert nothing at all.  A DEFERRABLE INITIALLY DEFERRED UNIQUE
+-- constraint *is* deferred to commit here, so make the failing thing a
+-- duplicate of a seeded row instead.  What these blocks exist to prove is
+-- unchanged: an error raised inside spi_commit() must be reported, and must
+-- leave a usable transaction behind for the statements that follow.
 CREATE TABLE testpk (id int PRIMARY KEY);
-CREATE TABLE testfk(f1 int REFERENCES testpk DEFERRABLE INITIALLY DEFERRED);
+CREATE TABLE testfk(f1 int UNIQUE DEFERRABLE INITIALLY DEFERRED);
+INSERT INTO testfk VALUES (0);
 
 DO LANGUAGE plperl $$
 # this insert will fail during commit:

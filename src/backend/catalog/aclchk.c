@@ -278,14 +278,11 @@ restrict_and_check_grant(bool is_grant, AclMode avail_goptions, bool all_privs,
 		case OBJECT_TYPE:
 			whole_mask = ACL_ALL_RIGHTS_TYPE;
 			break;
-<<<<<<< HEAD
-		case OBJECT_EXTPROTOCOL:
-			whole_mask = ACL_ALL_RIGHTS_EXTPROTOCOL;
-||||||| c4cc2850f4d
-=======
 		case OBJECT_PARAMETER_ACL:
 			whole_mask = ACL_ALL_RIGHTS_PARAMETER_ACL;
->>>>>>> 2c7ea57e56c
+			break;
+		case OBJECT_EXTPROTOCOL:
+			whole_mask = ACL_ALL_RIGHTS_EXTPROTOCOL;
 			break;
 		default:
 			elog(ERROR, "unrecognized object type: %d", objtype);
@@ -536,16 +533,13 @@ ExecuteGrantStmt(GrantStmt *stmt)
 			all_privileges = ACL_ALL_RIGHTS_FOREIGN_SERVER;
 			errormsg = gettext_noop("invalid privilege type %s for foreign server");
 			break;
-<<<<<<< HEAD
-		case OBJECT_EXTPROTOCOL:
-			all_privileges = ACL_ALL_RIGHTS_EXTPROTOCOL;
-			errormsg = gettext_noop("invalid privilege type %s for external protocol");
-||||||| c4cc2850f4d
-=======
 		case OBJECT_PARAMETER_ACL:
 			all_privileges = ACL_ALL_RIGHTS_PARAMETER_ACL;
 			errormsg = gettext_noop("invalid privilege type %s for parameter");
->>>>>>> 2c7ea57e56c
+			break;
+		case OBJECT_EXTPROTOCOL:
+			all_privileges = ACL_ALL_RIGHTS_EXTPROTOCOL;
+			errormsg = gettext_noop("invalid privilege type %s for external protocol");
 			break;
 		default:
 			elog(ERROR, "unrecognized GrantStmt.objtype: %d",
@@ -690,14 +684,11 @@ ExecGrantStmt_oids(InternalGrant *istmt)
 		case OBJECT_TABLESPACE:
 			ExecGrant_Tablespace(istmt);
 			break;
-<<<<<<< HEAD
-		case OBJECT_EXTPROTOCOL:
-			ExecGrant_ExtProtocol(istmt);
-||||||| c4cc2850f4d
-=======
 		case OBJECT_PARAMETER_ACL:
 			ExecGrant_Parameter(istmt);
->>>>>>> 2c7ea57e56c
+			break;
+		case OBJECT_EXTPROTOCOL:
+			ExecGrant_ExtProtocol(istmt);
 			break;
 		default:
 			elog(ERROR, "unrecognized GrantStmt.objtype: %d",
@@ -889,16 +880,6 @@ objectNamesToOids(ObjectType objtype, List *objnames, bool is_grant)
 				objects = lappend_oid(objects, srvid);
 			}
 			break;
-<<<<<<< HEAD
-		case OBJECT_EXTPROTOCOL:
-			foreach(cell, objnames)
-			{
-				char	   *ptcname = strVal(lfirst(cell));
-				Oid			ptcid = get_extprotocol_oid(ptcname, false);
-
-				objects = lappend_oid(objects, ptcid);
-||||||| c4cc2850f4d
-=======
 		case OBJECT_PARAMETER_ACL:
 			foreach(cell, objnames)
 			{
@@ -928,7 +909,15 @@ objectNamesToOids(ObjectType objtype, List *objnames, bool is_grant)
 				}
 				if (OidIsValid(parameterId))
 					objects = lappend_oid(objects, parameterId);
->>>>>>> 2c7ea57e56c
+			}
+			break;
+		case OBJECT_EXTPROTOCOL:
+			foreach(cell, objnames)
+			{
+				char	   *ptcname = strVal(lfirst(cell));
+				Oid			ptcid = get_extprotocol_oid(ptcname, false);
+
+				objects = lappend_oid(objects, ptcid);
 			}
 			break;
 		default:
@@ -1677,14 +1666,11 @@ RemoveRoleFromObjectACL(Oid roleid, Oid classid, Oid objid)
 			case ForeignDataWrapperRelationId:
 				istmt.objtype = OBJECT_FDW;
 				break;
-<<<<<<< HEAD
-			case ExtprotocolRelationId:
-				istmt.objtype = OBJECT_EXTPROTOCOL;
-||||||| c4cc2850f4d
-=======
 			case ParameterAclRelationId:
 				istmt.objtype = OBJECT_PARAMETER_ACL;
->>>>>>> 2c7ea57e56c
+				break;
+			case ExtprotocolRelationId:
+				istmt.objtype = OBJECT_EXTPROTOCOL;
 				break;
 			default:
 				elog(ERROR, "unexpected object class %u", classid);
@@ -3466,7 +3452,154 @@ ExecGrant_Type(InternalGrant *istmt)
 }
 
 static void
-<<<<<<< HEAD
+ExecGrant_Parameter(InternalGrant *istmt)
+{
+	Relation	relation;
+	ListCell   *cell;
+
+	if (istmt->all_privs && istmt->privileges == ACL_NO_RIGHTS)
+		istmt->privileges = ACL_ALL_RIGHTS_PARAMETER_ACL;
+
+	relation = table_open(ParameterAclRelationId, RowExclusiveLock);
+
+	foreach(cell, istmt->objects)
+	{
+		Oid			parameterId = lfirst_oid(cell);
+		Datum		nameDatum;
+		const char *parname;
+		Datum		aclDatum;
+		bool		isNull;
+		AclMode		avail_goptions;
+		AclMode		this_privileges;
+		Acl		   *old_acl;
+		Acl		   *new_acl;
+		Oid			grantorId;
+		Oid			ownerId;
+		HeapTuple	tuple;
+		int			noldmembers;
+		int			nnewmembers;
+		Oid		   *oldmembers;
+		Oid		   *newmembers;
+
+		tuple = SearchSysCache1(PARAMETERACLOID, ObjectIdGetDatum(parameterId));
+		if (!HeapTupleIsValid(tuple))
+			elog(ERROR, "cache lookup failed for parameter ACL %u",
+				 parameterId);
+
+		/* We'll need the GUC's name */
+		nameDatum = SysCacheGetAttr(PARAMETERACLOID, tuple,
+									Anum_pg_parameter_acl_parname,
+									&isNull);
+		Assert(!isNull);
+		parname = TextDatumGetCString(nameDatum);
+
+		/* Treat all parameters as belonging to the bootstrap superuser. */
+		ownerId = BOOTSTRAP_SUPERUSERID;
+
+		/*
+		 * Get working copy of existing ACL. If there's no ACL, substitute the
+		 * proper default.
+		 */
+		aclDatum = SysCacheGetAttr(PARAMETERACLOID, tuple,
+								   Anum_pg_parameter_acl_paracl,
+								   &isNull);
+
+		if (isNull)
+		{
+			old_acl = acldefault(istmt->objtype, ownerId);
+			/* There are no old member roles according to the catalogs */
+			noldmembers = 0;
+			oldmembers = NULL;
+		}
+		else
+		{
+			old_acl = DatumGetAclPCopy(aclDatum);
+			/* Get the roles mentioned in the existing ACL */
+			noldmembers = aclmembers(old_acl, &oldmembers);
+		}
+
+		/* Determine ID to do the grant as, and available grant options */
+		select_best_grantor(GetUserId(), istmt->privileges,
+							old_acl, ownerId,
+							&grantorId, &avail_goptions);
+
+		/*
+		 * Restrict the privileges to what we can actually grant, and emit the
+		 * standards-mandated warning and error messages.
+		 */
+		this_privileges =
+			restrict_and_check_grant(istmt->is_grant, avail_goptions,
+									 istmt->all_privs, istmt->privileges,
+									 parameterId, grantorId,
+									 OBJECT_PARAMETER_ACL,
+									 parname,
+									 0, NULL);
+
+		/*
+		 * Generate new ACL.
+		 */
+		new_acl = merge_acl_with_grant(old_acl, istmt->is_grant,
+									   istmt->grant_option, istmt->behavior,
+									   istmt->grantees, this_privileges,
+									   grantorId, ownerId);
+
+		/*
+		 * We need the members of both old and new ACLs so we can correct the
+		 * shared dependency information.
+		 */
+		nnewmembers = aclmembers(new_acl, &newmembers);
+
+		/*
+		 * If the new ACL is equal to the default, we don't need the catalog
+		 * entry any longer.  Delete it rather than updating it, to avoid
+		 * leaving a degenerate entry.
+		 */
+		if (aclequal(new_acl, acldefault(istmt->objtype, ownerId)))
+		{
+			CatalogTupleDelete(relation, &tuple->t_self);
+		}
+		else
+		{
+			/* finished building new ACL value, now insert it */
+			HeapTuple	newtuple;
+			Datum		values[Natts_pg_parameter_acl];
+			bool		nulls[Natts_pg_parameter_acl];
+			bool		replaces[Natts_pg_parameter_acl];
+
+			MemSet(values, 0, sizeof(values));
+			MemSet(nulls, false, sizeof(nulls));
+			MemSet(replaces, false, sizeof(replaces));
+
+			replaces[Anum_pg_parameter_acl_paracl - 1] = true;
+			values[Anum_pg_parameter_acl_paracl - 1] = PointerGetDatum(new_acl);
+
+			newtuple = heap_modify_tuple(tuple, RelationGetDescr(relation),
+										 values, nulls, replaces);
+
+			CatalogTupleUpdate(relation, &newtuple->t_self, newtuple);
+		}
+
+		/* Update initial privileges for extensions */
+		recordExtensionInitPriv(parameterId, ParameterAclRelationId, 0,
+								new_acl);
+
+		/* Update the shared dependency ACL info */
+		updateAclDependencies(ParameterAclRelationId, parameterId, 0,
+							  ownerId,
+							  noldmembers, oldmembers,
+							  nnewmembers, newmembers);
+
+		ReleaseSysCache(tuple);
+		pfree(new_acl);
+
+		/* prevent error when processing duplicate objects */
+		CommandCounterIncrement();
+	}
+
+	table_close(relation, RowExclusiveLock);
+}
+
+static void
 ExecGrant_ExtProtocol(InternalGrant *istmt)
 {
     Relation	relation;
@@ -3631,156 +3764,6 @@ ExecGrant_ExtProtocol(InternalGrant *istmt)
 
     table_close(relation, RowExclusiveLock);
 }
-||||||| c4cc2850f4d
-=======
-ExecGrant_Parameter(InternalGrant *istmt)
-{
-	Relation	relation;
-	ListCell   *cell;
-
-	if (istmt->all_privs && istmt->privileges == ACL_NO_RIGHTS)
-		istmt->privileges = ACL_ALL_RIGHTS_PARAMETER_ACL;
-
-	relation = table_open(ParameterAclRelationId, RowExclusiveLock);
-
-	foreach(cell, istmt->objects)
-	{
-		Oid			parameterId = lfirst_oid(cell);
-		Datum		nameDatum;
-		const char *parname;
-		Datum		aclDatum;
-		bool		isNull;
-		AclMode		avail_goptions;
-		AclMode		this_privileges;
-		Acl		   *old_acl;
-		Acl		   *new_acl;
-		Oid			grantorId;
-		Oid			ownerId;
-		HeapTuple	tuple;
-		int			noldmembers;
-		int			nnewmembers;
-		Oid		   *oldmembers;
-		Oid		   *newmembers;
-
-		tuple = SearchSysCache1(PARAMETERACLOID, ObjectIdGetDatum(parameterId));
-		if (!HeapTupleIsValid(tuple))
-			elog(ERROR, "cache lookup failed for parameter ACL %u",
-				 parameterId);
-
-		/* We'll need the GUC's name */
-		nameDatum = SysCacheGetAttr(PARAMETERACLOID, tuple,
-									Anum_pg_parameter_acl_parname,
-									&isNull);
-		Assert(!isNull);
-		parname = TextDatumGetCString(nameDatum);
-
-		/* Treat all parameters as belonging to the bootstrap superuser. */
-		ownerId = BOOTSTRAP_SUPERUSERID;
-
-		/*
-		 * Get working copy of existing ACL. If there's no ACL, substitute the
-		 * proper default.
-		 */
-		aclDatum = SysCacheGetAttr(PARAMETERACLOID, tuple,
-								   Anum_pg_parameter_acl_paracl,
-								   &isNull);
-
-		if (isNull)
-		{
-			old_acl = acldefault(istmt->objtype, ownerId);
-			/* There are no old member roles according to the catalogs */
-			noldmembers = 0;
-			oldmembers = NULL;
-		}
-		else
-		{
-			old_acl = DatumGetAclPCopy(aclDatum);
-			/* Get the roles mentioned in the existing ACL */
-			noldmembers = aclmembers(old_acl, &oldmembers);
-		}
-
-		/* Determine ID to do the grant as, and available grant options */
-		select_best_grantor(GetUserId(), istmt->privileges,
-							old_acl, ownerId,
-							&grantorId, &avail_goptions);
-
-		/*
-		 * Restrict the privileges to what we can actually grant, and emit the
-		 * standards-mandated warning and error messages.
-		 */
-		this_privileges =
-			restrict_and_check_grant(istmt->is_grant, avail_goptions,
-									 istmt->all_privs, istmt->privileges,
-									 parameterId, grantorId,
-									 OBJECT_PARAMETER_ACL,
-									 parname,
-									 0, NULL);
-
-		/*
-		 * Generate new ACL.
-		 */
-		new_acl = merge_acl_with_grant(old_acl, istmt->is_grant,
-									   istmt->grant_option, istmt->behavior,
-									   istmt->grantees, this_privileges,
-									   grantorId, ownerId);
-
-		/*
-		 * We need the members of both old and new ACLs so we can correct the
-		 * shared dependency information.
-		 */
-		nnewmembers = aclmembers(new_acl, &newmembers);
-
-		/*
-		 * If the new ACL is equal to the default, we don't need the catalog
-		 * entry any longer.  Delete it rather than updating it, to avoid
-		 * leaving a degenerate entry.
-		 */
-		if (aclequal(new_acl, acldefault(istmt->objtype, ownerId)))
-		{
-			CatalogTupleDelete(relation, &tuple->t_self);
-		}
-		else
-		{
-			/* finished building new ACL value, now insert it */
-			HeapTuple	newtuple;
-			Datum		values[Natts_pg_parameter_acl];
-			bool		nulls[Natts_pg_parameter_acl];
-			bool		replaces[Natts_pg_parameter_acl];
-
-			MemSet(values, 0, sizeof(values));
-			MemSet(nulls, false, sizeof(nulls));
-			MemSet(replaces, false, sizeof(replaces));
-
-			replaces[Anum_pg_parameter_acl_paracl - 1] = true;
-			values[Anum_pg_parameter_acl_paracl - 1] = PointerGetDatum(new_acl);
-
-			newtuple = heap_modify_tuple(tuple, RelationGetDescr(relation),
-										 values, nulls, replaces);
-
-			CatalogTupleUpdate(relation, &newtuple->t_self, newtuple);
-		}
-
-		/* Update initial privileges for extensions */
-		recordExtensionInitPriv(parameterId, ParameterAclRelationId, 0,
-								new_acl);
-
-		/* Update the shared dependency ACL info */
-		updateAclDependencies(ParameterAclRelationId, parameterId, 0,
-							  ownerId,
-							  noldmembers, oldmembers,
-							  nnewmembers, newmembers);
-
-		ReleaseSysCache(tuple);
-		pfree(new_acl);
-
-		/* prevent error when processing duplicate objects */
-		CommandCounterIncrement();
-	}
-
-	table_close(relation, RowExclusiveLock);
-}
-
->>>>>>> 2c7ea57e56c
 
 static AclMode
 string_to_privilege(const char *privname)

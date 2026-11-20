@@ -1,19 +1,30 @@
 --
 -- MERGE
 --
---\set VERBOSITY verbose
-
---set debug_print_rewritten = true;
---set debug_print_parse = true;
---set debug_print_pretty = true;
-
+-- GGDB: the two "try updating the partition key column" statements below move
+-- rows between segments, and every segment that holds such a row raises the
+-- error.  Which one wins the race decides both the leaf partition named in the
+-- message and the two segment numbers in its DETAIL -- observed as part1/0/1
+-- and part4/1/2 across six runs of the same build.  Mask all three, the way
+-- atmsort already masks the "(segN ... pid=N)" suffix, so the statements still
+-- assert that MERGE refuses to write a row belonging to another segment.
+--
+-- start_matchsubs
+-- m/MERGE cannot write a row of "[^"]+" that belongs to another segment/
+-- s/of "[^"]+" that belongs/of "XXX" that belongs/
+--
+-- m/The new row's distribution key belongs to segment \d+, but the MERGE action runs on segment \d+/
+-- s/segment \d+, but the MERGE action runs on segment \d+/segment XXX, but the MERGE action runs on segment XXX/
+-- end_matchsubs
 
 CREATE USER regress_merge_privs;
 CREATE USER regress_merge_no_privs;
 DROP TABLE IF EXISTS target;
 DROP TABLE IF EXISTS source;
-CREATE TABLE target (tid integer, balance integer);
-CREATE TABLE source (sid integer, delta integer); --no index
+CREATE TABLE target (tid integer, balance integer)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE source (sid integer, delta integer) -- no index
+  WITH (autovacuum_enabled=off);
 INSERT INTO target VALUES (1, 10);
 INSERT INTO target VALUES (2, 20);
 INSERT INTO target VALUES (3, 30);
@@ -22,8 +33,10 @@ SELECT t.ctid is not null as matched, t.*, s.* FROM source s FULL OUTER JOIN tar
 ALTER TABLE target OWNER TO regress_merge_privs;
 ALTER TABLE source OWNER TO regress_merge_privs;
 
-CREATE TABLE target2 (tid integer, balance integer);
-CREATE TABLE source2 (sid integer, delta integer);
+CREATE TABLE target2 (tid integer, balance integer)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE source2 (sid integer, delta integer)
+  WITH (autovacuum_enabled=off);
 
 ALTER TABLE target2 OWNER TO regress_merge_no_privs;
 ALTER TABLE source2 OWNER TO regress_merge_no_privs;
@@ -88,6 +101,16 @@ MERGE INTO target
 USING target
 ON tid = tid
 WHEN MATCHED THEN DO NOTHING;
+-- used in a CTE
+WITH foo AS (
+  MERGE INTO target USING source ON (true)
+  WHEN MATCHED THEN DELETE
+) SELECT * FROM foo;
+-- used in COPY
+COPY (
+  MERGE INTO target USING source ON (true)
+  WHEN MATCHED THEN DELETE
+) TO stdout;
 
 -- unsupported relation types
 -- view
@@ -435,8 +458,10 @@ WHEN MATCHED AND s.delta > 0 THEN
 ROLLBACK;
 
 -- conditional WHEN clause
-CREATE TABLE wq_target (tid integer not null, balance integer DEFAULT -1);
-CREATE TABLE wq_source (balance integer, sid integer);
+CREATE TABLE wq_target (tid integer not null, balance integer DEFAULT -1)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE wq_source (balance integer, sid integer)
+  WITH (autovacuum_enabled=off);
 
 INSERT INTO wq_source (sid, balance) VALUES (1, 100);
 
@@ -768,8 +793,10 @@ ROLLBACK;
 
 -- subqueries in source relation
 
-CREATE TABLE sq_target (tid integer NOT NULL, balance integer);
-CREATE TABLE sq_source (delta integer, sid integer, balance integer DEFAULT 0);
+CREATE TABLE sq_target (tid integer NOT NULL, balance integer)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE sq_source (delta integer, sid integer, balance integer DEFAULT 0)
+  WITH (autovacuum_enabled=off);
 
 INSERT INTO sq_target(tid, balance) VALUES (1,100), (2,200), (3,300);
 INSERT INTO sq_source(sid, delta) VALUES (1,10), (2,20), (4,40);
@@ -855,8 +882,10 @@ RETURNING *;
 ROLLBACK;
 
 -- EXPLAIN
-CREATE TABLE ex_mtarget (a int, b int);
-CREATE TABLE ex_msource (a int, b int);
+CREATE TABLE ex_mtarget (a int, b int)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE ex_msource (a int, b int)
+  WITH (autovacuum_enabled=off);
 INSERT INTO ex_mtarget SELECT i, i*10 FROM generate_series(1,100,2) i;
 INSERT INTO ex_msource SELECT i, i*10 FROM generate_series(1,100,1) i;
 
@@ -870,6 +899,16 @@ BEGIN
 		  query
     LOOP
         ln := regexp_replace(ln, 'Memory: \S*',  'Memory: xxx');
+        -- GGDB: Greengage's Hash node reports its bucket count and memory, and
+        -- EXPLAIN ANALYZE on a cluster appends a per-segment "Extra Text:" line
+        -- with hash-chain statistics.  Every figure in them moves with the
+        -- memory settings -- CI runs with statement_mem 250MB, a demo cluster
+        -- does not -- and the segment named in "Extra Text:" is whichever one
+        -- reported the maximum.  Mask them the way upstream masks Sort's
+        -- "Memory:", so the blocks keep asserting the plan shape.
+        ln := regexp_replace(ln, 'Buckets: \S*',  'Buckets: xxx');
+        ln := regexp_replace(ln, 'Memory Usage: \S*',  'Memory Usage: xxx');
+        ln := regexp_replace(ln, 'Extra Text: \(seg\d+\).*',  'Extra Text: xxx');
         RETURN NEXT ln;
     END LOOP;
 END;
@@ -947,10 +986,14 @@ DROP TABLE sq_target, sq_source CASCADE;
 CREATE TABLE pa_target (tid integer, balance float, val text)
 	PARTITION BY LIST (tid);
 
-CREATE TABLE part1 PARTITION OF pa_target FOR VALUES IN (1,4);
-CREATE TABLE part2 PARTITION OF pa_target FOR VALUES IN (2,5,6);
-CREATE TABLE part3 PARTITION OF pa_target FOR VALUES IN (3,8,9);
-CREATE TABLE part4 PARTITION OF pa_target DEFAULT;
+CREATE TABLE part1 PARTITION OF pa_target FOR VALUES IN (1,4)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE part2 PARTITION OF pa_target FOR VALUES IN (2,5,6)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE part3 PARTITION OF pa_target FOR VALUES IN (3,8,9)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE part4 PARTITION OF pa_target DEFAULT
+  WITH (autovacuum_enabled=off);
 
 CREATE TABLE pa_source (sid integer, delta float);
 -- insert many rows to the source table
@@ -1001,10 +1044,23 @@ DROP TABLE pa_target CASCADE;
 CREATE TABLE pa_target (tid integer, balance float, val text)
 	PARTITION BY LIST (tid);
 
-CREATE TABLE part1 (tid integer, balance float, val text);
-CREATE TABLE part2 (balance float, tid integer, val text);
-CREATE TABLE part3 (tid integer, balance float, val text);
-CREATE TABLE part4 (extraid text, tid integer, balance float, val text);
+-- Greengage: ATTACH PARTITION requires the partition's distribution policy to
+-- match the parent's, and with no DISTRIBUTED BY each table takes its first
+-- column as the key -- 'balance' for part2, 'extraid' for part4, against the
+-- parent's 'tid'.  Name the key so the attaches below still succeed and the
+-- block keeps testing what upstream wrote it for: partitions whose columns are
+-- in a different order or have been dropped.  It also has to be named because
+-- a failed ATTACH leaves the table standalone, so DROP TABLE pa_target CASCADE
+-- below does not reach it and it leaks into every later test sharing this
+-- database -- which is how alter_table came to fail on "part2 already exists".
+CREATE TABLE part1 (tid integer, balance float, val text)
+  WITH (autovacuum_enabled=off) DISTRIBUTED BY (tid);
+CREATE TABLE part2 (balance float, tid integer, val text)
+  WITH (autovacuum_enabled=off) DISTRIBUTED BY (tid);
+CREATE TABLE part3 (tid integer, balance float, val text)
+  WITH (autovacuum_enabled=off) DISTRIBUTED BY (tid);
+CREATE TABLE part4 (extraid text, tid integer, balance float, val text)
+  WITH (autovacuum_enabled=off) DISTRIBUTED BY (tid);
 ALTER TABLE part4 DROP COLUMN extraid;
 
 ALTER TABLE pa_target ATTACH PARTITION part1 FOR VALUES IN (1,4);
@@ -1037,7 +1093,13 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
-SELECT * FROM pa_target ORDER BY tid;
+-- GGDB: the tid IN (1, 5) qual leaves most source rows NOT MATCHED, so this
+-- result has two rows for several tids and ORDER BY tid alone does not
+-- determine the order between them.  Add val as a tiebreaker: upstream gets
+-- away with the partial sort because one backend reads one heap in one order,
+-- but here the rows arrive from three segments.  atmsort cannot help -- it
+-- only sorts a result whose query has no ORDER BY at all.
+SELECT * FROM pa_target ORDER BY tid, val;
 ROLLBACK;
 
 -- try updating the partition key column
@@ -1056,25 +1118,33 @@ DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
 
 -- Sub-partitioning
+--
+-- GGDB: with no DISTRIBUTED BY this table would be distributed on logts, its
+-- first column, while the MERGE below joins on tid -- so the rows would have to
+-- be redistributed, and an Explicit Redistribute Motion has no segment to send
+-- a WHEN NOT MATCHED row to.  Distribute on tid, which is what the statement
+-- joins on, and the MERGE runs on the segments the target rows already live on.
+-- pa_source is already distributed on sid by default, so the join is co-located.
 CREATE TABLE pa_target (logts timestamp, tid integer, balance float, val text)
-	PARTITION BY RANGE (logts);
+	PARTITION BY RANGE (logts) DISTRIBUTED BY (tid);
 
 CREATE TABLE part_m01 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-01-01') TO ('2017-02-01')
 	PARTITION BY LIST (tid);
 CREATE TABLE part_m01_odd PARTITION OF part_m01
-	FOR VALUES IN (1,3,5,7,9);
+	FOR VALUES IN (1,3,5,7,9) WITH (autovacuum_enabled=off);
 CREATE TABLE part_m01_even PARTITION OF part_m01
-	FOR VALUES IN (2,4,6,8);
+	FOR VALUES IN (2,4,6,8) WITH (autovacuum_enabled=off);
 CREATE TABLE part_m02 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-02-01') TO ('2017-03-01')
 	PARTITION BY LIST (tid);
 CREATE TABLE part_m02_odd PARTITION OF part_m02
-	FOR VALUES IN (1,3,5,7,9);
+	FOR VALUES IN (1,3,5,7,9) WITH (autovacuum_enabled=off);
 CREATE TABLE part_m02_even PARTITION OF part_m02
-	FOR VALUES IN (2,4,6,8);
+	FOR VALUES IN (2,4,6,8) WITH (autovacuum_enabled=off);
 
-CREATE TABLE pa_source (sid integer, delta float);
+CREATE TABLE pa_source (sid integer, delta float)
+  WITH (autovacuum_enabled=off);
 -- insert many rows to the source table
 INSERT INTO pa_source SELECT id, id * 10  FROM generate_series(1,14) AS id;
 -- insert a few rows in the target table (odd numbered tid)
@@ -1098,9 +1168,12 @@ DROP TABLE pa_target CASCADE;
 
 -- some complex joins on the source side
 
-CREATE TABLE cj_target (tid integer, balance float, val text);
-CREATE TABLE cj_source1 (sid1 integer, scat integer, delta integer);
-CREATE TABLE cj_source2 (sid2 integer, sval text);
+CREATE TABLE cj_target (tid integer, balance float, val text)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE cj_source1 (sid1 integer, scat integer, delta integer)
+  WITH (autovacuum_enabled=off);
+CREATE TABLE cj_source2 (sid2 integer, sval text)
+  WITH (autovacuum_enabled=off);
 INSERT INTO cj_source1 VALUES (1, 10, 100);
 INSERT INTO cj_source1 VALUES (1, 20, 200);
 INSERT INTO cj_source1 VALUES (2, 20, 300);
@@ -1161,7 +1234,8 @@ WHEN NOT MATCHED THEN
 DROP TABLE cj_source2, cj_source1, cj_target;
 
 -- Function scans
-CREATE TABLE fs_target (a int, b int, c text);
+CREATE TABLE fs_target (a int, b int, c text)
+  WITH (autovacuum_enabled=off);
 MERGE INTO fs_target t
 USING generate_series(1,100,1) AS id
 ON t.a = id
@@ -1190,13 +1264,13 @@ CREATE TABLE measurement (
     logdate         date not null,
     peaktemp        int,
     unitsales       int
-);
+) WITH (autovacuum_enabled=off);
 CREATE TABLE measurement_y2006m02 (
     CHECK ( logdate >= DATE '2006-02-01' AND logdate < DATE '2006-03-01' )
-) INHERITS (measurement);
+) INHERITS (measurement) WITH (autovacuum_enabled=off);
 CREATE TABLE measurement_y2006m03 (
     CHECK ( logdate >= DATE '2006-03-01' AND logdate < DATE '2006-04-01' )
-) INHERITS (measurement);
+) INHERITS (measurement) WITH (autovacuum_enabled=off);
 CREATE TABLE measurement_y2007m01 (
     filler          text,
     peaktemp        int,
@@ -1204,7 +1278,7 @@ CREATE TABLE measurement_y2007m01 (
     city_id         int not null,
     unitsales       int
     CHECK ( logdate >= DATE '2007-01-01' AND logdate < DATE '2007-02-01')
-);
+) WITH (autovacuum_enabled=off);
 ALTER TABLE measurement_y2007m01 DROP COLUMN filler;
 ALTER TABLE measurement_y2007m01 INHERIT measurement;
 
@@ -1239,7 +1313,7 @@ INSERT INTO measurement VALUES (1, '2007-01-17', 10, 10);
 
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
 
-CREATE TABLE new_measurement (LIKE measurement);
+CREATE TABLE new_measurement (LIKE measurement) WITH (autovacuum_enabled=off);
 INSERT INTO new_measurement VALUES (1, '2006-03-01', 20, 10);
 INSERT INTO new_measurement VALUES (1, '2006-02-16', 50, 10);
 INSERT INTO new_measurement VALUES (2, '2006-02-10', 20, 20);

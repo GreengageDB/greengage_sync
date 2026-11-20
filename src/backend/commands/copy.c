@@ -359,6 +359,12 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 	{
 		Assert(stmt->query);
 
+		/* MERGE is allowed by parser, but unimplemented. Reject for now */
+		if (IsA(stmt->query, MergeStmt))
+			ereport(ERROR,
+					errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					errmsg("MERGE not supported in COPY"));
+
 		query = makeNode(RawStmt);
 		query->stmt = stmt->query;
 		query->stmt_location = stmt_location;
@@ -889,27 +895,10 @@ ProcessCopyOptions(ParseState *pstate,
 				 errmsg("COPY delimiter cannot be \"%s\"", opts_out->delim)));
 
 	/* Check header */
-<<<<<<< HEAD
-	/*
-	 * In PostgreSQL, HEADER is not allowed in text mode either, but in GPDB,
-	 * only forbid it with BINARY.
-	 */
-||||||| c4cc2850f4d
-	if (!opts_out->csv_mode && opts_out->header_line)
-=======
->>>>>>> 2c7ea57e56c
 	if (opts_out->binary && opts_out->header_line)
 		ereport(ERROR,
-<<<<<<< HEAD
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("COPY cannot specify HEADER in BINARY mode")));
-||||||| c4cc2850f4d
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("COPY HEADER available only in CSV mode")));
-=======
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("cannot specify HEADER in BINARY mode")));
->>>>>>> 2c7ea57e56c
 
 	/* Check quote */
 	if (!opts_out->csv_mode && opts_out->quote != NULL)

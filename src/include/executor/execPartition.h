@@ -31,6 +31,9 @@ extern ResultRelInfo *ExecFindPartition(ModifyTableState *mtstate,
 										EState *estate);
 extern void ExecCleanupTupleRouting(ModifyTableState *mtstate,
 									PartitionTupleRouting *proute);
+/* GGDB: exported for tablecmds_gp.c */
+extern int get_partition_for_tuple(PartitionKey key, PartitionDesc partdesc,
+								   Datum *values, bool *isnull);
 
 
 /*
@@ -121,49 +124,26 @@ typedef struct PartitionPruneState
 	PartitionPruningData *partprunedata[FLEXIBLE_ARRAY_MEMBER];
 } PartitionPruneState;
 
-<<<<<<< HEAD
-extern PartitionTupleRouting *ExecSetupPartitionTupleRouting(EState *estate,
-															 Relation rel);
-extern ResultRelInfo *ExecFindPartition(ModifyTableState *mtstate,
-										ResultRelInfo *rootResultRelInfo,
-										PartitionTupleRouting *proute,
-										TupleTableSlot *slot,
-										EState *estate);
-extern void ExecCleanupTupleRouting(ModifyTableState *mtstate,
-									PartitionTupleRouting *proute);
-extern PartitionPruneState *ExecCreatePartitionPruneState(PlanState *planstate,
-														  PartitionPruneInfo *partitionpruneinfo);
-extern Bitmapset *ExecFindMatchingSubPlans(PartitionPruneState *prunestate,
-										   EState *estate,
-										   int nplans, List *join_prune_paramids);
-extern Bitmapset *ExecFindInitialMatchingSubPlans(PartitionPruneState *prunestate,
-												  int nsubplans);
-extern int get_partition_for_tuple(PartitionKey key, PartitionDesc partdesc,
-								   Datum *values, bool *isnull);
-
-extern Bitmapset *ExecAddMatchingSubPlans(PartitionPruneState *prunestate, Bitmapset *result);
-||||||| c4cc2850f4d
-extern PartitionTupleRouting *ExecSetupPartitionTupleRouting(EState *estate,
-															 Relation rel);
-extern ResultRelInfo *ExecFindPartition(ModifyTableState *mtstate,
-										ResultRelInfo *rootResultRelInfo,
-										PartitionTupleRouting *proute,
-										TupleTableSlot *slot,
-										EState *estate);
-extern void ExecCleanupTupleRouting(ModifyTableState *mtstate,
-									PartitionTupleRouting *proute);
-extern PartitionPruneState *ExecCreatePartitionPruneState(PlanState *planstate,
-														  PartitionPruneInfo *partitionpruneinfo);
-extern Bitmapset *ExecFindMatchingSubPlans(PartitionPruneState *prunestate);
-extern Bitmapset *ExecFindInitialMatchingSubPlans(PartitionPruneState *prunestate,
-												  int nsubplans);
-=======
 extern PartitionPruneState *ExecInitPartitionPruning(PlanState *planstate,
 													 int n_total_subplans,
 													 PartitionPruneInfo *pruneinfo,
 													 Bitmapset **initially_valid_subplans);
+/*
+ * GGDB: PartitionSelector nodes build a prune state of their own; PG15 hid the
+ * core builder behind ExecInitPartitionPruning.
+ */
+extern PartitionPruneState *ExecCreatePartitionPruneState(PlanState *planstate,
+														  PartitionPruneInfo *partitionpruneinfo);
+/*
+ * GGDB: the extra (estate, nplans, join_prune_paramids) parameters let pruning
+ * intersect its result with the one computed by PartitionSelector nodes (MPP
+ * join pruning).
+ */
 extern Bitmapset *ExecFindMatchingSubPlans(PartitionPruneState *prunestate,
+										   EState *estate,
+										   int nplans,
+										   List *join_prune_paramids,
 										   bool initial_prune);
->>>>>>> 2c7ea57e56c
+extern Bitmapset *ExecAddMatchingSubPlans(PartitionPruneState *prunestate, Bitmapset *result);
 
 #endif							/* EXECPARTITION_H */

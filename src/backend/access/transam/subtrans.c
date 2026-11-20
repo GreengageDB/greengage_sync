@@ -55,15 +55,6 @@
 #define TransactionIdToEntry(xid) ((xid) % (uint32) SUBTRANS_XACTS_PER_PAGE)
 
 /*
- * Single-item cache for results of SubTransGetTopmostTransaction().  It's
- * worth having such a cache because we frequently find ourselves repeatedly
- * checking the same XID, for example when scanning a table just after a
- * bulk insert, update, or delete.
- */
-static TransactionId cachedFetchSubXid = InvalidTransactionId;
-static TransactionId cachedFetchTopmostXid = InvalidTransactionId;
-
-/*
  * Link to shared-memory data structures for SUBTRANS control
  */
 static SlruCtlData SubTransCtlData;
@@ -186,68 +177,8 @@ SubTransGetTopmostTransaction(TransactionId xid)
 	SubTransData subData;
 	SubTransGetData(xid, &subData);
 
-<<<<<<< HEAD
 	Assert(TransactionIdIsValid(subData.topMostParent));
 	return subData.topMostParent;
-||||||| c4cc2850f4d
-	/* Can't ask about stuff that might not be around anymore */
-	Assert(TransactionIdFollowsOrEquals(xid, TransactionXmin));
-
-	while (TransactionIdIsValid(parentXid))
-	{
-		previousXid = parentXid;
-		if (TransactionIdPrecedes(parentXid, TransactionXmin))
-			break;
-		parentXid = SubTransGetParent(parentXid);
-
-		/*
-		 * By convention the parent xid gets allocated first, so should always
-		 * precede the child xid. Anything else points to a corrupted data
-		 * structure that could lead to an infinite loop, so exit.
-		 */
-		if (!TransactionIdPrecedes(parentXid, previousXid))
-			elog(ERROR, "pg_subtrans contains invalid entry: xid %u points to parent xid %u",
-				 previousXid, parentXid);
-	}
-
-	Assert(TransactionIdIsValid(previousXid));
-
-	return previousXid;
-=======
-	/* Can't ask about stuff that might not be around anymore */
-	Assert(TransactionIdFollowsOrEquals(xid, TransactionXmin));
-
-	/*
-	 * Before going to the subtrans log, check our single item cache to see if
-	 * we know the result from a previous/recent request.
-	 */
-	if (TransactionIdEquals(xid, cachedFetchSubXid))
-		return cachedFetchTopmostXid;
-
-	while (TransactionIdIsValid(parentXid))
-	{
-		previousXid = parentXid;
-		if (TransactionIdPrecedes(parentXid, TransactionXmin))
-			break;
-		parentXid = SubTransGetParent(parentXid);
-
-		/*
-		 * By convention the parent xid gets allocated first, so should always
-		 * precede the child xid. Anything else points to a corrupted data
-		 * structure that could lead to an infinite loop, so exit.
-		 */
-		if (!TransactionIdPrecedes(parentXid, previousXid))
-			elog(ERROR, "pg_subtrans contains invalid entry: xid %u points to parent xid %u",
-				 previousXid, parentXid);
-	}
-
-	Assert(TransactionIdIsValid(previousXid));
-
-	cachedFetchSubXid = xid;
-	cachedFetchTopmostXid = previousXid;
-
-	return previousXid;
->>>>>>> 2c7ea57e56c
 }
 
 /*

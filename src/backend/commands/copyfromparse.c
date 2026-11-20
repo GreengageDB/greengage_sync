@@ -1203,15 +1203,19 @@ NextCopyFromRawFieldsX(CopyFromState cstate, char ***fields, int *nfields,
 		{
 			int			fldnum;
 
+			/*
+			 * GG: the header line has to be parsed in full, so pass -1 for
+			 * Greengage's stop_processing_at_field.
+			 */
 			if (cstate->opts.csv_mode)
-				fldct = CopyReadAttributesCSV(cstate);
+				fldct = CopyReadAttributesCSV(cstate, -1);
 			else
-				fldct = CopyReadAttributesText(cstate);
+				fldct = CopyReadAttributesText(cstate, -1);
 
 			if (fldct != list_length(cstate->attnumlist))
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
-						 errmsg("wrong number of fields in header line: field count is %d, expected %d",
+						 errmsg("wrong number of fields in header line: got %d, expected %d",
 								fldct, list_length(cstate->attnumlist))));
 
 			fldnum = 0;

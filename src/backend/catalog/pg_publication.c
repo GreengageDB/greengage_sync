@@ -45,13 +45,10 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
-<<<<<<< HEAD
 #include "catalog/oid_dispatch.h"
-||||||| c4cc2850f4d
-=======
+
 static void publication_translate_columns(Relation targetrel, List *columns,
 										  int *natts, AttrNumber **attrs);
->>>>>>> 2c7ea57e56c
 
 /*
  * Check if relation can be in given publication and throws appropriate

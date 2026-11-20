@@ -55,13 +55,7 @@ ERROR:  COPY format "xml" not recognized
 CREATE FOREIGN TABLE tbl () SERVER file_server OPTIONS (format 'text', quote ':');          -- ERROR
 ERROR:  COPY quote available only in CSV mode
 CREATE FOREIGN TABLE tbl () SERVER file_server OPTIONS (format 'binary', header 'true');    -- ERROR
-<<<<<<< HEAD
-ERROR:  COPY cannot specify HEADER in BINARY mode
-||||||| c4cc2850f4d
-ERROR:  COPY HEADER available only in CSV mode
-=======
 ERROR:  cannot specify HEADER in BINARY mode
->>>>>>> 2c7ea57e56c
 CREATE FOREIGN TABLE tbl () SERVER file_server OPTIONS (format 'binary', quote ':');        -- ERROR
 ERROR:  COPY quote available only in CSV mode
 CREATE FOREIGN TABLE tbl () SERVER file_server OPTIONS (format 'text', delimiter 'a');      -- ERROR

@@ -8225,13 +8225,8 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 		case T_NextValueExpr:
 		case T_NullIfExpr:
 		case T_Aggref:
-<<<<<<< HEAD
-||||||| c4cc2850f4d
-		case T_WindowFunc:
-=======
 		case T_GroupingFunc:
 		case T_WindowFunc:
->>>>>>> 2c7ea57e56c
 		case T_FuncExpr:
 		case T_JsonConstructorExpr:
 		case T_JsonExpr:
@@ -10485,7 +10480,6 @@ get_json_constructor(JsonConstructorExpr *ctor, deparse_context *context,
 
 
 /*
-<<<<<<< HEAD
  * Deparse an Aggref as a special MEDIAN() construct, if it looks like
  * one.
  *
@@ -10564,12 +10558,7 @@ get_dqa_expr(DQAExpr *dqa_expr,deparse_context *context)
 }
 
 /*
- * get_agg_expr			- Parse back an Aggref node
-||||||| c4cc2850f4d
- * get_agg_expr			- Parse back an Aggref node
-=======
  * get_agg_expr_helper			- Parse back an Aggref node
->>>>>>> 2c7ea57e56c
  */
 static void
 get_agg_expr_helper(Aggref *aggref, deparse_context *context,
@@ -10750,28 +10739,14 @@ get_windowfunc_expr_helper(WindowFunc *wfunc, deparse_context *context,
 		nargs++;
 	}
 
-<<<<<<< HEAD
-	appendStringInfo(buf, "%s(%s",
-					 generate_function_name(wfunc->winfnoid, nargs,
-											argnames, argtypes,
-											false, NULL,
-											context->special_exprkind),
-					 wfunc->windistinct ? "DISTINCT " : "");
-||||||| c4cc2850f4d
-	appendStringInfo(buf, "%s(",
-					 generate_function_name(wfunc->winfnoid, nargs,
-											argnames, argtypes,
-											false, NULL,
-											context->special_exprkind));
-=======
 	if (!funcname)
 		funcname = generate_function_name(wfunc->winfnoid, nargs, argnames,
 										  argtypes, false, NULL,
 										  context->special_exprkind);
 
-	appendStringInfo(buf, "%s(", funcname);
+	appendStringInfo(buf, "%s(%s", funcname,
+					 wfunc->windistinct ? "DISTINCT " : "");
 
->>>>>>> 2c7ea57e56c
 	/* winstar can be set only in zero-argument aggregates */
 	if (wfunc->winstar)
 		appendStringInfoChar(buf, '*');

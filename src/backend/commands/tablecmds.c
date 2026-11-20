@@ -36,15 +36,9 @@
 #include "catalog/namespace.h"
 #include "catalog/objectaccess.h"
 #include "catalog/partition.h"
-<<<<<<< HEAD
 #include "catalog/pg_appendonly.h"
-#include "catalog/pg_attribute_encoding.h"
-||||||| c4cc2850f4d
-#include "catalog/pg_am.h"
-=======
-#include "catalog/pg_am.h"
 #include "catalog/pg_attrdef.h"
->>>>>>> 2c7ea57e56c
+#include "catalog/pg_attribute_encoding.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_compression.h"
 #include "catalog/pg_constraint.h"
@@ -7795,7 +7789,6 @@ ATSimplePermissions(AlterTableType cmdtype, Relation rel, int allowed_targets)
 		case RELKIND_FOREIGN_TABLE:
 			actual_target = ATT_FOREIGN_TABLE;
 			break;
-<<<<<<< HEAD
 
 		case RELKIND_AOSEGMENTS:
 		case RELKIND_AOBLOCKDIR:
@@ -7810,12 +7803,9 @@ ATSimplePermissions(AlterTableType cmdtype, Relation rel, int allowed_targets)
 				actual_target = 0;
 			break;
 
-||||||| c4cc2850f4d
-=======
 		case RELKIND_SEQUENCE:
 			actual_target = ATT_SEQUENCE;
 			break;
->>>>>>> 2c7ea57e56c
 		default:
 			actual_target = 0;
 			break;
@@ -17026,13 +17016,8 @@ index_copy_data(Relation rel, RelFileNode newrnode)
 	 * NOTE: any conflict in relfilenode value will be caught in
 	 * RelationCreateStorage().
 	 */
-<<<<<<< HEAD
-	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence, smgr_which);
-||||||| c4cc2850f4d
-	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence);
-=======
-	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence, true);
->>>>>>> 2c7ea57e56c
+	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence, smgr_which,
+						  true);
 
 	/* copy main fork */
 	RelationCopyStorage(RelationGetSmgr(rel), dstrel, MAIN_FORKNUM,
@@ -18206,7 +18191,7 @@ build_ctas_with_dist(Relation rel, DistributedBy *dist_clause,
 		rawstmt->stmt_location = -1;
 		rawstmt->stmt_len = 0;
 
-		q_list = pg_analyze_and_rewrite(rawstmt, synthetic_sql, NULL, 0, NULL);
+		q_list = pg_analyze_and_rewrite_fixedparams(rawstmt, synthetic_sql, NULL, 0, NULL);
 		p_list = pg_plan_queries(q_list, NULL, 0, NULL);
 		pstmt = linitial_node(PlannedStmt, p_list);
 		ctas = castNode(CreateTableAsStmt, pstmt->utilityStmt);
@@ -18222,7 +18207,7 @@ build_ctas_with_dist(Relation rel, DistributedBy *dist_clause,
 		rawstmt->stmt_location = -1;
 		rawstmt->stmt_len = 0;
 
-		q = parse_analyze(rawstmt, synthetic_sql, NULL, 0, NULL);
+		q = parse_analyze_fixedparams(rawstmt, synthetic_sql, NULL, 0, NULL);
 	}
 	else
 		q = (Query *) n;
@@ -18508,7 +18493,7 @@ prebuild_temp_table(Relation rel, RangeVar *tmpname, DistributedBy *distro,
 		rawstmt->stmt_location = -1;
 		rawstmt->stmt_len = 0;
 
-		q = parse_analyze(rawstmt, synthetic_sql, NULL, 0, NULL);
+		q = parse_analyze_fixedparams(rawstmt, synthetic_sql, NULL, 0, NULL);
 
 		/* No planning needed, just make a wrapper PlannedStmt */
 		PlannedStmt *pstmt = makeNode(PlannedStmt);
@@ -22524,8 +22509,16 @@ ATExecDetachPartition(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		tab->rel = rel;
 	}
 
+	/*
+	 * Detaching the partition might involve TOAST table access, so ensure we
+	 * have a valid snapshot.
+	 */
+	PushActiveSnapshot(GetTransactionSnapshot());
+
 	/* Do the final part of detaching */
 	DetachPartitionFinalize(rel, partRel, concurrent, defaultPartOid);
+
+	PopActiveSnapshot();
 
 	ObjectAddressSet(address, RelationRelationId, RelationGetRelid(partRel));
 

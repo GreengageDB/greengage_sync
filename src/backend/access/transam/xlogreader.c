@@ -273,22 +273,24 @@ XLogBeginRead(XLogReaderState *state, XLogRecPtr RecPtr)
 }
 
 /*
- * See if we can release the last record that was returned by
- * XLogNextRecord(), if any, to free up space.
+ * Release the last record that was returned by XLogNextRecord(), if any, to
+ * free up space.  Returns the LSN past the end of the record.
  */
-void
+XLogRecPtr
 XLogReleasePreviousRecord(XLogReaderState *state)
 {
 	DecodedXLogRecord *record;
+	XLogRecPtr		next_lsn;
 
 	if (!state->record)
-		return;
+		return InvalidXLogRecPtr;
 
 	/*
 	 * Remove it from the decoded record queue.  It must be the oldest item
 	 * decoded, decode_queue_head.
 	 */
 	record = state->record;
+	next_lsn = record->next_lsn;
 	Assert(record == state->decode_queue_head);
 	state->record = NULL;
 	state->decode_queue_head = record->next;
@@ -334,6 +336,8 @@ XLogReleasePreviousRecord(XLogReaderState *state)
 			state->decode_buffer_tail = state->decode_buffer;
 		}
 	}
+
+	return next_lsn;
 }
 
 /*
@@ -904,6 +908,17 @@ err:
 		 */
 		state->abortedRecPtr = RecPtr;
 		state->missingContrecPtr = targetPagePtr;
+
+		/*
+		 * If we got here without reporting an error, report one now so that
+		 * XLogPrefetcherReadRecord() doesn't bring us back a second time and
+		 * clobber the above state.  Otherwise, the existing error takes
+		 * precedence.
+		 */
+		if (!state->errormsg_buf[0])
+			report_invalid_record(state,
+								  "missing contrecord at %X/%X",
+								  LSN_FORMAT_ARGS(RecPtr));
 	}
 
 	if (decoded && decoded->oversized)
@@ -985,6 +1000,13 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 		return state->readLen;
 
 	/*
+	 * Invalidate contents of internal buffer before read attempt.  Just set
+	 * the length to 0, rather than a full XLogReaderInvalReadState(), so we
+	 * don't forget the segment we last successfully read.
+	 */
+	state->readLen = 0;
+
+	/*
 	 * Data is not in our buffer.
 	 *
 	 * Every time we actually read the segment, even if we looked at parts of
@@ -1064,11 +1086,8 @@ ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr, int reqLen)
 	return readLen;
 
 err:
-	if (state->errormsg_buf[0] != '\0')
-	{
-		state->errormsg_deferred = true;
-		XLogReaderInvalReadState(state);
-	}
+	XLogReaderInvalReadState(state);
+
 	return XLREAD_FAIL;
 }
 
@@ -1318,6 +1337,16 @@ XLogReaderValidatePageHeader(XLogReaderState *state, XLogRecPtr recptr,
 	state->latestPageTLI = hdr->xlp_tli;
 
 	return true;
+}
+
+/*
+ * Forget about an error produced by XLogReaderValidatePageHeader().
+ */
+void
+XLogReaderResetError(XLogReaderState *state)
+{
+	state->errormsg_buf[0] = '\0';
+	state->errormsg_deferred = false;
 }
 
 /*

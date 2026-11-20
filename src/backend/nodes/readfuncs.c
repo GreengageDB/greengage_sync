@@ -362,18 +362,10 @@ _readQuery(void)
 	READ_NODE_FIELD(rowMarks);
 	READ_NODE_FIELD(setOperations);
 	READ_NODE_FIELD(constraintDeps);
-<<<<<<< HEAD
-    READ_NODE_FIELD(withCheckOptions);
-    READ_LOCATION_FIELD(stmt_location);
-||||||| c4cc2850f4d
-	READ_NODE_FIELD(withCheckOptions);
-	READ_LOCATION_FIELD(stmt_location);
-=======
 	READ_NODE_FIELD(withCheckOptions);
 	READ_NODE_FIELD(mergeActionList);
 	READ_BOOL_FIELD(mergeUseOuterJoin);
 	READ_LOCATION_FIELD(stmt_location);
->>>>>>> 2c7ea57e56c
 	READ_INT_FIELD(stmt_len);
     READ_BOOL_FIELD(parentStmtType);
 
@@ -604,10 +596,10 @@ _readMergeWhenClause(void)
 
 	READ_BOOL_FIELD(matched);
 	READ_ENUM_FIELD(commandType, CmdType);
+	READ_ENUM_FIELD(override, OverridingKind);
 	READ_NODE_FIELD(condition);
 	READ_NODE_FIELD(targetList);
 	READ_NODE_FIELD(values);
-	READ_ENUM_FIELD(override, OverridingKind);
 
 	READ_DONE();
 }
@@ -822,6 +814,7 @@ _readConstraint(void)
 	READ_STRING_FIELD(cooked_expr);
 	READ_CHAR_FIELD(generated_when);
 
+	READ_BOOL_FIELD(nulls_not_distinct);
 	READ_NODE_FIELD(keys);
 	READ_NODE_FIELD(including);
 
@@ -873,6 +866,7 @@ _readIndexStmt(void)
 	READ_UINT_FIELD(oldCreateSubid);
 	READ_UINT_FIELD(oldFirstRelfilenodeSubid);
 	READ_BOOL_FIELD(unique);
+	READ_BOOL_FIELD(nulls_not_distinct);
 	READ_BOOL_FIELD(primary);
 	READ_BOOL_FIELD(isconstraint);
 	READ_BOOL_FIELD(deferrable);
@@ -2434,6 +2428,243 @@ _readJsonIsPredicate()
 }
 
 /*
+ * Greengage: readers for the untransformed SQL/JSON nodes.  See the matching
+ * block in outfuncs.c for why Greengage needs them and upstream does not.
+ */
+static JsonOutput *
+_readJsonOutput(void)
+{
+	READ_LOCALS(JsonOutput);
+
+	READ_NODE_FIELD(typeName);
+	READ_NODE_FIELD(returning);
+
+	READ_DONE();
+}
+
+static JsonArgument *
+_readJsonArgument(void)
+{
+	READ_LOCALS(JsonArgument);
+
+	READ_NODE_FIELD(val);
+	READ_STRING_FIELD(name);
+
+	READ_DONE();
+}
+
+static JsonCommon *
+_readJsonCommon(void)
+{
+	READ_LOCALS(JsonCommon);
+
+	READ_NODE_FIELD(expr);
+	READ_NODE_FIELD(pathspec);
+	READ_STRING_FIELD(pathname);
+	READ_NODE_FIELD(passing);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonFuncExpr *
+_readJsonFuncExpr(void)
+{
+	READ_LOCALS(JsonFuncExpr);
+
+	READ_ENUM_FIELD(op, JsonExprOp);
+	READ_NODE_FIELD(common);
+	READ_NODE_FIELD(output);
+	READ_NODE_FIELD(on_empty);
+	READ_NODE_FIELD(on_error);
+	READ_ENUM_FIELD(wrapper, JsonWrapper);
+	READ_BOOL_FIELD(omit_quotes);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonTableColumn *
+_readJsonTableColumn(void)
+{
+	READ_LOCALS(JsonTableColumn);
+
+	READ_ENUM_FIELD(coltype, JsonTableColumnType);
+	READ_STRING_FIELD(name);
+	READ_NODE_FIELD(typeName);
+	READ_STRING_FIELD(pathspec);
+	READ_STRING_FIELD(pathname);
+	READ_NODE_FIELD(format);
+	READ_ENUM_FIELD(wrapper, JsonWrapper);
+	READ_BOOL_FIELD(omit_quotes);
+	READ_NODE_FIELD(columns);
+	READ_NODE_FIELD(on_empty);
+	READ_NODE_FIELD(on_error);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonTablePlan *
+_readJsonTablePlan(void)
+{
+	READ_LOCALS(JsonTablePlan);
+
+	READ_ENUM_FIELD(plan_type, JsonTablePlanType);
+	READ_ENUM_FIELD(join_type, JsonTablePlanJoinType);
+	READ_NODE_FIELD(plan1);
+	READ_NODE_FIELD(plan2);
+	READ_STRING_FIELD(pathname);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonTable *
+_readJsonTable(void)
+{
+	READ_LOCALS(JsonTable);
+
+	READ_NODE_FIELD(common);
+	READ_NODE_FIELD(columns);
+	READ_NODE_FIELD(plan);
+	READ_NODE_FIELD(on_error);
+	READ_NODE_FIELD(alias);
+	READ_BOOL_FIELD(lateral);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonKeyValue *
+_readJsonKeyValue(void)
+{
+	READ_LOCALS(JsonKeyValue);
+
+	READ_NODE_FIELD(key);
+	READ_NODE_FIELD(value);
+
+	READ_DONE();
+}
+
+static JsonParseExpr *
+_readJsonParseExpr(void)
+{
+	READ_LOCALS(JsonParseExpr);
+
+	READ_NODE_FIELD(expr);
+	READ_NODE_FIELD(output);
+	READ_BOOL_FIELD(unique_keys);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonScalarExpr *
+_readJsonScalarExpr(void)
+{
+	READ_LOCALS(JsonScalarExpr);
+
+	READ_NODE_FIELD(expr);
+	READ_NODE_FIELD(output);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonSerializeExpr *
+_readJsonSerializeExpr(void)
+{
+	READ_LOCALS(JsonSerializeExpr);
+
+	READ_NODE_FIELD(expr);
+	READ_NODE_FIELD(output);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonObjectConstructor *
+_readJsonObjectConstructor(void)
+{
+	READ_LOCALS(JsonObjectConstructor);
+
+	READ_NODE_FIELD(exprs);
+	READ_NODE_FIELD(output);
+	READ_BOOL_FIELD(absent_on_null);
+	READ_BOOL_FIELD(unique);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonArrayConstructor *
+_readJsonArrayConstructor(void)
+{
+	READ_LOCALS(JsonArrayConstructor);
+
+	READ_NODE_FIELD(exprs);
+	READ_NODE_FIELD(output);
+	READ_BOOL_FIELD(absent_on_null);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonArrayQueryConstructor *
+_readJsonArrayQueryConstructor(void)
+{
+	READ_LOCALS(JsonArrayQueryConstructor);
+
+	READ_NODE_FIELD(query);
+	READ_NODE_FIELD(output);
+	READ_NODE_FIELD(format);
+	READ_BOOL_FIELD(absent_on_null);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonAggConstructor *
+_readJsonAggConstructor(void)
+{
+	READ_LOCALS(JsonAggConstructor);
+
+	READ_NODE_FIELD(output);
+	READ_NODE_FIELD(agg_filter);
+	READ_NODE_FIELD(agg_order);
+	READ_NODE_FIELD(over);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static JsonObjectAgg *
+_readJsonObjectAgg(void)
+{
+	READ_LOCALS(JsonObjectAgg);
+
+	READ_NODE_FIELD(constructor);
+	READ_NODE_FIELD(arg);
+	READ_BOOL_FIELD(absent_on_null);
+	READ_BOOL_FIELD(unique);
+
+	READ_DONE();
+}
+
+static JsonArrayAgg *
+_readJsonArrayAgg(void)
+{
+	READ_LOCALS(JsonArrayAgg);
+
+	READ_NODE_FIELD(constructor);
+	READ_NODE_FIELD(arg);
+	READ_BOOL_FIELD(absent_on_null);
+
+	READ_DONE();
+}
+
+/*
  *	Stuff from pathnodes.h.
  *
  * Mostly we don't need to read planner nodes back in again, but some
@@ -3040,13 +3271,9 @@ _readModifyTable(void)
 	READ_NODE_FIELD(onConflictWhere);
 	READ_UINT_FIELD(exclRelRTI);
 	READ_NODE_FIELD(exclRelTlist);
-<<<<<<< HEAD
 	READ_BOOL_FIELD(isSplitUpdate);
 	READ_BOOL_FIELD(forceTupleRouting);
-||||||| c4cc2850f4d
-=======
 	READ_NODE_FIELD(mergeActionLists);
->>>>>>> 2c7ea57e56c
 
 	READ_DONE();
 }
@@ -5285,7 +5512,6 @@ parseNodeString(void)
 		return_value = _readRestrictInfo();
 	else if (MATCH("EXTENSIBLENODE", 14))
 		return_value = _readExtensibleNode();
-<<<<<<< HEAD
 	else if (MATCH("PARTITIONSPEC", 13))
 		return_value = _readPartitionSpec();
 	else if (MATCH("PARTITIONELEM", 13))
@@ -5296,6 +5522,63 @@ parseNodeString(void)
         return_value = _readPartitionRangeDatum();
 	else if (MATCHX("PARTITIONCMD"))
 		return_value = _readPartitionCmd();
+	else if (MATCH("JSONFORMAT", 10))
+		return_value = _readJsonFormat();
+	else if (MATCH("JSONRETURNING", 13))
+		return_value = _readJsonReturning();
+	else if (MATCH("JSONVALUEEXPR", 13))
+		return_value = _readJsonValueExpr();
+	else if (MATCH("JSONCTOREXPR", 12))
+		return_value = _readJsonConstructorExpr();
+	else if (MATCH("JSONISPREDICATE", 15))
+		return_value = _readJsonIsPredicate();
+	else if (MATCH("JSONBEHAVIOR", 12))
+		return_value = _readJsonBehavior();
+	else if (MATCH("JSONEXPR", 8))
+		return_value = _readJsonExpr();
+	else if (MATCH("JSONCOERCION", 12))
+		return_value = _readJsonCoercion();
+	else if (MATCH("JSONITEMCOERCIONS", 17))
+		return_value = _readJsonItemCoercions();
+	else if (MATCH("JSONTABPNODE", 12))
+		return_value = _readJsonTableParent();
+	else if (MATCH("JSONTABSNODE", 12))
+		return_value = _readJsonTableSibling();
+	/* Greengage: the untransformed SQL/JSON nodes */
+	else if (MATCHX("JSONOUTPUT"))
+		return_value = _readJsonOutput();
+	else if (MATCHX("JSONARGUMENT"))
+		return_value = _readJsonArgument();
+	else if (MATCHX("JSONCOMMON"))
+		return_value = _readJsonCommon();
+	else if (MATCHX("JSONFUNCEXPR"))
+		return_value = _readJsonFuncExpr();
+	else if (MATCHX("JSONTABLECOLUMN"))
+		return_value = _readJsonTableColumn();
+	else if (MATCHX("JSONTABLEPLAN"))
+		return_value = _readJsonTablePlan();
+	else if (MATCHX("JSONTABLE"))
+		return_value = _readJsonTable();
+	else if (MATCHX("JSONKEYVALUE"))
+		return_value = _readJsonKeyValue();
+	else if (MATCHX("JSONPARSEEXPR"))
+		return_value = _readJsonParseExpr();
+	else if (MATCHX("JSONSCALAREXPR"))
+		return_value = _readJsonScalarExpr();
+	else if (MATCHX("JSONSERIALIZEEXPR"))
+		return_value = _readJsonSerializeExpr();
+	else if (MATCHX("JSONOBJECTCTOR"))
+		return_value = _readJsonObjectConstructor();
+	else if (MATCHX("JSONARRAYCTOR"))
+		return_value = _readJsonArrayConstructor();
+	else if (MATCHX("JSONARRAYQUERYCTOR"))
+		return_value = _readJsonArrayQueryConstructor();
+	else if (MATCHX("JSONAGGCTOR"))
+		return_value = _readJsonAggConstructor();
+	else if (MATCHX("JSONOBJECTAGG"))
+		return_value = _readJsonObjectAgg();
+	else if (MATCHX("JSONARRAYAGG"))
+		return_value = _readJsonArrayAgg();
 
 	/* GPDB additions */
 	else if (MATCHX("A_ARRAYEXPR"))
@@ -5502,39 +5785,6 @@ parseNodeString(void)
 		return_value = _readGpPartitionListSpec();
 	else if (MATCHX("COLUMNREFERENCESTORAGEDIRECTIVE"))
 		return_value = _readColumnReferenceStorageDirective();
-||||||| c4cc2850f4d
-	else if (MATCH("PARTITIONBOUNDSPEC", 18))
-		return_value = _readPartitionBoundSpec();
-	else if (MATCH("PARTITIONRANGEDATUM", 19))
-		return_value = _readPartitionRangeDatum();
-=======
-	else if (MATCH("PARTITIONBOUNDSPEC", 18))
-		return_value = _readPartitionBoundSpec();
-	else if (MATCH("PARTITIONRANGEDATUM", 19))
-		return_value = _readPartitionRangeDatum();
-	else if (MATCH("JSONFORMAT", 10))
-		return_value = _readJsonFormat();
-	else if (MATCH("JSONRETURNING", 13))
-		return_value = _readJsonReturning();
-	else if (MATCH("JSONVALUEEXPR", 13))
-		return_value = _readJsonValueExpr();
-	else if (MATCH("JSONCTOREXPR", 12))
-		return_value = _readJsonConstructorExpr();
-	else if (MATCH("JSONISPREDICATE", 15))
-		return_value = _readJsonIsPredicate();
-	else if (MATCH("JSONBEHAVIOR", 12))
-		return_value = _readJsonBehavior();
-	else if (MATCH("JSONEXPR", 8))
-		return_value = _readJsonExpr();
-	else if (MATCH("JSONCOERCION", 12))
-		return_value = _readJsonCoercion();
-	else if (MATCH("JSONITEMCOERCIONS", 17))
-		return_value = _readJsonItemCoercions();
-	else if (MATCH("JSONTABPNODE", 12))
-		return_value = _readJsonTableParent();
-	else if (MATCH("JSONTABSNODE", 12))
-		return_value = _readJsonTableSibling();
->>>>>>> 2c7ea57e56c
 	else
 	{
         ereport(ERROR,

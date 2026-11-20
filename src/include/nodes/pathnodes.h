@@ -1273,7 +1273,6 @@ typedef struct PathKey
 } PathKey;
 
 /*
-<<<<<<< HEAD
  * DistributionKeys
  *
  * Like PathKey, but is used to represent data distribution by hash across
@@ -1297,17 +1296,6 @@ typedef struct DistributionKey
  */
 #define CdbEquivClassIsConstant(eclass)						\
 	((eclass)->ec_has_const && !(eclass)->ec_below_outer_join)
-||||||| c4cc2850f4d
-=======
- * Combines information about pathkeys and the associated clauses.
- */
-typedef struct PathKeyInfo
-{
-	NodeTag		type;
-	List	   *pathkeys;
-	List	   *clauses;
-} PathKeyInfo;
->>>>>>> 2c7ea57e56c
 
 /*
  * VolatileFunctionStatus -- allows nodes to cache their
@@ -2283,7 +2271,6 @@ typedef struct LockRowsPath
 } LockRowsPath;
 
 /*
-<<<<<<< HEAD
  * SplitUpdatePath
  */
 typedef struct SplitUpdatePath
@@ -2297,12 +2284,7 @@ typedef struct SplitUpdatePath
 } SplitUpdatePath;
 
 /*
- * ModifyTablePath represents performing INSERT/UPDATE/DELETE modifications
-||||||| c4cc2850f4d
- * ModifyTablePath represents performing INSERT/UPDATE/DELETE modifications
-=======
  * ModifyTablePath represents performing INSERT/UPDATE/DELETE/MERGE
->>>>>>> 2c7ea57e56c
  *
  * We represent most things that will be in the ModifyTable plan node
  * literally, except we have a child Path not Plan.  But analysis of the

@@ -171,8 +171,12 @@ static long max_stack_depth_bytes = 100 * 1024L;
 /*
  * Stack base pointer -- initialized by PostmasterMain and inherited by
  * subprocesses (but see also InitPostmasterChild).
+ *
+ * GG: upstream made this static in de447bb8e6f; Greengage keeps it extern
+ * (declared in utils/elog.h) because the stack-trace printer in elog.c uses
+ * it to tell where the stack ends.
  */
-static char *stack_base_ptr = NULL;
+char	   *stack_base_ptr = NULL;
 
 /*
  * On IA64 we also have to remember the register stack base.
@@ -1257,6 +1261,7 @@ exec_mpp_query(const char *query_string,
 		plan->commandType != CMD_INSERT &&
 		plan->commandType != CMD_UPDATE &&
 		plan->commandType != CMD_DELETE &&
+		plan->commandType != CMD_MERGE &&
 		plan->commandType != CMD_UTILITY)
 		elog(ERROR, "MPPEXEC: received non-DML Plan");
 	commandType = plan->commandType;
@@ -1340,6 +1345,8 @@ exec_mpp_query(const char *query_string,
 			commandTag = CMDTAG_MPPEXEC_UPDATE;
 		else if (commandType == CMD_DELETE)
 			commandTag = CMDTAG_MPPEXEC_DELETE;
+		else if (commandType == CMD_MERGE)
+			commandTag = CMDTAG_MPPEXEC_MERGE;
 		else
 			commandTag = CMDTAG_MPPEXEC;
 
@@ -4242,7 +4249,6 @@ ProcessInterrupts(const char* filename, int lineno)
 			IdleSessionTimeoutPending = false;
 	}
 
-<<<<<<< HEAD
 	if (IdleGangTimeoutPending)
 	{
 		/* As above, ignore the signal if the GUC has been reset to zero. */
@@ -4250,15 +4256,14 @@ ProcessInterrupts(const char* filename, int lineno)
 			DisconnectAndDestroyUnusedQEs();
 
 		IdleGangTimeoutPending = false;
-||||||| c4cc2850f4d
-=======
+	}
+
 	if (IdleStatsUpdateTimeoutPending)
 	{
 		/* timer should have been disarmed */
 		Assert(!IsTransactionBlock());
 		IdleStatsUpdateTimeoutPending = false;
 		pgstat_report_stat(true);
->>>>>>> 2c7ea57e56c
 	}
 
 	if (ProcSignalBarrierPending)
@@ -4993,12 +4998,8 @@ PostgresMain(const char *dbname, const char *username)
 	volatile bool send_ready_for_query = true;
 	bool		idle_in_transaction_timeout_enabled = false;
 	bool		idle_session_timeout_enabled = false;
-<<<<<<< HEAD
 	bool		idle_gang_timeout_enabled = false;
-||||||| c4cc2850f4d
-=======
 	bool		idle_stats_update_timeout_enabled = false;
->>>>>>> 2c7ea57e56c
 
 	AssertArg(dbname != NULL);
 	AssertArg(username != NULL);
@@ -5450,12 +5451,6 @@ PostgresMain(const char *dbname, const char *username)
 				if (notifyInterruptPending)
 					ProcessNotifyInterrupt(false);
 
-<<<<<<< HEAD
-				pgstat_report_stat(false);
-				pgstat_report_queuestat();
-||||||| c4cc2850f4d
-				pgstat_report_stat(false);
-=======
 				/* Start the idle-stats-update timer */
 				stats_timeout = pgstat_report_stat(false);
 				if (stats_timeout > 0)
@@ -5464,7 +5459,7 @@ PostgresMain(const char *dbname, const char *username)
 					enable_timeout_after(IDLE_STATS_UPDATE_TIMEOUT,
 										 stats_timeout);
 				}
->>>>>>> 2c7ea57e56c
+				pgstat_report_queuestat();
 
 				strncat(activity, "idle", remain);
 				set_ps_display(activity);
@@ -5505,7 +5500,10 @@ PostgresMain(const char *dbname, const char *username)
 		 * (2b) Check for temp table delete reset session work.
 		 */
 		if (Gp_role == GP_ROLE_DISPATCH)
+		{
+			GpResetSessionIfNeeded();
 			GpDropTempTables();
+		}
 
 		/*
 		 * (3) read a command (loop blocks here)
@@ -5513,7 +5511,6 @@ PostgresMain(const char *dbname, const char *username)
 		firstchar = ReadCommand(&input_message);
 
 		/*
-<<<<<<< HEAD
 		 * Reset QueryFinishPending flag, so that if we received a delayed
 		 * query finish requested after we had already finished processing
 		 * the previous command, we don't prematurely finish the next
@@ -5524,18 +5521,9 @@ PostgresMain(const char *dbname, const char *username)
 		IdleTracker_ActivateProcess();
 
 		/*
-		 * (4) turn off the idle-in-transaction and idle-session timeouts, if
-		 * active.  We do this before step (5) so that any last-moment timeout
-		 * is certain to be detected in step (5).
-||||||| c4cc2850f4d
-		 * (4) turn off the idle-in-transaction and idle-session timeouts, if
-		 * active.  We do this before step (5) so that any last-moment timeout
-		 * is certain to be detected in step (5).
-=======
 		 * (4) turn off the idle-in-transaction, idle-session and
 		 * idle-stats-update timeouts if active.  We do this before step (5) so
 		 * that any last-moment timeout is certain to be detected in step (5).
->>>>>>> 2c7ea57e56c
 		 *
 		 * At most one of these timeouts will be active, so there's no need to
 		 * worry about combining the timeout.c calls into one.
@@ -5550,18 +5538,15 @@ PostgresMain(const char *dbname, const char *username)
 			disable_timeout(IDLE_SESSION_TIMEOUT, false);
 			idle_session_timeout_enabled = false;
 		}
-<<<<<<< HEAD
 		if (idle_gang_timeout_enabled)
 		{
 			disable_timeout(IDLE_GANG_TIMEOUT, false);
 			idle_gang_timeout_enabled = false;
-||||||| c4cc2850f4d
-=======
+		}
 		if (idle_stats_update_timeout_enabled)
 		{
 			disable_timeout(IDLE_STATS_UPDATE_TIMEOUT, false);
 			idle_stats_update_timeout_enabled = false;
->>>>>>> 2c7ea57e56c
 		}
 
 		/*

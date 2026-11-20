@@ -15,14 +15,8 @@ my $primary = PostgreSQL::Test::Cluster->new('primary');
 $primary->init(allows_streaming => 1);
 $primary->start;
 my $backup_path = $primary->backup_dir . '/test_options';
-<<<<<<< HEAD
 $primary->command_ok([ 'pg_basebackup', '-D', $backup_path, '--no-sync',
-					'--target-gp-dbid', '1' ],
-||||||| c4cc2850f4d
-$primary->command_ok([ 'pg_basebackup', '-D', $backup_path, '--no-sync' ],
-=======
-$primary->command_ok([ 'pg_basebackup', '-D', $backup_path, '--no-sync', '-cfast' ],
->>>>>>> 2c7ea57e56c
+					'-cfast', '--target-gp-dbid', '1' ],
 	"base backup ok");
 
 # Verify that pg_verifybackup -q succeeds and produces no output.

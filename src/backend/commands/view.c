@@ -472,17 +472,11 @@ DefineView(ViewStmt *stmt, const char *queryString,
 		rawstmt->stmt_location = stmt_location;
 		rawstmt->stmt_len = stmt_len;
 
-<<<<<<< HEAD
-		viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
+		viewParse = parse_analyze_fixedparams(rawstmt, queryString, NULL, 0, NULL);
 	}
 	else
 		viewParse = (Query *) stmt->query;
 	viewParse_orig = copyObject(viewParse);
-||||||| c4cc2850f4d
-	viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
-=======
-	viewParse = parse_analyze_fixedparams(rawstmt, queryString, NULL, 0, NULL);
->>>>>>> 2c7ea57e56c
 
 	/*
 	 * The grammar should ensure that the result is a single SELECT Query.

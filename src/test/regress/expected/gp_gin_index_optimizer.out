@@ -1,3 +1,24 @@
+-- GPDB: this test used to inherit testjsonb and test_tsvector from
+-- create_table.sql and copy.sql.  Upstream has since relocated both fixtures
+-- into the tests that own them -- testjsonb into jsonb, test_tsvector into
+-- tsearch -- and both of those run much later in parallel_schedule than this
+-- test does.  Build our own copies from the same data files, so this test
+-- depends on nothing but the data, and drop them again at the end so the
+-- owning tests still create them for themselves.
+\getenv abs_srcdir PG_ABS_SRCDIR
+CREATE TABLE testjsonb (
+       j jsonb
+);
+\set filename :abs_srcdir '/data/jsonb.data'
+COPY testjsonb FROM :'filename';
+ANALYZE testjsonb;
+CREATE TABLE test_tsvector(
+	t text,
+	a tsvector
+);
+\set filename :abs_srcdir '/data/tsearch.data'
+COPY test_tsvector FROM :'filename';
+ANALYZE test_tsvector;
 CREATE INDEX jidx ON testjsonb USING gin (j);
 SET optimizer_enable_tablescan = off;
 SET enable_seqscan = off;
@@ -722,6 +743,8 @@ EXPLAIN SELECT * FROM complex_array_table WHERE complex_arr @> ARRAY[COMPLEX(2,4
 (6 rows)
 
 DROP TABLE complex_array_table;
+DROP TABLE test_tsvector;
+DROP TABLE testjsonb;
 RESET enable_seqscan;
 RESET enable_bitmapscan;
 RESET optimizer_enable_tablescan;

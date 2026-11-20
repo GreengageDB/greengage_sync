@@ -8,6 +8,10 @@ CREATE TABLE testjsonb (
 \set filename :abs_srcdir '/data/jsonb.data'
 COPY testjsonb FROM :'filename';
 
+-- GPDB: ORCA needs statistics here. Upstream analyzes the other tables it
+-- relocated out of copy.sql in their new homes, but not this one.
+ANALYZE testjsonb;
+
 -- Strings.
 SELECT '""'::jsonb;				-- OK.
 SELECT $$''$$::jsonb;			-- ERROR, single quotes are not allowed

@@ -1,7 +1,15 @@
--- Mask out segment file name
+-- Mask out segment file name.  Masking the value is not enough on its own:
+-- psql sizes the column from the unmasked text, so a dboid or relfilenode
+-- with a different number of digits shifts the column header's padding even
+-- though every value still reduces to segfile###.  Normalise the header too,
+-- or this test fails on any cluster whose OIDs are a digit wider.  (The
+-- dashed rule needs nothing -- init_file already collapses it.)
 -- start_matchsubs
 -- m/segfile.*,/
 -- s/segfile:\d+\/\d+/segfile###/
+--
+-- m/^\s+stat_table_segfile_size\s*$/
+-- s/^\s+stat_table_segfile_size\s*$/ stat_table_segfile_size/
 -- end_matchsubs
 
 -- start_ignore
@@ -35,7 +43,13 @@ for dbid, datadir in db_instances.items():
     absolute_path_to_dboid_dir = '%s/base/%d' % (datadir, dboid)
     i = i+1
     try:
-        for relfilenode in os.listdir(absolute_path_to_dboid_dir):
+        # sorted(): os.listdir() hands back directory order, so a segment
+        # holding both a base segfile and a .128 column file emits the two in
+        # whichever order the filesystem happens to keep them.  atmsort cannot
+        # rescue that -- the function is called from the target list, so the
+        # whole record arrives as one column it will not parse -- and the test
+        # then flutters on row order alone.
+        for relfilenode in sorted(os.listdir(absolute_path_to_dboid_dir)):
             relfilenode_prefix = relfilenode.split('.')[0]
             if relfilenodes[i] != relfilenode_prefix:
                 continue

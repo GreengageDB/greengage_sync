@@ -4556,10 +4556,10 @@ optional_setsockopt(int fd, int protoid, int optid, int value)
 
 
 /*
- * PQcancel: request query cancel
+ * PQcancel and PQrequestFinish: request query cancel, or query finish
  *
- * The return value is true if the cancel request was successfully
- * dispatched, false if not (in which case an error message is available).
+ * The return value is true if the request was successfully dispatched,
+ * false if not (in which case an error message is available).
  * Note: successful dispatch is no guarantee that there will be any effect at
  * the backend.  The application must read the operation result as usual.
  *
@@ -4574,19 +4574,15 @@ optional_setsockopt(int fd, int protoid, int optid, int value)
  * just as dangerous.  We avoid sprintf here for that reason.  Building up
  * error messages with strcpy/strcat is tedious but should be quite safe.
  * We also save/restore errno in case the signal handler support doesn't.
+ *
+ * internal_cancel() is an internal helper function to make code-sharing
+ * between the two entry points possible.  It takes the PGcancel itself,
+ * not a copy of its address and keys, because the socket options below are
+ * taken from the PGcancel too.
  */
-<<<<<<< HEAD
 static int
-internal_cancel(SockAddr *raddr, int be_pid, int be_key,
-				char *errbuf, int errbufsize, bool requestFinish)
-||||||| c4cc2850f4d
-static int
-internal_cancel(SockAddr *raddr, int be_pid, int be_key,
-				char *errbuf, int errbufsize)
-=======
-int
-PQcancel(PGcancel *cancel, char *errbuf, int errbufsize)
->>>>>>> 2c7ea57e56c
+internal_cancel(PGcancel *cancel, char *errbuf, int errbufsize,
+				bool requestFinish)
 {
 	int			save_errno = SOCK_ERRNO;
 	pgsocket	tmpsock = PGINVALID_SOCKET;
@@ -4597,24 +4593,12 @@ PQcancel(PGcancel *cancel, char *errbuf, int errbufsize)
 		CancelRequestPacket cp;
 	}			crp;
 
-<<<<<<< HEAD
 #ifndef WIN32
 	struct pollfd	pollFds[1];
 	int				pollRet;
 
 retry2:
 #endif
-||||||| c4cc2850f4d
-=======
-	if (!cancel)
-	{
-		strlcpy(errbuf, "PQcancel() -- no cancel object supplied", errbufsize);
-		/* strlcpy probably doesn't change errno, but be paranoid */
-		SOCK_ERRNO_SET(save_errno);
-		return false;
-	}
-
->>>>>>> 2c7ea57e56c
 	/*
 	 * We need to open a temporary connection to the postmaster. Do this with
 	 * only kernel calls.
@@ -4710,22 +4694,12 @@ retry3:
 	/* Create and send the cancel request packet. */
 
 	crp.packetlen = pg_hton32((uint32) sizeof(crp));
-<<<<<<< HEAD
 	if (requestFinish)
 		crp.cp.cancelRequestCode = (MsgType) pg_hton32(FINISH_REQUEST_CODE);
 	else
 		crp.cp.cancelRequestCode = (MsgType) pg_hton32(CANCEL_REQUEST_CODE);
-	crp.cp.backendPID = pg_hton32(be_pid);
-	crp.cp.cancelAuthCode = pg_hton32(be_key);
-||||||| c4cc2850f4d
-	crp.cp.cancelRequestCode = (MsgType) pg_hton32(CANCEL_REQUEST_CODE);
-	crp.cp.backendPID = pg_hton32(be_pid);
-	crp.cp.cancelAuthCode = pg_hton32(be_key);
-=======
-	crp.cp.cancelRequestCode = (MsgType) pg_hton32(CANCEL_REQUEST_CODE);
 	crp.cp.backendPID = pg_hton32(cancel->be_pid);
 	crp.cp.cancelAuthCode = pg_hton32(cancel->be_key);
->>>>>>> 2c7ea57e56c
 
 retry4:
 	if (send(tmpsock, (char *) &crp, sizeof(crp), 0) != (int) sizeof(crp))
@@ -4826,7 +4800,6 @@ cancel_errReturn:
 	return false;
 }
 
-<<<<<<< HEAD
 /*
  * PQcancel: request query cancel
  *
@@ -4841,12 +4814,15 @@ PQcancel(PGcancel *cancel, char *errbuf, int errbufsize)
 {
 	if (!cancel)
 	{
+		int			save_errno = SOCK_ERRNO;
+
 		strlcpy(errbuf, "PQcancel() -- no cancel object supplied", errbufsize);
+		/* strlcpy probably doesn't change errno, but be paranoid */
+		SOCK_ERRNO_SET(save_errno);
 		return false;
 	}
 
-	return internal_cancel(&cancel->raddr, cancel->be_pid, cancel->be_key,
-						   errbuf, errbufsize, false);
+	return internal_cancel(cancel, errbuf, errbufsize, false);
 }
 
 /*
@@ -4859,38 +4835,17 @@ PQrequestFinish(PGcancel *cancel, char *errbuf, int errbufsize)
 {
 	if (!cancel)
 	{
+		int			save_errno = SOCK_ERRNO;
+
 		strlcpy(errbuf, "PQrequestFinish() -- no cancel object supplied",
 				errbufsize);
+		/* strlcpy probably doesn't change errno, but be paranoid */
+		SOCK_ERRNO_SET(save_errno);
 		return false;
 	}
 
-	return internal_cancel(&cancel->raddr, cancel->be_pid, cancel->be_key,
-						   errbuf, errbufsize, true);
+	return internal_cancel(cancel, errbuf, errbufsize, true);
 }
-||||||| c4cc2850f4d
-/*
- * PQcancel: request query cancel
- *
- * Returns true if able to send the cancel request, false if not.
- *
- * On failure, an error message is stored in *errbuf, which must be of size
- * errbufsize (recommended size is 256 bytes).  *errbuf is not changed on
- * success return.
- */
-int
-PQcancel(PGcancel *cancel, char *errbuf, int errbufsize)
-{
-	if (!cancel)
-	{
-		strlcpy(errbuf, "PQcancel() -- no cancel object supplied", errbufsize);
-		return false;
-	}
-
-	return internal_cancel(&cancel->raddr, cancel->be_pid, cancel->be_key,
-						   errbuf, errbufsize);
-}
-=======
->>>>>>> 2c7ea57e56c
 
 /*
  * PQrequestCancel: old, not thread-safe function for requesting query cancel
@@ -4925,14 +4880,6 @@ PQrequestCancel(PGconn *conn)
 		return false;
 	}
 
-<<<<<<< HEAD
-	r = internal_cancel(&conn->raddr, conn->be_pid, conn->be_key,
-						conn->errorMessage.data, conn->errorMessage.maxlen,
-						false);
-||||||| c4cc2850f4d
-	r = internal_cancel(&conn->raddr, conn->be_pid, conn->be_key,
-						conn->errorMessage.data, conn->errorMessage.maxlen);
-=======
 	cancel = PQgetCancel(conn);
 	if (cancel)
 	{
@@ -4946,7 +4893,6 @@ PQrequestCancel(PGconn *conn)
 				conn->errorMessage.maxlen);
 		r = false;
 	}
->>>>>>> 2c7ea57e56c
 
 	if (!r)
 	{

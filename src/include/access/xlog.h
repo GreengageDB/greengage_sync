@@ -17,17 +17,6 @@
 #include "access/xlog_internal.h"
 #include "catalog/pg_control.h"
 #include "lib/stringinfo.h"
-<<<<<<< HEAD
-#include "storage/buf.h"
-#include "storage/fd.h"
-#include "utils/pg_crc.h"
-#include "utils/relcache.h"
-#include "cdb/cdbpublic.h"
-||||||| c4cc2850f4d
-#include "nodes/pg_list.h"
-#include "storage/fd.h"
-=======
->>>>>>> 2c7ea57e56c
 #include "nodes/pg_list.h"
 
 

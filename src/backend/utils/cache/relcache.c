@@ -3894,14 +3894,9 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 		/* handle these directly, at least for now */
 		SMgrRelation srel;
 
-<<<<<<< HEAD
 		srel = RelationCreateStorage(newrnode, persistence,
-									 0 /* default storage implementation */);
-||||||| c4cc2850f4d
-		srel = RelationCreateStorage(newrnode, persistence);
-=======
-		srel = RelationCreateStorage(newrnode, persistence, true);
->>>>>>> 2c7ea57e56c
+									 0 /* default storage implementation */,
+									 true);
 		smgrclose(srel);
 	}
 	else

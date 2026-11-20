@@ -37,16 +37,12 @@
 #include "catalog/objectaccess.h"
 #include "catalog/partition.h"
 #include "catalog/pg_am.h"
-<<<<<<< HEAD
 #include "catalog/pg_appendonly.h"
 #include "catalog/pg_attribute_encoding.h"
+#include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_type.h"
-||||||| c4cc2850f4d
-=======
-#include "catalog/pg_inherits.h"
->>>>>>> 2c7ea57e56c
 #include "catalog/toasting.h"
 #include "commands/cluster.h"
 #include "commands/defrem.h"
@@ -91,7 +87,8 @@ typedef struct
 } RelToCluster;
 
 
-static void cluster_multiple_rels(List *rtcs, ClusterParams *params);
+static void cluster_multiple_rels(List *rtcs, ClusterParams *params,
+								  ClusterStmt *stmt);
 static void rebuild_relation(Relation OldHeap, Oid indexOid, bool verbose);
 static void copy_table_data(Oid OIDNewHeap, Oid OIDOldHeap, Oid OIDOldIndex,
 							bool verbose, bool *pSwapToastByContent,
@@ -217,25 +214,18 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 			/* close relation, keep lock till commit */
 			table_close(rel, NoLock);
 
-<<<<<<< HEAD
-		/* Do the job. */
-		cluster_rel(tableOid, indexOid, &params, true /* printError */);
-
-		if (Gp_role == GP_ROLE_DISPATCH)
-		{
-			CdbDispatchUtilityStatement((Node *) stmt,
-										DF_CANCEL_ON_ERROR|
-										DF_WITH_SNAPSHOT|
-										DF_NEED_TWO_PHASE,
-										GetAssignedOidsForDispatch(),
-										NULL);
-		}
-||||||| c4cc2850f4d
-		/* Do the job. */
-		cluster_rel(tableOid, indexOid, &params);
-=======
 			/* Do the job. */
-			cluster_rel(tableOid, indexOid, &params);
+			cluster_rel(tableOid, indexOid, &params, true /* printError */);
+
+			if (Gp_role == GP_ROLE_DISPATCH)
+			{
+				CdbDispatchUtilityStatement((Node *) stmt,
+											DF_CANCEL_ON_ERROR|
+											DF_WITH_SNAPSHOT|
+											DF_NEED_TWO_PHASE,
+											GetAssignedOidsForDispatch(),
+											NULL);
+			}
 
 			return;
 		}
@@ -275,7 +265,6 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 
 		/* close relation, releasing lock on parent table */
 		table_close(rel, AccessExclusiveLock);
->>>>>>> 2c7ea57e56c
 	}
 	else
 	{
@@ -284,7 +273,7 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 	}
 
 	/* Do the job. */
-	cluster_multiple_rels(rtcs, &params);
+	cluster_multiple_rels(rtcs, &params, stmt);
 
 	/* Start a new transaction for the cleanup work. */
 	StartTransactionCommand();
@@ -301,73 +290,19 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
  * return.
  */
 static void
-cluster_multiple_rels(List *rtcs, ClusterParams *params)
+cluster_multiple_rels(List *rtcs, ClusterParams *params, ClusterStmt *stmt)
 {
 	ListCell   *lc;
 
-<<<<<<< HEAD
-		/* Ok, now that we've got them all, cluster them one by one */
-		foreach(rv, rvs)
-		{
-			RelToCluster *rvtc = (RelToCluster *) lfirst(rv);
-			bool		dispatch;
-			ClusterParams cluster_params = params;
-||||||| c4cc2850f4d
-		/* Ok, now that we've got them all, cluster them one by one */
-		foreach(rv, rvs)
-		{
-			RelToCluster *rvtc = (RelToCluster *) lfirst(rv);
-			ClusterParams cluster_params = params;
-=======
 	/* Commit to get out of starting transaction */
 	PopActiveSnapshot();
 	CommitTransactionCommand();
->>>>>>> 2c7ea57e56c
 
-<<<<<<< HEAD
-			/* Start a new transaction for each relation. */
-			StartTransactionCommand();
-			/* functions in indexes may want a snapshot set */
-			PushActiveSnapshot(GetTransactionSnapshot());
-			/* Do the job. */
-			cluster_params.options |= CLUOPT_RECHECK;
-			dispatch = cluster_rel(rvtc->tableOid, rvtc->indexOid,
-								   &cluster_params,
-								   false /* printError */);
-
-			if (Gp_role == GP_ROLE_DISPATCH && dispatch)
-			{
-				stmt->relation = makeNode(RangeVar);
-				stmt->relation->schemaname = get_namespace_name(get_rel_namespace(rvtc->tableOid));
-				stmt->relation->relname = get_rel_name(rvtc->tableOid);
-				CdbDispatchUtilityStatement((Node *) stmt,
-											DF_CANCEL_ON_ERROR|
-											DF_WITH_SNAPSHOT,
-											GetAssignedOidsForDispatch(),
-											NULL);
-			}
-
-			PopActiveSnapshot();
-			CommitTransactionCommand();
-		}
-||||||| c4cc2850f4d
-			/* Start a new transaction for each relation. */
-			StartTransactionCommand();
-			/* functions in indexes may want a snapshot set */
-			PushActiveSnapshot(GetTransactionSnapshot());
-			/* Do the job. */
-			cluster_params.options |= CLUOPT_RECHECK;
-			cluster_rel(rvtc->tableOid, rvtc->indexOid,
-						&cluster_params);
-			PopActiveSnapshot();
-			CommitTransactionCommand();
-		}
-=======
 	/* Cluster the tables, each in a separate transaction */
 	foreach(lc, rtcs)
 	{
 		RelToCluster *rtc = (RelToCluster *) lfirst(lc);
->>>>>>> 2c7ea57e56c
+		bool		dispatch;
 
 		/* Start a new transaction for each relation. */
 		StartTransactionCommand();
@@ -376,7 +311,27 @@ cluster_multiple_rels(List *rtcs, ClusterParams *params)
 		PushActiveSnapshot(GetTransactionSnapshot());
 
 		/* Do the job. */
-		cluster_rel(rtc->tableOid, rtc->indexOid, params);
+		dispatch = cluster_rel(rtc->tableOid, rtc->indexOid, params,
+							   false /* printError */);
+
+		if (Gp_role == GP_ROLE_DISPATCH && dispatch)
+		{
+			/*
+			 * Dispatch the single-relation form, one relation at a time, and
+			 * name the index this coordinator picked: for a partitioned table
+			 * stmt->indexname is the parent's index, and the executors need
+			 * the leaf's.
+			 */
+			stmt->relation = makeNode(RangeVar);
+			stmt->relation->schemaname = get_namespace_name(get_rel_namespace(rtc->tableOid));
+			stmt->relation->relname = get_rel_name(rtc->tableOid);
+			stmt->indexname = get_rel_name(rtc->indexOid);
+			CdbDispatchUtilityStatement((Node *) stmt,
+										DF_CANCEL_ON_ERROR|
+										DF_WITH_SNAPSHOT,
+										GetAssignedOidsForDispatch(),
+										NULL);
+		}
 
 		PopActiveSnapshot();
 		CommitTransactionCommand();
@@ -549,9 +504,15 @@ cluster_rel(Oid tableOid, Oid indexOid, ClusterParams *params, bool printError)
 		return false;
 	}
 
+	/*
+	 * The append-optimized auxiliary heaps get here through VACUUM FULL of
+	 * the table they belong to, which vacuums each of them as a relation of
+	 * its own.
+	 */
 	Assert(OldHeap->rd_rel->relkind == RELKIND_RELATION ||
 		   OldHeap->rd_rel->relkind == RELKIND_MATVIEW ||
-		   OldHeap->rd_rel->relkind == RELKIND_TOASTVALUE);
+		   OldHeap->rd_rel->relkind == RELKIND_TOASTVALUE ||
+		   RELKIND_IS_AO_AUX(OldHeap->rd_rel->relkind));
 
 	/*
 	 * All predicate locks on the tuples or pages are about to be made

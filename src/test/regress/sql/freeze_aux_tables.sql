@@ -24,9 +24,9 @@ $$ language 'plpgsql';
 
 CREATE FUNCTION classify_age(age integer) RETURNS text AS $$
   SELECT CASE WHEN $1 < 0 THEN 'negative'
-              WHEN $1 = 0 THEN 'zero'
+              WHEN $1 = 0 THEN 'zero' -- just frozen: vacuum leaves relfrozenxid at the oldest extant XID
 	      WHEN $1 < 50 THEN 'very young' -- less than vacuum_freeze_min_age=50 that we use below
-	      WHEN $1 < 100 THEN 'young' -- recently processed by vacuum freeze
+	      WHEN $1 < 100 THEN 'young' -- what 'just frozen' looked like when vacuum left relfrozenxid at FreezeLimit
 	      ELSE 'old' END; -- not frozen
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 

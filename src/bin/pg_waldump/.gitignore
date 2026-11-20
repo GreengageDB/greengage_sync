@@ -1,10 +1,13 @@
 /pg_waldump
 
 # Source files copied from src/backend/access/rmgrdesc/
+/appendonlydesc.c
+/bitmapdesc.c
 /brindesc.c
 /clogdesc.c
 /committsdesc.c
 /dbasedesc.c
+/distributedlogdesc.c
 /genericdesc.c
 /gindesc.c
 /gistdesc.c

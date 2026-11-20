@@ -4505,7 +4505,6 @@ write_pipe_chunks(char *data, int len, int dest)
 
 	Assert(len > 0);
 
-<<<<<<< HEAD
 	p.hdr.zero = 0;
 	p.hdr.pid = MyProcPid;
 	p.hdr.thid = mythread();
@@ -4514,25 +4513,6 @@ write_pipe_chunks(char *data, int len, int dest)
 	p.hdr.log_format = (dest == LOG_DESTINATION_CSVLOG ? 'c' : 't');
 	p.hdr.is_segv_msg = 'f';
 	p.hdr.next = -1;
-||||||| c4cc2850f4d
-	p.proto.nuls[0] = p.proto.nuls[1] = '\0';
-	p.proto.pid = MyProcPid;
-	p.proto.flags = 0;
-	if (dest == LOG_DESTINATION_STDERR)
-		p.proto.flags |= PIPE_PROTO_DEST_STDERR;
-	else if (dest == LOG_DESTINATION_CSVLOG)
-		p.proto.flags |= PIPE_PROTO_DEST_CSVLOG;
-=======
-	p.proto.nuls[0] = p.proto.nuls[1] = '\0';
-	p.proto.pid = MyProcPid;
-	p.proto.flags = 0;
-	if (dest == LOG_DESTINATION_STDERR)
-		p.proto.flags |= PIPE_PROTO_DEST_STDERR;
-	else if (dest == LOG_DESTINATION_CSVLOG)
-		p.proto.flags |= PIPE_PROTO_DEST_CSVLOG;
-	else if (dest == LOG_DESTINATION_JSONLOG)
-		p.proto.flags |= PIPE_PROTO_DEST_JSONLOG;
->>>>>>> 2c7ea57e56c
 
 	/* write all but the last chunk */
 	while (len > PIPE_MAX_PAYLOAD)

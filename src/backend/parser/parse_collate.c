@@ -488,12 +488,8 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 		case T_FromExpr:
 		case T_OnConflictExpr:
 		case T_SortGroupClause:
-<<<<<<< HEAD
 		case T_WindowClause:
-||||||| c4cc2850f4d
-=======
 		case T_MergeAction:
->>>>>>> 2c7ea57e56c
 			(void) expression_tree_walker(node,
 										  assign_collations_walker,
 										  (void *) &loccontext);

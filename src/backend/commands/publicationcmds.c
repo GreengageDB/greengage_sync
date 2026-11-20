@@ -53,13 +53,11 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
-<<<<<<< HEAD
 #include "catalog/heap.h"
 #include "catalog/oid_dispatch.h"
 #include "cdb/cdbdisp_query.h"
 #include "cdb/cdbvars.h"
-||||||| c4cc2850f4d
-=======
+
 /*
  * Information used to validate the columns in the row filter expression. See
  * contain_invalid_rfcolumn_walker for details.
@@ -72,7 +70,6 @@ typedef struct rf_context
 	Oid			relid;			/* relid of the relation */
 	Oid			parentid;		/* relid of the parent relation */
 } rf_context;
->>>>>>> 2c7ea57e56c
 
 static List *OpenRelIdList(List *relids);
 static List *OpenTableList(List *tables);
@@ -946,8 +943,9 @@ AlterPublicationOptions(ParseState *pstate, AlterPublicationStmt *stmt,
 
 	/*
 	 * If the publication doesn't publish changes via the root partitioned
-	 * table, the partition's row filter and column list will be used. So disallow
-	 * using WHERE clause and column lists on partitioned table in this case.
+	 * table, the partition's row filter and column list will be used. So
+	 * disallow using WHERE clause and column lists on partitioned table in
+	 * this case.
 	 */
 	if (!pubform->puballtables && publish_via_partition_root_given &&
 		!publish_via_partition_root)
@@ -966,60 +964,60 @@ AlterPublicationOptions(ParseState *pstate, AlterPublicationStmt *stmt,
 
 		foreach(lc, root_relids)
 		{
-			HeapTuple	rftuple;
 			Oid			relid = lfirst_oid(lc);
-			bool		has_column_list;
-			bool		has_row_filter;
+			HeapTuple	rftuple;
+			char		relkind;
+			char	   *relname;
+			bool		has_rowfilter;
+			bool		has_collist;
+
+			/*
+			 * Beware: we don't have lock on the relations, so cope silently
+			 * with the cache lookups returning NULL.
+			 */
 
 			rftuple = SearchSysCache2(PUBLICATIONRELMAP,
 									  ObjectIdGetDatum(relid),
 									  ObjectIdGetDatum(pubform->oid));
-
-			has_row_filter
-				= !heap_attisnull(rftuple, Anum_pg_publication_rel_prqual, NULL);
-
-			has_column_list
-				= !heap_attisnull(rftuple, Anum_pg_publication_rel_prattrs, NULL);
-
-			if (HeapTupleIsValid(rftuple) &&
-				(has_row_filter || has_column_list))
+			if (!HeapTupleIsValid(rftuple))
+				continue;
+			has_rowfilter = !heap_attisnull(rftuple, Anum_pg_publication_rel_prqual, NULL);
+			has_collist = !heap_attisnull(rftuple, Anum_pg_publication_rel_prattrs, NULL);
+			if (!has_rowfilter && !has_collist)
 			{
-				HeapTuple	tuple;
-
-				tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
-				if (HeapTupleIsValid(tuple))
-				{
-					Form_pg_class relform = (Form_pg_class) GETSTRUCT(tuple);
-
-					if ((relform->relkind == RELKIND_PARTITIONED_TABLE) &&
-						has_row_filter)
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("cannot set %s for publication \"%s\"",
-										"publish_via_partition_root = false",
-										stmt->pubname),
-								 errdetail("The publication contains a WHERE clause for a partitioned table \"%s\" "
-										   "which is not allowed when %s is false.",
-										   NameStr(relform->relname),
-										   "publish_via_partition_root")));
-
-					if ((relform->relkind == RELKIND_PARTITIONED_TABLE) &&
-						has_column_list)
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("cannot set %s for publication \"%s\"",
-										"publish_via_partition_root = false",
-										stmt->pubname),
-								 errdetail("The publication contains a column list for a partitioned table \"%s\" "
-										   "which is not allowed when %s is false.",
-										   NameStr(relform->relname),
-										   "publish_via_partition_root")));
-
-					ReleaseSysCache(tuple);
-				}
-
 				ReleaseSysCache(rftuple);
+				continue;
 			}
+
+			relkind = get_rel_relkind(relid);
+			if (relkind != RELKIND_PARTITIONED_TABLE)
+			{
+				ReleaseSysCache(rftuple);
+				continue;
+			}
+			relname = get_rel_name(relid);
+			if (relname == NULL)	/* table concurrently dropped */
+			{
+				ReleaseSysCache(rftuple);
+				continue;
+			}
+
+			if (has_rowfilter)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("cannot set parameter \"%s\" to false for publication \"%s\"",
+								"publish_via_partition_root",
+								stmt->pubname),
+						 errdetail("The publication contains a WHERE clause for partitioned table \"%s\", which is not allowed when \"%s\" is false.",
+								   relname, "publish_via_partition_root")));
+			Assert(has_collist);
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("cannot set parameter \"%s\" to false for publication \"%s\"",
+							"publish_via_partition_root",
+							stmt->pubname),
+					 errdetail("The publication contains a column list for partitioned table \"%s\", which is not allowed when \"%s\" is false.",
+							   relname, "publish_via_partition_root")));
 		}
 	}
 

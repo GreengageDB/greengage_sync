@@ -1103,11 +1103,11 @@ pqGetErrorNotice3(PGconn *conn, bool isError)
 	 */
 	if (isError)
 	{
-<<<<<<< HEAD
-		if (res)
-			pqSetResultError(res, &workBuf);
-
-		/* CDB: Transfer statistical messages on to the new result. */
+		/*
+		 * CDB: Transfer statistical messages on to the new result.  This has
+		 * to run before pqClearAsyncResult() below, which frees the
+		 * conn->result the messages are collected on.
+		 */
 		if (conn->result &&
 		    conn->result->cdbstats)
 		{
@@ -1129,11 +1129,6 @@ pqGetErrorNotice3(PGconn *conn, bool isError)
 			res->cdbstats = prev;
 		}
 
-||||||| c4cc2850f4d
-		if (res)
-			pqSetResultError(res, &workBuf);
-=======
->>>>>>> 2c7ea57e56c
 		pqClearAsyncResult(conn);	/* redundant, but be safe */
 		if (res)
 		{

@@ -1349,7 +1349,11 @@ INSERT INTO psql_comics VALUES ('Calvin'), ('hobbes') \;
 COPY psql_comics FROM STDIN \;
 UPDATE psql_comics SET s = 'Hobbes' WHERE s = 'hobbes' \;
 DELETE FROM psql_comics WHERE s = 'Moe' \;
-COPY psql_comics TO STDOUT \;
+-- Greengage: psql_comics is distributed by s, so its rows come back from the
+-- segments in nondeterministic order.  A COPY TO STDOUT inside a \; chain is
+-- not a SELECT result block, so atmsort cannot sort it -- order the rows in
+-- the query itself instead.
+COPY (SELECT s FROM psql_comics ORDER BY s) TO STDOUT \;
 TRUNCATE psql_comics \;
 DROP TABLE psql_comics \;
 SELECT 'ok' AS "done" ;

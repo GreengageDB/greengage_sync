@@ -302,7 +302,9 @@ cdbmutate_warn_ctid_without_segid(struct PlannerInfo *root, struct RelOptInfo *r
 		const char *cmd;
 		int			elevel;
 
-		/* Reject if UPDATE or DELETE.  Otherwise just give info msg. */
+		/*
+		 * Reject if UPDATE, DELETE or MERGE.  Otherwise just give info msg.
+		 */
 		switch (root->parse->commandType)
 		{
 			case CMD_UPDATE:
@@ -312,6 +314,11 @@ cdbmutate_warn_ctid_without_segid(struct PlannerInfo *root, struct RelOptInfo *r
 
 			case CMD_DELETE:
 				cmd = "DELETE";
+				elevel = ERROR;
+				break;
+
+			case CMD_MERGE:
+				cmd = "MERGE";
 				elevel = ERROR;
 				break;
 

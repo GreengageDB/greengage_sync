@@ -45,17 +45,13 @@ CREATE FUNCTION reverse_name(name)
 -- systems.    This non-func update stuff needs to be examined
 -- more closely.  			- jolly (2/22/96)
 --
-<<<<<<< HEAD
-/* GPDB TODO: This test is disabled for now, because when running with ORCA,
-   you get an error:
-     ERROR:  multiple updates to a row by the same query is not allowed
-||||||| c4cc2850f4d
-=======
 SELECT two, stringu1, ten, string4
    INTO TABLE tmp
    FROM onek;
 
->>>>>>> 2c7ea57e56c
+/* GPDB TODO: This test is disabled for now, because when running with ORCA,
+   you get an error:
+     ERROR:  multiple updates to a row by the same query is not allowed
 UPDATE tmp
    SET stringu1 = reverse_name(onek.stringu1)
    FROM onek
@@ -142,12 +138,12 @@ INSERT INTO equipment_r (name, hobby) VALUES ('guts', 'skywalking');
 CREATE FUNCTION hobbies(person)
    RETURNS setof hobbies_r
    AS 'select * from hobbies_r where person = $1.name'
-   LANGUAGE SQL;
+   LANGUAGE SQL READS SQL DATA;
 
 CREATE FUNCTION hobby_construct(text, text)
    RETURNS hobbies_r
    AS 'select $1 as name, $2 as hobby'
-   LANGUAGE SQL;
+   LANGUAGE SQL READS SQL DATA;
 
 CREATE FUNCTION hobby_construct_named(name text, hobby text)
    RETURNS hobbies_r
@@ -156,13 +152,15 @@ CREATE FUNCTION hobby_construct_named(name text, hobby text)
 
 CREATE FUNCTION hobbies_by_name(hobbies_r.name%TYPE)
    RETURNS hobbies_r.person%TYPE
-   AS 'select person from hobbies_r where name = $1'
-   LANGUAGE SQL;
+   -- GPDB: use an order by to force the later test in 'misc' to return
+   -- a particular person, when multiple persons have the same hobby.
+   AS 'select person from hobbies_r where name = $1 order by person'
+   LANGUAGE SQL READS SQL DATA;
 
 CREATE FUNCTION equipment(hobbies_r)
    RETURNS setof equipment_r
    AS 'select * from equipment_r where hobby = $1.name'
-   LANGUAGE SQL;
+   LANGUAGE SQL READS SQL DATA;
 
 CREATE FUNCTION equipment_named(hobby hobbies_r)
    RETURNS setof equipment_r

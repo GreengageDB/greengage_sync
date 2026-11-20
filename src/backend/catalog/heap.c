@@ -36,29 +36,15 @@
 #include "access/relation.h"
 #include "access/table.h"
 #include "access/tableam.h"
-<<<<<<< HEAD
 #include "access/toast_compression.h"
 #include "access/transam.h"
 #include "access/reloptions.h"
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "catalog/binary_upgrade.h"
-||||||| c4cc2850f4d
-#include "access/toast_compression.h"
-#include "access/transam.h"
-#include "access/xact.h"
-#include "access/xlog.h"
-#include "catalog/binary_upgrade.h"
-=======
->>>>>>> 2c7ea57e56c
 #include "catalog/catalog.h"
-<<<<<<< HEAD
 #include "catalog/dependency.h"
 #include "catalog/gp_distribution_policy.h"
-||||||| c4cc2850f4d
-#include "catalog/dependency.h"
-=======
->>>>>>> 2c7ea57e56c
 #include "catalog/heap.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
@@ -115,7 +101,6 @@
 #include "utils/relcache.h"
 #include "utils/timestamp.h"
 
-<<<<<<< HEAD
 
 static void MetaTrackAddUpdInternal(Oid			classid,
 									Oid			objoid,
@@ -124,17 +109,6 @@ static void MetaTrackAddUpdInternal(Oid			classid,
 									char*		subtype,
 									Relation	rel,
 									HeapTuple	old_tuple);
-||||||| c4cc2850f4d
-/* Potentially set by pg_upgrade_support functions */
-Oid			binary_upgrade_next_heap_pg_class_oid = InvalidOid;
-Oid			binary_upgrade_next_toast_pg_class_oid = InvalidOid;
-=======
-/* Potentially set by pg_upgrade_support functions */
-Oid			binary_upgrade_next_heap_pg_class_oid = InvalidOid;
-Oid			binary_upgrade_next_heap_pg_class_relfilenode = InvalidOid;
-Oid			binary_upgrade_next_toast_pg_class_oid = InvalidOid;
-Oid			binary_upgrade_next_toast_pg_class_relfilenode = InvalidOid;
->>>>>>> 2c7ea57e56c
 
 static void AddNewRelationTuple(Relation pg_class_desc,
 								Relation new_rel_desc,
@@ -343,8 +317,8 @@ SystemAttributeByName(const char *attname)
  *		heap_create		- Create an uncataloged heap relation
  *
  *		Note API change: the caller must now always provide the OID
- *		to use for the relation.  The relfilenode may be (and in
- *		the simplest cases is) left unspecified.
+ *		to use for the relation.  The relfilenode may (and, normally,
+ *		should) be left unspecified.
  *
  *		create_storage indicates whether or not to create the storage.
  *		However, even if create_storage is true, no storage will be
@@ -411,26 +385,16 @@ heap_create(const char *relname,
 		create_storage = false;
 	else
 	{
-<<<<<<< HEAD
-		create_storage = true;
 		/*
 		 * In PostgreSQL, the relation OID is used as the relfilenode initially.
 		 * In GPDB, relfilenode is assigned using a separate counter. Pass '1'
 		 * to RelationBuildLocalRelation() to signal that it should assign a
-		 * a new value.
-		 */
-		relfilenode = 1;
-||||||| c4cc2850f4d
-		create_storage = true;
-		relfilenode = relid;
-=======
-		/*
-		 * If relfilenode is unspecified by the caller then create storage
-		 * with oid same as relid.
+		 * a new value.  A caller that specified a relfilenode of its own keeps
+		 * it; its storage exists already, which is why create_storage is false
+		 * in that case.
 		 */
 		if (!OidIsValid(relfilenode))
-			relfilenode = relid;
->>>>>>> 2c7ea57e56c
+			relfilenode = 1;
 	}
 
 	/*
@@ -481,13 +445,7 @@ heap_create(const char *relname,
 											relfrozenxid, relminmxid);
 		}
 		else if (RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
-<<<<<<< HEAD
-			RelationCreateStorage(rel->rd_node, relpersistence, SMGR_MD);
-||||||| c4cc2850f4d
-			RelationCreateStorage(rel->rd_node, relpersistence);
-=======
-			RelationCreateStorage(rel->rd_node, relpersistence, true);
->>>>>>> 2c7ea57e56c
+			RelationCreateStorage(rel->rd_node, relpersistence, SMGR_MD, true);
 		else
 			Assert(false);
 
@@ -507,6 +465,9 @@ heap_create(const char *relname,
 	if (!create_storage && reltablespace != InvalidOid)
 		recordDependencyOnTablespace(RelationRelationId, relid,
 									 reltablespace);
+
+	/* ensure that stats are dropped if transaction aborts */
+	pgstat_create_relation(rel);
 
 	return rel;
 }
@@ -1497,8 +1458,6 @@ heap_create_with_catalog(const char *relname,
 	Oid			old_type_oid;
 	Oid			new_type_oid;
 
-	/* By default set to InvalidOid unless overridden by binary-upgrade */
-	Oid			relfilenode = InvalidOid;
 	TransactionId relfrozenxid;
 	MultiXactId relminmxid;
 
@@ -1562,99 +1521,8 @@ heap_create_with_catalog(const char *relname,
 	 */
 	if (!OidIsValid(relid))
 	{
-<<<<<<< HEAD
 		relid = GetNewOidForRelation(pg_class_desc, ClassOidIndexId, Anum_pg_class_oid,
 									 pstrdup(relname), relnamespace);
-||||||| c4cc2850f4d
-		/* Use binary-upgrade override for pg_class.oid/relfilenode? */
-		if (IsBinaryUpgrade)
-		{
-			/*
-			 * Indexes are not supported here; they use
-			 * binary_upgrade_next_index_pg_class_oid.
-			 */
-			Assert(relkind != RELKIND_INDEX);
-			Assert(relkind != RELKIND_PARTITIONED_INDEX);
-
-			if (relkind == RELKIND_TOASTVALUE)
-			{
-				/* There might be no TOAST table, so we have to test for it. */
-				if (OidIsValid(binary_upgrade_next_toast_pg_class_oid))
-				{
-					relid = binary_upgrade_next_toast_pg_class_oid;
-					binary_upgrade_next_toast_pg_class_oid = InvalidOid;
-				}
-			}
-			else
-			{
-				if (!OidIsValid(binary_upgrade_next_heap_pg_class_oid))
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							 errmsg("pg_class heap OID value not set when in binary upgrade mode")));
-
-				relid = binary_upgrade_next_heap_pg_class_oid;
-				binary_upgrade_next_heap_pg_class_oid = InvalidOid;
-			}
-		}
-
-		if (!OidIsValid(relid))
-			relid = GetNewRelFileNode(reltablespace, pg_class_desc,
-									  relpersistence);
-=======
-		/* Use binary-upgrade override for pg_class.oid and relfilenode */
-		if (IsBinaryUpgrade)
-		{
-			/*
-			 * Indexes are not supported here; they use
-			 * binary_upgrade_next_index_pg_class_oid.
-			 */
-			Assert(relkind != RELKIND_INDEX);
-			Assert(relkind != RELKIND_PARTITIONED_INDEX);
-
-			if (relkind == RELKIND_TOASTVALUE)
-			{
-				/* There might be no TOAST table, so we have to test for it. */
-				if (OidIsValid(binary_upgrade_next_toast_pg_class_oid))
-				{
-					relid = binary_upgrade_next_toast_pg_class_oid;
-					binary_upgrade_next_toast_pg_class_oid = InvalidOid;
-
-					if (!OidIsValid(binary_upgrade_next_toast_pg_class_relfilenode))
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								  errmsg("toast relfilenode value not set when in binary upgrade mode")));
-
-					relfilenode = binary_upgrade_next_toast_pg_class_relfilenode;
-					binary_upgrade_next_toast_pg_class_relfilenode = InvalidOid;
-				}
-			}
-			else
-			{
-				if (!OidIsValid(binary_upgrade_next_heap_pg_class_oid))
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							 errmsg("pg_class heap OID value not set when in binary upgrade mode")));
-
-				relid = binary_upgrade_next_heap_pg_class_oid;
-				binary_upgrade_next_heap_pg_class_oid = InvalidOid;
-
-				if (RELKIND_HAS_STORAGE(relkind))
-				{
-					if (!OidIsValid(binary_upgrade_next_heap_pg_class_relfilenode))
-						ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("relfilenode value not set when in binary upgrade mode")));
-
-					relfilenode = binary_upgrade_next_heap_pg_class_relfilenode;
-					binary_upgrade_next_heap_pg_class_relfilenode = InvalidOid;
-				}
-			}
-		}
-
-		if (!OidIsValid(relid))
-			relid = GetNewRelFileNode(reltablespace, pg_class_desc,
-									  relpersistence);
->>>>>>> 2c7ea57e56c
 	}
 
 	/*
@@ -1697,7 +1565,7 @@ heap_create_with_catalog(const char *relname,
 							   relnamespace,
 							   reltablespace,
 							   relid,
-							   relfilenode,
+							   InvalidOid,
 							   accessmtd,
 							   tupdesc,
 							   relkind,
@@ -1950,9 +1818,6 @@ heap_create_with_catalog(const char *relname,
 	if (oncommit != ONCOMMIT_NOOP)
 		register_on_commit_action(relid, oncommit);
 
-	/* ensure that stats are dropped if transaction aborts */
-	pgstat_create_relation(new_rel_desc);
-
 	/*
 	 * CDB: If caller gave us a distribution policy, store the distribution
 	 * key column list in the gp_distribution_policy catalog and attach a
@@ -2186,6 +2051,24 @@ DeleteSystemAttributeTuples(Oid relid)
 }
 
 /*
+ * GG: does this distribution policy hash on the given column?
+ */
+static bool
+policy_distributes_on_attribute(const GpPolicy *policy, AttrNumber attnum)
+{
+	if (!GpPolicyIsPartitioned(policy))
+		return false;
+
+	for (int ia = 0; ia < policy->nattrs; ia++)
+	{
+		if (attnum == policy->attrs[ia])
+			return true;
+	}
+
+	return false;
+}
+
+/*
  *		RemoveAttributeById
  *
  * This is the guts of ALTER TABLE DROP COLUMN: actually mark the attribute
@@ -2296,6 +2179,51 @@ RemoveAttributeById(Oid relid, AttrNumber attnum)
 
 	if (attnum > 0)
 		RemoveStatistics(relid, attnum);
+
+	/*
+	 * GG: a distribution policy cannot outlive a column it distributes on.
+	 * The policy stores attribute numbers, and everything that reads one back
+	 * needs the column's type to resolve its hash operator class with --
+	 * pg_get_table_distributedby() asserts on it, so a pg_dump of the
+	 * database would take the coordinator down.  ALTER TABLE DROP COLUMN
+	 * forces a random distribution before it gets here, so this is for the
+	 * drops that cascade from another object through dependency.c.
+	 */
+	if (attnum > 0 && policy_distributes_on_attribute(rel->rd_cdbpolicy, attnum))
+	{
+		GpPolicy   *policy;
+
+		/*
+		 * The relcache policy only tells us it is worth looking.  ALTER TABLE
+		 * DROP COLUMN writes the random policy before performMultipleDeletions()
+		 * brings us here, but that write stays invisible to the syscache -- and
+		 * so to a relcache entry rebuilt in the meantime -- until the command
+		 * counter moves, so the key column can still appear to be there.
+		 * Updating gp_distribution_policy twice in one command fails with
+		 * "tuple already updated by self", so make the earlier write visible
+		 * and ask the catalog before touching it.
+		 */
+		CommandCounterIncrement();
+
+		policy = GpPolicyFetch(relid);
+		if (policy_distributes_on_attribute(policy, attnum))
+		{
+			MemoryContext oldcontext;
+
+			/* force a random distribution */
+			policy->nattrs = 0;
+			GpPolicyReplace(relid, policy);
+
+			oldcontext = MemoryContextSwitchTo(GetMemoryChunkContext(rel));
+			rel->rd_cdbpolicy = GpPolicyCopy(policy);
+			MemoryContextSwitchTo(oldcontext);
+
+			if (Gp_role != GP_ROLE_EXECUTE)
+				ereport(NOTICE,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("dropping a column that is part of the distribution policy forces a NULL distribution policy")));
+		}
+	}
 
 	relation_close(rel, NoLock);
 }
@@ -2660,415 +2588,6 @@ SetAttrMissing(Oid relid, char *attname, char *value)
 }
 
 /*
-<<<<<<< HEAD
- * Store a default expression for column attnum of relation rel.
- *
- * Returns the OID of the new pg_attrdef tuple.
- *
- * add_column_mode must be true if we are storing the default for a new
- * attribute, and false if it's for an already existing attribute. The reason
- * for this is that the missing value must never be updated after it is set,
- * which can only be when a column is added to the table. Otherwise we would
- * in effect be changing existing tuples.
- *
- * In GPDB in add_column_mode, the QD evaluates the default expression, and
- * the QEs must use the pre-computed value. In QD, this function evaluates
- * the value - like in upstream - and returns it in
- * *missingval_p/missingIsNull_p. In the QE, the caller is expected to pass
- * the pre-computed values in missingval/missingIsNull.
- */
-Oid
-StoreAttrDefault(Relation rel, AttrNumber attnum,
-				 Node *expr,
-				 bool *cookedMissingVal,
-				 Datum *missingval_p,
-				 bool *missingIsNull_p,
-				 bool is_internal, bool add_column_mode)
-{
-	char	   *adbin;
-	Relation	adrel;
-	HeapTuple	tuple;
-	Datum		values[4];
-	static bool nulls[4] = {false, false, false, false};
-	Relation	attrrel;
-	HeapTuple	atttup;
-	Form_pg_attribute attStruct;
-	char		attgenerated;
-	Oid			attrdefOid;
-	ObjectAddress colobject,
-				defobject;
-
-	adrel = table_open(AttrDefaultRelationId, RowExclusiveLock);
-
-	/*
-	 * Flatten expression to string form for storage.
-	 */
-	adbin = nodeToString(expr);
-
-	/*
-	 * Make the pg_attrdef entry.
-	 */
-	attrdefOid = GetNewOidForAttrDefault(adrel, AttrDefaultOidIndexId,
-										 Anum_pg_attrdef_oid,
-										 RelationGetRelid(rel),
-										 attnum);
-	values[Anum_pg_attrdef_oid - 1] = ObjectIdGetDatum(attrdefOid);
-	values[Anum_pg_attrdef_adrelid - 1] = RelationGetRelid(rel);
-	values[Anum_pg_attrdef_adnum - 1] = attnum;
-	values[Anum_pg_attrdef_adbin - 1] = CStringGetTextDatum(adbin);
-
-	tuple = heap_form_tuple(adrel->rd_att, values, nulls);
-	CatalogTupleInsert(adrel, tuple);
-
-	defobject.classId = AttrDefaultRelationId;
-	defobject.objectId = attrdefOid;
-	defobject.objectSubId = 0;
-
-	table_close(adrel, RowExclusiveLock);
-
-	/* now can free some of the stuff allocated above */
-	pfree(DatumGetPointer(values[Anum_pg_attrdef_adbin - 1]));
-	heap_freetuple(tuple);
-	pfree(adbin);
-
-	/*
-	 * Update the pg_attribute entry for the column to show that a default
-	 * exists.
-	 */
-	attrrel = table_open(AttributeRelationId, RowExclusiveLock);
-	atttup = SearchSysCacheCopy2(ATTNUM,
-								 ObjectIdGetDatum(RelationGetRelid(rel)),
-								 Int16GetDatum(attnum));
-	if (!HeapTupleIsValid(atttup))
-		elog(ERROR, "cache lookup failed for attribute %d of relation %u",
-			 attnum, RelationGetRelid(rel));
-	attStruct = (Form_pg_attribute) GETSTRUCT(atttup);
-	attgenerated = attStruct->attgenerated;
-	if (!attStruct->atthasdef)
-	{
-		Form_pg_attribute defAttStruct;
-
-		ExprState  *exprState;
-		Expr	   *expr2 = (Expr *) expr;
-		EState	   *estate = NULL;
-		ExprContext *econtext;
-		Datum		valuesAtt[Natts_pg_attribute];
-		bool		nullsAtt[Natts_pg_attribute];
-		bool		replacesAtt[Natts_pg_attribute];
-		Datum		missingval = (Datum) 0;
-		bool		missingIsNull = true;
-
-		MemSet(valuesAtt, 0, sizeof(valuesAtt));
-		MemSet(nullsAtt, false, sizeof(nullsAtt));
-		MemSet(replacesAtt, false, sizeof(replacesAtt));
-		valuesAtt[Anum_pg_attribute_atthasdef - 1] = true;
-		replacesAtt[Anum_pg_attribute_atthasdef - 1] = true;
-
-		if (rel->rd_rel->relkind != RELKIND_RELATION)
-		{
-			/* Do nothing for non-plain table (see 0a4efdc) */
-		}
-		else if (add_column_mode && !attgenerated && cookedMissingVal && *cookedMissingVal)
-		{
-			missingval = *missingval_p;
-			missingIsNull = *missingIsNull_p;
-		}
-		else if (add_column_mode && !attgenerated)
-		{
-			expr2 = expression_planner(expr2);
-			estate = CreateExecutorState();
-			exprState = ExecPrepareExpr(expr2, estate);
-			econtext = GetPerTupleExprContext(estate);
-
-			missingval = ExecEvalExpr(exprState, econtext,
-									  &missingIsNull);
-
-			FreeExecutorState(estate);
-
-			defAttStruct = TupleDescAttr(rel->rd_att, attnum - 1);
-
-			if (missingIsNull)
-			{
-				/* if the default evaluates to NULL, just store a NULL array */
-				missingval = (Datum) 0;
-			}
-			else
-			{
-				/* otherwise make a one-element array of the value */
-				missingval = PointerGetDatum(construct_array(&missingval,
-															 1,
-															 defAttStruct->atttypid,
-															 defAttStruct->attlen,
-															 defAttStruct->attbyval,
-															 defAttStruct->attalign));
-			}
-		}
-		if (rel->rd_rel->relkind == RELKIND_RELATION && add_column_mode && !attgenerated)
-		{
-			valuesAtt[Anum_pg_attribute_atthasmissing - 1] = !missingIsNull;
-			replacesAtt[Anum_pg_attribute_atthasmissing - 1] = true;
-			valuesAtt[Anum_pg_attribute_attmissingval - 1] = missingval;
-			replacesAtt[Anum_pg_attribute_attmissingval - 1] = true;
-			nullsAtt[Anum_pg_attribute_attmissingval - 1] = missingIsNull;
-
-			*cookedMissingVal = true;
-			*missingval_p = missingval;
-			*missingIsNull_p = missingIsNull;
-		}
-		atttup = heap_modify_tuple(atttup, RelationGetDescr(attrrel),
-								   valuesAtt, nullsAtt, replacesAtt);
-
-		CatalogTupleUpdate(attrrel, &atttup->t_self, atttup);
-
-		/* GPDB: don't free it, it's returned to the caller */
-		//if (!missingIsNull)
-		//	pfree(DatumGetPointer(missingval));
-
-	}
-	table_close(attrrel, RowExclusiveLock);
-	heap_freetuple(atttup);
-
-	/*
-	 * Make a dependency so that the pg_attrdef entry goes away if the column
-	 * (or whole table) is deleted.
-	 */
-	colobject.classId = RelationRelationId;
-	colobject.objectId = RelationGetRelid(rel);
-	colobject.objectSubId = attnum;
-
-	recordDependencyOn(&defobject, &colobject, DEPENDENCY_AUTO);
-
-	/*
-	 * Record dependencies on objects used in the expression, too.
-	 */
-	if (attgenerated)
-	{
-		/*
-		 * Generated column: Dropping anything that the generation expression
-		 * refers to automatically drops the generated column.
-		 */
-		recordDependencyOnSingleRelExpr(&colobject, expr, RelationGetRelid(rel),
-										DEPENDENCY_AUTO,
-										DEPENDENCY_AUTO, false);
-	}
-	else
-	{
-		/*
-		 * Normal default: Dropping anything that the default refers to
-		 * requires CASCADE and drops the default only.
-		 */
-		recordDependencyOnSingleRelExpr(&defobject, expr, RelationGetRelid(rel),
-										DEPENDENCY_NORMAL,
-										DEPENDENCY_NORMAL, false);
-	}
-
-	/*
-	 * Post creation hook for attribute defaults.
-	 *
-	 * XXX. ALTER TABLE ALTER COLUMN SET/DROP DEFAULT is implemented with a
-	 * couple of deletion/creation of the attribute's default entry, so the
-	 * callee should check existence of an older version of this entry if it
-	 * needs to distinguish.
-	 */
-	InvokeObjectPostCreateHookArg(AttrDefaultRelationId,
-								  RelationGetRelid(rel), attnum, is_internal);
-
-	return attrdefOid;
-}
-
-/*
-||||||| c4cc2850f4d
- * Store a default expression for column attnum of relation rel.
- *
- * Returns the OID of the new pg_attrdef tuple.
- *
- * add_column_mode must be true if we are storing the default for a new
- * attribute, and false if it's for an already existing attribute. The reason
- * for this is that the missing value must never be updated after it is set,
- * which can only be when a column is added to the table. Otherwise we would
- * in effect be changing existing tuples.
- */
-Oid
-StoreAttrDefault(Relation rel, AttrNumber attnum,
-				 Node *expr, bool is_internal, bool add_column_mode)
-{
-	char	   *adbin;
-	Relation	adrel;
-	HeapTuple	tuple;
-	Datum		values[4];
-	static bool nulls[4] = {false, false, false, false};
-	Relation	attrrel;
-	HeapTuple	atttup;
-	Form_pg_attribute attStruct;
-	char		attgenerated;
-	Oid			attrdefOid;
-	ObjectAddress colobject,
-				defobject;
-
-	adrel = table_open(AttrDefaultRelationId, RowExclusiveLock);
-
-	/*
-	 * Flatten expression to string form for storage.
-	 */
-	adbin = nodeToString(expr);
-
-	/*
-	 * Make the pg_attrdef entry.
-	 */
-	attrdefOid = GetNewOidWithIndex(adrel, AttrDefaultOidIndexId,
-									Anum_pg_attrdef_oid);
-	values[Anum_pg_attrdef_oid - 1] = ObjectIdGetDatum(attrdefOid);
-	values[Anum_pg_attrdef_adrelid - 1] = RelationGetRelid(rel);
-	values[Anum_pg_attrdef_adnum - 1] = attnum;
-	values[Anum_pg_attrdef_adbin - 1] = CStringGetTextDatum(adbin);
-
-	tuple = heap_form_tuple(adrel->rd_att, values, nulls);
-	CatalogTupleInsert(adrel, tuple);
-
-	defobject.classId = AttrDefaultRelationId;
-	defobject.objectId = attrdefOid;
-	defobject.objectSubId = 0;
-
-	table_close(adrel, RowExclusiveLock);
-
-	/* now can free some of the stuff allocated above */
-	pfree(DatumGetPointer(values[Anum_pg_attrdef_adbin - 1]));
-	heap_freetuple(tuple);
-	pfree(adbin);
-
-	/*
-	 * Update the pg_attribute entry for the column to show that a default
-	 * exists.
-	 */
-	attrrel = table_open(AttributeRelationId, RowExclusiveLock);
-	atttup = SearchSysCacheCopy2(ATTNUM,
-								 ObjectIdGetDatum(RelationGetRelid(rel)),
-								 Int16GetDatum(attnum));
-	if (!HeapTupleIsValid(atttup))
-		elog(ERROR, "cache lookup failed for attribute %d of relation %u",
-			 attnum, RelationGetRelid(rel));
-	attStruct = (Form_pg_attribute) GETSTRUCT(atttup);
-	attgenerated = attStruct->attgenerated;
-	if (!attStruct->atthasdef)
-	{
-		Form_pg_attribute defAttStruct;
-
-		ExprState  *exprState;
-		Expr	   *expr2 = (Expr *) expr;
-		EState	   *estate = NULL;
-		ExprContext *econtext;
-		Datum		valuesAtt[Natts_pg_attribute];
-		bool		nullsAtt[Natts_pg_attribute];
-		bool		replacesAtt[Natts_pg_attribute];
-		Datum		missingval = (Datum) 0;
-		bool		missingIsNull = true;
-
-		MemSet(valuesAtt, 0, sizeof(valuesAtt));
-		MemSet(nullsAtt, false, sizeof(nullsAtt));
-		MemSet(replacesAtt, false, sizeof(replacesAtt));
-		valuesAtt[Anum_pg_attribute_atthasdef - 1] = true;
-		replacesAtt[Anum_pg_attribute_atthasdef - 1] = true;
-
-		if (rel->rd_rel->relkind == RELKIND_RELATION && add_column_mode &&
-			!attgenerated)
-		{
-			expr2 = expression_planner(expr2);
-			estate = CreateExecutorState();
-			exprState = ExecPrepareExpr(expr2, estate);
-			econtext = GetPerTupleExprContext(estate);
-
-			missingval = ExecEvalExpr(exprState, econtext,
-									  &missingIsNull);
-
-			FreeExecutorState(estate);
-
-			defAttStruct = TupleDescAttr(rel->rd_att, attnum - 1);
-
-			if (missingIsNull)
-			{
-				/* if the default evaluates to NULL, just store a NULL array */
-				missingval = (Datum) 0;
-			}
-			else
-			{
-				/* otherwise make a one-element array of the value */
-				missingval = PointerGetDatum(construct_array(&missingval,
-															 1,
-															 defAttStruct->atttypid,
-															 defAttStruct->attlen,
-															 defAttStruct->attbyval,
-															 defAttStruct->attalign));
-			}
-
-			valuesAtt[Anum_pg_attribute_atthasmissing - 1] = !missingIsNull;
-			replacesAtt[Anum_pg_attribute_atthasmissing - 1] = true;
-			valuesAtt[Anum_pg_attribute_attmissingval - 1] = missingval;
-			replacesAtt[Anum_pg_attribute_attmissingval - 1] = true;
-			nullsAtt[Anum_pg_attribute_attmissingval - 1] = missingIsNull;
-		}
-		atttup = heap_modify_tuple(atttup, RelationGetDescr(attrrel),
-								   valuesAtt, nullsAtt, replacesAtt);
-
-		CatalogTupleUpdate(attrrel, &atttup->t_self, atttup);
-
-		if (!missingIsNull)
-			pfree(DatumGetPointer(missingval));
-
-	}
-	table_close(attrrel, RowExclusiveLock);
-	heap_freetuple(atttup);
-
-	/*
-	 * Make a dependency so that the pg_attrdef entry goes away if the column
-	 * (or whole table) is deleted.
-	 */
-	colobject.classId = RelationRelationId;
-	colobject.objectId = RelationGetRelid(rel);
-	colobject.objectSubId = attnum;
-
-	recordDependencyOn(&defobject, &colobject, DEPENDENCY_AUTO);
-
-	/*
-	 * Record dependencies on objects used in the expression, too.
-	 */
-	if (attgenerated)
-	{
-		/*
-		 * Generated column: Dropping anything that the generation expression
-		 * refers to automatically drops the generated column.
-		 */
-		recordDependencyOnSingleRelExpr(&colobject, expr, RelationGetRelid(rel),
-										DEPENDENCY_AUTO,
-										DEPENDENCY_AUTO, false);
-	}
-	else
-	{
-		/*
-		 * Normal default: Dropping anything that the default refers to
-		 * requires CASCADE and drops the default only.
-		 */
-		recordDependencyOnSingleRelExpr(&defobject, expr, RelationGetRelid(rel),
-										DEPENDENCY_NORMAL,
-										DEPENDENCY_NORMAL, false);
-	}
-
-	/*
-	 * Post creation hook for attribute defaults.
-	 *
-	 * XXX. ALTER TABLE ALTER COLUMN SET/DROP DEFAULT is implemented with a
-	 * couple of deletion/creation of the attribute's default entry, so the
-	 * callee should check existence of an older version of this entry if it
-	 * needs to distinguish.
-	 */
-	InvokeObjectPostCreateHookArg(AttrDefaultRelationId,
-								  RelationGetRelid(rel), attnum, is_internal);
-
-	return attrdefOid;
-}
-
-/*
-=======
->>>>>>> 2c7ea57e56c
  * Store a check-constraint expression for the given relation.
  *
  * Caller is responsible for updating the count of constraints

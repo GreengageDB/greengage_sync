@@ -80,7 +80,6 @@ ignore: random
 # aggregates depends on create_aggregate
 # join depends on create_misc
 # ----------
-<<<<<<< HEAD
 ignore: random
 test: select_into select_distinct select_distinct_on select_implicit select_having subselect union case join aggregates random portals arrays btree_index hash_index update delete
 
@@ -96,12 +95,6 @@ test: namespace
 # in segments in a way that doesn't work:
 # ERROR:  function cannot execute on a QE slice because it accesses relation "public.xacttest"
 #test: transactions
-||||||| c4cc2850f4d
-ignore: random
-test: select_into select_distinct select_distinct_on select_implicit select_having subselect union case join aggregates transactions random portals arrays btree_index hash_index update delete namespace prepared_xacts
-=======
-test: select_into select_distinct select_distinct_on select_implicit select_having subselect union case join aggregates transactions random portals arrays btree_index hash_index update delete namespace prepared_xacts
->>>>>>> 2c7ea57e56c
 
 # ----------
 # Another group of parallel tests
@@ -173,7 +166,12 @@ test: gp_foreign_data
 # ----------
 # Another group of parallel tests
 # ----------
-test: partition_join partition_prune reloptions hash_part indexing partition_aggregate partition_info tuplesort explain compression memoize stats
+test: partition_join partition_prune reloptions hash_part indexing partition_aggregate partition_info tuplesort explain compression memoize
+#
+# 'stats' test has been disabled in GPDB, because it tries to set stats-related
+# GUCs stats_block_level and stats_row_level, which have been removed from
+# GPDB.
+#test: stats
 
 # event_trigger cannot run concurrently with any test that runs DDL
 # oidjoins is read-only, though, and should run late for best coverage
@@ -181,17 +179,3 @@ test: event_trigger oidjoins
 
 # this test also uses event triggers, so likewise run it by itself
 test: fast_default
-<<<<<<< HEAD
-
-# run stats by itself because its delay may be insufficient under heavy load
-#
-# 'stats' test has been disabled in GPDB, because it tries to set stats-related
-# GUCs stats_block_level and stats_row_level, which have been removed from
-# GPDB.
-#test: stats
-||||||| c4cc2850f4d
-
-# run stats by itself because its delay may be insufficient under heavy load
-test: stats
-=======
->>>>>>> 2c7ea57e56c

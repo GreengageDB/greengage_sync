@@ -251,6 +251,12 @@ EXPLAIN (COSTS OFF)
 SELECT circle_center(f1), round(radius(f1)) as radius FROM gcircle_tbl ORDER BY f1 <-> '(200,300)'::point LIMIT 10;
 SELECT circle_center(f1), round(radius(f1)) as radius FROM gcircle_tbl ORDER BY f1 <-> '(200,300)'::point LIMIT 10;
 
+-- GG: upstream exercises a k-NN index scan rescanned once per row of
+-- generate_series, which is what the query was written for (a memory leak in
+-- the reordering code).  Greengage cannot plan that: the order-by operand
+-- references the outer query, and a parameter cannot cross a Motion, so
+-- bring_to_outer_query() refuses the ordered index path and the subplan
+-- gathers the table and sorts instead.  The result rows are still upstream's.
 EXPLAIN (COSTS OFF)
 SELECT point(x,x), (SELECT f1 FROM gpolygon_tbl ORDER BY f1 <-> point(x,x) LIMIT 1) as c FROM generate_series(0,10,1) x;
 SELECT point(x,x), (SELECT f1 FROM gpolygon_tbl ORDER BY f1 <-> point(x,x) LIMIT 1) as c FROM generate_series(0,10,1) x;
@@ -486,28 +492,6 @@ ALTER TABLE covering_index_heap ADD CONSTRAINT covering_pkey PRIMARY KEY USING I
 covering_pkey;
 DROP TABLE covering_index_heap;
 
-<<<<<<< HEAD
-
---
--- Also try building functional, expressional, and partial indexes on
--- tables that already contain data.
---
-create index hash_f8_index_1 on hash_f8_heap(abs(random));
-create index hash_f8_index_2 on hash_f8_heap((seqno + 1), random);
-create index hash_f8_index_3 on hash_f8_heap(random) where seqno > 1000;
-
-||||||| c4cc2850f4d
-
---
--- Also try building functional, expressional, and partial indexes on
--- tables that already contain data.
---
-create unique index hash_f8_index_1 on hash_f8_heap(abs(random));
-create unique index hash_f8_index_2 on hash_f8_heap((seqno + 1), random);
-create unique index hash_f8_index_3 on hash_f8_heap(random) where seqno > 1000;
-
-=======
->>>>>>> 2c7ea57e56c
 --
 -- Try some concurrent index builds
 --
@@ -1311,3 +1295,17 @@ RESET ROLE;
 REVOKE USAGE ON SCHEMA pg_toast FROM regress_reindexuser;
 DROP ROLE regress_reindexuser;
 DROP SCHEMA schema_to_reindex CASCADE;
+-- GPDB: give the indexes built above their statistics.
+-- CREATE INDEX derives the new index's relpages/reltuples from the coordinator's
+-- own copy of the index, and for a distributed table that copy is empty, so each
+-- index above is left with relpages = 0 in the coordinator's pg_class.  The
+-- planner then overprices every index probe, and later tests lose the index
+-- plans they were written to exercise.  Upstream carried a "vacuum tenk1" in the
+-- middle of this file for the same class of reason and dropped it in commit
+-- cc50080a828, because test_setup.sql now vacuums tenk1 -- but that runs before
+-- these indexes exist.  VACUUM is the command that collects index statistics
+-- from the segments, so vacuum both tables here, last.
+-- The REINDEX SCHEMA section above left search_path pointing at a schema that
+-- no longer exists, so qualify the names.
+vacuum public.tenk1;
+vacuum public.tenk2;

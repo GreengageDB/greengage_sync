@@ -63,8 +63,15 @@ print "standby 2: $result\n";
 is($result, qq(1002), 'check streamed content on standby 2');
 
 # Likewise, but for a sequence
+#
+# GPDB: CACHE 1 is spelled out because our default is 20, not PostgreSQL's 1
+# ("PostgreSQL default value is 1, GPDB privately bump up to 20",
+# commands/sequence.c).  The one nextval below would then consume twenty
+# values, the WAL-logged last_value would be 52 rather than 33, and the two
+# checks after it would be asserting the size of that cache instead of what
+# this block is here for -- that a sequence's state reaches both standbys.
 $node_primary->safe_psql('postgres',
-	"CREATE SEQUENCE seq1; SELECT nextval('seq1')");
+	"CREATE SEQUENCE seq1 CACHE 1; SELECT nextval('seq1')");
 
 # Wait for standbys to catch up
 $primary_lsn = $node_primary->lsn('write');

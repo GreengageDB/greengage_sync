@@ -14,37 +14,17 @@ CREATE TABLE a_star (
 	a 			int4
 );
 
-<<<<<<< HEAD
-INSERT INTO tenk2 SELECT * FROM tenk1;
-ANALYZE tenk2;
-||||||| c4cc2850f4d
-INSERT INTO tenk2 SELECT * FROM tenk1;
-=======
 CREATE TABLE b_star (
 	b 			text
 ) INHERITS (a_star);
->>>>>>> 2c7ea57e56c
 
-<<<<<<< HEAD
-CREATE TABLE onek2 AS SELECT * FROM onek DISTRIBUTED BY (unique1);
-||||||| c4cc2850f4d
-CREATE TABLE onek2 AS SELECT * FROM onek;
-=======
 CREATE TABLE c_star (
 	c 			name
 ) INHERITS (a_star);
->>>>>>> 2c7ea57e56c
 
-<<<<<<< HEAD
-INSERT INTO fast_emp4000 SELECT * FROM slow_emp4000;
-ANALYZE fast_emp4000;
-||||||| c4cc2850f4d
-INSERT INTO fast_emp4000 SELECT * FROM slow_emp4000;
-=======
 CREATE TABLE d_star (
 	d 			float8
 ) INHERITS (b_star, c_star);
->>>>>>> 2c7ea57e56c
 
 CREATE TABLE e_star (
 	e 			int2

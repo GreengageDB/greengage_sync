@@ -869,12 +869,9 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		lappend(estate->es_tuple_routing_result_relations,
 				leaf_part_rri);
 
-<<<<<<< HEAD
 	if (leaf_part_rri->ri_RelationDesc->rd_tableam)
 		table_dml_init(leaf_part_rri->ri_RelationDesc);
 
-||||||| c4cc2850f4d
-=======
 	/*
 	 * Initialize information about this partition that's needed to handle
 	 * MERGE.  We take the "first" result relation's mergeActionList as
@@ -948,6 +945,7 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 												  RelationGetDescr(leaf_part_rri->ri_RelationDesc),
 												  econtext,
 												  leaf_part_rri->ri_newTupleSlot,
+												  NULL,
 												  NULL);
 					break;
 				case CMD_DELETE:
@@ -968,7 +966,6 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 				ExecInitQual((List *) action->qual, &mtstate->ps);
 		}
 	}
->>>>>>> 2c7ea57e56c
 	MemoryContextSwitchTo(oldcxt);
 
 	return leaf_part_rri;
@@ -1667,7 +1664,8 @@ ExecInitPartitionPruning(PlanState *planstate,
 	 * Perform an initial partition prune pass, if required.
 	 */
 	if (prunestate->do_initial_prune)
-		*initially_valid_subplans = ExecFindMatchingSubPlans(prunestate, true);
+		*initially_valid_subplans =
+			ExecFindMatchingSubPlans(prunestate, estate, -1, NIL, true);
 	else
 	{
 		/* No pruning, so we'll need to initialize all subplans */
@@ -1695,6 +1693,25 @@ ExecInitPartitionPruning(PlanState *planstate,
 	}
 
 	return prunestate;
+}
+
+/*
+ * ExecCreatePartitionPruneState
+ *		GGDB: standalone prune-state builder for PartitionSelector nodes.
+ *
+ * PG15 folded the public builder into ExecInitPartitionPruning and made the
+ * core (CreatePartitionPruneState) static.  GGDB's PartitionSelector drives
+ * partition pruning on its own (results are consumed by dynamic scans via
+ * PARAM_EXEC), so it still needs to build the state without the initial-prune
+ * and subplan-map fixup that ExecInitPartitionPruning performs.  The caller
+ * must already have set up the node's ExprContext (ExecAssignExprContext),
+ * which CreatePartitionPruneState reads via planstate->ps_ExprContext.
+ */
+PartitionPruneState *
+ExecCreatePartitionPruneState(PlanState *planstate,
+							  PartitionPruneInfo *partitionpruneinfo)
+{
+	return CreatePartitionPruneState(planstate, partitionpruneinfo);
 }
 
 /*
@@ -2131,7 +2148,7 @@ ExecAddMatchingSubPlans(PartitionPruneState *prunestate, Bitmapset *result)
 {
 	Bitmapset *thisresult;
 
-	thisresult = ExecFindMatchingSubPlans(prunestate, NULL, -1, NIL);
+	thisresult = ExecFindMatchingSubPlans(prunestate, NULL, -1, NIL, false);
 
 	result = bms_add_members(result, thisresult);
 
@@ -2145,30 +2162,20 @@ ExecAddMatchingSubPlans(PartitionPruneState *prunestate, Bitmapset *result)
  *		Determine which subplans match the pruning steps detailed in
  *		'prunestate' for the current comparison expression values.
  *
-<<<<<<< HEAD
- * Here we assume we may evaluate PARAM_EXEC Params.
+ * Pass initial_prune if PARAM_EXEC Params cannot yet be evaluated.  This
+ * differentiates the initial executor-time pruning step from later
+ * runtime pruning.
  *
  * GPDB: 'join_prune_paramids' can contain a list of PARAM_EXEC Param IDs
  * containing results that were computed earlier by PartitionSelector
  * nodes.
-||||||| c4cc2850f4d
- * Here we assume we may evaluate PARAM_EXEC Params.
-=======
- * Pass initial_prune if PARAM_EXEC Params cannot yet be evaluated.  This
- * differentiates the initial executor-time pruning step from later
- * runtime pruning.
->>>>>>> 2c7ea57e56c
  */
 Bitmapset *
 ExecFindMatchingSubPlans(PartitionPruneState *prunestate,
-<<<<<<< HEAD
 						 EState *estate,
-						 int nplans, List *join_prune_paramids)
-||||||| c4cc2850f4d
-ExecFindMatchingSubPlans(PartitionPruneState *prunestate)
-=======
+						 int nplans,
+						 List *join_prune_paramids,
 						 bool initial_prune)
->>>>>>> 2c7ea57e56c
 {
 	Bitmapset  *result = NULL;
 	MemoryContext oldcontext;

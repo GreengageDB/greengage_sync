@@ -20,6 +20,7 @@
 #include "catalog/pg_class.h"
 #include "catalog/pg_enum.h"
 #include "catalog/pg_namespace.h"
+#include "catalog/pg_tablespace.h"
 #include "catalog/pg_type.h"
 #include "cdb/cdbvars.h"
 #include "commands/extension.h"
@@ -42,9 +43,15 @@ Datum
 binary_upgrade_set_next_pg_tablespace_oid(PG_FUNCTION_ARGS)
 {
 	Oid			tbspoid = PG_GETARG_OID(0);
+	char	   *spcname = GET_STR(PG_GETARG_TEXT_P(1));
 
 	CHECK_IS_BINARY_UPGRADE;
-	binary_upgrade_next_pg_tablespace_oid = tbspoid;
+	if (Gp_role == GP_ROLE_UTILITY)
+	{
+		AddPreassignedOidFromBinaryUpgrade(tbspoid, TableSpaceRelationId,
+										   spcname, InvalidOid, InvalidOid,
+										   InvalidOid);
+	}
 
 	PG_RETURN_VOID();
 }
@@ -120,17 +127,6 @@ binary_upgrade_set_next_heap_pg_class_oid(PG_FUNCTION_ARGS)
 }
 
 Datum
-binary_upgrade_set_next_heap_relfilenode(PG_FUNCTION_ARGS)
-{
-	Oid			nodeoid = PG_GETARG_OID(0);
-
-	CHECK_IS_BINARY_UPGRADE;
-	binary_upgrade_next_heap_pg_class_relfilenode = nodeoid;
-
-	PG_RETURN_VOID();
-}
-
-Datum
 binary_upgrade_set_next_index_pg_class_oid(PG_FUNCTION_ARGS)
 {
 	Oid			reloid = PG_GETARG_OID(0);
@@ -145,17 +141,6 @@ binary_upgrade_set_next_index_pg_class_oid(PG_FUNCTION_ARGS)
 }
 
 Datum
-binary_upgrade_set_next_index_relfilenode(PG_FUNCTION_ARGS)
-{
-	Oid			nodeoid = PG_GETARG_OID(0);
-
-	CHECK_IS_BINARY_UPGRADE;
-	binary_upgrade_next_index_pg_class_relfilenode = nodeoid;
-
-	PG_RETURN_VOID();
-}
-
-Datum
 binary_upgrade_set_next_toast_pg_class_oid(PG_FUNCTION_ARGS)
 {
 	Oid			reloid = PG_GETARG_OID(0);
@@ -165,17 +150,6 @@ binary_upgrade_set_next_toast_pg_class_oid(PG_FUNCTION_ARGS)
 	CHECK_IS_BINARY_UPGRADE;
 	AddPreassignedOidFromBinaryUpgrade(reloid, RelationRelationId, relname,
 									   relnamespace, InvalidOid, InvalidOid);
-
-	PG_RETURN_VOID();
-}
-
-Datum
-binary_upgrade_set_next_toast_relfilenode(PG_FUNCTION_ARGS)
-{
-	Oid			nodeoid = PG_GETARG_OID(0);
-
-	CHECK_IS_BINARY_UPGRADE;
-	binary_upgrade_next_toast_pg_class_relfilenode = nodeoid;
 
 	PG_RETURN_VOID();
 }

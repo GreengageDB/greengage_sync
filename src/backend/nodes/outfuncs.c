@@ -595,13 +595,9 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	WRITE_NODE_FIELD(onConflictWhere);
 	WRITE_UINT_FIELD(exclRelRTI);
 	WRITE_NODE_FIELD(exclRelTlist);
-<<<<<<< HEAD
 	WRITE_BOOL_FIELD(isSplitUpdate);
 	WRITE_BOOL_FIELD(forceTupleRouting);
-||||||| c4cc2850f4d
-=======
 	WRITE_NODE_FIELD(mergeActionLists);
->>>>>>> 2c7ea57e56c
 }
 
 static void
@@ -2206,7 +2202,6 @@ _outOnConflictExpr(StringInfo str, const OnConflictExpr *node)
 	WRITE_NODE_FIELD(exclRelTlist);
 }
 
-<<<<<<< HEAD
 /* 'flow' is only needed during planning. */
 #ifndef COMPILING_BINARY_FUNCS
 static void
@@ -2239,8 +2234,6 @@ _outCdbPathLocus(StringInfo str, const CdbPathLocus *node)
 	WRITE_INT_FIELD(numsegments);
 }                               /* _outCdbPathLocus */
 #endif /* COMPILING_BINARY_FUNCS */
-||||||| c4cc2850f4d
-=======
 static void
 _outJsonFormat(StringInfo str, const JsonFormat *node)
 {
@@ -2377,7 +2370,217 @@ _outJsonTableSibling(StringInfo str, const JsonTableSibling *node)
 	WRITE_NODE_FIELD(rarg);
 	WRITE_BOOL_FIELD(cross);
 }
->>>>>>> 2c7ea57e56c
+
+/*
+ * Greengage: the untransformed SQL/JSON nodes below have no upstream output
+ * function, because upstream never serializes a raw parse tree.  Greengage
+ * does: a utility statement is dispatched to the segments as its parse tree,
+ * so a CHECK constraint or a DEFAULT spelled with JSON_EXISTS(), JSON_OBJECT()
+ * or JSON_TABLE() reaches serializeNode() still untransformed.  Without these
+ * the segments never see the statement and DDL fails with "could not
+ * serialize unrecognized node type".
+ *
+ * There *MUST* be a matching reader in readfuncs.c for each one.
+ */
+static void
+_outJsonOutput(StringInfo str, const JsonOutput *node)
+{
+	WRITE_NODE_TYPE("JSONOUTPUT");
+
+	WRITE_NODE_FIELD(typeName);
+	WRITE_NODE_FIELD(returning);
+}
+
+static void
+_outJsonArgument(StringInfo str, const JsonArgument *node)
+{
+	WRITE_NODE_TYPE("JSONARGUMENT");
+
+	WRITE_NODE_FIELD(val);
+	WRITE_STRING_FIELD(name);
+}
+
+static void
+_outJsonCommon(StringInfo str, const JsonCommon *node)
+{
+	WRITE_NODE_TYPE("JSONCOMMON");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(pathspec);
+	WRITE_STRING_FIELD(pathname);
+	WRITE_NODE_FIELD(passing);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonFuncExpr(StringInfo str, const JsonFuncExpr *node)
+{
+	WRITE_NODE_TYPE("JSONFUNCEXPR");
+
+	WRITE_ENUM_FIELD(op, JsonExprOp);
+	WRITE_NODE_FIELD(common);
+	WRITE_NODE_FIELD(output);
+	WRITE_NODE_FIELD(on_empty);
+	WRITE_NODE_FIELD(on_error);
+	WRITE_ENUM_FIELD(wrapper, JsonWrapper);
+	WRITE_BOOL_FIELD(omit_quotes);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonTableColumn(StringInfo str, const JsonTableColumn *node)
+{
+	WRITE_NODE_TYPE("JSONTABLECOLUMN");
+
+	WRITE_ENUM_FIELD(coltype, JsonTableColumnType);
+	WRITE_STRING_FIELD(name);
+	WRITE_NODE_FIELD(typeName);
+	WRITE_STRING_FIELD(pathspec);
+	WRITE_STRING_FIELD(pathname);
+	WRITE_NODE_FIELD(format);
+	WRITE_ENUM_FIELD(wrapper, JsonWrapper);
+	WRITE_BOOL_FIELD(omit_quotes);
+	WRITE_NODE_FIELD(columns);
+	WRITE_NODE_FIELD(on_empty);
+	WRITE_NODE_FIELD(on_error);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonTablePlan(StringInfo str, const JsonTablePlan *node)
+{
+	WRITE_NODE_TYPE("JSONTABLEPLAN");
+
+	WRITE_ENUM_FIELD(plan_type, JsonTablePlanType);
+	WRITE_ENUM_FIELD(join_type, JsonTablePlanJoinType);
+	WRITE_NODE_FIELD(plan1);
+	WRITE_NODE_FIELD(plan2);
+	WRITE_STRING_FIELD(pathname);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonTable(StringInfo str, const JsonTable *node)
+{
+	WRITE_NODE_TYPE("JSONTABLE");
+
+	WRITE_NODE_FIELD(common);
+	WRITE_NODE_FIELD(columns);
+	WRITE_NODE_FIELD(plan);
+	WRITE_NODE_FIELD(on_error);
+	WRITE_NODE_FIELD(alias);
+	WRITE_BOOL_FIELD(lateral);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonKeyValue(StringInfo str, const JsonKeyValue *node)
+{
+	WRITE_NODE_TYPE("JSONKEYVALUE");
+
+	WRITE_NODE_FIELD(key);
+	WRITE_NODE_FIELD(value);
+}
+
+static void
+_outJsonParseExpr(StringInfo str, const JsonParseExpr *node)
+{
+	WRITE_NODE_TYPE("JSONPARSEEXPR");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(output);
+	WRITE_BOOL_FIELD(unique_keys);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonScalarExpr(StringInfo str, const JsonScalarExpr *node)
+{
+	WRITE_NODE_TYPE("JSONSCALAREXPR");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(output);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonSerializeExpr(StringInfo str, const JsonSerializeExpr *node)
+{
+	WRITE_NODE_TYPE("JSONSERIALIZEEXPR");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(output);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonObjectConstructor(StringInfo str, const JsonObjectConstructor *node)
+{
+	WRITE_NODE_TYPE("JSONOBJECTCTOR");
+
+	WRITE_NODE_FIELD(exprs);
+	WRITE_NODE_FIELD(output);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_BOOL_FIELD(unique);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonArrayConstructor(StringInfo str, const JsonArrayConstructor *node)
+{
+	WRITE_NODE_TYPE("JSONARRAYCTOR");
+
+	WRITE_NODE_FIELD(exprs);
+	WRITE_NODE_FIELD(output);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonArrayQueryConstructor(StringInfo str,
+							  const JsonArrayQueryConstructor *node)
+{
+	WRITE_NODE_TYPE("JSONARRAYQUERYCTOR");
+
+	WRITE_NODE_FIELD(query);
+	WRITE_NODE_FIELD(output);
+	WRITE_NODE_FIELD(format);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonAggConstructor(StringInfo str, const JsonAggConstructor *node)
+{
+	WRITE_NODE_TYPE("JSONAGGCTOR");
+
+	WRITE_NODE_FIELD(output);
+	WRITE_NODE_FIELD(agg_filter);
+	WRITE_NODE_FIELD(agg_order);
+	WRITE_NODE_FIELD(over);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonObjectAgg(StringInfo str, const JsonObjectAgg *node)
+{
+	WRITE_NODE_TYPE("JSONOBJECTAGG");
+
+	WRITE_NODE_FIELD(constructor);
+	WRITE_NODE_FIELD(arg);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_BOOL_FIELD(unique);
+}
+
+static void
+_outJsonArrayAgg(StringInfo str, const JsonArrayAgg *node)
+{
+	WRITE_NODE_TYPE("JSONARRAYAGG");
+
+	WRITE_NODE_FIELD(constructor);
+	WRITE_NODE_FIELD(arg);
+	WRITE_BOOL_FIELD(absent_on_null);
+}
 
 /*****************************************************************************
  *
@@ -3515,6 +3718,25 @@ _outCreateExternalStmt(StringInfo str, const CreateExternalStmt *node)
 	WRITE_NODE_FIELD(encoding);
 	WRITE_NODE_FIELD(distributedBy);
 }
+
+#ifndef COMPILING_BINARY_FUNCS
+/*
+ * GpPolicy is reachable from a PlannedStmt (intoPolicy) and from an
+ * AlterTableCmd, so Debug_print_plan and friends can be asked to print one.
+ * outfast.c has its own binary version of this function.
+ */
+static void
+_outGpPolicy(StringInfo str, const GpPolicy *node)
+{
+	WRITE_NODE_TYPE("GPPOLICY");
+
+	WRITE_ENUM_FIELD(ptype, GpPolicyType);
+	WRITE_INT_FIELD(numsegments);
+	WRITE_INT_FIELD(nattrs);
+	WRITE_ATTRNUMBER_ARRAY(attrs, node->nattrs);
+	WRITE_OID_ARRAY(opclasses, node->nattrs);
+}
+#endif /* COMPILING_BINARY_FUNCS */
 
 static void
 _outDistributedBy(StringInfo str, const DistributedBy *node)
@@ -5359,6 +5581,7 @@ _outConstraint(StringInfo str, const Constraint *node)
 	WRITE_STRING_FIELD(cooked_expr);
 	WRITE_CHAR_FIELD(generated_when);
 
+	WRITE_BOOL_FIELD(nulls_not_distinct);
 	WRITE_NODE_FIELD(keys);
 	WRITE_NODE_FIELD(including);
 
@@ -5382,153 +5605,8 @@ _outConstraint(StringInfo str, const Constraint *node)
 	WRITE_NODE_FIELD(old_conpfeqop);
 	WRITE_OID_FIELD(old_pktable_oid);
 
-<<<<<<< HEAD
 	WRITE_BOOL_FIELD(skip_validation);
 	WRITE_BOOL_FIELD(initially_valid);
-||||||| c4cc2850f4d
-		case CONSTR_PRIMARY:
-			appendStringInfoString(str, "PRIMARY_KEY");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_UNIQUE:
-			appendStringInfoString(str, "UNIQUE");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_EXCLUSION:
-			appendStringInfoString(str, "EXCLUSION");
-			WRITE_NODE_FIELD(exclusions);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			WRITE_STRING_FIELD(access_method);
-			WRITE_NODE_FIELD(where_clause);
-			break;
-
-		case CONSTR_FOREIGN:
-			appendStringInfoString(str, "FOREIGN_KEY");
-			WRITE_NODE_FIELD(pktable);
-			WRITE_NODE_FIELD(fk_attrs);
-			WRITE_NODE_FIELD(pk_attrs);
-			WRITE_CHAR_FIELD(fk_matchtype);
-			WRITE_CHAR_FIELD(fk_upd_action);
-			WRITE_CHAR_FIELD(fk_del_action);
-			WRITE_NODE_FIELD(fk_del_set_cols);
-			WRITE_NODE_FIELD(old_conpfeqop);
-			WRITE_OID_FIELD(old_pktable_oid);
-			WRITE_BOOL_FIELD(skip_validation);
-			WRITE_BOOL_FIELD(initially_valid);
-			break;
-
-		case CONSTR_ATTR_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_NOT_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_NOT_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_DEFERRED:
-			appendStringInfoString(str, "ATTR_DEFERRED");
-			break;
-
-		case CONSTR_ATTR_IMMEDIATE:
-			appendStringInfoString(str, "ATTR_IMMEDIATE");
-			break;
-
-		default:
-			appendStringInfo(str, "<unrecognized_constraint %d>",
-							 (int) node->contype);
-			break;
-	}
-=======
-		case CONSTR_PRIMARY:
-			appendStringInfoString(str, "PRIMARY_KEY");
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_UNIQUE:
-			appendStringInfoString(str, "UNIQUE");
-			WRITE_BOOL_FIELD(nulls_not_distinct);
-			WRITE_NODE_FIELD(keys);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			/* access_method and where_clause not currently used */
-			break;
-
-		case CONSTR_EXCLUSION:
-			appendStringInfoString(str, "EXCLUSION");
-			WRITE_NODE_FIELD(exclusions);
-			WRITE_NODE_FIELD(including);
-			WRITE_NODE_FIELD(options);
-			WRITE_STRING_FIELD(indexname);
-			WRITE_STRING_FIELD(indexspace);
-			WRITE_BOOL_FIELD(reset_default_tblspc);
-			WRITE_STRING_FIELD(access_method);
-			WRITE_NODE_FIELD(where_clause);
-			break;
-
-		case CONSTR_FOREIGN:
-			appendStringInfoString(str, "FOREIGN_KEY");
-			WRITE_NODE_FIELD(pktable);
-			WRITE_NODE_FIELD(fk_attrs);
-			WRITE_NODE_FIELD(pk_attrs);
-			WRITE_CHAR_FIELD(fk_matchtype);
-			WRITE_CHAR_FIELD(fk_upd_action);
-			WRITE_CHAR_FIELD(fk_del_action);
-			WRITE_NODE_FIELD(fk_del_set_cols);
-			WRITE_NODE_FIELD(old_conpfeqop);
-			WRITE_OID_FIELD(old_pktable_oid);
-			WRITE_BOOL_FIELD(skip_validation);
-			WRITE_BOOL_FIELD(initially_valid);
-			break;
-
-		case CONSTR_ATTR_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_NOT_DEFERRABLE:
-			appendStringInfoString(str, "ATTR_NOT_DEFERRABLE");
-			break;
-
-		case CONSTR_ATTR_DEFERRED:
-			appendStringInfoString(str, "ATTR_DEFERRED");
-			break;
-
-		case CONSTR_ATTR_IMMEDIATE:
-			appendStringInfoString(str, "ATTR_IMMEDIATE");
-			break;
-
-		default:
-			appendStringInfo(str, "<unrecognized_constraint %d>",
-							 (int) node->contype);
-			break;
-	}
->>>>>>> 2c7ea57e56c
 }
 
 #ifndef COMPILING_BINARY_FUNCS
@@ -6683,6 +6761,9 @@ outNode(StringInfo str, const void *obj)
 			case T_CreateExternalStmt:
 				_outCreateExternalStmt(str, obj);
 				break;
+			case T_GpPolicy:
+				_outGpPolicy(str, obj);
+				break;
 			case T_DistributedBy:
 				_outDistributedBy(str, obj);
 				break;
@@ -7031,7 +7112,6 @@ outNode(StringInfo str, const void *obj)
 			case T_PartitionRangeDatum:
 				_outPartitionRangeDatum(str, obj);
 				break;
-<<<<<<< HEAD
 			case T_PartitionCmd:
 				_outPartitionCmd(str, obj);
 				break;
@@ -7186,8 +7266,7 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_GpPartitionListSpec:
 				_outGpPartitionListSpec(str, obj);
-||||||| c4cc2850f4d
-=======
+				break;
 			case T_JsonFormat:
 				_outJsonFormat(str, obj);
 				break;
@@ -7220,7 +7299,57 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_JsonTableSibling:
 				_outJsonTableSibling(str, obj);
->>>>>>> 2c7ea57e56c
+				break;
+			case T_JsonOutput:
+				_outJsonOutput(str, obj);
+				break;
+			case T_JsonArgument:
+				_outJsonArgument(str, obj);
+				break;
+			case T_JsonCommon:
+				_outJsonCommon(str, obj);
+				break;
+			case T_JsonFuncExpr:
+				_outJsonFuncExpr(str, obj);
+				break;
+			case T_JsonTableColumn:
+				_outJsonTableColumn(str, obj);
+				break;
+			case T_JsonTablePlan:
+				_outJsonTablePlan(str, obj);
+				break;
+			case T_JsonTable:
+				_outJsonTable(str, obj);
+				break;
+			case T_JsonKeyValue:
+				_outJsonKeyValue(str, obj);
+				break;
+			case T_JsonParseExpr:
+				_outJsonParseExpr(str, obj);
+				break;
+			case T_JsonScalarExpr:
+				_outJsonScalarExpr(str, obj);
+				break;
+			case T_JsonSerializeExpr:
+				_outJsonSerializeExpr(str, obj);
+				break;
+			case T_JsonObjectConstructor:
+				_outJsonObjectConstructor(str, obj);
+				break;
+			case T_JsonArrayConstructor:
+				_outJsonArrayConstructor(str, obj);
+				break;
+			case T_JsonArrayQueryConstructor:
+				_outJsonArrayQueryConstructor(str, obj);
+				break;
+			case T_JsonAggConstructor:
+				_outJsonAggConstructor(str, obj);
+				break;
+			case T_JsonObjectAgg:
+				_outJsonObjectAgg(str, obj);
+				break;
+			case T_JsonArrayAgg:
+				_outJsonArrayAgg(str, obj);
 				break;
 
 			default:

@@ -493,6 +493,13 @@ RESET TimeZone;
 -- Tests for BETWEEN
 --
 
+-- GGDB: on a cluster the planner and GPORCA arrange the aggregate above
+-- the Gather Motion differently, and horology has a single answer file for
+-- both runs, so pin the planner for the plans below.  The property under
+-- test, the rewrite of BETWEEN into comparisons, is in the Filter line and
+-- is the same either way.
+set optimizer = off;
+
 explain (costs off)
 select count(*) from date_tbl
   where f1 between '1997-01-01' and '1998-01-01';
@@ -516,6 +523,8 @@ select count(*) from date_tbl
   where f1 not between symmetric '1997-01-01' and '1998-01-01';
 select count(*) from date_tbl
   where f1 not between symmetric '1997-01-01' and '1998-01-01';
+
+reset optimizer;
 
 --
 -- Formats

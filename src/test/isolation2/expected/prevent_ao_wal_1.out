@@ -41,9 +41,9 @@ CREATE
 
 -- Switch WAL file
 -1U: SELECT true FROM pg_switch_wal();
- bool 
-------
- t    
+ ?column? 
+----------
+ t        
 (1 row)
 -- Insert data (AO)
 -1U: INSERT INTO ao_foo SELECT generate_series(1,10);
@@ -87,9 +87,9 @@ VACUUM
 
 -- Switch WAL file
 -1U: SELECT true FROM pg_switch_wal();
- bool 
-------
- t    
+ ?column? 
+----------
+ t        
 (1 row)
 -- Insert data (AO)
 -1U: INSERT INTO ao_foo SELECT generate_series(1,10);

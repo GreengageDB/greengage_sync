@@ -583,41 +583,19 @@ CREATE TABLE tab_core_types AS SELECT
   '(2020-01-02 03:04:05, 2021-02-03 06:07:08)'::tsrange,
   '{(2020-01-02 03:04:05, 2021-02-03 06:07:08)}'::tsmultirange,
   '(2020-01-02 03:04:05, 2021-02-03 06:07:08)'::tstzrange,
-<<<<<<< HEAD
   '{(2020-01-02 03:04:05, 2021-02-03 06:07:08)}'::tstzmultirange,
   -- GGDB: include Greengage's built-in types in the pg_upgrade check.
   '2 + 4i'::complex,
-  gp_hyperloglog_accum(1),
-  arrayrange(ARRAY[1,2], ARRAY[2,1]),
-  arraymultirange(arrayrange(ARRAY[1,2], ARRAY[2,1]));
-||||||| c4cc2850f4d
-  '{(2020-01-02 03:04:05, 2021-02-03 06:07:08)}'::tstzmultirange,
-  arrayrange(ARRAY[1,2], ARRAY[2,1]),
-  arraymultirange(arrayrange(ARRAY[1,2], ARRAY[2,1]));
-=======
-  '{(2020-01-02 03:04:05, 2021-02-03 06:07:08)}'::tstzmultirange;
->>>>>>> 2c7ea57e56c
+  gp_hyperloglog_accum(1);
 
 -- Sanity check on the previous table, checking that all core types are
 -- included in this table.
 SELECT oid, typname, typtype, typelem, typarray
   FROM pg_type t
-<<<<<<< HEAD
-  -- GGDB: check built-in types only; earlier Greengage tests leave user types
-  -- behind (textrange3 from rangetypes) whose OIDs vary from run to run.
-  -- Upstream added the same filter later, in cc50080a828.
-  WHERE oid < 16384 AND
-    typtype NOT IN ('p', 'c') AND
-    -- reg* types cannot be pg_upgraded, so discard them.
-||||||| c4cc2850f4d
-  WHERE typtype NOT IN ('p', 'c') AND
-    -- reg* types cannot be pg_upgraded, so discard them.
-=======
   WHERE oid < 16384 AND
     -- Exclude pseudotypes and composite types.
     typtype NOT IN ('p', 'c') AND
     -- These reg* types cannot be pg_upgraded, so discard them.
->>>>>>> 2c7ea57e56c
     oid != ALL(ARRAY['regproc', 'regprocedure', 'regoper',
                      'regoperator', 'regconfig', 'regdictionary',
                      'regnamespace', 'regcollation']::regtype[]) AND

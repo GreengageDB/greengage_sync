@@ -1040,12 +1040,8 @@ get_object_address(ObjectType objtype, Node *object,
 			case OBJECT_FDW:
 			case OBJECT_FOREIGN_SERVER:
 			case OBJECT_EVENT_TRIGGER:
-<<<<<<< HEAD
-			case OBJECT_EXTPROTOCOL:
-||||||| c4cc2850f4d
-=======
 			case OBJECT_PARAMETER_ACL:
->>>>>>> 2c7ea57e56c
+			case OBJECT_EXTPROTOCOL:
 			case OBJECT_ACCESS_METHOD:
 			case OBJECT_PUBLICATION:
 			case OBJECT_SUBSCRIPTION:
@@ -2654,13 +2650,9 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 		case OBJECT_TSPARSER:
 		case OBJECT_TSTEMPLATE:
 		case OBJECT_ACCESS_METHOD:
-<<<<<<< HEAD
+		case OBJECT_PARAMETER_ACL:
 		case OBJECT_RESQUEUE:
 		case OBJECT_RESGROUP:
-||||||| c4cc2850f4d
-=======
-		case OBJECT_PARAMETER_ACL:
->>>>>>> 2c7ea57e56c
 			/* We treat these object types as being owned by superusers */
 			if (!superuser_arg(roleid))
 				ereport(ERROR,
