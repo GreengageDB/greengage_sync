@@ -2171,7 +2171,7 @@ step s1_slru_save_stats:
 step s1_listen: LISTEN stats_test_nothing;
 step s1_begin: BEGIN;
 step s1_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2224,7 +2224,7 @@ step s1_slru_save_stats:
 
 step s1_listen: LISTEN stats_test_nothing;
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2265,7 +2265,7 @@ step s1_slru_save_stats:
 step s1_listen: LISTEN stats_test_nothing;
 step s2_begin: BEGIN;
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2320,7 +2320,7 @@ f
 (1 row)
 
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2387,7 +2387,7 @@ f
 (1 row)
 
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2454,7 +2454,7 @@ f
 (1 row)
 
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2521,7 +2521,7 @@ f
 (1 row)
 
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2594,7 +2594,7 @@ f
 (1 row)
 
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2667,7 +2667,7 @@ f
 (1 row)
 
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2742,7 +2742,7 @@ test_stat_func|                          |                |
 (1 row)
 
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
@@ -2785,7 +2785,7 @@ step s1_slru_save_stats:
 step s1_listen: LISTEN stats_test_nothing;
 step s1_begin: BEGIN;
 step s2_big_notify: SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
 
 pg_notify
 ---------
