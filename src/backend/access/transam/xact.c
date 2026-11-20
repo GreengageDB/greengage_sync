@@ -29,7 +29,12 @@
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"
+<<<<<<< HEAD
 #include "access/xact_storage_tablespace.h"
+||||||| c4cc2850f4d
+=======
+#include "access/xlogrecovery.h"
+>>>>>>> 2c7ea57e56c
 #include "access/xlogutils.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
@@ -1558,6 +1563,8 @@ RecordTransactionCommit(void)
 	int			ndeldbs;
 	int			nchildren;
 	TransactionId *children;
+	int			ndroppedstats = 0;
+	xl_xact_stats_item *droppedstats = NULL;
 	int			nmsgs = 0;
 	SharedInvalidationMessage *invalMessages = NULL;
 	bool		RelcacheInitFileInval = false;
@@ -1589,6 +1596,7 @@ RecordTransactionCommit(void)
 	nrels = smgrGetPendingDeletes(true, &rels);
 	ndeldbs = GetPendingDbDeletes(true, &deldbs);
 	nchildren = xactGetCommittedChildren(&children);
+	ndroppedstats = pgstat_get_transactional_drops(true, &droppedstats);
 	if (XLogStandbyInfoActive())
 		nmsgs = xactGetCommittedInvalidationMessages(&invalMessages,
 													 &RelcacheInitFileInval);
@@ -1605,10 +1613,12 @@ RecordTransactionCommit(void)
 		/*
 		 * We expect that every RelationDropStorage is followed by a catalog
 		 * update, and hence XID assignment, so we shouldn't get here with any
-		 * pending deletes.  Use a real test not just an Assert to check this,
-		 * since it's a bit fragile.
+		 * pending deletes. Same is true for dropping stats.
+		 *
+		 * Use a real test not just an Assert to check this, since it's a bit
+		 * fragile.
 		 */
-		if (nrels != 0)
+		if (nrels != 0 || ndroppedstats != 0)
 			elog(ERROR, "cannot commit a transaction that deleted files but has no xid");
 
 		/* Can't have child XIDs either; AssignTransactionId enforces this */
@@ -1698,8 +1708,9 @@ RecordTransactionCommit(void)
 		 * delayChkpt flag avoids this situation by blocking checkpointer until a
 		 * backend has finished updating the state.
 		 */
+		Assert((MyProc->delayChkpt & DELAY_CHKPT_START) == 0);
 		START_CRIT_SECTION();
-		MyProc->delayChkpt = true;
+		MyProc->delayChkpt |= DELAY_CHKPT_START;
 
 		SetCurrentTransactionStopTimestamp();
 
@@ -1708,6 +1719,7 @@ RecordTransactionCommit(void)
 		XactLogCommitRecord(xactStopTimestamp,
 							GetPendingTablespaceForDeletionForCommit(),
 							nchildren, children, nrels, rels,
+							ndroppedstats, droppedstats,
 							nmsgs, invalMessages,
 							ndeldbs, deldbs,
 							RelcacheInitFileInval,
@@ -1839,7 +1851,7 @@ RecordTransactionCommit(void)
 	 */
 	if (markXidCommitted || isDtxPrepared)
 	{
-		MyProc->delayChkpt = false;
+		MyProc->delayChkpt &= ~DELAY_CHKPT_START;
 		END_CRIT_SECTION();
 		SIMPLE_FAULT_INJECTOR("after_xlog_xact_distributed_commit");
 	}
@@ -1865,7 +1877,19 @@ RecordTransactionCommit(void)
 	/* Reset XactLastRecEnd until the next transaction writes something */
 	XactLastRecEnd = 0;
 cleanup:
+<<<<<<< HEAD
 	/* And clean up local data */
+||||||| c4cc2850f4d
+	/* Clean up local data */
+	if (rels)
+		pfree(rels);
+=======
+	/* Clean up local data */
+	if (rels)
+		pfree(rels);
+	if (ndroppedstats)
+		pfree(droppedstats);
+>>>>>>> 2c7ea57e56c
 
 	return latestXid;
 }
@@ -2061,7 +2085,15 @@ RecordTransactionAbort(bool isSubXact)
 	TransactionId xid;
 	TransactionId latestXid;
 	int			nrels;
+<<<<<<< HEAD
 	RelFileNodePendingDelete *rels;
+||||||| c4cc2850f4d
+	RelFileNode *rels;
+=======
+	RelFileNode *rels;
+	int			ndroppedstats = 0;
+	xl_xact_stats_item *droppedstats = NULL;
+>>>>>>> 2c7ea57e56c
 	int			nchildren;
 	TransactionId *children;
 	TimestampTz xact_time;
@@ -2123,6 +2155,7 @@ RecordTransactionAbort(bool isSubXact)
 	nrels = smgrGetPendingDeletes(false, &rels);
 	ndeldbs = GetPendingDbDeletes(false, &deldbs);
 	nchildren = xactGetCommittedChildren(&children);
+	ndroppedstats = pgstat_get_transactional_drops(false, &droppedstats);
 
 	/* XXX do we really need a critical section here? */
 	START_CRIT_SECTION();
@@ -2140,7 +2173,12 @@ RecordTransactionAbort(bool isSubXact)
 					   GetPendingTablespaceForDeletionForAbort(),
 					   nchildren, children,
 					   nrels, rels,
+<<<<<<< HEAD
 					   ndeldbs, deldbs,
+||||||| c4cc2850f4d
+=======
+					   ndroppedstats, droppedstats,
+>>>>>>> 2c7ea57e56c
 					   MyXactFlags, InvalidTransactionId,
 					   NULL);
 
@@ -2184,8 +2222,20 @@ RecordTransactionAbort(bool isSubXact)
 	if (!isSubXact)
 		XactLastRecEnd = 0;
 
+<<<<<<< HEAD
 	if (max_wal_senders > 0)
 		WalSndWakeup();
+||||||| c4cc2850f4d
+	/* And clean up local data */
+	if (rels)
+		pfree(rels);
+=======
+	/* And clean up local data */
+	if (rels)
+		pfree(rels);
+	if (ndroppedstats)
+		pfree(droppedstats);
+>>>>>>> 2c7ea57e56c
 
 	return latestXid;
 }
@@ -3940,24 +3990,20 @@ StartTransactionCommand(void)
  * GUC system resets the characteristics at transaction end, so for example
  * just skipping the reset in StartTransaction() won't work.)
  */
-static int	save_XactIsoLevel;
-static bool save_XactReadOnly;
-static bool save_XactDeferrable;
-
 void
-SaveTransactionCharacteristics(void)
+SaveTransactionCharacteristics(SavedTransactionCharacteristics *s)
 {
-	save_XactIsoLevel = XactIsoLevel;
-	save_XactReadOnly = XactReadOnly;
-	save_XactDeferrable = XactDeferrable;
+	s->save_XactIsoLevel = XactIsoLevel;
+	s->save_XactReadOnly = XactReadOnly;
+	s->save_XactDeferrable = XactDeferrable;
 }
 
 void
-RestoreTransactionCharacteristics(void)
+RestoreTransactionCharacteristics(const SavedTransactionCharacteristics *s)
 {
-	XactIsoLevel = save_XactIsoLevel;
-	XactReadOnly = save_XactReadOnly;
-	XactDeferrable = save_XactDeferrable;
+	XactIsoLevel = s->save_XactIsoLevel;
+	XactReadOnly = s->save_XactReadOnly;
+	XactDeferrable = s->save_XactDeferrable;
 }
 
 
@@ -3968,13 +4014,21 @@ void
 CommitTransactionCommand(void)
 {
 	TransactionState s = CurrentTransactionState;
+	SavedTransactionCharacteristics savetc;
 
+<<<<<<< HEAD
 	if (Gp_role == GP_ROLE_EXECUTE && !Gp_is_writer)
 		elog(DEBUG1,"CommitTransactionCommand: called as segment Reader in state %s",
 		     BlockStateAsString(s->blockState));
 
 	if (s->chain)
 		SaveTransactionCharacteristics();
+||||||| c4cc2850f4d
+	if (s->chain)
+		SaveTransactionCharacteristics();
+=======
+	SaveTransactionCharacteristics(&savetc);
+>>>>>>> 2c7ea57e56c
 
 	switch (s->blockState)
 	{
@@ -4035,7 +4089,7 @@ CommitTransactionCommand(void)
 				StartTransaction();
 				s->blockState = TBLOCK_INPROGRESS;
 				s->chain = false;
-				RestoreTransactionCharacteristics();
+				RestoreTransactionCharacteristics(&savetc);
 			}
 			break;
 
@@ -4064,7 +4118,7 @@ CommitTransactionCommand(void)
 				StartTransaction();
 				s->blockState = TBLOCK_INPROGRESS;
 				s->chain = false;
-				RestoreTransactionCharacteristics();
+				RestoreTransactionCharacteristics(&savetc);
 			}
 			break;
 
@@ -4085,7 +4139,7 @@ CommitTransactionCommand(void)
 				StartTransaction();
 				s->blockState = TBLOCK_INPROGRESS;
 				s->chain = false;
-				RestoreTransactionCharacteristics();
+				RestoreTransactionCharacteristics(&savetc);
 			}
 			break;
 
@@ -4155,7 +4209,7 @@ CommitTransactionCommand(void)
 					StartTransaction();
 					s->blockState = TBLOCK_INPROGRESS;
 					s->chain = false;
-					RestoreTransactionCharacteristics();
+					RestoreTransactionCharacteristics(&savetc);
 				}
 			}
 			else if (s->blockState == TBLOCK_PREPARE)
@@ -6581,8 +6635,9 @@ SerializeTransactionState(Size maxsize, char *start_address)
 	{
 		if (FullTransactionIdIsValid(s->fullTransactionId))
 			workspace[i++] = XidFromFullTransactionId(s->fullTransactionId);
-		memcpy(&workspace[i], s->childXids,
-			   s->nChildXids * sizeof(TransactionId));
+		if (s->nChildXids > 0)
+			memcpy(&workspace[i], s->childXids,
+				   s->nChildXids * sizeof(TransactionId));
 		i += s->nChildXids;
 	}
 	Assert(i == nxids);
@@ -6865,7 +6920,14 @@ XLogRecPtr
 XactLogCommitRecord(TimestampTz commit_time,
 					Oid tablespace_oid_to_delete_on_commit,
 					int nsubxacts, TransactionId *subxacts,
+<<<<<<< HEAD
 					int nrels, RelFileNodePendingDelete *rels,
+||||||| c4cc2850f4d
+					int nrels, RelFileNode *rels,
+=======
+					int nrels, RelFileNode *rels,
+					int ndroppedstats, xl_xact_stats_item *droppedstats,
+>>>>>>> 2c7ea57e56c
 					int nmsgs, SharedInvalidationMessage *msgs,
 					int ndeldbs, DbDirNode *deldbs,
 					bool relcacheInval,
@@ -6877,6 +6939,7 @@ XactLogCommitRecord(TimestampTz commit_time,
 	xl_xact_dbinfo xl_dbinfo;
 	xl_xact_subxacts xl_subxacts;
 	xl_xact_relfilenodes xl_relfilenodes;
+	xl_xact_stats_items xl_dropped_stats;
 	xl_xact_invals xl_invals;
 	xl_xact_twophase xl_twophase;
 	xl_xact_origin xl_origin;
@@ -6941,6 +7004,12 @@ XactLogCommitRecord(TimestampTz commit_time,
 		xl_xinfo.xinfo |= XACT_XINFO_HAS_RELFILENODES;
 		xl_relfilenodes.nrels = nrels;
 		info |= XLR_SPECIAL_REL_UPDATE;
+	}
+
+	if (ndroppedstats > 0)
+	{
+		xl_xinfo.xinfo |= XACT_XINFO_HAS_DROPPED_STATS;
+		xl_dropped_stats.nitems = ndroppedstats;
 	}
 
 	if (nmsgs > 0)
@@ -7011,6 +7080,14 @@ XactLogCommitRecord(TimestampTz commit_time,
 						 nrels * sizeof(RelFileNodePendingDelete));
 	}
 
+	if (xl_xinfo.xinfo & XACT_XINFO_HAS_DROPPED_STATS)
+	{
+		XLogRegisterData((char *) (&xl_dropped_stats),
+						 MinSizeOfXactStatsItems);
+		XLogRegisterData((char *) droppedstats,
+						 ndroppedstats * sizeof(xl_xact_stats_item));
+	}
+
 	if (xl_xinfo.xinfo & XACT_XINFO_HAS_INVALS)
 	{
 		XLogRegisterData((char *) (&xl_invals), MinSizeOfXactInvals);
@@ -7062,8 +7139,15 @@ XLogRecPtr
 XactLogAbortRecord(TimestampTz abort_time,
 				   Oid tablespace_oid_to_delete_on_abort,
 				   int nsubxacts, TransactionId *subxacts,
+<<<<<<< HEAD
 				   int nrels, RelFileNodePendingDelete *rels,
 				   int ndeldbs, DbDirNode *deldbs,
+||||||| c4cc2850f4d
+				   int nrels, RelFileNode *rels,
+=======
+				   int nrels, RelFileNode *rels,
+				   int ndroppedstats, xl_xact_stats_item *droppedstats,
+>>>>>>> 2c7ea57e56c
 				   int xactflags, TransactionId twophase_xid,
 				   const char *twophase_gid)
 {
@@ -7071,7 +7155,12 @@ XactLogAbortRecord(TimestampTz abort_time,
 	xl_xact_xinfo xl_xinfo;
 	xl_xact_subxacts xl_subxacts;
 	xl_xact_relfilenodes xl_relfilenodes;
+<<<<<<< HEAD
 	xl_xact_deldbs xl_deldbs;
+||||||| c4cc2850f4d
+=======
+	xl_xact_stats_items xl_dropped_stats;
+>>>>>>> 2c7ea57e56c
 	xl_xact_twophase xl_twophase;
 	xl_xact_dbinfo xl_dbinfo;
 	xl_xact_origin xl_origin;
@@ -7110,10 +7199,18 @@ XactLogAbortRecord(TimestampTz abort_time,
 		info |= XLR_SPECIAL_REL_UPDATE;
 	}
 
+<<<<<<< HEAD
 	if (ndeldbs > 0)
 	{
 		xl_xinfo.xinfo |= XACT_XINFO_HAS_DELDBS;
 		xl_deldbs.ndeldbs = ndeldbs;
+||||||| c4cc2850f4d
+=======
+	if (ndroppedstats > 0)
+	{
+		xl_xinfo.xinfo |= XACT_XINFO_HAS_DROPPED_STATS;
+		xl_dropped_stats.nitems = ndroppedstats;
+>>>>>>> 2c7ea57e56c
 	}
 
 	if (TransactionIdIsValid(twophase_xid))
@@ -7177,6 +7274,7 @@ XactLogAbortRecord(TimestampTz abort_time,
 						 nrels * sizeof(RelFileNodePendingDelete));
 	}
 
+<<<<<<< HEAD
 	if (xl_xinfo.xinfo & XACT_XINFO_HAS_DELDBS)
 	{
 		XLogRegisterData((char *) (&xl_deldbs),
@@ -7185,6 +7283,16 @@ XactLogAbortRecord(TimestampTz abort_time,
 						 ndeldbs * sizeof(DbDirNode));
 	}
 
+||||||| c4cc2850f4d
+=======
+	if (xl_xinfo.xinfo & XACT_XINFO_HAS_DROPPED_STATS)
+	{
+		XLogRegisterData((char *) (&xl_dropped_stats),
+						 MinSizeOfXactStatsItems);
+		XLogRegisterData((char *) droppedstats,
+						 ndroppedstats * sizeof(xl_xact_stats_item));
+	}
+>>>>>>> 2c7ea57e56c
 
 	if (xl_xinfo.xinfo & XACT_XINFO_HAS_TWOPHASE)
 	{
@@ -7332,6 +7440,7 @@ xact_redo_commit(xl_xact_parsed_commit *parsed,
 		DropRelationFiles(parsed->xnodes, parsed->nrels, true);
 	}
 
+<<<<<<< HEAD
 	if (parsed->ndeldbs > 0)
 	{
 		XLogFlush(lsn);
@@ -7339,6 +7448,16 @@ xact_redo_commit(xl_xact_parsed_commit *parsed,
 	}
 
 	DoTablespaceDeletionForRedoXlog(tablespace_oid_to_delete);
+||||||| c4cc2850f4d
+=======
+	if (parsed->nstats > 0)
+	{
+		/* see equivalent call for relations above */
+		XLogFlush(lsn);
+
+		pgstat_execute_transactional_drops(parsed->nstats, parsed->stats, true);
+	}
+>>>>>>> 2c7ea57e56c
 
 	/*
 	 * We issue an XLogFlush() for the same reason we emit ForceSyncCommit()
@@ -7455,6 +7574,7 @@ xact_redo_abort(xl_xact_parsed_abort *parsed, TransactionId xid,
 		DropRelationFiles(parsed->xnodes, parsed->nrels, true);
 	}
 
+<<<<<<< HEAD
 	if (parsed->ndeldbs > 0)
 	{
 		XLogFlush(lsn);
@@ -7463,6 +7583,16 @@ xact_redo_abort(xl_xact_parsed_abort *parsed, TransactionId xid,
 	}
 
 	DoTablespaceDeletionForRedoXlog(parsed->tablespace_oid_to_delete_on_abort);
+||||||| c4cc2850f4d
+=======
+	if (parsed->nstats > 0)
+	{
+		/* see equivalent call for relations above */
+		XLogFlush(lsn);
+
+		pgstat_execute_transactional_drops(parsed->nstats, parsed->stats, true);
+	}
+>>>>>>> 2c7ea57e56c
 }
 
 void

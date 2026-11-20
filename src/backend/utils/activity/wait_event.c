@@ -6,7 +6,7 @@
  *
  *
  * IDENTIFICATION
- *	  src/backend/postmaster/wait_event.c
+ *	  src/backend/utils/activity/wait_event.c
  *
  * NOTES
  *
@@ -254,9 +254,6 @@ pgstat_get_wait_activity(WaitEventActivity w)
 			break;
 		case WAIT_EVENT_LOGICAL_LAUNCHER_MAIN:
 			event_name = "LogicalLauncherMain";
-			break;
-		case WAIT_EVENT_PGSTAT_MAIN:
-			event_name = "PgStatMain";
 			break;
 		case WAIT_EVENT_RECOVERY_WAL_STREAM:
 			event_name = "RecoveryWalStream";
@@ -538,6 +535,9 @@ pgstat_get_wait_timeout(WaitEventTimeout w)
 		case WAIT_EVENT_BASE_BACKUP_THROTTLE:
 			event_name = "BaseBackupThrottle";
 			break;
+		case WAIT_EVENT_CHECKPOINT_WRITE_DELAY:
+			event_name = "CheckpointWriteDelay";
+			break;
 		case WAIT_EVENT_PG_SLEEP:
 			event_name = "PgSleep";
 			break;
@@ -546,6 +546,9 @@ pgstat_get_wait_timeout(WaitEventTimeout w)
 			break;
 		case WAIT_EVENT_RECOVERY_RETRIEVE_RETRY_INTERVAL:
 			event_name = "RecoveryRetrieveRetryInterval";
+			break;
+		case WAIT_EVENT_REGISTER_SYNC_REQUEST:
+			event_name = "RegisterSyncRequest";
 			break;
 		case WAIT_EVENT_VACUUM_DELAY:
 			event_name = "VacuumDelay";
@@ -574,6 +577,12 @@ pgstat_get_wait_io(WaitEventIO w)
 	{
 		case WAIT_EVENT_BASEBACKUP_READ:
 			event_name = "BaseBackupRead";
+			break;
+		case WAIT_EVENT_BASEBACKUP_SYNC:
+			event_name = "BaseBackupSync";
+			break;
+		case WAIT_EVENT_BASEBACKUP_WRITE:
+			event_name = "BaseBackupWrite";
 			break;
 		case WAIT_EVENT_BUFFILE_READ:
 			event_name = "BufFileRead";
@@ -745,6 +754,9 @@ pgstat_get_wait_io(WaitEventIO w)
 			break;
 		case WAIT_EVENT_TWOPHASE_FILE_WRITE:
 			event_name = "TwophaseFileWrite";
+			break;
+		case WAIT_EVENT_VERSION_FILE_WRITE:
+			event_name = "VersionFileWrite";
 			break;
 		case WAIT_EVENT_WALSENDER_TIMELINE_HISTORY_READ:
 			event_name = "WALSenderTimelineHistoryRead";

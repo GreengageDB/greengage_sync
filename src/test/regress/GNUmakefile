@@ -31,8 +31,7 @@ endif
 
 # stuff to pass into build of pg_regress
 EXTRADEFS = '-DHOST_TUPLE="$(host_tuple)"' \
-	'-DSHELLPROG="$(SHELL)"' \
-	'-DDLSUFFIX="$(DLSUFFIX)"'
+	'-DSHELLPROG="$(SHELL)"'
 
 ##
 ## Prepare for tests
@@ -183,7 +182,15 @@ query_info_hook_test:
 ## Run tests
 ##
 
+<<<<<<< HEAD
 REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir --init-file=$(srcdir)/init_file $(EXTRA_REGRESS_OPTS)
+||||||| c4cc2850f4d
+REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir \
+	$(EXTRA_REGRESS_OPTS)
+=======
+REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 \
+	$(EXTRA_REGRESS_OPTS)
+>>>>>>> 2c7ea57e56c
 
 check: all
 	$(pg_regress_check) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
@@ -207,6 +214,7 @@ installcheck-parallel: all
 installcheck-tests: all
 	$(pg_regress_installcheck) $(REGRESS_OPTS) $(TESTS) $(EXTRA_TESTS)
 
+<<<<<<< HEAD
 ifeq ($(BUILD_TYPE),prod)
 .PHONY: installcheck-icudp
 installcheck-icudp:
@@ -222,6 +230,12 @@ installcheck-mirrorless: all tablespace-setup
 standbycheck: all
 	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/standby_schedule  $(EXTRA_TESTS)
 
+||||||| c4cc2850f4d
+standbycheck: all
+	$(pg_regress_installcheck) $(REGRESS_OPTS) --schedule=$(srcdir)/standby_schedule --use-existing
+
+=======
+>>>>>>> 2c7ea57e56c
 # old interfaces follow...
 
 runcheck: check
@@ -247,8 +261,13 @@ clean maintainer-clean: clean-lib
 	$(MAKE) -C hooktest/ clean
 	$(MAKE) -C query_info_hook_test/ clean
 # things created by various check targets
+<<<<<<< HEAD
 	rm -f $(output_files) $(input_files)
 	rm -rf ./testtablespace ./testtablespace_*
+||||||| c4cc2850f4d
+	rm -rf testtablespace
+=======
+>>>>>>> 2c7ea57e56c
 	rm -rf $(pg_regress_clean_files)
 
 distclean: clean

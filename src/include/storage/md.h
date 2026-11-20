@@ -23,6 +23,7 @@
 extern void mdinit(void);
 extern void mdopen(SMgrRelation reln);
 extern void mdclose(SMgrRelation reln, ForkNumber forknum);
+extern void mdrelease(void);
 extern void mdcreate(SMgrRelation reln, ForkNumber forknum, bool isRedo);
 extern void mdcreate_ao(RelFileNodeBackend rnode, int32 segmentFileNum, bool isRedo);
 extern bool mdexists(SMgrRelation reln, ForkNumber forknum);

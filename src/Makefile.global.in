@@ -400,7 +400,8 @@ XGETTEXT = @XGETTEXT@
 
 GZIP	= gzip
 BZIP2	= bzip2
-LZ4	= lz4
+LZ4	= @LZ4@
+ZSTD	= @ZSTD@
 
 DOWNLOAD = wget -O $@ --no-use-server-timestamps
 #DOWNLOAD = curl -o $@
@@ -416,7 +417,7 @@ DOWNLOAD = wget -O $@ --no-use-server-timestamps
 UNICODE_VERSION = 14.0.0
 
 # Pick a release from here: <http://cldr.unicode.org/index/downloads>
-CLDR_VERSION = 39
+CLDR_VERSION = 41
 
 
 # Tree-wide build support
@@ -503,8 +504,9 @@ ifeq ($(enable_tap_tests),yes)
 
 ifndef PGXS
 define prove_installcheck
-rm -rf '$(CURDIR)'/tmp_check
-$(MKDIR_P) '$(CURDIR)'/tmp_check
+echo "+++ tap install-check in $(subdir) +++" && \
+rm -rf '$(CURDIR)'/tmp_check && \
+$(MKDIR_P) '$(CURDIR)'/tmp_check && \
 cd $(srcdir) && \
    TESTDIR='$(CURDIR)' PATH="$(bindir):$(CURDIR):$$PATH" \
    PGPORT='6$(DEF_PGPORT)' top_builddir='$(CURDIR)/$(top_builddir)' \
@@ -513,8 +515,9 @@ cd $(srcdir) && \
 endef
 else # PGXS case
 define prove_installcheck
-rm -rf '$(CURDIR)'/tmp_check
-$(MKDIR_P) '$(CURDIR)'/tmp_check
+echo "+++ tap install-check in $(subdir) +++" && \
+rm -rf '$(CURDIR)'/tmp_check && \
+$(MKDIR_P) '$(CURDIR)'/tmp_check && \
 cd $(srcdir) && \
    TESTDIR='$(CURDIR)' PATH="$(bindir):$(CURDIR):$$PATH" \
    PGPORT='6$(DEF_PGPORT)' top_builddir='$(top_builddir)' \
@@ -524,8 +527,9 @@ endef
 endif # PGXS
 
 define prove_check
-rm -rf '$(CURDIR)'/tmp_check
-$(MKDIR_P) '$(CURDIR)'/tmp_check
+echo "+++ tap check in $(subdir) +++" && \
+rm -rf '$(CURDIR)'/tmp_check && \
+$(MKDIR_P) '$(CURDIR)'/tmp_check && \
 cd $(srcdir) && \
    TESTDIR='$(CURDIR)' $(with_temp_install) PGPORT='6$(DEF_PGPORT)' \
    PG_REGRESS='$(CURDIR)/$(top_builddir)/src/test/regress/pg_regress' \
@@ -620,6 +624,8 @@ WIN32_STACK_RLIMIT=4194304
 
 # Set if we have a working win32 crashdump header
 have_win32_dbghelp = @have_win32_dbghelp@
+
+DLSUFFIX = @DLSUFFIX@
 
 # Pull in platform-specific magic
 include $(top_builddir)/src/Makefile.port
@@ -737,7 +743,12 @@ pg_regress_locale_flags = $(if $(ENCODING),--encoding=$(ENCODING)) $(NOLOCALE)
 pg_regress_clean_files = results/ regression.diffs regression.out tmp_check/ tmp_check_iso/ log/ output_iso/ tests_using_faultinjector.txt
 
 pg_regress_check = \
+<<<<<<< HEAD
     $(faultinjector_prep) \
+||||||| c4cc2850f4d
+=======
+    echo "+++ regress check in $(subdir) +++" && \
+>>>>>>> 2c7ea57e56c
     $(with_temp_install) \
     $(top_builddir)/src/test/regress/pg_regress \
     --temp-instance=./tmp_check \
@@ -746,14 +757,24 @@ pg_regress_check = \
     $(TEMP_CONF) \
     $(pg_regress_locale_flags) $(EXTRA_REGRESS_OPTS) $(FAULTINJECTOR_OPTS)
 pg_regress_installcheck = \
+<<<<<<< HEAD
     $(faultinjector_prep) \
+||||||| c4cc2850f4d
+=======
+    echo "+++ regress install-check in $(subdir) +++" && \
+>>>>>>> 2c7ea57e56c
     $(top_builddir)/src/test/regress/pg_regress \
     --inputdir=$(srcdir) \
     --bindir='$(bindir)' \
     $(pg_regress_locale_flags) $(EXTRA_REGRESS_OPTS) $(FAULTINJECTOR_OPTS)
 
 pg_isolation_regress_check = \
+<<<<<<< HEAD
     $(faultinjector_prep) \
+||||||| c4cc2850f4d
+=======
+    echo "+++ isolation check in $(subdir) +++" && \
+>>>>>>> 2c7ea57e56c
     $(with_temp_install) \
     $(top_builddir)/src/test/isolation/pg_isolation_regress \
     --temp-instance=./tmp_check_iso \
@@ -762,7 +783,12 @@ pg_isolation_regress_check = \
     $(TEMP_CONF) \
     $(pg_regress_locale_flags) $(EXTRA_REGRESS_OPTS) $(FAULTINJECTOR_OPTS)
 pg_isolation_regress_installcheck = \
+<<<<<<< HEAD
     $(faultinjector_prep) \
+||||||| c4cc2850f4d
+=======
+    echo "+++ isolation install-check in $(subdir) +++" && \
+>>>>>>> 2c7ea57e56c
     $(top_builddir)/src/test/isolation/pg_isolation_regress \
     --inputdir=$(srcdir) --outputdir=output_iso \
     --bindir='$(bindir)' \

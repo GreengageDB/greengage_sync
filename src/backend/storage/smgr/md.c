@@ -171,9 +171,11 @@ mdexists(SMgrRelation reln, ForkNumber forkNum)
 {
 	/*
 	 * Close it first, to ensure that we notice if the fork has been unlinked
-	 * since we opened it.
+	 * since we opened it.  As an optimization, we can skip that in recovery,
+	 * which already closes relations when dropping them.
 	 */
-	mdclose(reln, forkNum);
+	if (!InRecovery)
+		mdclose(reln, forkNum);
 
 	return (mdopenfork(reln, forkNum, EXTENSION_RETURN_NULL) != NULL);
 }
@@ -598,6 +600,12 @@ mdclose(SMgrRelation reln, ForkNumber forknum)
 		_fdvec_resize(reln, forknum, nopensegs - 1);
 		nopensegs--;
 	}
+}
+
+void
+mdrelease(void)
+{
+	closeAllVfds();
 }
 
 /*

@@ -25,11 +25,14 @@
 #include "access/session.h"
 #include "access/sysattr.h"
 #include "access/tableam.h"
+#include "access/twophase.h"
 #include "access/xact.h"
 #include "access/xlog.h"
+#include "access/xloginsert.h"
 #include "catalog/catalog.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_authid.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_database.h"
 #include "catalog/pg_db_role_setting.h"
 #include "catalog/pg_tablespace.h"
@@ -51,6 +54,7 @@
 #include "postmaster/autovacuum.h"
 #include "postmaster/fts.h"
 #include "postmaster/postmaster.h"
+#include "replication/slot.h"
 #include "replication/walsender.h"
 #include "storage/backendid.h"
 #include "storage/bufmgr.h"
@@ -65,8 +69,13 @@
 #include "storage/sync.h"
 #include "tcop/tcopprot.h"
 #include "utils/acl.h"
+<<<<<<< HEAD
 #include "utils/backend_cancel.h"
 #include "utils/faultinjector.h"
+||||||| c4cc2850f4d
+=======
+#include "utils/builtins.h"
+>>>>>>> 2c7ea57e56c
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
@@ -80,8 +89,14 @@
 #include "utils/syscache.h"
 #include "utils/timeout.h"
 
+<<<<<<< HEAD
 #include "utils/resource_manager.h"
 #include "utils/session_state.h"
+||||||| c4cc2850f4d
+=======
+static int MaxBackends = 0;
+static int MaxBackendsInitialized = false;
+>>>>>>> 2c7ea57e56c
 
 static HeapTuple GetDatabaseTuple(const char *dbname);
 static HeapTuple GetDatabaseTupleByOid(Oid dboid);
@@ -94,6 +109,7 @@ static void IdleInTransactionSessionTimeoutHandler(void);
 static void IdleGangTimeoutHandler(void);
 static void ClientCheckTimeoutHandler(void);
 static void IdleSessionTimeoutHandler(void);
+static void IdleStatsUpdateTimeoutHandler(void);
 static void ClientCheckTimeoutHandler(void);
 static bool ThereIsAtLeastOneRole(void);
 static void process_startup_options(Port *port, bool am_superuser);
@@ -362,8 +378,11 @@ CheckMyDatabase(const char *name, bool am_superuser, bool override_allow_connect
 {
 	HeapTuple	tup;
 	Form_pg_database dbform;
+	Datum		datum;
+	bool		isnull;
 	char	   *collate;
 	char	   *ctype;
+	char	   *iculocale;
 
 	/* Fetch our pg_database row normally, via syscache */
 	tup = SearchSysCache1(DATABASEOID, ObjectIdGetDatum(MyDatabaseId));
@@ -445,8 +464,12 @@ CheckMyDatabase(const char *name, bool am_superuser, bool override_allow_connect
 					PGC_BACKEND, PGC_S_DYNAMIC_DEFAULT);
 
 	/* assign locale variables */
-	collate = NameStr(dbform->datcollate);
-	ctype = NameStr(dbform->datctype);
+	datum = SysCacheGetAttr(DATABASEOID, tup, Anum_pg_database_datcollate, &isnull);
+	Assert(!isnull);
+	collate = TextDatumGetCString(datum);
+	datum = SysCacheGetAttr(DATABASEOID, tup, Anum_pg_database_datctype, &isnull);
+	Assert(!isnull);
+	ctype = TextDatumGetCString(datum);
 
 	if (pg_perm_setlocale(LC_COLLATE, collate) == NULL)
 		ereport(FATAL,
@@ -461,6 +484,56 @@ CheckMyDatabase(const char *name, bool am_superuser, bool override_allow_connect
 				 errdetail("The database was initialized with LC_CTYPE \"%s\", "
 						   " which is not recognized by setlocale().", ctype),
 				 errhint("Recreate the database with another locale or install the missing locale.")));
+
+	if (dbform->datlocprovider == COLLPROVIDER_ICU)
+	{
+		datum = SysCacheGetAttr(DATABASEOID, tup, Anum_pg_database_daticulocale, &isnull);
+		Assert(!isnull);
+		iculocale = TextDatumGetCString(datum);
+		make_icu_collator(iculocale, &default_locale);
+	}
+	else
+		iculocale = NULL;
+
+	default_locale.provider = dbform->datlocprovider;
+	/*
+	 * Default locale is currently always deterministic.  Nondeterministic
+	 * locales currently don't support pattern matching, which would break a
+	 * lot of things if applied globally.
+	 */
+	default_locale.deterministic = true;
+
+	/*
+	 * Check collation version.  See similar code in
+	 * pg_newlocale_from_collation().  Note that here we warn instead of error
+	 * in any case, so that we don't prevent connecting.
+	 */
+	datum = SysCacheGetAttr(DATABASEOID, tup, Anum_pg_database_datcollversion,
+							&isnull);
+	if (!isnull)
+	{
+		char	   *actual_versionstr;
+		char	   *collversionstr;
+
+		collversionstr = TextDatumGetCString(datum);
+
+		actual_versionstr = get_collation_actual_version(dbform->datlocprovider, dbform->datlocprovider == COLLPROVIDER_ICU ? iculocale : collate);
+		if (!actual_versionstr)
+			ereport(WARNING,
+					(errmsg("database \"%s\" has no actual collation version, but a version was recorded",
+							name)));
+		else if (strcmp(actual_versionstr, collversionstr) != 0)
+			ereport(WARNING,
+					(errmsg("database \"%s\" has a collation version mismatch",
+							name),
+					 errdetail("The database was created using collation version %s, "
+							   "but the operating system provides version %s.",
+							   collversionstr, actual_versionstr),
+					 errhint("Rebuild all objects in this database that use the default collation and run "
+							 "ALTER DATABASE %s REFRESH COLLATION VERSION, "
+							 "or build PostgreSQL with the right library version.",
+							 quote_identifier(name))));
+	}
 
 	/* Make the locale settings visible as GUC variables, too */
 	SetConfigOption("lc_collate", collate, PGC_INTERNAL, PGC_S_OVERRIDE);
@@ -532,9 +605,8 @@ pg_split_opts(char **argv, int *argcp, const char *optstr)
 /*
  * Initialize MaxBackends value from config options.
  *
- * This must be called after modules have had the chance to register background
- * workers in shared_preload_libraries, and before shared memory size is
- * determined.
+ * This must be called after modules have had the chance to alter GUCs in
+ * shared_preload_libraries and before shared memory size is determined.
  *
  * Note that in EXEC_BACKEND environment, the value is passed down from
  * postmaster to subprocesses via BackendParameters in SubPostmasterMain; only
@@ -544,15 +616,49 @@ pg_split_opts(char **argv, int *argcp, const char *optstr)
 void
 InitializeMaxBackends(void)
 {
-	Assert(MaxBackends == 0);
-
 	/* the extra unit accounts for the autovacuum launcher */
-	MaxBackends = MaxConnections + autovacuum_max_workers + 1 +
-		max_worker_processes + max_wal_senders;
+	SetMaxBackends(MaxConnections + autovacuum_max_workers + 1 +
+		max_worker_processes + max_wal_senders);
+}
+
+/*
+ * Safely retrieve the value of MaxBackends.
+ *
+ * Previously, MaxBackends was externally visible, but it was often used before
+ * it was initialized (e.g., in preloaded libraries' _PG_init() functions).
+ * Unfortunately, we cannot initialize MaxBackends before processing
+ * shared_preload_libraries because the libraries sometimes alter GUCs that are
+ * used to calculate its value.  Instead, we provide this function for accessing
+ * MaxBackends, and we ERROR if someone calls it before it is initialized.
+ */
+int
+GetMaxBackends(void)
+{
+	if (unlikely(!MaxBackendsInitialized))
+		elog(ERROR, "MaxBackends not yet initialized");
+
+	return MaxBackends;
+}
+
+/*
+ * Set the value of MaxBackends.
+ *
+ * This should only be used by InitializeMaxBackends() and
+ * restore_backend_variables().  If MaxBackends is already initialized or the
+ * specified value is greater than the maximum, this will ERROR.
+ */
+void
+SetMaxBackends(int max_backends)
+{
+	if (MaxBackendsInitialized)
+		elog(ERROR, "MaxBackends already initialized");
 
 	/* internal error because the values were all checked previously */
-	if (MaxBackends > MAX_BACKENDS)
+	if (max_backends > MAX_BACKENDS)
 		elog(ERROR, "too many backends configured");
+
+	MaxBackends = max_backends;
+	MaxBackendsInitialized = true;
 }
 
 /*
@@ -611,6 +717,12 @@ BaseInit(void)
 	 * ever try to insert XLOG.
 	 */
 	InitXLogInsert();
+
+	/*
+	 * Initialize replication slots after pgstat. The exit hook might need to
+	 * drop ephemeral slots, which in turn triggers stats reporting.
+	 */
+	ReplicationSlotInitialize();
 }
 
 /*
@@ -696,7 +808,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 
 	SharedInvalBackendInit(false);
 
-	if (MyBackendId > MaxBackends || MyBackendId <= 0)
+	if (MyBackendId > GetMaxBackends() || MyBackendId <= 0)
 		elog(FATAL, "bad backend ID: %d", MyBackendId);
 
 	/* Now that we have a BackendId, we can participate in ProcSignal */
@@ -716,10 +828,12 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		RegisterTimeout(IDLE_GANG_TIMEOUT, IdleGangTimeoutHandler);
 		RegisterTimeout(IDLE_SESSION_TIMEOUT, IdleSessionTimeoutHandler);
 		RegisterTimeout(CLIENT_CONNECTION_CHECK_TIMEOUT, ClientCheckTimeoutHandler);
+		RegisterTimeout(IDLE_STATS_UPDATE_TIMEOUT,
+						IdleStatsUpdateTimeoutHandler);
 	}
 
 	/*
-	 * If this is either a bootstrap process nor a standalone backend, start
+	 * If this is either a bootstrap process or a standalone backend, start
 	 * up the XLOG machinery, and register to have it closed down at exit.
 	 * In other cases, the startup process is responsible for starting up
 	 * the XLOG machinery, and the checkpointer for closing it down.
@@ -743,6 +857,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		 * Use before_shmem_exit() so that ShutdownXLOG() can rely on DSM
 		 * segments etc to work (which in turn is required for pgstats).
 		 */
+		before_shmem_exit(pgstat_before_server_shutdown, 0);
 		before_shmem_exit(ShutdownXLOG, 0);
 	}
 
@@ -883,24 +998,6 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		InitializeSessionUserId(username, useroid);
 		am_superuser = superuser();
 		BackendCancelInit(MyBackendId);
-	}
-
-	/*
-	 * If we're trying to shut down, only superusers can connect, and new
-	 * replication connections are not allowed.
-	 */
-	if ((!am_superuser || am_walsender) &&
-		MyProcPort != NULL &&
-		MyProcPort->canAcceptConnections == CAC_SUPERUSER)
-	{
-		if (am_walsender)
-			ereport(FATAL,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					 errmsg("new replication connections are not allowed during database shutdown")));
-		else
-			ereport(FATAL,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					 errmsg("must be superuser to connect during database shutdown")));
 	}
 
 	/*
@@ -1451,6 +1548,23 @@ ShutdownPostgres(int code, Datum arg)
 	 * them explicitly.
 	 */
 	LockReleaseAll(USER_LOCKMETHOD, true);
+
+	/*
+	 * temp debugging aid to analyze 019_replslot_limit failures
+	 *
+	 * If an error were thrown outside of a transaction nothing up to now
+	 * would have released lwlocks. We probably will add an
+	 * LWLockReleaseAll(). But for now make it easier to understand such cases
+	 * by warning if any lwlocks are held.
+	 */
+#ifdef USE_ASSERT_CHECKING
+	{
+		int held_lwlocks = LWLockHeldCount();
+		if (held_lwlocks)
+			elog(WARNING, "holding %d lwlocks at the end of ShutdownPostgres()",
+				 held_lwlocks);
+	}
+#endif
 }
 
 
@@ -1509,6 +1623,14 @@ static void
 IdleSessionTimeoutHandler(void)
 {
 	IdleSessionTimeoutPending = true;
+	InterruptPending = true;
+	SetLatch(MyLatch);
+}
+
+static void
+IdleStatsUpdateTimeoutHandler(void)
+{
+	IdleStatsUpdateTimeoutPending = true;
 	InterruptPending = true;
 	SetLatch(MyLatch);
 }

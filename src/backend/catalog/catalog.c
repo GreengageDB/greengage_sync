@@ -37,6 +37,7 @@
 #include "catalog/pg_db_role_setting.h"
 #include "catalog/pg_largeobject.h"
 #include "catalog/pg_namespace.h"
+#include "catalog/pg_parameter_acl.h"
 #include "catalog/pg_replication_origin.h"
 #include "catalog/pg_shdepend.h"
 #include "catalog/pg_shdescription.h"
@@ -376,13 +377,14 @@ IsSharedRelation(Oid relationId)
 	if (relationId == AuthIdRelationId ||
 		relationId == AuthMemRelationId ||
 		relationId == DatabaseRelationId ||
-		relationId == SharedDescriptionRelationId ||
-		relationId == SharedDependRelationId ||
-		relationId == SharedSecLabelRelationId ||
-		relationId == TableSpaceRelationId ||
 		relationId == DbRoleSettingRelationId ||
+		relationId == ParameterAclRelationId ||
 		relationId == ReplicationOriginRelationId ||
-		relationId == SubscriptionRelationId)
+		relationId == SharedDependRelationId ||
+		relationId == SharedDescriptionRelationId ||
+		relationId == SharedSecLabelRelationId ||
+		relationId == SubscriptionRelationId ||
+		relationId == TableSpaceRelationId)
 		return true;
 
 	/* GPDB additions */
@@ -404,23 +406,25 @@ IsSharedRelation(Oid relationId)
 		return true;
 
 	/* These are their indexes */
-	if (relationId == AuthIdRolnameIndexId ||
-		relationId == AuthIdOidIndexId ||
-		relationId == AuthMemRoleMemIndexId ||
+	if (relationId == AuthIdOidIndexId ||
+		relationId == AuthIdRolnameIndexId ||
 		relationId == AuthMemMemRoleIndexId ||
+		relationId == AuthMemRoleMemIndexId ||
 		relationId == DatabaseNameIndexId ||
 		relationId == DatabaseOidIndexId ||
-		relationId == SharedDescriptionObjIndexId ||
-		relationId == SharedDependDependerIndexId ||
-		relationId == SharedDependReferenceIndexId ||
-		relationId == SharedSecLabelObjectIndexId ||
-		relationId == TablespaceOidIndexId ||
-		relationId == TablespaceNameIndexId ||
 		relationId == DbRoleSettingDatidRolidIndexId ||
+		relationId == ParameterAclOidIndexId ||
+		relationId == ParameterAclParnameIndexId ||
 		relationId == ReplicationOriginIdentIndex ||
 		relationId == ReplicationOriginNameIndex ||
+		relationId == SharedDependDependerIndexId ||
+		relationId == SharedDependReferenceIndexId ||
+		relationId == SharedDescriptionObjIndexId ||
+		relationId == SharedSecLabelObjectIndexId ||
+		relationId == SubscriptionNameIndexId ||
 		relationId == SubscriptionObjectIndexId ||
-		relationId == SubscriptionNameIndexId)
+		relationId == TablespaceNameIndexId ||
+		relationId == TablespaceOidIndexId)
 		return true;
 
 	/* GPDB added indexes */
@@ -455,6 +459,8 @@ IsSharedRelation(Oid relationId)
 		relationId == PgDatabaseToastIndex ||
 		relationId == PgDbRoleSettingToastTable ||
 		relationId == PgDbRoleSettingToastIndex ||
+		relationId == PgParameterAclToastTable ||
+		relationId == PgParameterAclToastIndex ||
 		relationId == PgReplicationOriginToastTable ||
 		relationId == PgReplicationOriginToastIndex ||
 		relationId == PgShdescriptionToastTable ||

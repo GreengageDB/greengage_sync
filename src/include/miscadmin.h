@@ -97,6 +97,7 @@ extern PGDLLIMPORT volatile sig_atomic_t IdleSessionTimeoutPending;
 extern PGDLLIMPORT volatile sig_atomic_t ProcSignalBarrierPending;
 extern PGDLLIMPORT volatile sig_atomic_t IdleGangTimeoutPending;
 extern PGDLLIMPORT volatile sig_atomic_t LogMemoryContextPending;
+extern PGDLLIMPORT volatile sig_atomic_t IdleStatsUpdateTimeoutPending;
 
 extern PGDLLIMPORT volatile sig_atomic_t CheckClientConnectionPending;
 extern PGDLLIMPORT volatile sig_atomic_t ClientConnectionLost;
@@ -243,7 +244,6 @@ extern PGDLLIMPORT char *DataDir;
 extern PGDLLIMPORT int data_directory_mode;
 
 extern PGDLLIMPORT int NBuffers;
-extern PGDLLIMPORT int MaxBackends;
 extern PGDLLIMPORT int MaxConnections;
 extern PGDLLIMPORT int max_worker_processes;
 extern PGDLLIMPORT int max_parallel_workers;
@@ -433,7 +433,6 @@ typedef enum BackendType
 	B_WAL_SENDER,
 	B_WAL_WRITER,
 	B_ARCHIVER,
-	B_STATS_COLLECTOR,
 	B_LOGGER,
 	B_FTS_HANDLER_PROCESS,
 	B_FAULT_HADLER_PROCESS,
@@ -562,6 +561,8 @@ extern AuxProcType MyAuxProcType;
 extern bool FindMyDatabase(const char *dbname, Oid *db_id, Oid *db_tablespace);
 extern void pg_split_opts(char **argv, int *argcp, const char *optstr);
 extern void InitializeMaxBackends(void);
+extern int GetMaxBackends(void);
+extern void SetMaxBackends(int max_backends);
 extern void InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 						 Oid useroid, char *out_dbname, bool override_allow_connections);
 extern void BaseInit(void);
@@ -569,6 +570,7 @@ extern void BaseInit(void);
 /* in utils/init/miscinit.c */
 extern bool IgnoreSystemIndexes;
 extern PGDLLIMPORT bool process_shared_preload_libraries_in_progress;
+extern bool process_shared_preload_libraries_done;
 extern char *session_preload_libraries_string;
 extern char *shared_preload_libraries_string;
 extern char *local_preload_libraries_string;
@@ -584,10 +586,6 @@ extern void process_shared_preload_libraries(void);
 extern void process_session_preload_libraries(void);
 extern void pg_bindtextdomain(const char *domain);
 extern bool has_rolreplication(Oid roleid);
-
-/* in access/transam/xlog.c */
-extern bool BackupInProgress(void);
-extern void CancelBackup(void);
 
 /* in executor/nodeHash.c */
 extern size_t get_hash_memory_limit(void);

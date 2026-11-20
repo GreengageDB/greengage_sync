@@ -3,6 +3,7 @@
 --
 SET client_min_messages = WARNING;
 
+<<<<<<< HEAD
 DROP TABLE users CASCADE; 
 DROP TABLE taxonomy CASCADE; 
 DROP TABLE sequences CASCADE; 
@@ -15,3 +16,10 @@ DROP TYPE  ab_tuple CASCADE;
 DROP EXTENSION plpythonu CASCADE;
 
 DROP EXTENSION IF EXISTS plpython2u CASCADE;
+||||||| c4cc2850f4d
+DROP EXTENSION plpythonu CASCADE;
+
+DROP EXTENSION IF EXISTS plpython2u CASCADE;
+=======
+DROP EXTENSION plpython3u CASCADE;
+>>>>>>> 2c7ea57e56c

@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 1;
+use Test::More;
 use File::Compare;
 
 # GPDB: Effectively disable this TAP test. We cannot run PREPARE
@@ -93,3 +93,5 @@ CHECKPOINT;
 # still be found.
 $node_pitr->stop('immediate');
 $node_pitr->start;
+
+done_testing();

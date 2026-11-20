@@ -5,11 +5,9 @@
 
 use strict;
 use warnings;
-use Cwd;
-use Config;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 5;
+use Test::More;
 
 my $primary = PostgreSQL::Test::Cluster->new('primary');
 $primary->init(allows_streaming => 1);
@@ -19,8 +17,14 @@ $primary->command_ok(
 	[
 		'pg_basebackup', '-D',
 		$backup_path,    '--no-sync',
+<<<<<<< HEAD
 		'--manifest-force-encode',
 		'--target-gp-dbid', '1'
+||||||| c4cc2850f4d
+		'--manifest-force-encode'
+=======
+		'-cfast',        '--manifest-force-encode'
+>>>>>>> 2c7ea57e56c
 	],
 	"backup ok with forced hex encoding");
 
@@ -33,3 +37,5 @@ command_like(
 	[ 'pg_verifybackup', '-s', $backup_path ],
 	qr/backup successfully verified/,
 	'backup with forced encoding verified');
+
+done_testing();

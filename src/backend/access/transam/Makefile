@@ -31,7 +31,9 @@ OBJS = \
 	xlogarchive.o \
 	xlogfuncs.o \
 	xloginsert.o \
+	xlogprefetcher.o \
 	xlogreader.o \
+	xlogrecovery.o \
 	xlogutils.o
 
 OBJS +=  distributedlog.o gp_transaction_log.o gp_distributed_log.o xlogfuncs_gp.o

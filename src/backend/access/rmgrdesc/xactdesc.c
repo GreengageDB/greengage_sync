@@ -86,6 +86,17 @@ ParseCommitRecord(uint8 info, xl_xact_commit *xlrec, xl_xact_parsed_commit *pars
 		data += xl_relfilenodes->nrels * sizeof(RelFileNodePendingDelete);
 	}
 
+	if (parsed->xinfo & XACT_XINFO_HAS_DROPPED_STATS)
+	{
+		xl_xact_stats_items *xl_drops = (xl_xact_stats_items *) data;
+
+		parsed->nstats = xl_drops->nitems;
+		parsed->stats = xl_drops->items;
+
+		data += MinSizeOfXactStatsItems;
+		data += xl_drops->nitems * sizeof(xl_xact_stats_item);
+	}
+
 	if (parsed->xinfo & XACT_XINFO_HAS_INVALS)
 	{
 		xl_xact_invals *xl_invals = (xl_xact_invals *) data;
@@ -212,6 +223,17 @@ ParseAbortRecord(uint8 info, xl_xact_abort *xlrec, xl_xact_parsed_abort *parsed)
 		data += xl_deldbs->ndeldbs * sizeof(DbDirNode);
 	}
 
+	if (parsed->xinfo & XACT_XINFO_HAS_DROPPED_STATS)
+	{
+		xl_xact_stats_items *xl_drops = (xl_xact_stats_items *) data;
+
+		parsed->nstats = xl_drops->nitems;
+		parsed->stats = xl_drops->items;
+
+		data += MinSizeOfXactStatsItems;
+		data += xl_drops->nitems * sizeof(xl_xact_stats_item);
+	}
+
 	if (parsed->xinfo & XACT_XINFO_HAS_TWOPHASE)
 	{
 		xl_xact_twophase *xl_twophase = (xl_xact_twophase *) data;
@@ -278,6 +300,12 @@ ParsePrepareRecord(uint8 info, xl_xact_prepare *xlrec, xl_xact_parsed_prepare *p
 	parsed->abortnodes = (RelFileNodePendingDelete *) bufptr;
 	bufptr += MAXALIGN(xlrec->nabortrels * sizeof(RelFileNodePendingDelete));
 
+	parsed->stats = (xl_xact_stats_item *) bufptr;
+	bufptr += MAXALIGN(xlrec->ncommitstats * sizeof(xl_xact_stats_item));
+
+	parsed->abortstats = (xl_xact_stats_item *) bufptr;
+	bufptr += MAXALIGN(xlrec->nabortstats * sizeof(xl_xact_stats_item));
+
 	parsed->msgs = (SharedInvalidationMessage *) bufptr;
 	bufptr += MAXALIGN(xlrec->ninvalmsgs * sizeof(SharedInvalidationMessage));
 }
@@ -319,6 +347,7 @@ xact_desc_subxacts(StringInfo buf, int nsubxacts, TransactionId *subxacts)
 }
 
 static void
+<<<<<<< HEAD
 xact_desc_deldbs(StringInfo buf, int ndeldbs, DbDirNode *deldbs)
 {
 	int		i;
@@ -333,6 +362,23 @@ xact_desc_deldbs(StringInfo buf, int ndeldbs, DbDirNode *deldbs)
 
 			appendStringInfo(buf, " %s", path);
 			pfree(path);
+||||||| c4cc2850f4d
+=======
+xact_desc_stats(StringInfo buf, const char *label,
+				int ndropped, xl_xact_stats_item *dropped_stats)
+{
+	int			i;
+
+	if (ndropped > 0)
+	{
+		appendStringInfo(buf, "; %sdropped stats:", label);
+		for (i = 0; i < ndropped; i++)
+		{
+			appendStringInfo(buf, " %u/%u/%u",
+							 dropped_stats[i].kind,
+							 dropped_stats[i].dboid,
+							 dropped_stats[i].objoid);
+>>>>>>> 2c7ea57e56c
 		}
 	}
 }
@@ -352,6 +398,7 @@ xact_desc_commit(StringInfo buf, uint8 info, xl_xact_commit *xlrec, RepOriginId 
 
 	xact_desc_relations(buf, "rels", parsed.nrels, parsed.xnodes);
 	xact_desc_subxacts(buf, parsed.nsubxacts, parsed.subxacts);
+	xact_desc_stats(buf, "", parsed.nstats, parsed.stats);
 
 	standby_desc_invalidations(buf, parsed.nmsgs, parsed.msgs, parsed.dbId,
 							   parsed.tsId,
@@ -420,6 +467,8 @@ xact_desc_abort(StringInfo buf, uint8 info, xl_xact_abort *xlrec, RepOriginId or
 						 LSN_FORMAT_ARGS(parsed.origin_lsn),
 						 timestamptz_to_str(parsed.origin_timestamp));
 	}
+
+	xact_desc_stats(buf, "", parsed.nstats, parsed.stats);
 }
 
 static void
@@ -435,6 +484,8 @@ xact_desc_prepare(StringInfo buf, uint8 info, xl_xact_prepare *xlrec, RepOriginI
 	xact_desc_relations(buf, "rels(commit)", parsed.nrels, parsed.xnodes);
 	xact_desc_relations(buf, "rels(abort)", parsed.nabortrels,
 						parsed.abortnodes);
+	xact_desc_stats(buf, "commit ", parsed.nstats, parsed.stats);
+	xact_desc_stats(buf, "abort ", parsed.nabortstats, parsed.abortstats);
 	xact_desc_subxacts(buf, parsed.nsubxacts, parsed.subxacts);
 
 	standby_desc_invalidations(buf, parsed.nmsgs, parsed.msgs, parsed.dbId,
