@@ -108,7 +108,7 @@
 /* GUC variables */
 char	   *default_tablespace = NULL;
 char	   *temp_tablespaces = NULL;
-
+bool		allow_in_place_tablespaces = false;
 
 static void create_tablespace_directories(const char *location,
 										  const Oid tablespaceoid);
@@ -179,8 +179,6 @@ TablespaceCreateDbspace(Oid spcNode, Oid dbNode, bool isRedo)
 				/* Directory creation failed? */
 				if (MakePGDirectory(dir) < 0)
 				{
-					char	   *parentdir;
-
 					/* Failure other than not exists or not in WAL replay? */
 					if (errno != ENOENT || !isRedo)
 						ereport(ERROR,
@@ -189,36 +187,16 @@ TablespaceCreateDbspace(Oid spcNode, Oid dbNode, bool isRedo)
 										dir)));
 
 					/*
-					 * Parent directories are missing during WAL replay, so
-					 * continue by creating simple parent directories rather
-					 * than a symlink.
+					 * During WAL replay, it's conceivable that several levels
+					 * of directories are missing if tablespaces are dropped
+					 * further ahead of the WAL stream than we're currently
+					 * replaying.  An easy way forward is to create them as
+					 * plain directories and hope they are removed by further
+					 * WAL replay if necessary.  If this also fails, there is
+					 * trouble we cannot get out of, so just report that and
+					 * bail out.
 					 */
-
-					/* create two parents up if not exist */
-					parentdir = pstrdup(dir);
-					get_parent_directory(parentdir);
-					get_parent_directory(parentdir);
-					/* Can't create parent and it doesn't already exist? */
-					if (MakePGDirectory(parentdir) < 0 && errno != EEXIST)
-						ereport(ERROR,
-								(errcode_for_file_access(),
-								 errmsg("could not create directory \"%s\": %m",
-										parentdir)));
-					pfree(parentdir);
-
-					/* create one parent up if not exist */
-					parentdir = pstrdup(dir);
-					get_parent_directory(parentdir);
-					/* Can't create parent and it doesn't already exist? */
-					if (MakePGDirectory(parentdir) < 0 && errno != EEXIST)
-						ereport(ERROR,
-								(errcode_for_file_access(),
-								 errmsg("could not create directory \"%s\": %m",
-										parentdir)));
-					pfree(parentdir);
-
-					/* Create database directory */
-					if (MakePGDirectory(dir) < 0)
+					if (pg_mkdir_p(dir, pg_dir_create_mode) < 0)
 						ereport(ERROR,
 								(errcode_for_file_access(),
 								 errmsg("could not create directory \"%s\": %m",
@@ -267,6 +245,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	char	   *location = NULL;
 	Oid			ownerId;
 	Datum		newOptions;
+	bool		in_place;
 	List       *nonContentOptions = NIL;
 
 	/* Must be superuser */
@@ -296,7 +275,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 			if (strlen(defel->defname) > strlen("content") &&
 				strncmp(defel->defname, "content", strlen("content")) == 0)
 			{
-				int contentId = pg_atoi(defel->defname + strlen("content"), sizeof(int16), 0);
+				int contentId = pg_strtoint16(defel->defname + strlen("content"));
 
 				/*
 				 * The master validates the content ids are in [0, segCount)
@@ -332,12 +311,15 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 				(errcode(ERRCODE_INVALID_NAME),
 				 errmsg("tablespace location cannot contain single quotes")));
 
+	in_place = allow_in_place_tablespaces && strlen(location) == 0;
+
 	/*
 	 * Allowing relative paths seems risky
 	 *
-	 * this also helps us ensure that location is not empty or whitespace
+	 * This also helps us ensure that location is not empty or whitespace,
+	 * unless specifying a developer-only in-place tablespace.
 	 */
-	if (!is_absolute_path(location))
+	if (!in_place && !is_absolute_path(location))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 				 errmsg("tablespace location must be an absolute path")));
@@ -783,20 +765,47 @@ create_tablespace_directories(const char *location, const Oid tablespaceoid)
 	char	   *location_with_dbid_dir;
 	char	   *location_with_version_dir;
 	struct stat st;
+	bool		in_place;
 
 	elog(DEBUG5, "creating tablespace directories for tablespaceoid %d on dbid %d",
 		tablespaceoid, GpIdentity.dbid);
 
 	linkloc = psprintf("pg_tblspc/%u", tablespaceoid);
-	location_with_dbid_dir = psprintf("%s/%d", location, GpIdentity.dbid);
+
+	/*
+	 * If we're asked to make an 'in place' tablespace, create the directory
+	 * directly where the symlink would normally go.  This is a developer-only
+	 * option for now, to facilitate regression testing.
+	 */
+	in_place = strlen(location) == 0;
+
+	if (in_place)
+	{
+		if (MakePGDirectory(linkloc) < 0 && errno != EEXIST)
+			ereport(ERROR,
+					(errcode_for_file_access(),
+					 errmsg("could not create directory \"%s\": %m",
+							linkloc)));
+	}
+
+	/*
+	 * Greengage puts the dbid directory between the location and the version
+	 * directory so that several segments of one host can share a tablespace
+	 * location.  An in-place tablespace already lives inside the segment's own
+	 * pg_tblspc, so it needs no such disambiguation.
+	 */
+	location_with_dbid_dir = in_place ? pstrdup(linkloc) :
+		psprintf("%s/%d", location, GpIdentity.dbid);
 	location_with_version_dir = psprintf("%s/%s", location_with_dbid_dir,
 										 GP_TABLESPACE_VERSION_DIRECTORY);
 
 	/*
 	 * Attempt to coerce target directory to safe permissions.  If this fails,
-	 * it doesn't exist or has the wrong owner.
+	 * it doesn't exist or has the wrong owner.  Not needed for in-place mode,
+	 * because in that case we created the directory with the desired
+	 * permissions.
 	 */
-	if (chmod(location, pg_dir_create_mode) != 0)
+	if (!in_place && chmod(location, pg_dir_create_mode) != 0)
 	{
 		if (errno == ENOENT)
 			ereport(ERROR,
@@ -870,13 +879,13 @@ create_tablespace_directories(const char *location, const Oid tablespaceoid)
 	/*
 	 * In recovery, remove old symlink, in case it points to the wrong place.
 	 */
-	if (InRecovery)
+	if (!in_place && InRecovery)
 		remove_tablespace_symlink(linkloc);
 
 	/*
 	 * Create the symlink under PGDATA
 	 */
-	if (symlink(location_with_dbid_dir, linkloc) < 0)
+	if (!in_place && symlink(location_with_dbid_dir, linkloc) < 0)
 		ereport(ERROR,
 				(errcode_for_file_access(),
 				 errmsg("could not create symbolic link \"%s\": %m",
@@ -916,16 +925,24 @@ unlink_without_redo(Oid tablespace_oid_to_unlink)
 		 * but we can't tell them apart from important data files that we
 		 * mustn't delete.  So instead, we force a checkpoint which will clean
 		 * out any lingering files, and try again.
-		 *
-		 * XXX On Windows, an unlinked file persists in the directory listing
-		 * until no process retains an open handle for the file.  The DDL
-		 * commands that schedule files for unlink send invalidation messages
-		 * directing other PostgreSQL processes to close the files.  DROP
-		 * TABLESPACE should not give up on the tablespace becoming empty
-		 * until all relevant invalidation processing is complete.
 		 */
 		RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_FORCE | CHECKPOINT_WAIT);
 
+		/*
+		 * On Windows, an unlinked file persists in the directory listing
+		 * until no process retains an open handle for the file.  The DDL
+		 * commands that schedule files for unlink send invalidation messages
+		 * directing other PostgreSQL processes to close the files, but
+		 * nothing guarantees they'll be processed in time.  So, we'll also
+		 * use a global barrier to ask all backends to close all files, and
+		 * wait until they're finished.
+		 */
+#if defined(USE_BARRIER_SMGRRELEASE)
+		LWLockRelease(TablespaceCreateLock);
+		WaitForProcSignalBarrier(EmitProcSignalBarrier(PROCSIGNAL_BARRIER_SMGRRELEASE));
+		LWLockAcquire(TablespaceCreateLock, LW_EXCLUSIVE);
+#endif
+		/* And now try again. */
 		if (!destroy_tablespace_directories(tablespace_oid_to_unlink, is_redo_flag_for_destroy_tablespace_directories))
 		{
 			/*
@@ -965,6 +982,11 @@ unlink_during_redo(Oid tablepace_oid_to_unlink)
 	 */
 	if (!destroy_tablespace_directories(tablepace_oid_to_unlink, true))
 	{
+#if defined(USE_BARRIER_SMGRRELEASE)
+		/* Close all smgr fds in all backends. */
+		WaitForProcSignalBarrier(EmitProcSignalBarrier(PROCSIGNAL_BARRIER_SMGRRELEASE));
+#endif
+
 		ResolveRecoveryConflictWithTablespace(tablepace_oid_to_unlink);
 
 		/*
@@ -1148,42 +1170,57 @@ remove_symlink:
 	linkloc = pstrdup(linkloc_with_version_dir);
 	get_parent_directory(linkloc);
 
-	/* Remove the symlink target directory if it exists or is valid. */
-	rllen = readlink(linkloc, link_target_dir, sizeof(link_target_dir));
-	if(rllen < 0)
+	/*
+	 * An in-place tablespace (allow_in_place_tablespaces) is a plain
+	 * directory under pg_tblspc: it has neither a symlink nor a per-dbid
+	 * target directory behind it, so there is nothing to clean up here and
+	 * the lstat() below removes the directory itself.  WAL replay can also
+	 * leave a real directory in place of the symlink (see
+	 * TablespaceCreateDbspace).
+	 */
+	if (lstat(linkloc, &st) == 0 && S_ISLNK(st.st_mode))
 	{
-		ereport(redo ? LOG : ERROR,
-				(errcode_for_file_access(),
-					errmsg("could not read symbolic link \"%s\": %m",
-						   linkloc)));
-	}
-	else if(rllen >= sizeof(link_target_dir))
-	{
-		ereport(redo ? LOG : ERROR,
-				(errcode_for_file_access(),
-					errmsg("symbolic link \"%s\" target is too long",
-						   linkloc)));
-	}
-	else
-	{
-		link_target_dir[rllen] = '\0';
-		if (access(link_target_dir, F_OK) != 0)
+		/* Remove the symlink target directory if it exists or is valid. */
+		rllen = readlink(linkloc, link_target_dir, sizeof(link_target_dir));
+		if(rllen < 0)
 		{
-			ereport(redo? LOG : ERROR,
+			ereport(redo ? LOG : ERROR,
 					(errcode_for_file_access(),
-							errmsg("could not open directory \"%s\": %m",
-								   link_target_dir)));
+						errmsg("could not read symbolic link \"%s\": %m",
+							   linkloc)));
+		}
+		else if(rllen >= sizeof(link_target_dir))
+		{
+			ereport(redo ? LOG : ERROR,
+					(errcode_for_file_access(),
+						errmsg("symbolic link \"%s\" target is too long",
+							   linkloc)));
 		}
 		else
 		{
-			if(directory_is_empty(link_target_dir) && rmdir(link_target_dir) < 0)
+			link_target_dir[rllen] = '\0';
+
+			/*
+			 * Remove the dbid directory once it has become empty, and let
+			 * rmdir() be the one to decide that: ENOTEMPTY means something is
+			 * still kept under it, and ENOENT means it is already gone.
+			 *
+			 * Probing first -- access(), then directory_is_empty() -- left a
+			 * window for the directory to disappear in between, and
+			 * directory_is_empty() reads it through ReadDir(), which reports
+			 * at ERROR whatever 'redo' says.  Losing that race in the startup
+			 * process was therefore a FATAL that took the segment down, and a
+			 * tablespace location shared by every segment of a host -- the
+			 * regression suite's own layout -- is where it is easiest to lose.
+			 */
+			if (rmdir(link_target_dir) < 0 &&
+				errno != ENOENT && errno != ENOTEMPTY)
 				ereport(redo ? LOG : ERROR,
 						(errcode_for_file_access(),
 								errmsg("could not remove directory \"%s\": %m",
 									   link_target_dir)));
 		}
 	}
-
 
 	if (lstat(linkloc, &st) < 0)
 	{

@@ -782,7 +782,7 @@ errfinish(const char *filename, int lineno, const char *funcname)
 		fflush(stderr);
 
 		/*
-		 * Let the statistics collector know. Only mark the session as
+		 * Let the cumulative stats system know. Only mark the session as
 		 * terminated by fatal error if there is no other known cause.
 		 */
 		if (pgStatSessionEndCause == DISCONNECT_NORMAL)
@@ -4416,6 +4416,22 @@ send_message_to_server_log(ErrorData *edata)
 		 */
 		if (redirection_done || MyBackendType == B_LOGGER)
 			write_csvlog(edata);
+		else
+			fallback_to_stderr = true;
+	}
+
+	/* Write to JSON log, if enabled */
+	if (Log_destination & LOG_DESTINATION_JSONLOG)
+	{
+		/*
+		 * Send JSON data if it's safe to do so (syslogger doesn't need the
+		 * pipe).  If this is not possible, fallback to an entry written to
+		 * stderr.
+		 */
+		if (redirection_done || MyBackendType == B_LOGGER)
+		{
+			write_jsonlog(edata);
+		}
 		else
 			fallback_to_stderr = true;
 	}

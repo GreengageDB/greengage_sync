@@ -100,6 +100,8 @@ ExecSort(PlanState *pstate)
 
 	if (!node->sort_Done)
 	{
+		int			tuplesortopts = TUPLESORT_NONE;
+
 		SO1_printf("ExecSort: %s\n",
 				   "sorting subplan");
 
@@ -118,6 +120,11 @@ ExecSort(PlanState *pstate)
 		outerNode = outerPlanState(node);
 		tupDesc = ExecGetResultType(outerNode);
 
+		if (node->randomAccess)
+			tuplesortopts |= TUPLESORT_RANDOMACCESS;
+		if (node->bounded)
+			tuplesortopts |= TUPLESORT_ALLOWBOUNDED;
+
 		if (node->datumSort)
 			tuplesortstate = tuplesort_begin_datum(TupleDescAttr(tupDesc, 0)->atttypid,
 												   plannode->sortOperators[0],
@@ -125,7 +132,7 @@ ExecSort(PlanState *pstate)
 												   plannode->nullsFirst[0],
 												   PlanStateOperatorMemKB((PlanState *) node),
 												   NULL,
-												   node->randomAccess);
+												   tuplesortopts);
 		else
 			tuplesortstate = tuplesort_begin_heap(tupDesc,
 												  plannode->numCols,
@@ -135,7 +142,7 @@ ExecSort(PlanState *pstate)
 												  plannode->nullsFirst,
 												  PlanStateOperatorMemKB((PlanState *) node),
 												  NULL,
-												  node->randomAccess);
+												  tuplesortopts);
 		if (node->bounded)
 			tuplesort_set_bound(tuplesortstate, node->bound);
 		node->tuplesortstate = (void *) tuplesortstate;
@@ -223,7 +230,6 @@ ExecSort(PlanState *pstate)
 			   "retrieving tuple from tuplesort");
 
 	slot = node->ss.ps.ps_ResultTupleSlot;
-
 	/*
 	 * Fetch the next sorted item from the appropriate tuplesort function. For
 	 * datum sorts we must manage the slot ourselves and leave it clear when

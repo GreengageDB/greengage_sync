@@ -34,6 +34,8 @@
 #endif
 #endif
 
+/* use for libc locale names */
+#define LOCALE_NAME_BUFLEN 128
 
 /* GUC settings */
 extern char *locale_messages;
@@ -101,6 +103,11 @@ struct pg_locale_struct
 
 typedef struct pg_locale_struct *pg_locale_t;
 
+extern struct pg_locale_struct default_locale;
+
+extern void make_icu_collator(const char *iculocstr,
+							  struct pg_locale_struct *resultp);
+
 extern pg_locale_t pg_newlocale_from_collation(Oid collid);
 
 extern char *get_collation_actual_version(char collprovider, const char *collcollate);
@@ -109,6 +116,7 @@ extern char *get_collation_actual_version(char collprovider, const char *collcol
 extern int32_t icu_to_uchar(UChar **buff_uchar, const char *buff, size_t nbytes);
 extern int32_t icu_from_uchar(char **result, const UChar *buff_uchar, int32_t len_uchar);
 #endif
+extern void check_icu_locale(const char *icu_locale);
 
 /* These functions convert from/to libc's wchar_t, *not* pg_wchar_t */
 extern size_t wchar2char(char *to, const wchar_t *from, size_t tolen,

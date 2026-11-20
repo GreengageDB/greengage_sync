@@ -2077,20 +2077,26 @@ write_binary_to_file(const char *buffer, int count, FILE *fh)
 void write_syslogger_file_binary(const char *buffer, int count, int destination)
 {
 	/*
-	 * If we're told to write to csvlogFile, but it's not open, dump the data
-	 * to syslogFile (which is always open) instead.  This can happen if CSV
-	 * output is enabled after postmaster start and we've been unable to open
-	 * csvlogFile.  There are also race conditions during a parameter change
-	 * whereby backends might send us CSV output before we open csvlogFile or
-	 * after we close it.  Writing CSV-formatted output to the regular log
-	 * file isn't great, but it beats dropping log output on the floor.
+	 * If we're told to write to a structured log file, but it's not open,
+	 * dump the data to syslogFile (which is always open) instead.  This can
+	 * happen if structured output is enabled after postmaster start and we've
+	 * been unable to open csvlogFile.  There are also race conditions during
+	 * a parameter change whereby backends might send us structured output
+	 * before we open csvlogFile or after we close it.  Writing formatted
+	 * output to the regular log file isn't great, but it beats dropping log
+	 * output on the floor.
 	 *
 	 * Think not to improve this by trying to open csvlogFile on-the-fly.  Any
 	 * failure in that would lead to recursion.
+	 *
+	 * GGDB: PG 15 adds a third structured destination, jsonlog.  Greengage's
+	 * collector writes a single file whatever log_destination says and has no
+	 * jsonlogFile, so a JSON line the syslogger process logs about itself
+	 * goes to that same file instead of being dropped here.
 	 */
 	if (destination == LOG_DESTINATION_STDERR)
 		write_binary_to_file(buffer, count, syslogFile);
-	else if (destination &= LOG_DESTINATION_CSVLOG)
+	else if (destination & (LOG_DESTINATION_CSVLOG | LOG_DESTINATION_JSONLOG))
 		write_binary_to_file(buffer, count,
 							 csvlogFile != NULL ? csvlogFile : syslogFile);
 }

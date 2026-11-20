@@ -444,6 +444,7 @@ main(int argc, char **argv)
 		{"if-exists", no_argument, &dopt.if_exists, 1},
 		{"inserts", no_argument, NULL, 9},
 		{"lock-wait-timeout", required_argument, NULL, 2},
+		{"no-table-access-method", no_argument, &dopt.outputNoTableAm, 1},
 		{"no-tablespaces", no_argument, &dopt.outputNoTablespaces, 1},
 		{"quote-all-identifiers", no_argument, &quote_all_identifiers, 1},
 		{"load-via-partition-root", no_argument, &dopt.load_via_partition_root, 1},
@@ -1067,6 +1068,7 @@ main(int argc, char **argv)
 	ropt->superuser = dopt.outputSuperuser;
 	ropt->createDB = dopt.outputCreateDB;
 	ropt->noOwner = dopt.outputNoOwner;
+	ropt->noTableAm = dopt.outputNoTableAm;
 	ropt->noTablespace = dopt.outputNoTablespaces;
 	ropt->disable_triggers = dopt.disable_triggers;
 	ropt->use_setsessauth = dopt.use_setsessauth;
@@ -1172,6 +1174,7 @@ help(const char *progname)
 	printf(_("  --no-publications            do not dump publications\n"));
 	printf(_("  --no-security-labels         do not dump security label assignments\n"));
 	printf(_("  --no-subscriptions           do not dump subscriptions\n"));
+	printf(_("  --no-table-access-method     do not dump table access methods\n"));
 	printf(_("  --no-tablespaces             do not dump tablespace assignments\n"));
 	printf(_("  --no-toast-compression       do not dump TOAST compression methods\n"));
 	printf(_("  --no-unlogged-table-data     do not dump unlogged table data\n"));
@@ -3016,14 +3019,17 @@ dumpDatabase(Archive *fout)
 				i_datname,
 				i_datdba,
 				i_encoding,
+				i_datlocprovider,
 				i_collate,
 				i_ctype,
+				i_daticulocale,
 				i_frozenxid,
 				i_minmxid,
 				i_datacl,
 				i_acldefault,
 				i_datistemplate,
 				i_datconnlimit,
+				i_datcollversion,
 				i_tablespace;
 	CatalogId	dbCatId;
 	DumpId		dbDumpId;
@@ -3031,8 +3037,10 @@ dumpDatabase(Archive *fout)
 	const char *datname,
 			   *dba,
 			   *encoding,
+			   *datlocprovider,
 			   *collate,
 			   *ctype,
+			   *iculocale,
 			   *datistemplate,
 			   *datconnlimit,
 			   *tablespace;
@@ -3055,6 +3063,10 @@ dumpDatabase(Archive *fout)
 		appendPQExpBuffer(dbQry, "datminmxid, ");
 	else
 		appendPQExpBuffer(dbQry, "0 AS datminmxid, ");
+	if (fout->remoteVersion >= 150000)
+		appendPQExpBuffer(dbQry, "datlocprovider, daticulocale, datcollversion, ");
+	else
+		appendPQExpBuffer(dbQry, "'c' AS datlocprovider, NULL AS daticulocale, NULL AS datcollversion, ");
 	appendPQExpBuffer(dbQry,
 					  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = dattablespace) AS tablespace, "
 					  "shobj_description(oid, 'pg_database') AS description "
@@ -3068,14 +3080,17 @@ dumpDatabase(Archive *fout)
 	i_datname = PQfnumber(res, "datname");
 	i_datdba = PQfnumber(res, "datdba");
 	i_encoding = PQfnumber(res, "encoding");
+	i_datlocprovider = PQfnumber(res, "datlocprovider");
 	i_collate = PQfnumber(res, "datcollate");
 	i_ctype = PQfnumber(res, "datctype");
+	i_daticulocale = PQfnumber(res, "daticulocale");
 	i_frozenxid = PQfnumber(res, "datfrozenxid");
 	i_minmxid = PQfnumber(res, "datminmxid");
 	i_datacl = PQfnumber(res, "datacl");
 	i_acldefault = PQfnumber(res, "acldefault");
 	i_datistemplate = PQfnumber(res, "datistemplate");
 	i_datconnlimit = PQfnumber(res, "datconnlimit");
+	i_datcollversion = PQfnumber(res, "datcollversion");
 	i_tablespace = PQfnumber(res, "tablespace");
 
 	dbCatId.tableoid = atooid(PQgetvalue(res, 0, i_tableoid));
@@ -3083,8 +3098,13 @@ dumpDatabase(Archive *fout)
 	datname = PQgetvalue(res, 0, i_datname);
 	dba = getRoleName(PQgetvalue(res, 0, i_datdba));
 	encoding = PQgetvalue(res, 0, i_encoding);
+	datlocprovider = PQgetvalue(res, 0, i_datlocprovider);
 	collate = PQgetvalue(res, 0, i_collate);
 	ctype = PQgetvalue(res, 0, i_ctype);
+	if (!PQgetisnull(res, 0, i_daticulocale))
+		iculocale = PQgetvalue(res, 0, i_daticulocale);
+	else
+		iculocale = NULL;
 	frozenxid = atooid(PQgetvalue(res, 0, i_frozenxid));
 	minmxid = atooid(PQgetvalue(res, 0, i_minmxid));
 	dbdacl.acl = PQgetvalue(res, 0, i_datacl);
@@ -3101,13 +3121,31 @@ dumpDatabase(Archive *fout)
 	 * are left to the DATABASE PROPERTIES entry, so that they can be applied
 	 * after reconnecting to the target DB.
 	 */
-	appendPQExpBuffer(creaQry, "CREATE DATABASE %s WITH TEMPLATE = template0",
-					  qdatname);
+	if (dopt->binary_upgrade)
+	{
+		appendPQExpBuffer(creaQry, "CREATE DATABASE %s WITH TEMPLATE = template0 OID = %u",
+						  qdatname, dbCatId.oid);
+	}
+	else
+	{
+		appendPQExpBuffer(creaQry, "CREATE DATABASE %s WITH TEMPLATE = template0",
+						  qdatname);
+	}
 	if (strlen(encoding) > 0)
 	{
 		appendPQExpBufferStr(creaQry, " ENCODING = ");
 		appendStringLiteralAH(creaQry, encoding, fout);
 	}
+
+	appendPQExpBufferStr(creaQry, " LOCALE_PROVIDER = ");
+	if (datlocprovider[0] == 'c')
+		appendPQExpBufferStr(creaQry, "libc");
+	else if (datlocprovider[0] == 'i')
+		appendPQExpBufferStr(creaQry, "icu");
+	else
+		fatal("unrecognized locale provider: %s",
+			  datlocprovider);
+
 	if (strlen(collate) > 0 && strcmp(collate, ctype) == 0)
 	{
 		appendPQExpBufferStr(creaQry, " LOCALE = ");
@@ -3124,6 +3162,26 @@ dumpDatabase(Archive *fout)
 		{
 			appendPQExpBufferStr(creaQry, " LC_CTYPE = ");
 			appendStringLiteralAH(creaQry, ctype, fout);
+		}
+	}
+	if (iculocale)
+	{
+		appendPQExpBufferStr(creaQry, " ICU_LOCALE = ");
+		appendStringLiteralAH(creaQry, iculocale, fout);
+	}
+
+	/*
+	 * For binary upgrade, carry over the collation version.  For normal
+	 * dump/restore, omit the version, so that it is computed upon restore.
+	 */
+	if (dopt->binary_upgrade)
+	{
+		if (!PQgetisnull(res, 0, i_datcollversion))
+		{
+			appendPQExpBufferStr(creaQry, " COLLATION_VERSION = ");
+			appendStringLiteralAH(creaQry,
+								  PQgetvalue(res, 0, i_datcollversion),
+								  fout);
 		}
 	}
 
@@ -4325,6 +4383,8 @@ getPublicationTables(Archive *fout, TableInfo tblinfo[], int numTables)
 	int			i_oid;
 	int			i_prpubid;
 	int			i_prrelid;
+	int			i_prrelqual;
+	int			i_prattrs;
 	int			i,
 				j,
 				ntups;
@@ -4335,9 +4395,24 @@ getPublicationTables(Archive *fout, TableInfo tblinfo[], int numTables)
 	query = createPQExpBuffer();
 
 	/* Collect all publication membership info. */
-	appendPQExpBufferStr(query,
-						 "SELECT tableoid, oid, prpubid, prrelid "
-						 "FROM pg_catalog.pg_publication_rel");
+	if (fout->remoteVersion >= 150000)
+		appendPQExpBufferStr(query,
+							 "SELECT tableoid, oid, prpubid, prrelid, "
+							 "pg_catalog.pg_get_expr(prqual, prrelid) AS prrelqual, "
+							 "(CASE\n"
+							 "  WHEN pr.prattrs IS NOT NULL THEN\n"
+							 "    (SELECT array_agg(attname)\n"
+							 "       FROM\n"
+							 "         pg_catalog.generate_series(0, pg_catalog.array_upper(pr.prattrs::pg_catalog.int2[], 1)) s,\n"
+							 "         pg_catalog.pg_attribute\n"
+							 "      WHERE attrelid = pr.prrelid AND attnum = prattrs[s])\n"
+							 "  ELSE NULL END) prattrs "
+							 "FROM pg_catalog.pg_publication_rel pr");
+	else
+		appendPQExpBufferStr(query,
+							 "SELECT tableoid, oid, prpubid, prrelid, "
+							 "NULL AS prrelqual, NULL AS prattrs "
+							 "FROM pg_catalog.pg_publication_rel");
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
 	ntups = PQntuples(res);
@@ -4346,6 +4421,8 @@ getPublicationTables(Archive *fout, TableInfo tblinfo[], int numTables)
 	i_oid = PQfnumber(res, "oid");
 	i_prpubid = PQfnumber(res, "prpubid");
 	i_prrelid = PQfnumber(res, "prrelid");
+	i_prrelqual = PQfnumber(res, "prrelqual");
+	i_prattrs = PQfnumber(res, "prattrs");
 
 	/* this allocation may be more than we need */
 	pubrinfo = pg_malloc(ntups * sizeof(PublicationRelInfo));
@@ -4386,6 +4463,32 @@ getPublicationTables(Archive *fout, TableInfo tblinfo[], int numTables)
 		pubrinfo[j].dobj.name = tbinfo->dobj.name;
 		pubrinfo[j].publication = pubinfo;
 		pubrinfo[j].pubtable = tbinfo;
+		if (PQgetisnull(res, i, i_prrelqual))
+			pubrinfo[j].pubrelqual = NULL;
+		else
+			pubrinfo[j].pubrelqual = pg_strdup(PQgetvalue(res, i, i_prrelqual));
+
+		if (!PQgetisnull(res, i, i_prattrs))
+		{
+			char	  **attnames;
+			int			nattnames;
+			PQExpBuffer attribs;
+
+			if (!parsePGArray(PQgetvalue(res, i, i_prattrs),
+							  &attnames, &nattnames))
+				fatal("could not parse %s array", "prattrs");
+			attribs = createPQExpBuffer();
+			for (int k = 0; k < nattnames; k++)
+			{
+				if (k > 0)
+					appendPQExpBufferStr(attribs, ", ");
+
+				appendPQExpBufferStr(attribs, fmtId(attnames[k]));
+			}
+			pubrinfo[j].pubrattrs = attribs->data;
+		}
+		else
+			pubrinfo[j].pubrattrs = NULL;
 
 		/* Decide whether we want to dump it */
 		selectDumpablePublicationObject(&(pubrinfo[j].dobj), fout);
@@ -4463,8 +4566,21 @@ dumpPublicationTable(Archive *fout, const PublicationRelInfo *pubrinfo)
 
 	appendPQExpBuffer(query, "ALTER PUBLICATION %s ADD TABLE ONLY",
 					  fmtId(pubinfo->dobj.name));
-	appendPQExpBuffer(query, " %s;\n",
+	appendPQExpBuffer(query, " %s",
 					  fmtQualifiedDumpable(tbinfo));
+
+	if (pubrinfo->pubrattrs)
+		appendPQExpBuffer(query, " (%s)", pubrinfo->pubrattrs);
+
+	if (pubrinfo->pubrelqual)
+	{
+		/*
+		 * It's necessary to add parentheses around the expression because
+		 * pg_get_expr won't supply the parentheses for things like WHERE TRUE.
+		 */
+		appendPQExpBuffer(query, " WHERE (%s)", pubrinfo->pubrelqual);
+	}
+	appendPQExpBufferStr(query, ";\n");
 
 	/*
 	 * There is no point in creating a drop query as the drop is done by table
@@ -4522,6 +4638,7 @@ getSubscriptions(Archive *fout)
 	int			i_subowner;
 	int			i_substream;
 	int			i_subtwophasestate;
+	int			i_subdisableonerr;
 	int			i_subconninfo;
 	int			i_subslotname;
 	int			i_subsynccommit;
@@ -4569,10 +4686,13 @@ getSubscriptions(Archive *fout)
 		appendPQExpBufferStr(query, " false AS substream,\n");
 
 	if (fout->remoteVersion >= 150000)
-		appendPQExpBufferStr(query, " s.subtwophasestate\n");
+		appendPQExpBufferStr(query,
+							 " s.subtwophasestate,\n"
+							 " s.subdisableonerr\n");
 	else
 		appendPQExpBuffer(query,
-						  " '%c' AS subtwophasestate\n",
+						  " '%c' AS subtwophasestate,\n"
+						  " false AS subdisableonerr\n",
 						  LOGICALREP_TWOPHASE_STATE_DISABLED);
 
 	appendPQExpBufferStr(query,
@@ -4584,6 +4704,10 @@ getSubscriptions(Archive *fout)
 
 	ntups = PQntuples(res);
 
+	/*
+	 * Get subscription fields. We don't include subskiplsn in the dump as
+	 * after restoring the dump this value may no longer be relevant.
+	 */
 	i_tableoid = PQfnumber(res, "tableoid");
 	i_oid = PQfnumber(res, "oid");
 	i_subname = PQfnumber(res, "subname");
@@ -4595,6 +4719,7 @@ getSubscriptions(Archive *fout)
 	i_subbinary = PQfnumber(res, "subbinary");
 	i_substream = PQfnumber(res, "substream");
 	i_subtwophasestate = PQfnumber(res, "subtwophasestate");
+	i_subdisableonerr = PQfnumber(res, "subdisableonerr");
 
 	subinfo = pg_malloc(ntups * sizeof(SubscriptionInfo));
 
@@ -4622,6 +4747,8 @@ getSubscriptions(Archive *fout)
 			pg_strdup(PQgetvalue(res, i, i_substream));
 		subinfo[i].subtwophasestate =
 			pg_strdup(PQgetvalue(res, i, i_subtwophasestate));
+		subinfo[i].subdisableonerr =
+			pg_strdup(PQgetvalue(res, i, i_subdisableonerr));
 
 		/* Decide whether we want to dump it */
 		selectDumpableObject(&(subinfo[i].dobj), fout);
@@ -4691,6 +4818,9 @@ dumpSubscription(Archive *fout, const SubscriptionInfo *subinfo)
 
 	if (strcmp(subinfo->subtwophasestate, two_phase_disabled) != 0)
 		appendPQExpBufferStr(query, ", two_phase = on");
+
+	if (strcmp(subinfo->subdisableonerr, "t") == 0)
+		appendPQExpBufferStr(query, ", disable_on_error = true");
 
 	if (strcmp(subinfo->subsynccommit, "off") != 0)
 		appendPQExpBuffer(query, ", synchronous_commit = %s", fmtId(subinfo->subsynccommit));
@@ -7351,6 +7481,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 				i_indkey,
 				i_indisclustered,
 				i_indisreplident,
+				i_indnullsnotdistinct,
 				i_contype,
 				i_conname,
 				i_condeferrable,
@@ -7392,8 +7523,6 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 	}
 	appendPQExpBufferChar(tbloids, '}');
 
-	resetPQExpBuffer(query);
-
 	appendPQExpBuffer(query,
 					  "SELECT t.tableoid, t.oid, i.indrelid, "
 					  "t.relname AS indexname, "
@@ -7427,14 +7556,21 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 						  "(SELECT pg_catalog.array_agg(attstattarget ORDER BY attnum) "
 						  "  FROM pg_catalog.pg_attribute "
 						  "  WHERE attrelid = i.indexrelid AND "
-						  "    attstattarget >= 0) AS indstatvals ");
+						  "    attstattarget >= 0) AS indstatvals, ");
 	else
 		appendPQExpBuffer(query,
 						  "0 AS parentidx, "
 						  "i.indnatts AS indnkeyatts, "
 						  "i.indnatts AS indnatts, "
 						  "'' AS indstatcols, "
-						  "'' AS indstatvals ");
+						  "'' AS indstatvals, ");
+
+	if (fout->remoteVersion >= 150000)
+		appendPQExpBuffer(query,
+						  "i.indnullsnotdistinct ");
+	else
+		appendPQExpBuffer(query,
+						  "false AS indnullsnotdistinct ");
 
 	/*
 	 * The point of the messy-looking outer join is to find a constraint that
@@ -7497,6 +7633,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 	i_indkey = PQfnumber(res, "indkey");
 	i_indisclustered = PQfnumber(res, "indisclustered");
 	i_indisreplident = PQfnumber(res, "indisreplident");
+	i_indnullsnotdistinct = PQfnumber(res, "indnullsnotdistinct");
 	i_contype = PQfnumber(res, "contype");
 	i_conname = PQfnumber(res, "conname");
 	i_condeferrable = PQfnumber(res, "condeferrable");
@@ -7573,6 +7710,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 						  indxinfo[j].indkeys, indxinfo[j].indnattrs);
 			indxinfo[j].indisclustered = (PQgetvalue(res, j, i_indisclustered)[0] == 't');
 			indxinfo[j].indisreplident = (PQgetvalue(res, j, i_indisreplident)[0] == 't');
+			indxinfo[j].indnullsnotdistinct = (PQgetvalue(res, j, i_indnullsnotdistinct)[0] == 't');
 			indxinfo[j].parentidx = atooid(PQgetvalue(res, j, i_parentidx));
 			indxinfo[j].partattaches = (SimplePtrList)
 			{
@@ -17914,8 +18052,11 @@ dumpConstraint(Archive *fout, const ConstraintInfo *coninfo)
 		}
 		else
 		{
-			appendPQExpBuffer(q, "%s (",
+			appendPQExpBuffer(q, "%s",
 							  coninfo->contype == 'p' ? "PRIMARY KEY" : "UNIQUE");
+			if (indxinfo->indnullsnotdistinct)
+				appendPQExpBuffer(q, " NULLS NOT DISTINCT");
+			appendPQExpBuffer(q, " (");
 			for (k = 0; k < indxinfo->indnkeyattrs; k++)
 			{
 				int			indkey = (int) indxinfo->indkeys[k];
@@ -18188,6 +18329,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	PQExpBuffer query = createPQExpBuffer();
 	PQExpBuffer delqry = createPQExpBuffer();
 	char	   *qseqname;
+	TableInfo  *owning_tab = NULL;
 
 	qseqname = pg_strdup(fmtId(tbinfo->dobj.name));
 
@@ -18296,7 +18438,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 
 	if (tbinfo->is_identity_sequence)
 	{
-		TableInfo  *owning_tab = findTableByOid(tbinfo->owning_tab);
+		owning_tab = findTableByOid(tbinfo->owning_tab);
 
 		appendPQExpBuffer(query,
 						  "ALTER TABLE %s ",
@@ -18314,7 +18456,9 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	else
 	{
 		appendPQExpBuffer(query,
-						  "CREATE SEQUENCE %s\n",
+						  "CREATE %sSEQUENCE %s\n",
+						  tbinfo->relpersistence == RELPERSISTENCE_UNLOGGED ?
+						  "UNLOGGED " : "",
 						  fmtQualifiedDumpable(tbinfo));
 
 		if (strcmp(seqtype, "bigint") != 0)
@@ -18340,7 +18484,15 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 					  cache, (cycled ? "\n    CYCLE" : ""));
 
 	if (tbinfo->is_identity_sequence)
+	{
 		appendPQExpBufferStr(query, "\n);\n");
+		if (tbinfo->relpersistence != owning_tab->relpersistence)
+			appendPQExpBuffer(query,
+							  "ALTER SEQUENCE %s SET %s;\n",
+							  fmtQualifiedDumpable(tbinfo),
+							  tbinfo->relpersistence == RELPERSISTENCE_UNLOGGED ?
+							  "UNLOGGED" : "LOGGED");
+	}
 	else
 		appendPQExpBufferStr(query, ";\n");
 

@@ -6,7 +6,7 @@ use warnings;
 
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 6;
+use Test::More;
 use Time::HiRes qw(usleep);
 
 # Extract the file name of a $format from the contents of
@@ -39,7 +39,7 @@ sub check_log_pattern
 	my $node     = shift;
 	my $lfname   = fetch_file_name($logfiles, $format);
 
-	my $max_attempts = 180 * 10;
+	my $max_attempts = 10 * $PostgreSQL::Test::Utils::timeout_default;
 
 	my $logcontents;
 	for (my $attempts = 0; $attempts < $max_attempts; $attempts++)
@@ -79,7 +79,7 @@ $node->start();
 $node->psql('postgres', 'SELECT 1/0');
 
 # might need to retry if logging collector process is slow...
-my $max_attempts = 180 * 10;
+my $max_attempts = 10 * $PostgreSQL::Test::Utils::timeout_default;
 
 my $current_logfiles;
 for (my $attempts = 0; $attempts < $max_attempts; $attempts++)
@@ -100,8 +100,7 @@ like(
 	'current_logfiles is sane');
 
 check_log_pattern('stderr', $current_logfiles, 'division by zero', $node);
-# GGDB: no separate csvlog destination
-#check_log_pattern('csvlog', $current_logfiles, 'division by zero', $node);
+# GGDB: no separate csvlog or jsonlog destination
 
 # Sleep 2 seconds and ask for log rotation; this should result in
 # output into a different log file name.
@@ -129,7 +128,8 @@ like(
 $node->psql('postgres', 'fee fi fo fum');
 
 check_log_pattern('stderr', $new_current_logfiles, 'syntax error', $node);
-# GGDB: no separate csvlog destination
-#check_log_pattern('csvlog', $new_current_logfiles, 'syntax error', $node);
+# GGDB: no separate csvlog or jsonlog destination
 
 $node->stop();
+
+done_testing();

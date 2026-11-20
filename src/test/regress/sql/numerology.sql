@@ -4,6 +4,21 @@
 --
 
 --
+-- Trailing junk in numeric literals
+--
+
+SELECT 123abc;
+SELECT 0x0o;
+SELECT 1_2_3;
+SELECT 0.a;
+SELECT 0.0a;
+SELECT .0a;
+SELECT 0.0e1a;
+SELECT 0.0e;
+SELECT 0.0e+a;
+PREPARE p1 AS SELECT $1a;
+
+--
 -- create required tables
 --
 CREATE TABLE FLOAT8_NUMER_TBL(i INT DEFAULT 1, f1 float8);

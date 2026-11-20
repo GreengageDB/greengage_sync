@@ -621,7 +621,7 @@ heapam_relation_set_new_filenode(Relation rel,
 	 */
 	*minmulti = GetOldestMultiXactId();
 
-	srel = RelationCreateStorage(*newrnode, persistence, SMGR_MD);
+	srel = RelationCreateStorage(*newrnode, persistence, SMGR_MD, true);
 
 	/*
 	 * If required, set up an init fork for an unlogged table so that it can
@@ -629,7 +629,7 @@ heapam_relation_set_new_filenode(Relation rel,
 	 * even if the page has been logged, because the write did not go through
 	 * shared_buffers and therefore a concurrent checkpoint may have moved the
 	 * redo pointer past our xlog record.  Recovery may as well remove it
-	 * while replaying, for example, XLOG_DBASE_CREATE or XLOG_TBLSPC_CREATE
+	 * while replaying, for example, XLOG_DBASE_CREATE* or XLOG_TBLSPC_CREATE
 	 * record. Therefore, logging is necessary even if wal_level=minimal.
 	 */
 	if (persistence == RELPERSISTENCE_UNLOGGED)
@@ -676,7 +676,7 @@ heapam_relation_copy_data(Relation rel, const RelFileNode *newrnode)
 	 * NOTE: any conflict in relfilenode value will be caught in
 	 * RelationCreateStorage().
 	 */
-	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, SMGR_MD);
+	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, SMGR_MD, true);
 
 	/* copy main fork */
 	RelationCopyStorage(RelationGetSmgr(rel), dstrel, MAIN_FORKNUM,
@@ -757,7 +757,7 @@ heapam_relation_copy_for_cluster(Relation OldHeap, Relation NewHeap,
 	if (use_sort)
 		tuplesort = tuplesort_begin_cluster(oldTupDesc, OldIndex,
 											maintenance_work_mem,
-											NULL, false);
+											NULL, TUPLESORT_NONE);
 	else
 		tuplesort = NULL;
 
@@ -1121,8 +1121,8 @@ heapam_scan_analyze_next_tuple(TableScanDesc scan, TransactionId OldestXmin,
 				 * our own.  In this case we should count and sample the row,
 				 * to accommodate users who load a table and analyze it in one
 				 * transaction.  (pgstat_report_analyze has to adjust the
-				 * numbers we send to the stats collector to make this come
-				 * out right.)
+				 * numbers we report to the cumulative stats system to make
+				 * this come out right.)
 				 */
 				if (TransactionIdIsCurrentTransactionId(HeapTupleHeaderGetXmin(targtuple->t_data)))
 				{

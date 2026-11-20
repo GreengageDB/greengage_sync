@@ -27,7 +27,7 @@
 use strict;
 use warnings;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 3;
+use Test::More;
 
 use FindBin;
 use lib $FindBin::RealBin;
@@ -74,7 +74,7 @@ $node_a->safe_psql('postgres',
 	"INSERT INTO tbl1 values ('in A, before promotion')");
 $node_a->safe_psql('postgres', 'CHECKPOINT');
 
-my $lsn = $node_a->lsn('insert');
+my $lsn = $node_a->lsn('write');
 $node_a->wait_for_catchup('node_b', 'write', $lsn);
 $node_b->wait_for_catchup('node_c', 'write', $lsn);
 
@@ -93,8 +93,7 @@ $node_a->safe_psql('postgres',
 	"INSERT INTO tbl1 VALUES ('in A, after C was promoted')");
 
 # make sure it's replicated to B before we continue
-$lsn = $node_a->lsn('insert');
-$node_a->wait_for_catchup('node_b', 'replay', $lsn);
+$node_a->wait_for_catchup('node_b');
 
 # Also insert a new row in the standby, which won't be present in the
 # old primary.
@@ -161,12 +160,11 @@ in A, after C was promoted
 $node_a->safe_psql('postgres',
 	"INSERT INTO tbl1 values ('in A, after rewind')");
 
-$lsn = $node_a->lsn('insert');
 # GPDB's pg_rewind --write-recovery-conf hardcodes application_name to
 # 'gp_walreceiver' in the generated primary_conninfo (see
 # GP_WALRECEIVER_APPNAME in recovery_gen.c), so node_c no longer shows up
 # in pg_stat_replication under its own node name after being rewound.
-$node_b->wait_for_catchup('gp_walreceiver', 'replay', $lsn);
+$node_b->wait_for_catchup('gp_walreceiver', 'replay', $node_a->lsn('write'));
 
 check_query(
 	'SELECT * FROM tbl1',
@@ -182,4 +180,4 @@ $node_a->teardown_node;
 $node_b->teardown_node;
 $node_c->teardown_node;
 
-exit(0);
+done_testing();

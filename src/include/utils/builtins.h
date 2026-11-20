@@ -44,10 +44,13 @@ extern int2vector *buildint2vector(const int16 *int2s, int n);
 extern void namestrcpy(Name name, const char *str);
 extern int	namestrcmp(Name name, const char *str);
 
+/* int8.c (GG) */
+extern bool scanint8(const char *str, bool errorOK, int64 *result);
+
 /* numutils.c */
-extern int32 pg_atoi(const char *s, int size, int c);
 extern int16 pg_strtoint16(const char *s);
 extern int32 pg_strtoint32(const char *s);
+extern int64 pg_strtoint64(const char *s);
 extern int	pg_itoa(int16 i, char *a);
 extern int	pg_ultoa_n(uint32 l, char *a);
 extern int	pg_ulltoa_n(uint64 l, char *a);
@@ -103,6 +106,7 @@ extern void text_to_cstring_buffer(const text *src, char *dst, size_t dst_len);
 
 /* xid.c */
 extern int	xidComparator(const void *arg1, const void *arg2);
+extern int	xidLogicalComparator(const void *arg1, const void *arg2);
 
 /* inet_cidr_ntop.c */
 extern char *pg_inet_cidr_ntop(int af, const void *src, int bits,

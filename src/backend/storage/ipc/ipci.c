@@ -24,6 +24,8 @@
 #include "access/subtrans.h"
 #include "access/syncscan.h"
 #include "access/twophase.h"
+#include "access/xlogprefetcher.h"
+#include "access/xlogrecovery.h"
 #include "access/distributedlog.h"
 #include "cdb/cdblocaldistribxact.h"
 #include "cdb/cdbvars.h"
@@ -158,7 +160,9 @@ CalculateShmemSize(int *num_semaphores)
 		size = add_size(size, FtsShmemSize());
 
 	size = add_size(size, ProcGlobalShmemSize());
+	size = add_size(size, XLogPrefetchShmemSize());
 	size = add_size(size, XLOGShmemSize());
+	size = add_size(size, XLogRecoveryShmemSize());
 	size = add_size(size, DistributedLog_ShmemSize());
 	size = add_size(size, CLOGShmemSize());
 	size = add_size(size, CommitTsShmemSize());
@@ -185,6 +189,7 @@ CalculateShmemSize(int *num_semaphores)
 	size = add_size(size, BTreeShmemSize());
 	size = add_size(size, SyncScanShmemSize());
 	size = add_size(size, AsyncShmemSize());
+	size = add_size(size, StatsShmemSize());
 #ifdef EXEC_BACKEND
 	size = add_size(size, ShmemBackendArraySize());
 #endif
@@ -307,6 +312,8 @@ CreateSharedMemoryAndSemaphores(void)
 	 * Set up xlog, clog, and buffers
 	 */
 	XLOGShmemInit();
+	XLogPrefetchShmemInit();
+	XLogRecoveryShmemInit();
 	CLOGShmemInit();
 	DistributedLog_ShmemInit();
 	CommitTsShmemInit();
@@ -389,6 +396,7 @@ CreateSharedMemoryAndSemaphores(void)
 	BTreeShmemInit();
 	SyncScanShmemInit();
 	AsyncShmemInit();
+	StatsShmemInit();
 	BackendCancelShmemInit();
 	WorkFileShmemInit();
 	ShareInputShmemInit();

@@ -178,7 +178,13 @@ static const char *const BuiltinTrancheNames[] = {
 	/* LWTRANCHE_PER_XACT_PREDICATE_LIST: */
 	"PerXactPredicateList",
 	/* LWTRANCHE_DISTRIBUTEDLOG_BUFFERS: */
-	"DistributedBuffers"
+	"DistributedBuffers",
+	/* LWTRANCHE_PGSTATS_DSA: */
+	"PgStatsDSA",
+	/* LWTRANCHE_PGSTATS_HASH: */
+	"PgStatsHash",
+	/* LWTRANCHE_PGSTATS_DATA: */
+	"PgStatsData",
 };
 
 StaticAssertDecl(lengthof(BuiltinTrancheNames) ==
@@ -1946,4 +1952,11 @@ LWLockHeldByMeInMode(LWLock *l, LWLockMode mode)
 			return true;
 	}
 	return false;
+}
+
+/* temp debugging aid to analyze 019_replslot_limit failures */
+int
+LWLockHeldCount(void)
+{
+	return num_held_lwlocks;
 }

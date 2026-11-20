@@ -35,7 +35,6 @@ use strict;
 use warnings;
 
 use Carp;
-use Config;
 use Exporter 'import';
 use File::Copy;
 use File::Path qw(rmtree);
@@ -103,22 +102,10 @@ sub check_query
 	  ],
 	  '>', \$stdout, '2>', \$stderr;
 
-	# We don't use ok() for the exit code and stderr, because we want this
-	# check to be just a single test.
-	if (!$result)
-	{
-		fail("$test_name: psql exit code");
-	}
-	elsif ($stderr ne '')
-	{
-		diag $stderr;
-		fail("$test_name: psql no stderr");
-	}
-	else
-	{
-		$stdout =~ s/\r\n/\n/g if $Config{osname} eq 'msys';
-		is($stdout, $expected_stdout, "$test_name: query result matches");
-	}
+	is($result, 1, "$test_name: psql exit code");
+	is($stderr, '', "$test_name: psql no stderr");
+	is($stdout, $expected_stdout, "$test_name: query result matches");
+
 	return;
 }
 
@@ -293,6 +280,21 @@ sub run_pg_rewind
 		"$primary_pgdata/postgresql.conf",
 		"$tmp_folder/primary-postgresql.conf.tmp");
 
+	# GPDB: postgresql.conf carries "include = 'internal.auto.conf'", and a
+	# relative include resolves against the directory of the file that
+	# contains it (AbsoluteConfigLocation(), guc-file.l), not against
+	# data_directory.  So the copy needs its own internal.auto.conf beside
+	# it, or every --config-file run below dies with
+	#     could not open configuration file ".../internal.auto.conf"
+	#     FATAL: configuration file ".../primary-postgresql.conf.tmp"
+	#            contains errors
+	# before it can do any work.  pg_rewind never overwrites the target's own
+	# copy of the file -- it is in the exclusion list at filemap.c:167 -- so
+	# the primary's gp_dbid is the right one to put here.
+	copy(
+		"$primary_pgdata/internal.auto.conf",
+		"$tmp_folder/internal.auto.conf");
+
 	# Now run pg_rewind
 	if ($test_mode eq "local")
 	{
@@ -306,7 +308,9 @@ sub run_pg_rewind
 				"--debug",
 				"--source-pgdata=$standby_pgdata",
 				"--target-pgdata=$primary_pgdata",
-				"--no-sync"
+				"--no-sync",
+				"--config-file",
+				"$tmp_folder/primary-postgresql.conf.tmp"
 			],
 			'pg_rewind local');
 
@@ -324,7 +328,8 @@ sub run_pg_rewind
 				'pg_rewind',                       "--debug",
 				"--source-server",                 $standby_connstr,
 				"--target-pgdata=$primary_pgdata", "--no-sync",
-				"--write-recovery-conf"
+				"--write-recovery-conf",           "--config-file",
+				"$tmp_folder/primary-postgresql.conf.tmp"
 			],
 			'pg_rewind remote');
 
@@ -371,7 +376,8 @@ sub run_pg_rewind
 
 		# Note the use of --no-ensure-shutdown here.  WAL files are
 		# gone in this mode and the primary has been stopped
-		# gracefully already.
+		# gracefully already.  --config-file reuses the original
+		# postgresql.conf as restore_command has been enabled above.
 		command_ok(
 			[
 				'pg_rewind',
@@ -380,7 +386,9 @@ sub run_pg_rewind
 				"--target-pgdata=$primary_pgdata",
 				"--no-sync",
 				"--no-ensure-shutdown",
-				"--restore-target-wal"
+				"--restore-target-wal",
+				"--config-file",
+				"$primary_pgdata/postgresql.conf"
 			],
 			'pg_rewind archive');
 	}

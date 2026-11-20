@@ -5,12 +5,10 @@
 
 use strict;
 use warnings;
-use Cwd;
-use Config;
 use File::Path qw(rmtree);
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 19;
+use Test::More;
 
 my $primary = PostgreSQL::Test::Cluster->new('primary');
 $primary->init(allows_streaming => 1);
@@ -21,7 +19,7 @@ for my $algorithm (qw(bogus none crc32c sha224 sha256 sha384 sha512))
 	my $backup_path = $primary->backup_dir . '/' . $algorithm;
 	my @backup      = (
 		'pg_basebackup', '-D', $backup_path,
-		'--manifest-checksums', $algorithm, '--no-sync',
+		'--manifest-checksums', $algorithm, '--no-sync', '-cfast',
 		'--target-gp-dbid', '1');
 	my @verify = ('pg_verifybackup', '-e', $backup_path);
 
@@ -60,3 +58,5 @@ for my $algorithm (qw(bogus none crc32c sha224 sha256 sha384 sha512))
 	# Remove backup immediately to save disk space.
 	rmtree($backup_path);
 }
+
+done_testing();

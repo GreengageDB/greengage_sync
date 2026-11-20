@@ -61,6 +61,7 @@ WHERE t1.unique1 < 1000;
 -- counters are computed on the segments and not sent to the QD, so we can
 -- only check the plan shape here, not the Hits/Misses/Evictions line.
 SET work_mem TO '64kB';
+SET hash_mem_multiplier TO 1.0;
 SET enable_mergejoin TO off;
 -- GPDB: also disable sort, otherwise a distributed Merge Join is chosen over the
 -- Nested Loop + Memoize plan this test needs.
@@ -136,6 +137,7 @@ WHERE unique1 < 3
 RESET enable_seqscan;
 RESET enable_mergejoin;
 RESET work_mem;
+RESET hash_mem_multiplier;
 
 -- Test Memoize plans.  GPDB has no intra-segment parallel workers, so
 -- upstream's "parallel plan" is just the ordinary distributed plan here.  We

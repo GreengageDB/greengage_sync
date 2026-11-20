@@ -25,6 +25,7 @@ OBJS = \
 	objectaddress.o \
 	partition.o \
 	pg_aggregate.o \
+	pg_attrdef.o \
 	pg_cast.o \
 	pg_class.o \
 	pg_collation.o \
@@ -37,6 +38,7 @@ OBJS = \
 	pg_largeobject.o \
 	pg_namespace.o \
 	pg_operator.o \
+	pg_parameter_acl.o \
 	pg_proc.o \
 	pg_publication.o \
 	pg_range.o \
@@ -88,7 +90,8 @@ CATALOG_HEADERS := \
 	pg_stat_last_operation.h pg_stat_last_shoperation.h \
 	pg_foreign_table.h pg_policy.h pg_replication_origin.h \
 	pg_default_acl.h pg_init_privs.h pg_seclabel.h pg_shseclabel.h \
-	pg_collation.h pg_partitioned_table.h pg_range.h pg_transform.h \
+	pg_collation.h pg_parameter_acl.h pg_partitioned_table.h \
+	pg_range.h pg_transform.h \
 	pg_sequence.h pg_publication.h pg_publication_namespace.h \
 	pg_publication_rel.h pg_subscription.h pg_subscription_rel.h gp_partition_template.h
 
@@ -130,7 +133,7 @@ generated-header-symlinks: $(top_builddir)/src/include/catalog/header-stamp
 # configure run, even in distribution tarballs.  So depending on configure.ac
 # instead is cheating a bit, but it will achieve the goal of updating the
 # version number when it changes.
-bki-stamp: genbki.pl Catalog.pm $(POSTGRES_BKI_SRCS) $(POSTGRES_BKI_DATA) $(top_srcdir)/configure.ac
+bki-stamp: genbki.pl Catalog.pm $(POSTGRES_BKI_SRCS) $(POSTGRES_BKI_DATA) $(top_srcdir)/configure.ac $(top_srcdir)/src/include/access/transam.h
 	$(PERL) $< --include-path=$(top_srcdir)/src/include/ \
 		--set-version=$(PG_MAJORVERSION) $(POSTGRES_BKI_SRCS)
 	touch $@

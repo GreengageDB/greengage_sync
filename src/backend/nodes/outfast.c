@@ -629,6 +629,14 @@ _outValue(StringInfo str, const Node *value)
 		case T_Float:
 			WRITE_STRING_VAR(((const Float *) value)->fval);
 			break;
+		case T_Boolean:
+			{
+				/* one byte, the same shape WRITE_BOOL_FIELD writes */
+				char		b = ((const Boolean *) value)->boolval ? 1 : 0;
+
+				appendBinaryStringInfo(str, (const char *) &b, 1);
+			}
+			break;
 		case T_String:
 			WRITE_STRING_VAR(((const String *) value)->sval);
 			break;
@@ -933,6 +941,7 @@ _outNode(StringInfo str, void *obj)
 		_outList(str, obj);
 	else if (IsA(obj, Integer) ||
 			 IsA(obj, Float) ||
+			 IsA(obj, Boolean) ||
 			 IsA(obj, String) ||
 			 IsA(obj, BitString))
 	{
@@ -1305,6 +1314,90 @@ _outNode(StringInfo str, void *obj)
 			case T_OnConflictExpr:
 				_outOnConflictExpr(str, obj);
 				break;
+			case T_JsonFormat:
+				_outJsonFormat(str, obj);
+				break;
+			case T_JsonReturning:
+				_outJsonReturning(str, obj);
+				break;
+			case T_JsonValueExpr:
+				_outJsonValueExpr(str, obj);
+				break;
+			case T_JsonConstructorExpr:
+				_outJsonConstructorExpr(str, obj);
+				break;
+			case T_JsonIsPredicate:
+				_outJsonIsPredicate(str, obj);
+				break;
+			case T_JsonBehavior:
+				_outJsonBehavior(str, obj);
+				break;
+			case T_JsonExpr:
+				_outJsonExpr(str, obj);
+				break;
+			case T_JsonCoercion:
+				_outJsonCoercion(str, obj);
+				break;
+			case T_JsonItemCoercions:
+				_outJsonItemCoercions(str, obj);
+				break;
+			case T_JsonTableParent:
+				_outJsonTableParent(str, obj);
+				break;
+			case T_JsonTableSibling:
+				_outJsonTableSibling(str, obj);
+				break;
+			case T_JsonOutput:
+				_outJsonOutput(str, obj);
+				break;
+			case T_JsonArgument:
+				_outJsonArgument(str, obj);
+				break;
+			case T_JsonCommon:
+				_outJsonCommon(str, obj);
+				break;
+			case T_JsonFuncExpr:
+				_outJsonFuncExpr(str, obj);
+				break;
+			case T_JsonTableColumn:
+				_outJsonTableColumn(str, obj);
+				break;
+			case T_JsonTablePlan:
+				_outJsonTablePlan(str, obj);
+				break;
+			case T_JsonTable:
+				_outJsonTable(str, obj);
+				break;
+			case T_JsonKeyValue:
+				_outJsonKeyValue(str, obj);
+				break;
+			case T_JsonParseExpr:
+				_outJsonParseExpr(str, obj);
+				break;
+			case T_JsonScalarExpr:
+				_outJsonScalarExpr(str, obj);
+				break;
+			case T_JsonSerializeExpr:
+				_outJsonSerializeExpr(str, obj);
+				break;
+			case T_JsonObjectConstructor:
+				_outJsonObjectConstructor(str, obj);
+				break;
+			case T_JsonArrayConstructor:
+				_outJsonArrayConstructor(str, obj);
+				break;
+			case T_JsonArrayQueryConstructor:
+				_outJsonArrayQueryConstructor(str, obj);
+				break;
+			case T_JsonAggConstructor:
+				_outJsonAggConstructor(str, obj);
+				break;
+			case T_JsonObjectAgg:
+				_outJsonObjectAgg(str, obj);
+				break;
+			case T_JsonArrayAgg:
+				_outJsonArrayAgg(str, obj);
+				break;
 			case T_CreateExtensionStmt:
 				_outCreateExtensionStmt(str, obj);
 				break;
@@ -1613,6 +1706,12 @@ _outNode(StringInfo str, void *obj)
 				break;
 			case T_CommonTableExpr:
 				_outCommonTableExpr(str, obj);
+				break;
+			case T_MergeWhenClause:
+				_outMergeWhenClause(str, obj);
+				break;
+			case T_MergeAction:
+				_outMergeAction(str, obj);
 				break;
 			case T_SetOperationStmt:
 				_outSetOperationStmt(str, obj);

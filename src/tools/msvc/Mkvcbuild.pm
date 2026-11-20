@@ -127,7 +127,7 @@ sub mkvcbuild
 	}
 
 	our @pgcommonallfiles = qw(
-	  archive.c base64.c checksum_helper.c
+	  archive.c backup_compression.c base64.c checksum_helper.c
 	  config_info.c controldata_utils.c d2s.c encnames.c exec.c
 	  f2s.c file_perm.c file_utils.c hashfn.c ip.c jsonapi.c
 	  keywords.c kwlookup.c link-canary.c md5_common.c
@@ -386,7 +386,10 @@ sub mkvcbuild
 	# This list of files has to match BBOBJS in pg_basebackup's Makefile.
 	$pgbasebackup->AddFile('src/bin/pg_basebackup/pg_basebackup.c');
 	$pgbasebackup->AddFile('src/bin/pg_basebackup/bbstreamer_file.c');
+	$pgbasebackup->AddFile('src/bin/pg_basebackup/bbstreamer_gzip.c');
 	$pgbasebackup->AddFile('src/bin/pg_basebackup/bbstreamer_inject.c');
+	$pgbasebackup->AddFile('src/bin/pg_basebackup/bbstreamer_lz4.c');
+	$pgbasebackup->AddFile('src/bin/pg_basebackup/bbstreamer_zstd.c');
 	$pgbasebackup->AddFile('src/bin/pg_basebackup/bbstreamer_tar.c');
 	$pgbasebackup->AddLibrary('ws2_32.lib');
 
@@ -506,6 +509,10 @@ sub mkvcbuild
 		  if (!(defined($pyprefix) && defined($pyver)));
 
 		my $pymajorver = substr($pyver, 0, 1);
+
+		die "Python version $pyver is too old (version 3 or later is required)"
+		  if int($pymajorver) < 3;
+
 		my $plpython = $solution->AddProject('plpython' . $pymajorver,
 			'dll', 'PLs', 'src/pl/plpython');
 		$plpython->AddIncludeDir($pyprefix . '/include');

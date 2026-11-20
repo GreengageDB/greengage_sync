@@ -567,3 +567,32 @@ SET enable_seqscan = off;
 
 EXPLAIN (COSTS OFF) SELECT * FROM brin_hot_2 WHERE a = 2 AND b = 100;
 SELECT COUNT(*) FROM brin_hot_2 WHERE a = 2 AND b = 100;
+
+
+-- test BRIN index doesn't block HOT update
+CREATE TABLE brin_hot (
+        id  integer PRIMARY KEY,
+        val integer NOT NULL
+) WITH (autovacuum_enabled = off, fillfactor = 70);
+
+INSERT INTO brin_hot SELECT *, 0 FROM generate_series(1, 235);
+CREATE INDEX val_brin ON brin_hot using brin(val);
+
+UPDATE brin_hot SET val = -3 WHERE id = 42;
+
+-- ensure pending stats are flushed
+SELECT pg_stat_force_next_flush();
+
+-- GGDB: this reads 0, and would read 0 without the BRIN index as well.
+-- heap_update() passes a hardcoded false to pgstat_count_heap_update()
+-- (src/backend/access/heap/heapam.c), so Greengage never counts a HOT update
+-- anywhere in the cluster, and pgstat_send_qd_tabstats() forwards only the
+-- inserted, updated and deleted counts, so even a counted one would not reach
+-- the coordinator entry this query reads.  Measured: the counter stays 0 for
+-- this table hash-distributed, for DISTRIBUTED REPLICATED -- where the UPDATE
+-- is not turned into a split update -- and with a btree index in place of the
+-- BRIN one.  The query is kept as upstream wrote it, so that fixing either
+-- half turns this test red and leads back to this comment.
+SELECT pg_stat_get_tuples_hot_updated('brin_hot'::regclass::oid);
+
+DROP TABLE brin_hot;
