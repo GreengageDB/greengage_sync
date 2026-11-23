@@ -5012,7 +5012,7 @@ uint32 gp_backtrace(void **stackAddresses, uint32 maxStackDepth)
 	 * In this case, just return depth as 0 to indicate that we have not
 	 * stored any frame addresses.
 	 */
-	if (stack_base_ptr == NULL)
+	if (get_stack_base_ptr() == NULL)
 		return 0;
 
 	/* get base pointer of current frame */
@@ -5031,7 +5031,7 @@ uint32 gp_backtrace(void **stackAddresses, uint32 maxStackDepth)
 			/* check if next frame is within stack */
 			if (pFramePtr == NULL ||
 				(void *) pFramePtr > *pFramePtr ||
-				(void *) stack_base_ptr < *pFramePtr)
+				(void *) get_stack_base_ptr() < *pFramePtr)
 			{
 				break;
 			}
