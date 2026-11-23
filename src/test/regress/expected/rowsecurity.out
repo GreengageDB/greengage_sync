@@ -504,26 +504,26 @@ SET row_security TO ON;
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
+   1 |  11 |      1 | regress_rls_bob   | my first novel
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
-   7 |  33 |      2 | regress_rls_carol | great technology book
-   8 |  44 |      1 | regress_rls_carol | great manga
    5 |  44 |      2 | regress_rls_bob   | my second manga
    6 |  22 |      1 | regress_rls_carol | great science fiction
+   7 |  33 |      2 | regress_rls_carol | great technology book
+   8 |  44 |      1 | regress_rls_carol | great manga
    9 |  22 |      1 | regress_rls_dave  | awesome science fiction
   10 |  33 |      2 | regress_rls_dave  | awesome technology book
   11 |  33 |      1 | regress_rls_carol | hoge
-   1 |  11 |      1 | regress_rls_bob   | my first novel
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
   11 | novel
+  22 | science fiction
   33 | technology
   44 | manga
-  22 | science fiction
 (4 rows)
 
 -- database superuser does bypass RLS policy when disabled
@@ -533,25 +533,25 @@ SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
-   5 |  44 |      2 | regress_rls_bob   | my second manga
-   6 |  22 |      1 | regress_rls_carol | great science fiction
-   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
-  10 |  33 |      2 | regress_rls_dave  | awesome technology book
-  11 |  33 |      1 | regress_rls_carol | hoge
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
+   5 |  44 |      2 | regress_rls_bob   | my second manga
+   6 |  22 |      1 | regress_rls_carol | great science fiction
    7 |  33 |      2 | regress_rls_carol | great technology book
    8 |  44 |      1 | regress_rls_carol | great manga
+   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
+  10 |  33 |      2 | regress_rls_dave  | awesome technology book
+  11 |  33 |      1 | regress_rls_carol | hoge
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
-  22 | science fiction
-  44 | manga
   11 | novel
+  22 | science fiction
   33 | technology
+  44 | manga
 (4 rows)
 
 -- database non-superuser with bypass privilege can bypass RLS policy when disabled
@@ -561,25 +561,25 @@ SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
    1 |  11 |      1 | regress_rls_bob   | my first novel
-   5 |  44 |      2 | regress_rls_bob   | my second manga
-   6 |  22 |      1 | regress_rls_carol | great science fiction
-   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
-  10 |  33 |      2 | regress_rls_dave  | awesome technology book
-  11 |  33 |      1 | regress_rls_carol | hoge
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
+   5 |  44 |      2 | regress_rls_bob   | my second manga
+   6 |  22 |      1 | regress_rls_carol | great science fiction
    7 |  33 |      2 | regress_rls_carol | great technology book
    8 |  44 |      1 | regress_rls_carol | great manga
+   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
+  10 |  33 |      2 | regress_rls_dave  | awesome technology book
+  11 |  33 |      1 | regress_rls_carol | hoge
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
-  44 | manga
-  22 | science fiction
   11 | novel
+  22 | science fiction
   33 | technology
+  44 | manga
 (4 rows)
 
 -- RLS policy does not apply to table owner when RLS enabled.
@@ -588,26 +588,26 @@ SET row_security TO ON;
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
-   5 |  44 |      2 | regress_rls_bob   | my second manga
-   6 |  22 |      1 | regress_rls_carol | great science fiction
-   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
-  10 |  33 |      2 | regress_rls_dave  | awesome technology book
-  11 |  33 |      1 | regress_rls_carol | hoge
+   1 |  11 |      1 | regress_rls_bob   | my first novel
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
+   5 |  44 |      2 | regress_rls_bob   | my second manga
+   6 |  22 |      1 | regress_rls_carol | great science fiction
    7 |  33 |      2 | regress_rls_carol | great technology book
    8 |  44 |      1 | regress_rls_carol | great manga
-   1 |  11 |      1 | regress_rls_bob   | my first novel
+   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
+  10 |  33 |      2 | regress_rls_dave  | awesome technology book
+  11 |  33 |      1 | regress_rls_carol | hoge
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
-  44 | manga
   11 | novel
-  33 | technology
   22 | science fiction
+  33 | technology
+  44 | manga
 (4 rows)
 
 -- RLS policy does not apply to table owner when RLS disabled.
@@ -616,26 +616,26 @@ SET row_security TO OFF;
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |         dtitle          
 -----+-----+--------+-------------------+-------------------------
-   5 |  44 |      2 | regress_rls_bob   | my second manga
-   6 |  22 |      1 | regress_rls_carol | great science fiction
-   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
-  10 |  33 |      2 | regress_rls_dave  | awesome technology book
-  11 |  33 |      1 | regress_rls_carol | hoge
+   1 |  11 |      1 | regress_rls_bob   | my first novel
    2 |  11 |      2 | regress_rls_bob   | my second novel
    3 |  22 |      2 | regress_rls_bob   | my science fiction
    4 |  44 |      1 | regress_rls_bob   | my first manga
+   5 |  44 |      2 | regress_rls_bob   | my second manga
+   6 |  22 |      1 | regress_rls_carol | great science fiction
    7 |  33 |      2 | regress_rls_carol | great technology book
    8 |  44 |      1 | regress_rls_carol | great manga
-   1 |  11 |      1 | regress_rls_bob   | my first novel
+   9 |  22 |      1 | regress_rls_dave  | awesome science fiction
+  10 |  33 |      2 | regress_rls_dave  | awesome technology book
+  11 |  33 |      1 | regress_rls_carol | hoge
 (11 rows)
 
 SELECT * FROM category;
  cid |      cname      
 -----+-----------------
-  22 | science fiction
-  44 | manga
   11 | novel
+  22 | science fiction
   33 | technology
+  44 | manga
 (4 rows)
 
 --
@@ -668,8 +668,8 @@ SELECT * FROM t1;
  102 | 2 | bbb
  104 | 4 | dad
  202 | 2 | bcd
- 302 | 2 | yyy
  204 | 4 | def
+ 302 | 2 | yyy
 (5 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1;
@@ -693,11 +693,11 @@ NOTICE:  f_leak => dad
 NOTICE:  f_leak => yyy
  id  | a |  b  
 -----+---+-----
- 204 | 4 | def
- 202 | 2 | bcd
- 302 | 2 | yyy
  102 | 2 | bbb
  104 | 4 | dad
+ 202 | 2 | bcd
+ 204 | 4 | def
+ 302 | 2 | yyy
 (5 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
@@ -717,11 +717,11 @@ EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
 SELECT tableoid::regclass, * FROM t1;
  tableoid | id  | a |  b  
 ----------+-----+---+-----
- t2       | 202 | 2 | bcd
- t3       | 302 | 2 | yyy
- t2       | 204 | 4 | def
  t1       | 102 | 2 | bbb
  t1       | 104 | 4 | dad
+ t2       | 202 | 2 | bcd
+ t2       | 204 | 4 | def
+ t3       | 302 | 2 | yyy
 (5 rows)
 
 EXPLAIN (COSTS OFF) SELECT *, t1 FROM t1;
@@ -742,11 +742,11 @@ EXPLAIN (COSTS OFF) SELECT *, t1 FROM t1;
 SELECT *, t1 FROM t1;
  id  | a |  b  |     t1      
 -----+---+-----+-------------
- 204 | 4 | def | (204,4,def)
- 202 | 2 | bcd | (202,2,bcd)
- 302 | 2 | yyy | (302,2,yyy)
  102 | 2 | bbb | (102,2,bbb)
  104 | 4 | dad | (104,4,dad)
+ 202 | 2 | bcd | (202,2,bcd)
+ 204 | 4 | def | (204,4,def)
+ 302 | 2 | yyy | (302,2,yyy)
 (5 rows)
 
 EXPLAIN (COSTS OFF) SELECT *, t1 FROM t1;
@@ -767,10 +767,10 @@ EXPLAIN (COSTS OFF) SELECT *, t1 FROM t1;
 SELECT * FROM t1 FOR SHARE;
  id  | a |  b  
 -----+---+-----
- 204 | 4 | def
  102 | 2 | bbb
  104 | 4 | dad
  202 | 2 | bcd
+ 204 | 4 | def
  302 | 2 | yyy
 (5 rows)
 
@@ -798,8 +798,8 @@ NOTICE:  f_leak => yyy
 -----+---+-----
  102 | 2 | bbb
  104 | 4 | dad
- 204 | 4 | def
  202 | 2 | bcd
+ 204 | 4 | def
  302 | 2 | yyy
 (5 rows)
 
@@ -821,9 +821,9 @@ EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b) FOR SHARE;
 SELECT a, b, tableoid::regclass FROM t2 UNION ALL SELECT a, b, tableoid::regclass FROM t3;
  a |  b  | tableoid 
 ---+-----+----------
+ 1 | abc | t2
  3 | cde | t2
  1 | xxx | t3
- 1 | abc | t2
  2 | yyy | t3
  3 | zzz | t3
 (5 rows)
@@ -856,15 +856,15 @@ NOTICE:  f_leak => xxx
 NOTICE:  f_leak => zzz
  id  | a |  b  
 -----+---+-----
- 204 | 4 | def
  101 | 1 | aba
  102 | 2 | bbb
  103 | 3 | ccc
  104 | 4 | dad
- 203 | 3 | cde
- 301 | 1 | xxx
  201 | 1 | abc
  202 | 2 | bcd
+ 203 | 3 | cde
+ 204 | 4 | def
+ 301 | 1 | xxx
  302 | 2 | yyy
  303 | 3 | zzz
 (11 rows)
@@ -900,17 +900,17 @@ NOTICE:  f_leak => zzz
 NOTICE:  f_leak => xxx
  id  | a |  b  
 -----+---+-----
- 204 | 4 | def
- 201 | 1 | abc
- 202 | 2 | bcd
- 302 | 2 | yyy
- 303 | 3 | zzz
  101 | 1 | aba
  102 | 2 | bbb
  103 | 3 | ccc
  104 | 4 | dad
+ 201 | 1 | abc
+ 202 | 2 | bcd
  203 | 3 | cde
+ 204 | 4 | def
  301 | 1 | xxx
+ 302 | 2 | yyy
+ 303 | 3 | zzz
 (11 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
@@ -1504,8 +1504,8 @@ NOTICE:  f_leak => 0267aaf632e87a63288a08331f22c7c3
 NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc
  a  |                b                 
 ----+----------------------------------
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
  -4 | 0267aaf632e87a63288a08331f22c7c3
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM s1 WHERE f_leak(b);
@@ -1524,8 +1524,8 @@ EXPLAIN (COSTS OFF) SELECT * FROM s1 WHERE f_leak(b);
 SELECT (SELECT x FROM s1 LIMIT 1) xx, * FROM s2 WHERE y like '%28%';
  xx | x  |                y                 
 ----+----+----------------------------------
- -4 | -4 | 0267aaf632e87a63288a08331f22c7c3
  -6 | -6 | 596a3d04481816330f07e4f97510c28f
+ -4 | -4 | 0267aaf632e87a63288a08331f22c7c3
   2 |  2 | c81e728d9d4c2f636f067f89cc14862c
 (3 rows)
 
@@ -1560,9 +1560,9 @@ PREPARE p1(int) AS SELECT * FROM t1 WHERE a <= $1;
 EXECUTE p1(2);
  id  | a |  b  
 -----+---+-----
+ 102 | 2 | bbb
  202 | 2 | bcd
  302 | 2 | yyy
- 102 | 2 | bbb
 (3 rows)
 
 EXPLAIN (COSTS OFF) EXECUTE p1(2);
@@ -1596,17 +1596,17 @@ NOTICE:  f_leak => cde
 NOTICE:  f_leak => xxx
  id  | a |  b  
 -----+---+-----
- 204 | 4 | def
- 201 | 1 | abc
- 202 | 2 | bcd
- 302 | 2 | yyy
- 303 | 3 | zzz
  101 | 1 | aba
  102 | 2 | bbb
  103 | 3 | ccc
  104 | 4 | dad
+ 201 | 1 | abc
+ 202 | 2 | bcd
  203 | 3 | cde
+ 204 | 4 | def
  301 | 1 | xxx
+ 302 | 2 | yyy
+ 303 | 3 | zzz
 (11 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
@@ -1629,9 +1629,9 @@ EXECUTE p1(2);
 -----+---+-----
  101 | 1 | aba
  102 | 2 | bbb
- 301 | 1 | xxx
  201 | 1 | abc
  202 | 2 | bcd
+ 301 | 1 | xxx
  302 | 2 | yyy
 (6 rows)
 
@@ -1653,9 +1653,9 @@ PREPARE p2(int) AS SELECT * FROM t1 WHERE a = $1;
 EXECUTE p2(2);
  id  | a |  b  
 -----+---+-----
+ 102 | 2 | bbb
  202 | 2 | bcd
  302 | 2 | yyy
- 102 | 2 | bbb
 (3 rows)
 
 EXPLAIN (COSTS OFF) EXECUTE p2(2);
@@ -1755,11 +1755,11 @@ NOTICE:  f_leak => yyyyyy
 NOTICE:  f_leak => daddad_updt
  id  | a |      b      
 -----+---+-------------
- 204 | 4 | defdef
- 202 | 2 | bcdbcd
- 302 | 2 | yyyyyy
  102 | 2 | bbbbbb_updt
  104 | 4 | daddad_updt
+ 202 | 2 | bcdbcd
+ 204 | 4 | defdef
+ 302 | 2 | yyyyyy
 (5 rows)
 
 UPDATE t1 SET b = b WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
@@ -1770,11 +1770,11 @@ NOTICE:  f_leak => defdef
 NOTICE:  f_leak => daddad_updt
  tableoid | id  | a |      b      |         t1          
 ----------+-----+---+-------------+---------------------
- t2       | 202 | 2 | bcdbcd      | (202,2,bcdbcd)
- t3       | 302 | 2 | yyyyyy      | (302,2,yyyyyy)
- t2       | 204 | 4 | defdef      | (204,4,defdef)
  t1       | 102 | 2 | bbbbbb_updt | (102,2,bbbbbb_updt)
  t1       | 104 | 4 | daddad_updt | (104,4,daddad_updt)
+ t2       | 202 | 2 | bcdbcd      | (202,2,bcdbcd)
+ t2       | 204 | 4 | defdef      | (204,4,defdef)
+ t3       | 302 | 2 | yyyyyy      | (302,2,yyyyyy)
 (5 rows)
 
 -- updates with from clause
@@ -1919,8 +1919,8 @@ NOTICE:  f_leak => defdef
 NOTICE:  f_leak => daddad_updt
  id  | a |      b      | id  | a |      b      |        t1_1         |        t1_2         
 -----+---+-------------+-----+---+-------------+---------------------+---------------------
- 204 | 4 | defdef      | 204 | 4 | defdef      | (204,4,defdef)      | (204,4,defdef)
  104 | 4 | daddad_updt | 104 | 4 | daddad_updt | (104,4,daddad_updt) | (104,4,daddad_updt)
+ 204 | 4 | defdef      | 204 | 4 | defdef      | (204,4,defdef)      | (204,4,defdef)
 (2 rows)
 
 RESET SESSION AUTHORIZATION;
@@ -1984,8 +1984,8 @@ NOTICE:  f_leak => defdef
 NOTICE:  f_leak => yyyyyy
  tableoid | id  | a |   b    |       t1       
 ----------+-----+---+--------+----------------
- t2       | 204 | 4 | defdef | (204,4,defdef)
  t2       | 202 | 2 | bcdbcd | (202,2,bcdbcd)
+ t2       | 204 | 4 | defdef | (204,4,defdef)
  t3       | 302 | 2 | yyyyyy | (302,2,yyyyyy)
 (3 rows)
 
@@ -2021,11 +2021,11 @@ NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c
 NOTICE:  f_leak => c9f0f895fb98ab9159f51fd0297e236d
  a  |                b                 
 ----+----------------------------------
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
+ 10 | d3d9446802a44259755d38e6d163e820
 (5 rows)
 
 INSERT INTO bv1 VALUES (-1, 'xxx'); -- should fail view WCO
@@ -2059,26 +2059,26 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 SELECT * FROM b1;
   a  |                b                 
 -----+----------------------------------
+ -10 | 1b0fd9efa5279c4203b7c70233f86dbf
   -9 | 252e691406782824eec43d7eadc3d256
+  -8 | a8d2ec85eaf98407310b72eb73dda247
+  -7 | 74687a12d3915d3c4d83f1af7b3683d5
+  -6 | 596a3d04481816330f07e4f97510c28f
   -5 | 47c1b025fa18ea96c33fbb6718688c0f
   -4 | 0267aaf632e87a63288a08331f22c7c3
   -3 | b3149ecea4628efd23d2f86e5a723472
   -2 | 5d7b9adcbe1c629ec722529dd12e5129
+  -1 | 6bb61e3b7bce0931da574d19d1d82c88
    0 | cfcd208495d565ef66e7dff9f98764da
    1 | c4ca4238a0b923820dcc509a6f75849b
-  12 | xxx
-  -8 | a8d2ec85eaf98407310b72eb73dda247
-  -1 | 6bb61e3b7bce0931da574d19d1d82c88
-   5 | e4da3b7fbbce2345d7772b0674a318d5
-   9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
-  10 | d3d9446802a44259755d38e6d163e820
- -10 | 1b0fd9efa5279c4203b7c70233f86dbf
-  -7 | 74687a12d3915d3c4d83f1af7b3683d5
-  -6 | 596a3d04481816330f07e4f97510c28f
    2 | c81e728d9d4c2f636f067f89cc14862c
    3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
+   5 | e4da3b7fbbce2345d7772b0674a318d5
    7 | 8f14e45fceea167a5a36dedd4bea2543
    8 | c9f0f895fb98ab9159f51fd0297e236d
+   9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
+  10 | d3d9446802a44259755d38e6d163e820
+  12 | xxx
    4 | yyy
 (21 rows)
 
@@ -2235,20 +2235,20 @@ CREATE POLICY p4 ON document FOR DELETE
 SELECT * FROM document;
  did | cid | dlevel |      dauthor      |              dtitle              | dnotes 
 -----+-----+--------+-------------------+----------------------------------+--------
+   1 |  11 |      1 | regress_rls_bob   | my first novel                   | 
    3 |  22 |      2 | regress_rls_bob   | my science fiction               | 
    4 |  44 |      1 | regress_rls_bob   | my first manga                   | 
-   7 |  33 |      2 | regress_rls_carol | great technology book            | 
-   8 |  44 |      1 | regress_rls_carol | great manga                      | 
-   2 |  11 |      2 | regress_rls_bob   | my first novel                   | 
-   1 |  11 |      1 | regress_rls_bob   | my first novel                   | 
-  78 |  33 |      1 | regress_rls_bob   | some technology novel            | 
-  79 |  33 |      1 | regress_rls_bob   | technology book, can only insert | 
    5 |  44 |      2 | regress_rls_bob   | my second manga                  | 
    6 |  22 |      1 | regress_rls_carol | great science fiction            | 
+   7 |  33 |      2 | regress_rls_carol | great technology book            | 
+   8 |  44 |      1 | regress_rls_carol | great manga                      | 
    9 |  22 |      1 | regress_rls_dave  | awesome science fiction          | 
   10 |  33 |      2 | regress_rls_dave  | awesome technology book          | 
   11 |  33 |      1 | regress_rls_carol | hoge                             | 
   33 |  22 |      1 | regress_rls_bob   | okay science fiction             | 
+   2 |  11 |      2 | regress_rls_bob   | my first novel                   | 
+  78 |  33 |      1 | regress_rls_bob   | some technology novel            | 
+  79 |  33 |      1 | regress_rls_bob   | technology book, can only insert | 
 (14 rows)
 
 -- GGDB: upstream sources every MERGE below from a one-row SELECT with no FROM,
@@ -2399,19 +2399,19 @@ SELECT * FROM document;
  did | cid | dlevel |      dauthor      |              dtitle              |                                dnotes                                 
 -----+-----+--------+-------------------+----------------------------------+-----------------------------------------------------------------------
    3 |  22 |      2 | regress_rls_bob   | my science fiction               | 
+   5 |  44 |      2 | regress_rls_bob   | my second manga                  | 
+   6 |  22 |      1 | regress_rls_carol | great science fiction            | 
    7 |  33 |      2 | regress_rls_carol | great technology book            | 
    8 |  44 |      1 | regress_rls_carol | great manga                      | 
+   9 |  22 |      1 | regress_rls_dave  | awesome science fiction          | 
+  10 |  33 |      2 | regress_rls_dave  | awesome technology book          | 
+  11 |  33 |      1 | regress_rls_carol | hoge                             | 
+  33 |  22 |      1 | regress_rls_bob   | okay science fiction             | 
    2 |  11 |      2 | regress_rls_bob   | my first novel                   | 
   78 |  33 |      1 | regress_rls_bob   | some technology novel            | 
   79 |  33 |      1 | regress_rls_bob   | technology book, can only insert | 
   12 |  11 |      1 | regress_rls_bob   | another novel                    | 
    1 |  11 |      1 | regress_rls_bob   | my first novel                   |  notes added by merge2  notes added by merge3  notes added by merge4 
-   5 |  44 |      2 | regress_rls_bob   | my second manga                  | 
-   6 |  22 |      1 | regress_rls_carol | great science fiction            | 
-   9 |  22 |      1 | regress_rls_dave  | awesome science fiction          | 
-  10 |  33 |      2 | regress_rls_dave  | awesome technology book          | 
-  11 |  33 |      1 | regress_rls_carol | hoge                             | 
-  33 |  22 |      1 | regress_rls_bob   | okay science fiction             | 
 (14 rows)
 
 DROP TABLE rls_merge_src;
@@ -2552,8 +2552,8 @@ NOTICE:  f_leak => ccc
 NOTICE:  f_leak => aba
  a |  b  
 ---+-----
- 3 | ccc
  1 | aba
+ 3 | ccc
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM z1 WHERE f_leak(b);
@@ -2608,8 +2608,8 @@ NOTICE:  f_leak => ccc
 NOTICE:  f_leak => aba
  a |  b  
 ---+-----
- 3 | ccc
  1 | aba
+ 3 | ccc
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM z1 WHERE f_leak(b);
@@ -2698,10 +2698,10 @@ NOTICE:  f_leak => dad
 NOTICE:  f_leak => aba
  a |  b  
 ---+-----
+ 1 | aba
  2 | bbb
  3 | ccc
  4 | dad
- 1 | aba
 (4 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
@@ -3094,10 +3094,10 @@ NOTICE:  f_leak => fgh
  a |    b     |         c         
 ---+----------+-------------------
  1 | abc_updt | regress_rls_bob
- 5 | efg_updt | regress_rls_bob
- 6 | fgh_updt | regress_rls_bob
  2 | bcd_updt | regress_rls_bob
  4 | def_updt | regress_rls_carol
+ 5 | efg_updt | regress_rls_bob
+ 6 | fgh_updt | regress_rls_bob
  8 | fgh_updt | regress_rls_carol
 (6 rows)
 
@@ -3132,8 +3132,8 @@ NOTICE:  f_leak => fgh_updt
  7 | fgh_updt      | regress_rls_carol
  2 | bcd_updt_updt | regress_rls_bob
  4 | def_updt_updt | regress_rls_carol
- 8 | fgh_updt_updt | regress_rls_carol
  6 | fgh_updt_updt | regress_rls_bob
+ 8 | fgh_updt_updt | regress_rls_carol
 (6 rows)
 
 DELETE FROM x1 WHERE f_leak(b) RETURNING *;
@@ -3145,11 +3145,11 @@ NOTICE:  f_leak => def_updt_updt
 NOTICE:  f_leak => fgh_updt_updt
  a |       b       |         c         
 ---+---------------+-------------------
- 6 | fgh_updt_updt | regress_rls_bob
  3 | cde_updt      | regress_rls_carol
  7 | fgh_updt      | regress_rls_carol
  2 | bcd_updt_updt | regress_rls_bob
  4 | def_updt_updt | regress_rls_carol
+ 6 | fgh_updt_updt | regress_rls_bob
  8 | fgh_updt_updt | regress_rls_carol
 (6 rows)
 
@@ -3225,19 +3225,19 @@ NOTICE:  f_leak => aab3238922bcc25a6f606eb525ffdc56
  a  |                b                 
 ----+----------------------------------
   0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
- 20 | 98f13708210194c475687be6106a3b84
   2 | c81e728d9d4c2f636f067f89cc14862c
   3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
   4 | a87ff679a2f3e71d9181a67b7542122c
-  8 | c9f0f895fb98ab9159f51fd0297e236d
- 16 | c74d97b01eae257e44aa9d5bade97baf
- 18 | 6f4922f45568161a8cdf4ad2299f6d23
   6 | 1679091c5a880faf6fb5e6087eb1b2dc
+  8 | c9f0f895fb98ab9159f51fd0297e236d
   9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
  10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
  14 | aab3238922bcc25a6f606eb525ffdc56
+ 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
+ 16 | c74d97b01eae257e44aa9d5bade97baf
+ 18 | 6f4922f45568161a8cdf4ad2299f6d23
+ 20 | 98f13708210194c475687be6106a3b84
 (14 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM y2 WHERE f_leak(b);
@@ -3277,19 +3277,19 @@ NOTICE:  f_leak => abc
  a  |                b                 
 ----+----------------------------------
   0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
- 20 | 98f13708210194c475687be6106a3b84
   2 | c81e728d9d4c2f636f067f89cc14862c
   3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
   4 | a87ff679a2f3e71d9181a67b7542122c
-  8 | c9f0f895fb98ab9159f51fd0297e236d
- 16 | c74d97b01eae257e44aa9d5bade97baf
- 18 | 6f4922f45568161a8cdf4ad2299f6d23
   6 | 1679091c5a880faf6fb5e6087eb1b2dc
+  8 | c9f0f895fb98ab9159f51fd0297e236d
   9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
  10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
  14 | aab3238922bcc25a6f606eb525ffdc56
+ 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
+ 16 | c74d97b01eae257e44aa9d5bade97baf
+ 18 | 6f4922f45568161a8cdf4ad2299f6d23
+ 20 | 98f13708210194c475687be6106a3b84
 (14 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM y2 WHERE f_leak('abc');
@@ -3438,16 +3438,16 @@ NOTICE:  f_leak => 6f4922f45568161a8cdf4ad2299f6d23
  a  |                b                 
 ----+----------------------------------
   0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 20 | 98f13708210194c475687be6106a3b84
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
- 14 | aab3238922bcc25a6f606eb525ffdc56
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
+ 10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
+ 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
+ 20 | 98f13708210194c475687be6106a3b84
 (11 rows)
 
 EXPLAIN (COSTS OFF)
@@ -3467,16 +3467,16 @@ WITH cte1 AS (UPDATE t1 SET a = a RETURNING *) SELECT * FROM cte1; --ok
  a  |                b                 
 ----+----------------------------------
   0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 20 | 98f13708210194c475687be6106a3b84
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
- 14 | aab3238922bcc25a6f606eb525ffdc56
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
+ 10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
+ 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
+ 20 | 98f13708210194c475687be6106a3b84
 (11 rows)
 
 WITH cte1 AS (INSERT INTO t1 VALUES (21, 'Fail') RETURNING *) SELECT * FROM cte1; --fail
@@ -3530,18 +3530,18 @@ EXPLAIN (COSTS OFF) INSERT INTO t2 (SELECT * FROM t1);
 SELECT * FROM t2;
  a  |                b                 
 ----+----------------------------------
+  0 | cfcd208495d565ef66e7dff9f98764da
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
+ 10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
+ 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
-  0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
  20 | 98f13708210194c475687be6106a3b84
  20 | Success
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
- 14 | aab3238922bcc25a6f606eb525ffdc56
 (12 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t2;
@@ -3557,17 +3557,17 @@ SELECT * FROM t3;
  a  |                b                 
 ----+----------------------------------
   0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 20 | 98f13708210194c475687be6106a3b84
- 20 | Success
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
+ 10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
+ 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
- 14 | aab3238922bcc25a6f606eb525ffdc56
+ 20 | 98f13708210194c475687be6106a3b84
+ 20 | Success
 (12 rows)
 
 SELECT * INTO t4 FROM t1;
@@ -3575,17 +3575,17 @@ SELECT * FROM t4;
  a  |                b                 
 ----+----------------------------------
   0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 20 | 98f13708210194c475687be6106a3b84
- 20 | Success
   2 | c81e728d9d4c2f636f067f89cc14862c
   4 | a87ff679a2f3e71d9181a67b7542122c
+  6 | 1679091c5a880faf6fb5e6087eb1b2dc
   8 | c9f0f895fb98ab9159f51fd0297e236d
+ 10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
+ 14 | aab3238922bcc25a6f606eb525ffdc56
  16 | c74d97b01eae257e44aa9d5bade97baf
  18 | 6f4922f45568161a8cdf4ad2299f6d23
-  6 | 1679091c5a880faf6fb5e6087eb1b2dc
- 10 | d3d9446802a44259755d38e6d163e820
- 14 | aab3238922bcc25a6f606eb525ffdc56
+ 20 | 98f13708210194c475687be6106a3b84
+ 20 | Success
 (12 rows)
 
 --
@@ -3657,28 +3657,28 @@ RESET SESSION AUTHORIZATION;
 SELECT * FROM t1;
  a  |                b                 
 ----+----------------------------------
-  3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
-  7 | 8f14e45fceea167a5a36dedd4bea2543
- 19 | 1f0e3dad99908345f7439f8ffabdffc4
-  2 | c81e728d9d4c2f636f067f89cc14862c
-  4 | a87ff679a2f3e71d9181a67b7542122c
-  8 | c9f0f895fb98ab9159f51fd0297e236d
- 16 | c74d97b01eae257e44aa9d5bade97baf
- 18 | 6f4922f45568161a8cdf4ad2299f6d23
   1 | c4ca4238a0b923820dcc509a6f75849b
- 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
-  0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 20 | 98f13708210194c475687be6106a3b84
- 20 | Success
+  3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
   5 | e4da3b7fbbce2345d7772b0674a318d5
+  7 | 8f14e45fceea167a5a36dedd4bea2543
   9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
  11 | 6512bd43d9caa6e02c990b0a82652dca
  13 | c51ce410c124a10e0db5e4b97fc2af39
+ 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
  17 | 70efdf2ec9b086079795c442636b55fb
+ 19 | 1f0e3dad99908345f7439f8ffabdffc4
+  0 | cfcd208495d565ef66e7dff9f98764da
+  2 | c81e728d9d4c2f636f067f89cc14862c
+  4 | a87ff679a2f3e71d9181a67b7542122c
   6 | 1679091c5a880faf6fb5e6087eb1b2dc
+  8 | c9f0f895fb98ab9159f51fd0297e236d
  10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
  14 | aab3238922bcc25a6f606eb525ffdc56
+ 16 | c74d97b01eae257e44aa9d5bade97baf
+ 18 | 6f4922f45568161a8cdf4ad2299f6d23
+ 20 | 98f13708210194c475687be6106a3b84
+ 20 | Success
 (22 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1;
@@ -3694,28 +3694,28 @@ SET SESSION AUTHORIZATION regress_rls_alice;
 SELECT * FROM t1;
  a  |                b                 
 ----+----------------------------------
-  3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
-  7 | 8f14e45fceea167a5a36dedd4bea2543
- 19 | 1f0e3dad99908345f7439f8ffabdffc4
-  2 | c81e728d9d4c2f636f067f89cc14862c
-  4 | a87ff679a2f3e71d9181a67b7542122c
-  8 | c9f0f895fb98ab9159f51fd0297e236d
- 16 | c74d97b01eae257e44aa9d5bade97baf
- 18 | 6f4922f45568161a8cdf4ad2299f6d23
   1 | c4ca4238a0b923820dcc509a6f75849b
- 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
-  0 | cfcd208495d565ef66e7dff9f98764da
- 12 | c20ad4d76fe97759aa27a0c99bff6710
- 20 | 98f13708210194c475687be6106a3b84
- 20 | Success
+  3 | eccbc87e4b5ce2fe28308fd9f2a7baf3
   5 | e4da3b7fbbce2345d7772b0674a318d5
+  7 | 8f14e45fceea167a5a36dedd4bea2543
   9 | 45c48cce2e2d7fbdea1afc51c7c6ad26
  11 | 6512bd43d9caa6e02c990b0a82652dca
  13 | c51ce410c124a10e0db5e4b97fc2af39
+ 15 | 9bf31c7ff062936a96d3c8bd1f8f2ff3
  17 | 70efdf2ec9b086079795c442636b55fb
+ 19 | 1f0e3dad99908345f7439f8ffabdffc4
+  0 | cfcd208495d565ef66e7dff9f98764da
+  2 | c81e728d9d4c2f636f067f89cc14862c
+  4 | a87ff679a2f3e71d9181a67b7542122c
   6 | 1679091c5a880faf6fb5e6087eb1b2dc
+  8 | c9f0f895fb98ab9159f51fd0297e236d
  10 | d3d9446802a44259755d38e6d163e820
+ 12 | c20ad4d76fe97759aa27a0c99bff6710
  14 | aab3238922bcc25a6f606eb525ffdc56
+ 16 | c74d97b01eae257e44aa9d5bade97baf
+ 18 | 6f4922f45568161a8cdf4ad2299f6d23
+ 20 | 98f13708210194c475687be6106a3b84
+ 20 | Success
 (22 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM t1;
@@ -4186,8 +4186,8 @@ SET SESSION AUTHORIZATION regress_rls_bob;
 SELECT * FROM r1;
  a  
 ----
- 20
  10
+ 20
 (2 rows)
 
 SELECT * FROM r2;
@@ -4242,8 +4242,8 @@ SELECT * FROM r1;
 SELECT * FROM r2;
  a  
 ----
- 20
  10
+ 20
 (2 rows)
 
 SET SESSION AUTHORIZATION regress_rls_alice;
@@ -4355,8 +4355,8 @@ ALTER TABLE r2 NO FORCE ROW LEVEL SECURITY;
 TABLE r2;
  a  
 ----
- 20
  10
+ 20
 (2 rows)
 
 DROP TABLE r2;
