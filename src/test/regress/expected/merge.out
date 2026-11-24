@@ -1322,7 +1322,6 @@ WHEN MATCHED THEN
                Sort Key: s.a
                Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
- Optimizer: Postgres query optimizer
 (12 rows)
 
 -- only updates to selected tuples
@@ -1343,7 +1342,6 @@ WHEN MATCHED AND t.a < 10 THEN
                Sort Key: s.a
                Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
- Optimizer: Postgres query optimizer
 (12 rows)
 
 -- updates + deletes
@@ -1366,7 +1364,6 @@ WHEN MATCHED AND t.a >= 10 AND t.a <= 20 THEN
                Sort Key: s.a
                Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
- Optimizer: Postgres query optimizer
 (12 rows)
 
 -- only inserts
@@ -1387,7 +1384,6 @@ WHEN NOT MATCHED AND s.a < 10 THEN
                Sort Key: t.a
                Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_mtarget t (actual rows=45 loops=1)
- Optimizer: Postgres query optimizer
 (12 rows)
 
 -- all three
@@ -1412,7 +1408,6 @@ WHEN NOT MATCHED AND s.a < 20 THEN
                Sort Key: t.a
                Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_mtarget t (actual rows=49 loops=1)
- Optimizer: Postgres query optimizer
 (12 rows)
 
 DROP TABLE ex_msource, ex_mtarget;
