@@ -57,7 +57,7 @@ WHEN MATCHED THEN
          ->  Seq Scan on target t
          ->  Hash
                ->  Seq Scan on source s
-(7 rows)
+(9 rows)
 
 --
 -- Errors
@@ -283,7 +283,7 @@ WHEN MATCHED THEN
          ->  Seq Scan on source s
          ->  Hash
                ->  Seq Scan on target t
-(7 rows)
+(6 rows)
 
 EXPLAIN (COSTS OFF)
 MERGE INTO target t
@@ -299,7 +299,7 @@ WHEN MATCHED THEN
          ->  Seq Scan on source s
          ->  Hash
                ->  Seq Scan on target t
-(7 rows)
+(6 rows)
 
 EXPLAIN (COSTS OFF)
 MERGE INTO target t
@@ -315,7 +315,7 @@ WHEN NOT MATCHED THEN
          ->  Seq Scan on source s
          ->  Hash
                ->  Seq Scan on target t
-(7 rows)
+(6 rows)
 
 DELETE FROM target WHERE tid > 100;
 ANALYZE target;
