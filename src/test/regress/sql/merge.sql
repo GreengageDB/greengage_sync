@@ -17,6 +17,13 @@
 -- s/segment \d+, but the MERGE action runs on segment \d+/segment XXX, but the MERGE action runs on segment XXX/
 -- end_matchsubs
 
+-- GGDB: enable_mergejoin is boot_val off here, so this file's EXPLAIN
+-- blocks would show Hash Joins where upstream, with the GUC at its
+-- default on, shows Merge Joins.  Turn it on for the whole file, the
+-- way upstream sees it.  The three index-plan blocks below still come
+-- out as Hash Joins, matching upstream's own choice there.
+SET enable_mergejoin = on;
+
 CREATE USER regress_merge_privs;
 CREATE USER regress_merge_no_privs;
 DROP TABLE IF EXISTS target;
