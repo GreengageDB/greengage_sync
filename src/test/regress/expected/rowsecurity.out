@@ -1728,7 +1728,7 @@ EXPLAIN (COSTS OFF) UPDATE t1 SET b = b || b WHERE f_leak(b);
                      Filter: (((a % 2) = 0) AND f_leak(b))
                ->  Seq Scan on t3 t1_3
                      Filter: (((a % 2) = 0) AND f_leak(b))
-(13 rows)
+(12 rows)
 
 UPDATE t1 SET b = b || b WHERE f_leak(b);
 NOTICE:  f_leak => bbb
@@ -1742,7 +1742,7 @@ EXPLAIN (COSTS OFF) UPDATE only t1 SET b = b || '_updt' WHERE f_leak(b);
  Update on t1
    ->  Seq Scan on t1
          Filter: (((a % 2) = 0) AND f_leak(b))
-(4 rows)
+(3 rows)
 
 UPDATE only t1 SET b = b || '_updt' WHERE f_leak(b);
 NOTICE:  f_leak => bbbbbb
@@ -1976,7 +1976,7 @@ EXPLAIN (COSTS OFF) DELETE FROM t1 WHERE f_leak(b);
                Filter: (((a % 2) = 0) AND f_leak(b))
          ->  Seq Scan on t3 t1_3
                Filter: (((a % 2) = 0) AND f_leak(b))
-(12 rows)
+(11 rows)
 
 DELETE FROM only t1 WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
 NOTICE:  f_leak => bbbbbb_updt
@@ -2048,7 +2048,7 @@ EXPLAIN (COSTS OFF) UPDATE bv1 SET b = 'yyy' WHERE a = 4 AND f_leak(b);
  Update on b1
    ->  Seq Scan on b1
          Filter: ((a > 0) AND (a = 4) AND ((a % 2) = 0) AND f_leak(b))
-(4 rows)
+(3 rows)
 
 UPDATE bv1 SET b = 'yyy' WHERE a = 4 AND f_leak(b);
 NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c
@@ -2058,7 +2058,7 @@ EXPLAIN (COSTS OFF) DELETE FROM bv1 WHERE a = 6 AND f_leak(b);
  Delete on b1
    ->  Seq Scan on b1
          Filter: ((a > 0) AND (a = 6) AND ((a % 2) = 0) AND f_leak(b))
-(4 rows)
+(3 rows)
 
 DELETE FROM bv1 WHERE a = 6 AND f_leak(b);
 NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc
@@ -2969,7 +2969,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on z1
          Filter: (((a % 2) = 0) AND f_leak(b))
-(4 rows)
+(2 rows)
 
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM rls_view;
@@ -3991,7 +3991,7 @@ EXPLAIN (COSTS OFF) UPDATE current_check SET payload = payload WHERE CURRENT OF 
    ->  Tid Scan on current_check
          TID Cond: CURRENT OF current_check_cursor
          Filter: ((currentid = 4) AND ((currentid % 2) = 0))
-(5 rows)
+(4 rows)
 
 -- start_ignore
 -- end_ignore
