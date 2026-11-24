@@ -4360,8 +4360,8 @@ ALTER TABLE r2 NO FORCE ROW LEVEL SECURITY;
 TABLE r2;
  a  
 ----
- 10
  20
+ 10
 (2 rows)
 
 DROP TABLE r2;
@@ -4623,8 +4623,8 @@ INSERT INTO rls_tbl
 SELECT * FROM rls_tbl;
  a  | b  | c  
 ----+----+----
- 20 | 30 |   
  10 | 20 | 30
+ 20 | 30 |   
 (2 rows)
 
 DROP TABLE rls_tbl;
