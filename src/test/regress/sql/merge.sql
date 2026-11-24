@@ -22,7 +22,7 @@ CREATE USER regress_merge_no_privs;
 DROP TABLE IF EXISTS target;
 DROP TABLE IF EXISTS source;
 CREATE TABLE target (tid integer, balance integer);
-CREATE TABLE source (sid integer, delta integer); -- no index
+CREATE TABLE source (sid integer, delta integer); --no index
 INSERT INTO target VALUES (1, 10);
 INSERT INTO target VALUES (2, 20);
 INSERT INTO target VALUES (3, 30);
