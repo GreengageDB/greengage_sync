@@ -331,8 +331,8 @@ insert into tttest values (3, 3, 0);
 select * from tttest;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        1 |         1 |       10 |    999999
         2 |         2 |       20 |    999999
+        1 |         1 |       10 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
@@ -342,8 +342,8 @@ CONTEXT:  SQL statement "INSERT INTO tttest VALUES ($1, $2, $3, $4)"
 select * from tttest;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        1 |         1 |       10 |    999999
         2 |         2 |       20 |    999999
+        1 |         1 |       10 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
@@ -352,8 +352,8 @@ select * from tttest;
 select * from tttest where price_off = 999999;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        1 |         1 |       10 |    999999
         2 |         2 |       20 |    999999
+        1 |         1 |       10 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
@@ -364,8 +364,8 @@ CONTEXT:  SQL statement "INSERT INTO tttest VALUES ($1, $2, $3, $4)"
 select * from tttest;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        1 |         1 |       10 |    999999
         2 |         2 |       20 |    999999
+        1 |         1 |       10 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
@@ -376,8 +376,8 @@ ERROR:  UPDATE on distributed key column not allowed on relation with update tri
 select * from tttest;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        1 |         1 |       10 |    999999
         2 |         2 |       20 |    999999
+        1 |         1 |       10 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
@@ -393,8 +393,8 @@ update tttest set price_off = 999999 where price_val = 30;
 select * from tttest;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        1 |         1 |       10 |    999999
         2 |         2 |       20 |    999999
+        1 |         1 |       10 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
@@ -404,8 +404,8 @@ ERROR:  UPDATE on distributed key column not allowed on relation with update tri
 select * from tttest;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        1 |         1 |       10 |    999999
         2 |         2 |       20 |    999999
+        1 |         1 |       10 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
@@ -432,8 +432,8 @@ ERROR:  ttdummy (tttest): you cannot change price_on and/or price_off columns (u
 select * from tttest;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        1 |         1 |       10 |    999999
         2 |         2 |       20 |    999999
+        1 |         1 |       10 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
