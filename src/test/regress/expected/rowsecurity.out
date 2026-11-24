@@ -270,6 +270,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM document WHERE f_leak(dtitle);
                  Filter: (pguser = 'regress_rls_carol'::name)
    ->  Seq Scan on document
          Filter: ((dlevel <= $0) AND f_leak(dtitle))
+ Optimizer: Postgres query optimizer
 (8 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle);
@@ -287,6 +288,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dt
          ->  Hash
                ->  Seq Scan on document
                      Filter: ((dlevel <= $0) AND f_leak(dtitle))
+ Optimizer: Postgres query optimizer
 (13 rows)
 
 -- viewpoint from regress_rls_dave
@@ -339,6 +341,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM document WHERE f_leak(dtitle);
                  Filter: (pguser = 'regress_rls_dave'::name)
    ->  Seq Scan on document
          Filter: ((cid <> 44) AND (cid <> 44) AND (cid < 50) AND (dlevel <= $0) AND f_leak(dtitle))
+ Optimizer: Postgres query optimizer
 (8 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle);
@@ -357,6 +360,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dt
          ->  Hash
                ->  Seq Scan on document
                      Filter: ((cid <> 44) AND (cid <> 44) AND (cid < 50) AND (dlevel <= $0) AND f_leak(dtitle))
+ Optimizer: Postgres query optimizer
 (14 rows)
 
 -- 44 would technically fail for both p2r and p1r, but we should get an error
@@ -435,6 +439,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM document WHERE f_leak(dtitle);
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on document
          Filter: ((dauthor = 'regress_rls_carol'::name) AND f_leak(dtitle))
+ Optimizer: Postgres query optimizer
 (4 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dtitle);
@@ -448,6 +453,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM document NATURAL JOIN category WHERE f_leak(dt
          ->  Hash
                ->  Seq Scan on document
                      Filter: ((dauthor = 'regress_rls_carol'::name) AND f_leak(dtitle))
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 -- interaction of FK/PK constraints
@@ -683,6 +689,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM t1;
                Filter: ((a % 2) = 0)
          ->  Seq Scan on t3 t1_3
                Filter: ((a % 2) = 0)
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 SELECT * FROM t1 WHERE f_leak(b);
@@ -711,6 +718,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM t1 WHERE f_leak(b);
                Filter: (((a % 2) = 0) AND f_leak(b))
          ->  Seq Scan on t3 t1_3
                Filter: (((a % 2) = 0) AND f_leak(b))
+ Optimizer: Postgres query optimizer
 (9 rows)
 
 -- reference to system column
@@ -735,7 +743,6 @@ EXPLAIN (COSTS OFF) SELECT *, t1 FROM t1;
                Filter: ((a % 2) = 0)
          ->  Seq Scan on t3 t1_3
                Filter: ((a % 2) = 0)
- Optimizer: Postgres query optimizer
 (9 rows)
 
 -- reference to whole-row reference
@@ -1716,7 +1723,6 @@ EXPLAIN (COSTS OFF) UPDATE t1 SET b = b || b WHERE f_leak(b);
                      Filter: (((a % 2) = 0) AND f_leak(b))
                ->  Seq Scan on t3 t1_3
                      Filter: (((a % 2) = 0) AND f_leak(b))
- Optimizer: Postgres query optimizer
 (13 rows)
 
 UPDATE t1 SET b = b || b WHERE f_leak(b);
@@ -1731,7 +1737,6 @@ EXPLAIN (COSTS OFF) UPDATE only t1 SET b = b || '_updt' WHERE f_leak(b);
  Update on t1
    ->  Seq Scan on t1
          Filter: (((a % 2) = 0) AND f_leak(b))
- Optimizer: Postgres query optimizer
 (4 rows)
 
 UPDATE only t1 SET b = b || '_updt' WHERE f_leak(b);
@@ -1966,7 +1971,6 @@ EXPLAIN (COSTS OFF) DELETE FROM t1 WHERE f_leak(b);
                Filter: (((a % 2) = 0) AND f_leak(b))
          ->  Seq Scan on t3 t1_3
                Filter: (((a % 2) = 0) AND f_leak(b))
- Optimizer: Postgres query optimizer
 (12 rows)
 
 DELETE FROM only t1 WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
@@ -2039,7 +2043,6 @@ EXPLAIN (COSTS OFF) UPDATE bv1 SET b = 'yyy' WHERE a = 4 AND f_leak(b);
  Update on b1
    ->  Seq Scan on b1
          Filter: ((a > 0) AND (a = 4) AND ((a % 2) = 0) AND f_leak(b))
- Optimizer: Postgres query optimizer
 (4 rows)
 
 UPDATE bv1 SET b = 'yyy' WHERE a = 4 AND f_leak(b);
@@ -2050,7 +2053,6 @@ EXPLAIN (COSTS OFF) DELETE FROM bv1 WHERE a = 6 AND f_leak(b);
  Delete on b1
    ->  Seq Scan on b1
          Filter: ((a > 0) AND (a = 6) AND ((a % 2) = 0) AND f_leak(b))
- Optimizer: Postgres query optimizer
 (4 rows)
 
 DELETE FROM bv1 WHERE a = 6 AND f_leak(b);
@@ -2906,7 +2908,6 @@ EXPLAIN (COSTS OFF) SELECT * FROM rls_view;
  Gather Motion 3:1  (slice1; segments: 3)
    ->  Seq Scan on z1
          Filter: (((a % 2) = 0) AND f_leak(b))
- Optimizer: Postgres query optimizer
 (4 rows)
 
 SET SESSION AUTHORIZATION regress_rls_carol;
@@ -4009,7 +4010,6 @@ EXPLAIN (COSTS OFF) UPDATE current_check SET payload = payload WHERE CURRENT OF 
    ->  Tid Scan on current_check
          TID Cond: CURRENT OF current_check_cursor
          Filter: ((currentid = 4) AND ((currentid % 2) = 0))
- Optimizer: Postgres query optimizer
 (5 rows)
 
 -- start_ignore
