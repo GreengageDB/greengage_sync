@@ -477,6 +477,11 @@ SELECT * FROM document d FULL OUTER JOIN category c on d.cid = c.cid ORDER BY d.
 (6 rows)
 
 -- GPDB: referential integrity checks are not enforced
+-- start_ignore
+DELETE FROM category WHERE cid = 33;    -- fails with FK violation
+ERROR:  update or delete on table "category" violates foreign key constraint "document_cid_fkey" on table "document"
+DETAIL:  Key is still referenced from table "document".
+-- end_ignore
 -- can insert FK referencing invisible PK
 SET SESSION AUTHORIZATION regress_rls_carol;
 SELECT * FROM document d FULL OUTER JOIN category c on d.cid = c.cid ORDER BY d.did, c.cid;
