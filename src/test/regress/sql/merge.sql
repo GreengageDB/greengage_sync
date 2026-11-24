@@ -1,6 +1,12 @@
 --
 -- MERGE
 --
+--\set VERBOSITY verbose
+
+--set debug_print_rewritten = true;
+--set debug_print_parse = true;
+--set debug_print_pretty = true;
+
 -- GGDB: the two "try updating the partition key column" statements below move
 -- rows between segments, and every segment that holds such a row raises the
 -- error.  Which one wins the race decides both the leaf partition named in the
