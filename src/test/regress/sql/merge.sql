@@ -21,10 +21,8 @@ CREATE USER regress_merge_privs;
 CREATE USER regress_merge_no_privs;
 DROP TABLE IF EXISTS target;
 DROP TABLE IF EXISTS source;
-CREATE TABLE target (tid integer, balance integer)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE source (sid integer, delta integer) -- no index
-  WITH (autovacuum_enabled=off);
+CREATE TABLE target (tid integer, balance integer);
+CREATE TABLE source (sid integer, delta integer); -- no index
 INSERT INTO target VALUES (1, 10);
 INSERT INTO target VALUES (2, 20);
 INSERT INTO target VALUES (3, 30);
@@ -33,10 +31,8 @@ SELECT t.ctid is not null as matched, t.*, s.* FROM source s FULL OUTER JOIN tar
 ALTER TABLE target OWNER TO regress_merge_privs;
 ALTER TABLE source OWNER TO regress_merge_privs;
 
-CREATE TABLE target2 (tid integer, balance integer)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE source2 (sid integer, delta integer)
-  WITH (autovacuum_enabled=off);
+CREATE TABLE target2 (tid integer, balance integer);
+CREATE TABLE source2 (sid integer, delta integer);
 
 ALTER TABLE target2 OWNER TO regress_merge_no_privs;
 ALTER TABLE source2 OWNER TO regress_merge_no_privs;
@@ -101,16 +97,6 @@ MERGE INTO target
 USING target
 ON tid = tid
 WHEN MATCHED THEN DO NOTHING;
--- used in a CTE
-WITH foo AS (
-  MERGE INTO target USING source ON (true)
-  WHEN MATCHED THEN DELETE
-) SELECT * FROM foo;
--- used in COPY
-COPY (
-  MERGE INTO target USING source ON (true)
-  WHEN MATCHED THEN DELETE
-) TO stdout;
 
 -- unsupported relation types
 -- view
@@ -458,10 +444,8 @@ WHEN MATCHED AND s.delta > 0 THEN
 ROLLBACK;
 
 -- conditional WHEN clause
-CREATE TABLE wq_target (tid integer not null, balance integer DEFAULT -1)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE wq_source (balance integer, sid integer)
-  WITH (autovacuum_enabled=off);
+CREATE TABLE wq_target (tid integer not null, balance integer DEFAULT -1);
+CREATE TABLE wq_source (balance integer, sid integer);
 
 INSERT INTO wq_source (sid, balance) VALUES (1, 100);
 
@@ -793,10 +777,8 @@ ROLLBACK;
 
 -- subqueries in source relation
 
-CREATE TABLE sq_target (tid integer NOT NULL, balance integer)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE sq_source (delta integer, sid integer, balance integer DEFAULT 0)
-  WITH (autovacuum_enabled=off);
+CREATE TABLE sq_target (tid integer NOT NULL, balance integer);
+CREATE TABLE sq_source (delta integer, sid integer, balance integer DEFAULT 0);
 
 INSERT INTO sq_target(tid, balance) VALUES (1,100), (2,200), (3,300);
 INSERT INTO sq_source(sid, delta) VALUES (1,10), (2,20), (4,40);
@@ -882,10 +864,8 @@ RETURNING *;
 ROLLBACK;
 
 -- EXPLAIN
-CREATE TABLE ex_mtarget (a int, b int)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE ex_msource (a int, b int)
-  WITH (autovacuum_enabled=off);
+CREATE TABLE ex_mtarget (a int, b int);
+CREATE TABLE ex_msource (a int, b int);
 INSERT INTO ex_mtarget SELECT i, i*10 FROM generate_series(1,100,2) i;
 INSERT INTO ex_msource SELECT i, i*10 FROM generate_series(1,100,1) i;
 
@@ -986,14 +966,10 @@ DROP TABLE sq_target, sq_source CASCADE;
 CREATE TABLE pa_target (tid integer, balance float, val text)
 	PARTITION BY LIST (tid);
 
-CREATE TABLE part1 PARTITION OF pa_target FOR VALUES IN (1,4)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE part2 PARTITION OF pa_target FOR VALUES IN (2,5,6)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE part3 PARTITION OF pa_target FOR VALUES IN (3,8,9)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE part4 PARTITION OF pa_target DEFAULT
-  WITH (autovacuum_enabled=off);
+CREATE TABLE part1 PARTITION OF pa_target FOR VALUES IN (1,4);
+CREATE TABLE part2 PARTITION OF pa_target FOR VALUES IN (2,5,6);
+CREATE TABLE part3 PARTITION OF pa_target FOR VALUES IN (3,8,9);
+CREATE TABLE part4 PARTITION OF pa_target DEFAULT;
 
 CREATE TABLE pa_source (sid integer, delta float);
 -- insert many rows to the source table
@@ -1054,13 +1030,13 @@ CREATE TABLE pa_target (tid integer, balance float, val text)
 -- below does not reach it and it leaks into every later test sharing this
 -- database -- which is how alter_table came to fail on "part2 already exists".
 CREATE TABLE part1 (tid integer, balance float, val text)
-  WITH (autovacuum_enabled=off) DISTRIBUTED BY (tid);
+  DISTRIBUTED BY (tid);
 CREATE TABLE part2 (balance float, tid integer, val text)
-  WITH (autovacuum_enabled=off) DISTRIBUTED BY (tid);
+  DISTRIBUTED BY (tid);
 CREATE TABLE part3 (tid integer, balance float, val text)
-  WITH (autovacuum_enabled=off) DISTRIBUTED BY (tid);
+  DISTRIBUTED BY (tid);
 CREATE TABLE part4 (extraid text, tid integer, balance float, val text)
-  WITH (autovacuum_enabled=off) DISTRIBUTED BY (tid);
+  DISTRIBUTED BY (tid);
 ALTER TABLE part4 DROP COLUMN extraid;
 
 ALTER TABLE pa_target ATTACH PARTITION part1 FOR VALUES IN (1,4);
@@ -1132,19 +1108,18 @@ CREATE TABLE part_m01 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-01-01') TO ('2017-02-01')
 	PARTITION BY LIST (tid);
 CREATE TABLE part_m01_odd PARTITION OF part_m01
-	FOR VALUES IN (1,3,5,7,9) WITH (autovacuum_enabled=off);
+	FOR VALUES IN (1,3,5,7,9);
 CREATE TABLE part_m01_even PARTITION OF part_m01
-	FOR VALUES IN (2,4,6,8) WITH (autovacuum_enabled=off);
+	FOR VALUES IN (2,4,6,8);
 CREATE TABLE part_m02 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-02-01') TO ('2017-03-01')
 	PARTITION BY LIST (tid);
 CREATE TABLE part_m02_odd PARTITION OF part_m02
-	FOR VALUES IN (1,3,5,7,9) WITH (autovacuum_enabled=off);
+	FOR VALUES IN (1,3,5,7,9);
 CREATE TABLE part_m02_even PARTITION OF part_m02
-	FOR VALUES IN (2,4,6,8) WITH (autovacuum_enabled=off);
+	FOR VALUES IN (2,4,6,8);
 
-CREATE TABLE pa_source (sid integer, delta float)
-  WITH (autovacuum_enabled=off);
+CREATE TABLE pa_source (sid integer, delta float);
 -- insert many rows to the source table
 INSERT INTO pa_source SELECT id, id * 10  FROM generate_series(1,14) AS id;
 -- insert a few rows in the target table (odd numbered tid)
@@ -1168,12 +1143,9 @@ DROP TABLE pa_target CASCADE;
 
 -- some complex joins on the source side
 
-CREATE TABLE cj_target (tid integer, balance float, val text)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE cj_source1 (sid1 integer, scat integer, delta integer)
-  WITH (autovacuum_enabled=off);
-CREATE TABLE cj_source2 (sid2 integer, sval text)
-  WITH (autovacuum_enabled=off);
+CREATE TABLE cj_target (tid integer, balance float, val text);
+CREATE TABLE cj_source1 (sid1 integer, scat integer, delta integer);
+CREATE TABLE cj_source2 (sid2 integer, sval text);
 INSERT INTO cj_source1 VALUES (1, 10, 100);
 INSERT INTO cj_source1 VALUES (1, 20, 200);
 INSERT INTO cj_source1 VALUES (2, 20, 300);
@@ -1234,8 +1206,7 @@ WHEN NOT MATCHED THEN
 DROP TABLE cj_source2, cj_source1, cj_target;
 
 -- Function scans
-CREATE TABLE fs_target (a int, b int, c text)
-  WITH (autovacuum_enabled=off);
+CREATE TABLE fs_target (a int, b int, c text);
 MERGE INTO fs_target t
 USING generate_series(1,100,1) AS id
 ON t.a = id
@@ -1264,13 +1235,13 @@ CREATE TABLE measurement (
     logdate         date not null,
     peaktemp        int,
     unitsales       int
-) WITH (autovacuum_enabled=off);
+);
 CREATE TABLE measurement_y2006m02 (
     CHECK ( logdate >= DATE '2006-02-01' AND logdate < DATE '2006-03-01' )
-) INHERITS (measurement) WITH (autovacuum_enabled=off);
+) INHERITS (measurement);
 CREATE TABLE measurement_y2006m03 (
     CHECK ( logdate >= DATE '2006-03-01' AND logdate < DATE '2006-04-01' )
-) INHERITS (measurement) WITH (autovacuum_enabled=off);
+) INHERITS (measurement);
 CREATE TABLE measurement_y2007m01 (
     filler          text,
     peaktemp        int,
@@ -1278,7 +1249,7 @@ CREATE TABLE measurement_y2007m01 (
     city_id         int not null,
     unitsales       int
     CHECK ( logdate >= DATE '2007-01-01' AND logdate < DATE '2007-02-01')
-) WITH (autovacuum_enabled=off);
+);
 ALTER TABLE measurement_y2007m01 DROP COLUMN filler;
 ALTER TABLE measurement_y2007m01 INHERIT measurement;
 
@@ -1313,7 +1284,7 @@ INSERT INTO measurement VALUES (1, '2007-01-17', 10, 10);
 
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
 
-CREATE TABLE new_measurement (LIKE measurement) WITH (autovacuum_enabled=off);
+CREATE TABLE new_measurement (LIKE measurement);
 INSERT INTO new_measurement VALUES (1, '2006-03-01', 20, 10);
 INSERT INTO new_measurement VALUES (1, '2006-02-16', 50, 10);
 INSERT INTO new_measurement VALUES (2, '2006-02-10', 20, 20);
