@@ -2887,8 +2887,6 @@ WHEN NOT MATCHED THEN INSERT VALUES(o.k, o.v);
                        Output: share0_ref1.a, share0_ref1.b
                        ->  Result
                              Output: 1, 'cte_basic val'::text
- Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing = 'on', optimizer = 'off'
 (25 rows)
 
 -- InitPlan
@@ -2934,8 +2932,6 @@ WHEN NOT MATCHED THEN INSERT VALUES(o.k, o.v);
                      Hash Key: (1)
                      ->  Result
                            Output: 1, 'merge source InitPlan'::text
- Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing = 'on', optimizer = 'off'
 (25 rows)
 
 -- MERGE source comes from CTE:
@@ -2984,8 +2980,6 @@ WHEN NOT MATCHED THEN INSERT VALUES(o.a, o.b || (SELECT merge_source_cte.*::text
                      Hash Key: share0_ref3.a
                      ->  Shared Scan (share slice:id 1:0)
                            Output: share0_ref3.a, share0_ref3.b
- Optimizer: Postgres query optimizer
- Settings: gp_cte_sharing = 'on', optimizer = 'off'
 (28 rows)
 
 DROP TABLE m;
