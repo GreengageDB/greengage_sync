@@ -877,8 +877,12 @@ RETURNING *;
 ROLLBACK;
 
 -- EXPLAIN
-CREATE TABLE ex_mtarget (a int, b int);
-CREATE TABLE ex_msource (a int, b int);
+-- GGDB: upstream's tables are single-node, so its EXPLAIN ANALYZE shows
+-- all 50/100 rows; here the rows would split across the three segments
+-- and the per-segment numbers would not match.  Replicate the tables so
+-- every segment sees the full copy, like upstream's one segment does.
+CREATE TABLE ex_mtarget (a int, b int) DISTRIBUTED REPLICATED;
+CREATE TABLE ex_msource (a int, b int) DISTRIBUTED REPLICATED;
 INSERT INTO ex_mtarget SELECT i, i*10 FROM generate_series(1,100,2) i;
 INSERT INTO ex_msource SELECT i, i*10 FROM generate_series(1,100,1) i;
 
@@ -892,16 +896,12 @@ BEGIN
 		  query
     LOOP
         ln := regexp_replace(ln, 'Memory: \S*',  'Memory: xxx');
-        -- GGDB: Greengage's Hash node reports its bucket count and memory, and
-        -- EXPLAIN ANALYZE on a cluster appends a per-segment "Extra Text:" line
-        -- with hash-chain statistics.  Every figure in them moves with the
-        -- memory settings -- CI runs with statement_mem 250MB, a demo cluster
-        -- does not -- and the segment named in "Extra Text:" is whichever one
-        -- reported the maximum.  Mask them the way upstream masks Sort's
-        -- "Memory:", so the blocks keep asserting the plan shape.
-        ln := regexp_replace(ln, 'Buckets: \S*',  'Buckets: xxx');
-        ln := regexp_replace(ln, 'Memory Usage: \S*',  'Memory Usage: xxx');
-        ln := regexp_replace(ln, 'Extra Text: \(seg\d+\).*',  'Extra Text: xxx');
+        -- GGDB: Greengage appends a per-slice "Executor Memory: ...
+        -- Segments: N  Max: ... (segment M)" line with no upstream
+        -- counterpart.  It is wider than any plan line, so keeping it
+        -- would widen the whole table's header against upstream's;
+        -- drop the line instead of masking it.
+        CONTINUE WHEN ln ~ 'Executor Memory';
         RETURN NEXT ln;
     END LOOP;
 END;
