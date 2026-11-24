@@ -331,8 +331,8 @@ insert into tttest values (3, 3, 0);
 select * from tttest;
  price_id | price_val | price_on | price_off 
 ----------+-----------+----------+-----------
-        2 |         2 |       20 |    999999
         1 |         1 |       10 |    999999
+        2 |         2 |       20 |    999999
         3 |         3 |       30 |    999999
 (3 rows)
 
@@ -729,6 +729,7 @@ create table trigtest (i serial primary key);
 -- test that disabling RI triggers works
 create table trigtest2 (i int references trigtest(i) on delete cascade);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'i' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 WARNING:  referential integrity (FOREIGN KEY) constraints are not supported in Greenplum Database, will not be enforced
 create function trigtest() returns trigger as $$
 begin
@@ -3181,7 +3182,6 @@ create trigger merge_target_table_delete_trig
   for each statement execute procedure dump_delete();
 ERROR:  Triggers for statements are not yet supported
 create table merge_source_table (a int, b text);
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 insert into merge_source_table
   values (1, 'initial1'), (2, 'initial2'),
 		 (3, 'initial3'), (4, 'initial4');
