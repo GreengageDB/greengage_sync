@@ -3980,11 +3980,19 @@ CommitTransactionCommand(void)
 	TransactionState s = CurrentTransactionState;
 	SavedTransactionCharacteristics savetc;
 
+<<<<<<< HEAD
 	if (Gp_role == GP_ROLE_EXECUTE && !Gp_is_writer)
 		elog(DEBUG1,"CommitTransactionCommand: called as segment Reader in state %s",
 		     BlockStateAsString(s->blockState));
 
+	if (s->chain)
+		SaveTransactionCharacteristics();
+||||||| c4cc2850f4d
+	if (s->chain)
+		SaveTransactionCharacteristics();
+=======
 	SaveTransactionCharacteristics(&savetc);
+>>>>>>> 2c7ea57e56c
 
 	switch (s->blockState)
 	{

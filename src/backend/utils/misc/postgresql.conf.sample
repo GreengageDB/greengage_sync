@@ -391,6 +391,7 @@ max_prepared_transactions = 250		# can be 0 or more
 #enable_seqscan = on
 #enable_sort = on
 #enable_tidscan = on
+#enable_group_by_reordering = on
 
 #gp_enable_multiphase_agg = on
 #gp_enable_preunique = on
