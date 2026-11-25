@@ -739,9 +739,14 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	/* Create textual dump of plan tree */
 	ExplainPrintPlan(es, queryDesc);
 
+<<<<<<< HEAD
 	if (cursorOptions & CURSOR_OPT_PARALLEL_RETRIEVE)
 		ExplainParallelRetrieveCursor(es, queryDesc);
 
+	if (es->verbose && plannedstmt->queryId != UINT64CONST(0))
+||||||| c4cc2850f4d
+	if (es->verbose && plannedstmt->queryId != UINT64CONST(0))
+=======
 	/*
 	 * COMPUTE_QUERY_ID_REGRESS means COMPUTE_QUERY_ID_AUTO, but we don't show
 	 * the queryid in any of the EXPLAIN plans to keep stable the results
@@ -749,6 +754,7 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	 */
 	if (es->verbose && plannedstmt->queryId != UINT64CONST(0) &&
 		compute_query_id != COMPUTE_QUERY_ID_REGRESS)
+>>>>>>> 2c7ea57e56c
 	{
 		/*
 		 * Output the queryid as an int64 rather than a uint64 so we match

@@ -9168,15 +9168,9 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	}
 
 	/*
-	 * Check permission to run ALTER SYSTEM on the target variable.
-	 *
-	 * GGDB: the FTS message handler process has no catalog access, so it must
-	 * reach neither superuser() nor pg_parameter_aclcheck() here (f1fb55788d7).
-	 * It arrives through set_gp_replication_config(), which synthesizes an
-	 * AlterSystemStmt to maintain synchronous_standby_names, and the exemption
-	 * has to move with the check that upstream relocated below the switch.
+	 * Check permission to run ALTER SYSTEM on the target variable
 	 */
-	if (!am_ftshandler && !superuser())
+	if (!superuser())
 	{
 		if (resetall)
 			ereport(ERROR,
