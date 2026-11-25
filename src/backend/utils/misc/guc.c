@@ -9080,20 +9080,6 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	char		AutoConfFileName[MAXPGPATH];
 	char		AutoConfTmpFileName[MAXPGPATH];
 
-<<<<<<< HEAD
-	if (!am_ftshandler && !superuser())
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("must be superuser to execute ALTER SYSTEM command")));
-
-||||||| c4cc2850f4d
-	if (!superuser())
-		ereport(ERROR,
-				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-				 errmsg("must be superuser to execute ALTER SYSTEM command")));
-
-=======
->>>>>>> 2c7ea57e56c
 	/*
 	 * Extract statement arguments
 	 */
@@ -9122,9 +9108,15 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	}
 
 	/*
-	 * Check permission to run ALTER SYSTEM on the target variable
+	 * Check permission to run ALTER SYSTEM on the target variable.
+	 *
+	 * GGDB: the FTS message handler process has no catalog access, so it must
+	 * reach neither superuser() nor pg_parameter_aclcheck() here (f1fb55788d7).
+	 * It arrives through set_gp_replication_config(), which synthesizes an
+	 * AlterSystemStmt to maintain synchronous_standby_names, and the exemption
+	 * has to move with the check that upstream relocated below the switch.
 	 */
-	if (!superuser())
+	if (!am_ftshandler && !superuser())
 	{
 		if (resetall)
 			ereport(ERROR,
