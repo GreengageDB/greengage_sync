@@ -30,12 +30,8 @@
 #include "libpq/pqformat.h"
 #include "replication/basebackup.h"
 #include "replication/basebackup_sink.h"
-<<<<<<< HEAD
 #include "utils/guc.h"
-||||||| c4cc2850f4d
-=======
 #include "utils/timestamp.h"
->>>>>>> 2c7ea57e56c
 
 typedef struct bbsink_copystream
 {
@@ -89,6 +85,7 @@ static void SendCopyOutResponse(void);
 static void SendCopyDone(void);
 static void SendXlogRecPtrResult(XLogRecPtr ptr, TimeLineID tli);
 static void SendTablespaceList(List *tablespaces);
+static const char *tablespace_link_path_to_send(tablespaceinfo *ti);
 static void send_int8_string(StringInfoData *buf, int64 intval);
 
 const bbsink_ops bbsink_copystream_ops = {
@@ -155,14 +152,8 @@ bbsink_copystream_begin_backup(bbsink *sink)
 
 	/* Send a CommandComplete message */
 	pq_puttextmessage('C', "SELECT");
-<<<<<<< HEAD
 
 	elogif(debug_basebackup, LOG, "basebackup header -- Sent basebackup header.");
-}
-||||||| c4cc2850f4d
-}
-=======
->>>>>>> 2c7ea57e56c
 
 	/* Begin COPY stream. This will be used for all archives + manifest. */
 	SendCopyOutResponse();
@@ -176,13 +167,15 @@ bbsink_copystream_begin_archive(bbsink *sink, const char *archive_name)
 {
 	bbsink_state *state = sink->bbs_state;
 	tablespaceinfo *ti;
+	const char *link_path;
 	StringInfoData buf;
 
 	ti = list_nth(state->tablespaces, state->tablespace_num);
+	link_path = tablespace_link_path_to_send(ti);
 	pq_beginmessage(&buf, 'd'); /* CopyData */
 	pq_sendbyte(&buf, 'n');		/* New archive */
 	pq_sendstring(&buf, archive_name);
-	pq_sendstring(&buf, ti->path == NULL ? "" : ti->path);
+	pq_sendstring(&buf, link_path == NULL ? "" : link_path);
 	pq_endmessage(&buf);
 }
 
@@ -399,6 +392,33 @@ SendXlogRecPtrResult(XLogRecPtr ptr, TimeLineID tli)
 }
 
 /*
+ * GPDB: the link target to announce for a tablespace.
+ *
+ * A tablespace's per-segment contents live in a per-dbid subdirectory of its
+ * location, <location>/<dbid>/GP_TABLESPACE_VERSION_DIRECTORY/..., and
+ * ti->path is this segment's own symlink target, dbid and all.  The receiver
+ * appends the dbid it is building for (--target-gp-dbid), so what goes on the
+ * wire has to be the bare location.  A tablespace inside PGDATA (ti->rpath
+ * set) carries no dbid to lop off.
+ */
+static const char *
+tablespace_link_path_to_send(tablespaceinfo *ti)
+{
+	char	   *path;
+	char	   *last_sep;
+
+	if (ti->path == NULL || ti->rpath != NULL)
+		return ti->path;
+
+	path = pstrdup(ti->path);
+	last_sep = strrchr(path, '/');
+	if (last_sep != NULL)
+		*last_sep = '\0';
+
+	return path;
+}
+
+/*
  * Send a result set via libpq describing the tablespace list.
  */
 static void
@@ -454,23 +474,13 @@ SendTablespaceList(List *tablespaces)
 		else
 		{
 			Size		len;
-			char		*link_path_to_be_sent;
+			const char *link_path_to_be_sent;
 
 			len = strlen(ti->oid);
 			pq_sendint32(&buf, len);
 			pq_sendbytes(&buf, ti->oid, len);
 
-			if(ti->rpath == NULL)
-			{
-				/* Lop off the dbid before sending the link target. */
-				char *link_path_without_dbid = pstrdup(ti->path);
-				char *file_sep_before_dbid_in_link_path =
-						strrchr(link_path_without_dbid, '/');
-				*file_sep_before_dbid_in_link_path = '\0';
-				link_path_to_be_sent = link_path_without_dbid;
-			}
-			else
-				link_path_to_be_sent = ti->path;
+			link_path_to_be_sent = tablespace_link_path_to_send(ti);
 			len = strlen(link_path_to_be_sent);
 			pq_sendint32(&buf, len);
 			pq_sendbytes(&buf, link_path_to_be_sent, len);
