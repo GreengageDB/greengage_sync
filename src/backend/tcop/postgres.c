@@ -172,9 +172,9 @@ static long max_stack_depth_bytes = 100 * 1024L;
  * Stack base pointer -- initialized by PostmasterMain and inherited by
  * subprocesses (but see also InitPostmasterChild).
  *
- * GG: the stack-trace printer in elog.c reads this through
- * get_stack_base_ptr() to tell where the stack ends, so upstream's
- * de447bb8e6f (which made it static) could not be followed as-is.
+ * GG: static, as upstream carries it; elog.c's stack-trace printer
+ * reads the pointer through get_stack_base_ptr() to tell where the
+ * stack ends.
  */
 static char *stack_base_ptr = NULL;
 
