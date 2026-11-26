@@ -41,13 +41,9 @@
 #include "catalog/indexing.h"
 #include "catalog/objectaccess.h"
 #include "catalog/pg_authid.h"
-<<<<<<< HEAD
 #include "catalog/pg_class.h"
-#include "catalog/pg_namespace.h"
-||||||| c4cc2850f4d
-=======
 #include "catalog/pg_collation.h"
->>>>>>> 2c7ea57e56c
+#include "catalog/pg_namespace.h"
 #include "catalog/pg_database.h"
 #include "catalog/pg_db_role_setting.h"
 #include "catalog/pg_subscription.h"
@@ -79,7 +75,6 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
-<<<<<<< HEAD
 #include "catalog/oid_dispatch.h"
 #include "cdb/cdbdisp_query.h"
 #include "cdb/cdbdispatchresult.h"
@@ -88,8 +83,7 @@
 #include "cdb/cdbvars.h"
 
 #include "utils/pg_rusage.h"
-||||||| c4cc2850f4d
-=======
+
 /*
  * Create database strategy.
  *
@@ -105,7 +99,6 @@ typedef enum CreateDBStrategy
 	CREATEDB_WAL_LOG,
 	CREATEDB_FILE_COPY
 } CreateDBStrategy;
->>>>>>> 2c7ea57e56c
 
 typedef struct
 {
@@ -703,17 +696,7 @@ CreateDatabaseUsingFileCopy(Oid src_dboid, Oid dst_dboid, Oid src_tsid,
 Oid
 createdb(ParseState *pstate, const CreatedbStmt *stmt)
 {
-<<<<<<< HEAD
-	TableScanDesc scan;
-	Relation	rel;
 	Oid			src_dboid = InvalidOid;
-||||||| c4cc2850f4d
-	TableScanDesc scan;
-	Relation	rel;
-	Oid			src_dboid;
-=======
-	Oid			src_dboid;
->>>>>>> 2c7ea57e56c
 	Oid			src_owner;
 	int			src_encoding = -1;
 	char	   *src_collate = NULL;
@@ -1305,34 +1288,20 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	 */
 	pg_database_rel = table_open(DatabaseRelationId, RowExclusiveLock);
 
-<<<<<<< HEAD
 	if (Gp_role == GP_ROLE_EXECUTE)
-		dboid = GetPreassignedOidForDatabase(dbname);
-	else
-||||||| c4cc2850f4d
-	do
-=======
-	/*
-	 * If database OID is configured, check if the OID is already in use or
-	 * data directory already exists.
-	 */
-	if (OidIsValid(dboid))
->>>>>>> 2c7ea57e56c
 	{
-<<<<<<< HEAD
-		do
-		{
-			dboid = GetNewOidWithIndex(pg_database_rel, DatabaseOidIndexId,
-									   Anum_pg_database_oid);
-		} while (check_db_file_conflict(dboid));
-
-		if (Gp_role == GP_ROLE_DISPATCH)
-			RememberAssignedOidForDatabase(dbname, dboid);
-||||||| c4cc2850f4d
-		dboid = GetNewOidWithIndex(pg_database_rel, DatabaseOidIndexId,
-								   Anum_pg_database_oid);
-	} while (check_db_file_conflict(dboid));
-=======
+		/*
+		 * The dispatcher has already chosen the OID of the new database, so
+		 * that every segment stores it under the same OID.
+		 */
+		dboid = GetPreassignedOidForDatabase(dbname);
+	}
+	else if (OidIsValid(dboid))
+	{
+		/*
+		 * If database OID is configured, check if the OID is already in use or
+		 * data directory already exists.
+		 */
 		char	   *existing_dbname = get_database_name(dboid);
 
 		if (existing_dbname != NULL)
@@ -1354,7 +1323,6 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 			dboid = GetNewOidWithIndex(pg_database_rel, DatabaseOidIndexId,
 									   Anum_pg_database_oid);
 		} while (check_db_file_conflict(dboid));
->>>>>>> 2c7ea57e56c
 	}
 
 	/*
@@ -1382,10 +1350,6 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	new_record[Anum_pg_database_datfrozenxid - 1] = TransactionIdGetDatum(src_frozenxid);
 	new_record[Anum_pg_database_datminmxid - 1] = TransactionIdGetDatum(src_minmxid);
 	new_record[Anum_pg_database_dattablespace - 1] = ObjectIdGetDatum(dst_deftablespace);
-<<<<<<< HEAD
-||||||| c4cc2850f4d
-
-=======
 	new_record[Anum_pg_database_datcollate - 1] = CStringGetTextDatum(dbcollate);
 	new_record[Anum_pg_database_datctype - 1] = CStringGetTextDatum(dbctype);
 	if (dbiculocale)
@@ -1397,7 +1361,6 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	else
 		new_record_nulls[Anum_pg_database_datcollversion - 1] = true;
 
->>>>>>> 2c7ea57e56c
 	/*
 	 * We deliberately set datacl to default (NULL), rather than copying it
 	 * from the template database.  Copying it would be a bad idea when the
@@ -1485,203 +1448,12 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 		 * Otherwise, call CreateDatabaseUsingFileCopy that will copy the
 		 * database file by file.
 		 */
-<<<<<<< HEAD
-		rel = table_open(TableSpaceRelationId, AccessShareLock);
-		scan = table_beginscan_catalog(rel, 0, NULL);
-		while ((tuple = heap_getnext(scan, ForwardScanDirection)) != NULL)
-		{
-			Form_pg_tablespace spaceform = (Form_pg_tablespace) GETSTRUCT(tuple);
-			Oid			srctablespace = spaceform->oid;
-			Oid			dsttablespace;
-			char	   *srcpath;
-			char	   *dstpath;
-			struct stat st;
-
-			/* No need to copy global tablespace */
-			if (srctablespace == GLOBALTABLESPACE_OID)
-				continue;
-
-			srcpath = GetDatabasePath(src_dboid, srctablespace);
-
-			if (stat(srcpath, &st) < 0 || !S_ISDIR(st.st_mode) ||
-				directory_is_empty(srcpath))
-			{
-				/* Assume we can ignore it */
-				pfree(srcpath);
-				continue;
-			}
-
-			if (srctablespace == src_deftablespace)
-				dsttablespace = dst_deftablespace;
-			else
-				dsttablespace = srctablespace;
-
-			dstpath = GetDatabasePath(dboid, dsttablespace);
-
-			/*
-			 * Register the database directory to PendingDBDelete link list
-			 * for cleanup in txn abort.
-			 */
-			ScheduleDbDirDelete(dboid, dsttablespace, false);
-
-			/*
-			 * Copy this subdirectory to the new location
-			 *
-			 * We don't need to copy subdirectories
-			 */
-			copydir(srcpath, dstpath, false);
-
-			SIMPLE_FAULT_INJECTOR("create_db_after_file_copy");
-
-			/* Record the filesystem change in XLOG */
-			{
-				xl_dbase_create_rec xlrec;
-
-				xlrec.db_id = dboid;
-				xlrec.tablespace_id = dsttablespace;
-				xlrec.src_db_id = src_dboid;
-				xlrec.src_tablespace_id = srctablespace;
-
-				XLogBeginInsert();
-				XLogRegisterData((char *) &xlrec, sizeof(xl_dbase_create_rec));
-
-				(void) XLogInsert(RM_DBASE_ID,
-								  XLOG_DBASE_CREATE | XLR_SPECIAL_REL_UPDATE);
-			}
-		}
-
-		SIMPLE_FAULT_INJECTOR("after_xlog_create_database");
-
-		table_endscan(scan);
-		table_close(rel, AccessShareLock);
-
-		/*
-		 * We force a checkpoint before committing.  This effectively means
-		 * that committed XLOG_DBASE_CREATE operations will never need to be
-		 * replayed (at least not in ordinary crash recovery; we still have to
-		 * make the XLOG entry for the benefit of PITR operations). This
-		 * avoids two nasty scenarios:
-		 *
-		 * #1: When PITR is off, we don't XLOG the contents of newly created
-		 * indexes; therefore the drop-and-recreate-whole-directory behavior
-		 * of DBASE_CREATE replay would lose such indexes.
-		 *
-		 * #2: Since we have to recopy the source database during DBASE_CREATE
-		 * replay, we run the risk of copying changes in it that were
-		 * committed after the original CREATE DATABASE command but before the
-		 * system crash that led to the replay.  This is at least unexpected
-		 * and at worst could lead to inconsistencies, eg duplicate table
-		 * names.
-		 *
-		 * (Both of these were real bugs in releases 8.0 through 8.0.3.)
-		 *
-		 * In PITR replay, the first of these isn't an issue, and the second
-		 * is only a risk if the CREATE DATABASE and subsequent template
-		 * database change both occur while a base backup is being taken.
-		 * There doesn't seem to be much we can do about that except document
-		 * it as a limitation.
-		 *
-		 * Perhaps if we ever implement CREATE DATABASE in a less cheesy way,
-		 * we can avoid this.
-		 */
-		RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_FORCE | CHECKPOINT_WAIT);
-||||||| c4cc2850f4d
-		rel = table_open(TableSpaceRelationId, AccessShareLock);
-		scan = table_beginscan_catalog(rel, 0, NULL);
-		while ((tuple = heap_getnext(scan, ForwardScanDirection)) != NULL)
-		{
-			Form_pg_tablespace spaceform = (Form_pg_tablespace) GETSTRUCT(tuple);
-			Oid			srctablespace = spaceform->oid;
-			Oid			dsttablespace;
-			char	   *srcpath;
-			char	   *dstpath;
-			struct stat st;
-
-			/* No need to copy global tablespace */
-			if (srctablespace == GLOBALTABLESPACE_OID)
-				continue;
-
-			srcpath = GetDatabasePath(src_dboid, srctablespace);
-
-			if (stat(srcpath, &st) < 0 || !S_ISDIR(st.st_mode) ||
-				directory_is_empty(srcpath))
-			{
-				/* Assume we can ignore it */
-				pfree(srcpath);
-				continue;
-			}
-
-			if (srctablespace == src_deftablespace)
-				dsttablespace = dst_deftablespace;
-			else
-				dsttablespace = srctablespace;
-
-			dstpath = GetDatabasePath(dboid, dsttablespace);
-
-			/*
-			 * Copy this subdirectory to the new location
-			 *
-			 * We don't need to copy subdirectories
-			 */
-			copydir(srcpath, dstpath, false);
-
-			/* Record the filesystem change in XLOG */
-			{
-				xl_dbase_create_rec xlrec;
-
-				xlrec.db_id = dboid;
-				xlrec.tablespace_id = dsttablespace;
-				xlrec.src_db_id = src_dboid;
-				xlrec.src_tablespace_id = srctablespace;
-
-				XLogBeginInsert();
-				XLogRegisterData((char *) &xlrec, sizeof(xl_dbase_create_rec));
-
-				(void) XLogInsert(RM_DBASE_ID,
-								  XLOG_DBASE_CREATE | XLR_SPECIAL_REL_UPDATE);
-			}
-		}
-		table_endscan(scan);
-		table_close(rel, AccessShareLock);
-
-		/*
-		 * We force a checkpoint before committing.  This effectively means
-		 * that committed XLOG_DBASE_CREATE operations will never need to be
-		 * replayed (at least not in ordinary crash recovery; we still have to
-		 * make the XLOG entry for the benefit of PITR operations). This
-		 * avoids two nasty scenarios:
-		 *
-		 * #1: When PITR is off, we don't XLOG the contents of newly created
-		 * indexes; therefore the drop-and-recreate-whole-directory behavior
-		 * of DBASE_CREATE replay would lose such indexes.
-		 *
-		 * #2: Since we have to recopy the source database during DBASE_CREATE
-		 * replay, we run the risk of copying changes in it that were
-		 * committed after the original CREATE DATABASE command but before the
-		 * system crash that led to the replay.  This is at least unexpected
-		 * and at worst could lead to inconsistencies, eg duplicate table
-		 * names.
-		 *
-		 * (Both of these were real bugs in releases 8.0 through 8.0.3.)
-		 *
-		 * In PITR replay, the first of these isn't an issue, and the second
-		 * is only a risk if the CREATE DATABASE and subsequent template
-		 * database change both occur while a base backup is being taken.
-		 * There doesn't seem to be much we can do about that except document
-		 * it as a limitation.
-		 *
-		 * Perhaps if we ever implement CREATE DATABASE in a less cheesy way,
-		 * we can avoid this.
-		 */
-		RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_FORCE | CHECKPOINT_WAIT);
-=======
 		if (dbstrategy == CREATEDB_WAL_LOG)
 			CreateDatabaseUsingWalLog(src_dboid, dboid, src_deftablespace,
 									  dst_deftablespace);
 		else
 			CreateDatabaseUsingFileCopy(src_dboid, dboid, src_deftablespace,
 										dst_deftablespace);
->>>>>>> 2c7ea57e56c
 
 		/*
 		 * Close pg_database, but keep lock till commit.
@@ -1827,13 +1599,8 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	pgdbrel = table_open(DatabaseRelationId, RowExclusiveLock);
 
 	if (!get_db_info(dbname, AccessExclusiveLock, &db_id, NULL, NULL,
-<<<<<<< HEAD
-					 &db_istemplate, NULL, NULL, NULL, NULL, &defaultTablespace, NULL, NULL))
-||||||| c4cc2850f4d
-					 &db_istemplate, NULL, NULL, NULL, NULL, NULL, NULL, NULL))
-=======
-					 &db_istemplate, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL))
->>>>>>> 2c7ea57e56c
+					 &db_istemplate, NULL, NULL, NULL, &defaultTablespace,
+					 NULL, NULL, NULL, NULL, NULL))
 	{
 		if (!missing_ok)
 		{
