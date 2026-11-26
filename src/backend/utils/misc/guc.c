@@ -10119,28 +10119,17 @@ MarkGUCPrefixReserved(const char *className)
 			strncmp(className, var->name, classLen) == 0 &&
 			var->name[classLen] == GUC_QUALIFIER_SEPARATOR)
 		{
-<<<<<<< HEAD
 			if (Gp_role != GP_ROLE_EXECUTE)
 				ereport(WARNING,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 errmsg("unrecognized configuration parameter \"%s\"",
-							var->name)));
-||||||| c4cc2850f4d
-			ereport(WARNING,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 errmsg("unrecognized configuration parameter \"%s\"",
-							var->name)));
-=======
-			ereport(WARNING,
-					(errcode(ERRCODE_INVALID_NAME),
-					 errmsg("invalid configuration parameter name \"%s\", removing it",
-							var->name),
-					 errdetail("\"%s\" is now a reserved prefix.",
-							   className)));
+						(errcode(ERRCODE_INVALID_NAME),
+						 errmsg("invalid configuration parameter name \"%s\", removing it",
+								var->name),
+						 errdetail("\"%s\" is now a reserved prefix.",
+								   className)));
 			num_guc_variables--;
 			memmove(&guc_variables[i], &guc_variables[i + 1],
 					(num_guc_variables - i) * sizeof(struct config_generic *));
->>>>>>> 2c7ea57e56c
+			i--;
 		}
 	}
 
