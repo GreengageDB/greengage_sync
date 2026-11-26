@@ -51,21 +51,15 @@ ao_invalid_segment_file_test(uint8 xl_info)
 											   .segment_close = wal_segment_close),
 									NULL);
 
-	/*
-	 * The record's main data portion now hangs off the decoded record, which
-	 * XLogReaderAllocate() does not provide - decoding does. Supply one.
-	 */
-	mockrecord->record = palloc0(sizeof(DecodedXLogRecord));
-
 	if (xl_info == XLOG_APPENDONLY_INSERT)
 	{
 		xlaoinsert.target = xlaotarget;
-		XLogRecGetData(mockrecord) = (char *) &xlaoinsert;
+		mockrecord->main_data = (char *) &xlaoinsert;
 	}
 	else if (xl_info == XLOG_APPENDONLY_TRUNCATE)
 	{
 		xlaotruncate.target = xlaotarget;
-		XLogRecGetData(mockrecord) = (char *) &xlaotruncate;
+		mockrecord->main_data = (char *) &xlaotruncate;
 	}
 
 	/* mock to not find AO segment file */

@@ -18,10 +18,8 @@
 #include <sys/wait.h>
 
 #include "access/xlog.h"
-#include "cdb/cdbvars.h"
 #include "pgstat.h"
 #include "postmaster/pgarch.h"
-#include "utils/builtins.h"
 
 static bool shell_archive_configured(void);
 static bool shell_archive_file(const char *file, const char *path);
@@ -49,7 +47,6 @@ shell_archive_file(const char *file, const char *path)
 	char	   *endp;
 	const char *sp;
 	int			rc;
-	char		contentid[12];	/* sign, 10 digits and '\0' */
 
 	/*
 	 * construct the command to be executed
@@ -75,14 +72,6 @@ shell_archive_file(const char *file, const char *path)
 					/* %f: filename of source file */
 					sp++;
 					strlcpy(dp, file, endp - dp);
-					dp += strlen(dp);
-					break;
-				case 'c':
-					/* GPDB: %c: contentId of segment */
-					Assert(GpIdentity.segindex != UNINITIALIZED_GP_IDENTITY_VALUE);
-					sp++;
-					pg_ltoa(GpIdentity.segindex, contentid);
-					strlcpy(dp, contentid, endp - dp);
 					dp += strlen(dp);
 					break;
 				case '%':

@@ -1230,6 +1230,7 @@ ensureCleanShutdown(const char *argv0)
 	 * fsync here.  This makes the recovery faster, and the target data folder
 	 * is synced at the end anyway.
 	 */
+<<<<<<< HEAD
 	/*
 	 * gpdb: use postgres instead of template1, else the below postgres
 	 * instance might hang in the below scenario:
@@ -1250,7 +1251,14 @@ ensureCleanShutdown(const char *argv0)
 	 * since the commands (e.g. create database with template
 	 * DB_FOR_COMMON_ACCESS) would fail.
 	 */
+	snprintf(cmd, MAXCMDLEN, "\"%s\" --single -D \"%s\" %s < %s",
+			 exec_path, datadir_target, DB_FOR_COMMON_ACCESS, DEVNULL);
+||||||| c4cc2850f4d
+	snprintf(cmd, MAXCMDLEN, "\"%s\" --single -F -D \"%s\" template1 < \"%s\"",
+			 exec_path, datadir_target, DEVNULL);
+=======
 	postgres_cmd = createPQExpBuffer();
+>>>>>>> 2c7ea57e56c
 
 	/* path to postgres, properly quoted */
 	appendShellString(postgres_cmd, exec_path);
@@ -1267,7 +1275,7 @@ ensureCleanShutdown(const char *argv0)
 	}
 
 	/* finish with the database name, and a properly quoted redirection */
-	appendPQExpBufferStr(postgres_cmd, " " DB_FOR_COMMON_ACCESS " < ");
+	appendPQExpBufferStr(postgres_cmd, " template1 < ");
 	appendShellString(postgres_cmd, DEVNULL);
 
 	if (system(postgres_cmd->data) != 0)

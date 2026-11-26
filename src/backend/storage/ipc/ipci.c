@@ -24,11 +24,15 @@
 #include "access/subtrans.h"
 #include "access/syncscan.h"
 #include "access/twophase.h"
-#include "access/xlogprefetcher.h"
-#include "access/xlogrecovery.h"
+<<<<<<< HEAD
 #include "access/distributedlog.h"
 #include "cdb/cdblocaldistribxact.h"
 #include "cdb/cdbvars.h"
+||||||| c4cc2850f4d
+=======
+#include "access/xlogprefetcher.h"
+#include "access/xlogrecovery.h"
+>>>>>>> 2c7ea57e56c
 #include "commands/async.h"
 #include "executor/nodeShareInputScan.h"
 #include "miscadmin.h"
@@ -162,8 +166,12 @@ CalculateShmemSize(int *num_semaphores)
 	size = add_size(size, ProcGlobalShmemSize());
 	size = add_size(size, XLogPrefetchShmemSize());
 	size = add_size(size, XLOGShmemSize());
-	size = add_size(size, XLogRecoveryShmemSize());
+<<<<<<< HEAD
 	size = add_size(size, DistributedLog_ShmemSize());
+||||||| c4cc2850f4d
+=======
+	size = add_size(size, XLogRecoveryShmemSize());
+>>>>>>> 2c7ea57e56c
 	size = add_size(size, CLOGShmemSize());
 	size = add_size(size, CommitTsShmemSize());
 	size = add_size(size, SUBTRANSShmemSize());

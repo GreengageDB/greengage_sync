@@ -25,6 +25,7 @@
 #include "access/session.h"
 #include "access/sysattr.h"
 #include "access/tableam.h"
+#include "access/twophase.h"
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"
@@ -373,16 +374,6 @@ CheckMyDatabase(const char *name, bool am_superuser, bool override_allow_connect
 	char	   *ctype;
 	char	   *iculocale;
 
-	/*
-	 * Building the syscache entry flattens the row, so a datacl long enough to
-	 * have been pushed out of line is read back from pg_database's TOAST table
-	 * right here.  That needs a registered or active snapshot, and InitPostgres
-	 * takes a transaction snapshot without pushing it; push one ourselves for
-	 * as long as we hold the row, the way upstream does elsewhere for the
-	 * catalogs whose TOAST tables are reached this early.
-	 */
-	PushActiveSnapshot(GetTransactionSnapshot());
-
 	/* Fetch our pg_database row normally, via syscache */
 	tup = SearchSysCache1(DATABASEOID, ObjectIdGetDatum(MyDatabaseId));
 	if (!HeapTupleIsValid(tup))
@@ -541,8 +532,6 @@ CheckMyDatabase(const char *name, bool am_superuser, bool override_allow_connect
 	check_strxfrm_bug();
 
 	ReleaseSysCache(tup);
-
-	PopActiveSnapshot();
 }
 
 
@@ -606,9 +595,8 @@ pg_split_opts(char **argv, int *argcp, const char *optstr)
 /*
  * Initialize MaxBackends value from config options.
  *
- * This must be called after modules have had the chance to register background
- * workers in shared_preload_libraries, and before shared memory size is
- * determined.
+ * This must be called after modules have had the chance to alter GUCs in
+ * shared_preload_libraries and before shared memory size is determined.
  *
  * Note that in EXEC_BACKEND environment, the value is passed down from
  * postmaster to subprocesses via BackendParameters in SubPostmasterMain; only
@@ -618,15 +606,49 @@ pg_split_opts(char **argv, int *argcp, const char *optstr)
 void
 InitializeMaxBackends(void)
 {
-	Assert(MaxBackends == 0);
-
 	/* the extra unit accounts for the autovacuum launcher */
-	MaxBackends = MaxConnections + autovacuum_max_workers + 1 +
-		max_worker_processes + max_wal_senders;
+	SetMaxBackends(MaxConnections + autovacuum_max_workers + 1 +
+		max_worker_processes + max_wal_senders);
+}
+
+/*
+ * Safely retrieve the value of MaxBackends.
+ *
+ * Previously, MaxBackends was externally visible, but it was often used before
+ * it was initialized (e.g., in preloaded libraries' _PG_init() functions).
+ * Unfortunately, we cannot initialize MaxBackends before processing
+ * shared_preload_libraries because the libraries sometimes alter GUCs that are
+ * used to calculate its value.  Instead, we provide this function for accessing
+ * MaxBackends, and we ERROR if someone calls it before it is initialized.
+ */
+int
+GetMaxBackends(void)
+{
+	if (unlikely(!MaxBackendsInitialized))
+		elog(ERROR, "MaxBackends not yet initialized");
+
+	return MaxBackends;
+}
+
+/*
+ * Set the value of MaxBackends.
+ *
+ * This should only be used by InitializeMaxBackends() and
+ * restore_backend_variables().  If MaxBackends is already initialized or the
+ * specified value is greater than the maximum, this will ERROR.
+ */
+void
+SetMaxBackends(int max_backends)
+{
+	if (MaxBackendsInitialized)
+		elog(ERROR, "MaxBackends already initialized");
 
 	/* internal error because the values were all checked previously */
-	if (MaxBackends > MAX_BACKENDS)
+	if (max_backends > MAX_BACKENDS)
 		elog(ERROR, "too many backends configured");
+
+	MaxBackends = max_backends;
+	MaxBackendsInitialized = true;
 }
 
 /*
@@ -776,7 +798,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 
 	SharedInvalBackendInit(false);
 
-	if (MyBackendId > MaxBackends || MyBackendId <= 0)
+	if (MyBackendId > GetMaxBackends() || MyBackendId <= 0)
 		elog(FATAL, "bad backend ID: %d", MyBackendId);
 
 	/* Now that we have a BackendId, we can participate in ProcSignal */
