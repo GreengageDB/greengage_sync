@@ -604,8 +604,8 @@ extern void debug_backtrace(void);
 extern uint32 gp_backtrace(void **stackAddresses, uint32 maxStackDepth);
 extern char *gp_stacktrace(void **stackAddresses, uint32 stackDepth);
 
-/* stack base pointer accessor, defined in postgres.c */
-extern char *get_stack_base_ptr(void);
+/* stack base pointer, defined in postgres.c */
+extern char *stack_base_ptr;
 
 /* GUCs */
 extern bool gp_log_stack_trace_lines;   /* session GUC, controls line info in stack traces */
