@@ -171,10 +171,6 @@ static long max_stack_depth_bytes = 100 * 1024L;
 /*
  * Stack base pointer -- initialized by PostmasterMain and inherited by
  * subprocesses (but see also InitPostmasterChild).
- *
- * GG: static, as upstream carries it; elog.c's stack-trace printer
- * reads the pointer through get_stack_base_ptr() to tell where the
- * stack ends.
  */
 static char *stack_base_ptr = NULL;
 
@@ -1261,7 +1257,6 @@ exec_mpp_query(const char *query_string,
 		plan->commandType != CMD_INSERT &&
 		plan->commandType != CMD_UPDATE &&
 		plan->commandType != CMD_DELETE &&
-		plan->commandType != CMD_MERGE &&
 		plan->commandType != CMD_UTILITY)
 		elog(ERROR, "MPPEXEC: received non-DML Plan");
 	commandType = plan->commandType;
@@ -1345,8 +1340,6 @@ exec_mpp_query(const char *query_string,
 			commandTag = CMDTAG_MPPEXEC_UPDATE;
 		else if (commandType == CMD_DELETE)
 			commandTag = CMDTAG_MPPEXEC_DELETE;
-		else if (commandType == CMD_MERGE)
-			commandTag = CMDTAG_MPPEXEC_MERGE;
 		else
 			commandTag = CMDTAG_MPPEXEC;
 
@@ -4371,19 +4364,6 @@ restore_stack_base(pg_stack_base_t base)
 #else
 	stack_base_ptr = base;
 #endif
-}
-
-/*
- * get_stack_base_ptr: return the current stack base reference point
- *
- * This is currently only used by the stack-trace printer in elog.c,
- * which must know where the stack ends in order to bound its walk of
- * the frame pointer chain.
- */
-char *
-get_stack_base_ptr(void)
-{
-	return stack_base_ptr;
 }
 
 /*
