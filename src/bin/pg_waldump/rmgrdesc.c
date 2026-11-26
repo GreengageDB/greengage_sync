@@ -32,11 +32,17 @@
 #include "storage/standbydefs.h"
 #include "utils/relmapper.h"
 
+<<<<<<< HEAD
 #include "access/bitmap_xlog.h"
 #include "access/distributedlog.h"
 #include "cdb/cdbappendonlyxlog.h"
 
+#define PG_RMGR(symname,name,redo,desc,identify,startup,cleanup,mask) \
+||||||| c4cc2850f4d
+#define PG_RMGR(symname,name,redo,desc,identify,startup,cleanup,mask) \
+=======
 #define PG_RMGR(symname,name,redo,desc,identify,startup,cleanup,mask,decode) \
+>>>>>>> 2c7ea57e56c
 	{ name, desc, identify},
 
 static const RmgrDescData RmgrDescTable[RM_N_BUILTIN_IDS] = {

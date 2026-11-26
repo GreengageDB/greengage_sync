@@ -24,7 +24,6 @@
 #include "access/heapam.h"
 #include "access/reloptions.h"
 #include "access/relscan.h"
-#include "access/xloginsert.h"
 #include "miscadmin.h"
 #include "storage/bufmgr.h"
 

@@ -165,10 +165,16 @@ static void free_readfile(char **optlines);
 static pgpid_t start_postmaster(void);
 static void read_post_opts(void);
 
+<<<<<<< HEAD
+static bool is_secondary_instance(const char *pg_data);
+static WaitPMResult wait_for_postmaster(pgpid_t pm_pid, bool do_checkpoint);
+||||||| c4cc2850f4d
+static WaitPMResult wait_for_postmaster(pgpid_t pm_pid, bool do_checkpoint);
+=======
 static WaitPMResult wait_for_postmaster_start(pgpid_t pm_pid, bool do_checkpoint);
 static bool wait_for_postmaster_stop(void);
 static bool wait_for_postmaster_promote(void);
-static bool is_secondary_instance(const char *pg_data);
+>>>>>>> 2c7ea57e56c
 static bool postmaster_is_alive(pid_t pid);
 
 #if defined(HAVE_GETRLIMIT) && defined(RLIMIT_CORE)
