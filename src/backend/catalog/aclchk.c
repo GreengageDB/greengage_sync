@@ -631,11 +631,17 @@ ExecuteGrantStmt(GrantStmt *stmt)
 	{
 		GrantStmt *tmpStmt = copyObject(stmt);
 
+		/*
+		 * GGDB: GRANT ... ON PARAMETER may have created pg_parameter_acl rows
+		 * in objectNamesToOids().  The QEs create the same rows when they
+		 * re-execute the statement and must be handed the OIDs the QD chose
+		 * for them.  For every other object type the list is empty.
+		 */
 		CdbDispatchUtilityStatement((Node *) tmpStmt,
 									DF_CANCEL_ON_ERROR|
 									DF_WITH_SNAPSHOT|
 									DF_NEED_TWO_PHASE,
-									NIL,
+									GetAssignedOidsForDispatch(),
 									NULL);
 	}
 }
