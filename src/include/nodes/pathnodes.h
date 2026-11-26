@@ -2283,7 +2283,6 @@ typedef struct LockRowsPath
 } LockRowsPath;
 
 /*
-<<<<<<< HEAD
  * SplitUpdatePath
  */
 typedef struct SplitUpdatePath
@@ -2297,12 +2296,7 @@ typedef struct SplitUpdatePath
 } SplitUpdatePath;
 
 /*
- * ModifyTablePath represents performing INSERT/UPDATE/DELETE modifications
-||||||| c4cc2850f4d
- * ModifyTablePath represents performing INSERT/UPDATE/DELETE modifications
-=======
  * ModifyTablePath represents performing INSERT/UPDATE/DELETE/MERGE
->>>>>>> 2c7ea57e56c
  *
  * We represent most things that will be in the ModifyTable plan node
  * literally, except we have a child Path not Plan.  But analysis of the

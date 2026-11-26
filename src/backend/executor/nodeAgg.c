@@ -551,16 +551,8 @@ initialize_phase(AggState *aggstate, int newphase)
 												  sortnode->sortOperators,
 												  sortnode->collations,
 												  sortnode->nullsFirst,
-<<<<<<< HEAD
 												  PlanStateOperatorMemKB((PlanState *) aggstate),
-												  NULL, false);
-||||||| c4cc2850f4d
-												  work_mem,
-												  NULL, false);
-=======
-												  work_mem,
 												  NULL, TUPLESORT_NONE);
->>>>>>> 2c7ea57e56c
 	}
 
 	aggstate->current_phase = newphase;
@@ -637,13 +629,7 @@ initialize_aggregate(AggState *aggstate, AggStatePerTrans pertrans,
 									  pertrans->sortOperators[0],
 									  pertrans->sortCollations[0],
 									  pertrans->sortNullsFirst[0],
-<<<<<<< HEAD
-									  PlanStateOperatorMemKB((PlanState *) aggstate), NULL, false);
-||||||| c4cc2850f4d
-									  work_mem, NULL, false);
-=======
-									  work_mem, NULL, TUPLESORT_NONE);
->>>>>>> 2c7ea57e56c
+									  PlanStateOperatorMemKB((PlanState *) aggstate), NULL, TUPLESORT_NONE);
 		}
 		else
 			pertrans->sortstates[aggstate->current_set] =
@@ -653,13 +639,7 @@ initialize_aggregate(AggState *aggstate, AggStatePerTrans pertrans,
 									 pertrans->sortOperators,
 									 pertrans->sortCollations,
 									 pertrans->sortNullsFirst,
-<<<<<<< HEAD
-									 PlanStateOperatorMemKB((PlanState *) aggstate), NULL, false);
-||||||| c4cc2850f4d
-									 work_mem, NULL, false);
-=======
-									 work_mem, NULL, TUPLESORT_NONE);
->>>>>>> 2c7ea57e56c
+									 PlanStateOperatorMemKB((PlanState *) aggstate), NULL, TUPLESORT_NONE);
 	}
 
 	/*
@@ -1970,7 +1950,6 @@ hash_agg_enter_spill_mode(AggState *aggstate)
 				ereport(NOTICE, (errmsg("hashagg: Use temp tablespace")));
 			else
 				ereport(NOTICE, (errmsg("hashagg: Unexpected prefix of the tablespace path")));
-
 		}
 #endif
 
@@ -4064,7 +4043,7 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 			/*
 			 * If this aggregation is performing state combines, then instead
 			 * of using the transition function, we'll use the combine
-			 * function.
+			 * function
 			 */
 			if (DO_AGGSPLIT_COMBINE(aggref->aggsplit))
 			{
@@ -4103,7 +4082,8 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 			 * input), so the node-level split is not authoritative; using it
 			 * here would build the combining aggref through the plain-transfn
 			 * path and then reject it in the strict/NULL-initval input-type
-			 * check below.
+			 * check below (e.g. sum(int4): combinefn fed as int4 vs int8
+			 * transtype).
 			 */
 			if (DO_AGGSPLIT_COMBINE(aggref->aggsplit))
 			{

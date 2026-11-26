@@ -932,6 +932,8 @@ CREATE TABLE test_jsonb_constraints (
 	CONSTRAINT test_jsonb_constraint6
 		CHECK (JSON_EXISTS(js::jsonb, 'strict $.a' RETURNING int TRUE ON ERROR) < 2)
 );
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'js' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 \d test_jsonb_constraints
                                           Table "public.test_jsonb_constraints"
  Column |  Type   | Collation | Nullable |                                    Default                                     
@@ -946,6 +948,7 @@ Check constraints:
     "test_jsonb_constraint4" CHECK (JSON_QUERY(js::jsonb, '$."a"' RETURNING jsonb WITH CONDITIONAL WRAPPER EMPTY OBJECT ON ERROR) < '[10]'::jsonb)
     "test_jsonb_constraint5" CHECK (JSON_QUERY(js::jsonb, '$."a"' RETURNING character(5) OMIT QUOTES EMPTY ARRAY ON EMPTY) > ('a'::bpchar COLLATE "C"))
     "test_jsonb_constraint6" CHECK (JSON_EXISTS(js::jsonb, 'strict $."a"' RETURNING integer TRUE ON ERROR) < 2)
+Distributed by: (js)
 
 SELECT check_clause
 FROM information_schema.check_constraints
@@ -971,29 +974,31 @@ ORDER BY 1;
 (1 row)
 
 INSERT INTO test_jsonb_constraints VALUES ('', 1);
-ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint1"
+ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint1"  (seg2 172.17.0.4:7004 pid=1388429)
 DETAIL:  Failing row contains (, 1, [1, 2]).
 INSERT INTO test_jsonb_constraints VALUES ('1', 1);
-ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint2"
+ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint2"  (seg0 172.17.0.4:7002 pid=1388427)
 DETAIL:  Failing row contains (1, 1, [1, 2]).
 INSERT INTO test_jsonb_constraints VALUES ('[]');
-ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint2"
+ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint2"  (seg0 172.17.0.4:7002 pid=1388427)
 DETAIL:  Failing row contains ([], null, [1, 2]).
 INSERT INTO test_jsonb_constraints VALUES ('{"b": 1}', 1);
-ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint2"
+ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint2"  (seg2 172.17.0.4:7004 pid=1388429)
 DETAIL:  Failing row contains ({"b": 1}, 1, [1, 2]).
 INSERT INTO test_jsonb_constraints VALUES ('{"a": 1}', 1);
-ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint3"
+ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint3"  (seg1 172.17.0.4:7003 pid=1388431)
 DETAIL:  Failing row contains ({"a": 1}, 1, [1, 2]).
 INSERT INTO test_jsonb_constraints VALUES ('{"a": 7}', 1);
-ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint5"
+ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint5"  (seg1 172.17.0.4:7003 pid=1388431)
 DETAIL:  Failing row contains ({"a": 7}, 1, [1, 2]).
 INSERT INTO test_jsonb_constraints VALUES ('{"a": 10}', 1);
-ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint4"
+ERROR:  new row for relation "test_jsonb_constraints" violates check constraint "test_jsonb_constraint4"  (seg0 172.17.0.4:7002 pid=1388427)
 DETAIL:  Failing row contains ({"a": 10}, 1, [1, 2]).
 DROP TABLE test_jsonb_constraints;
 -- Test mutabilily od query functions
 CREATE TABLE test_jsonb_mutability(js jsonb);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'js' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE INDEX ON test_jsonb_mutability (JSON_QUERY(js, '$'));
 CREATE INDEX ON test_jsonb_mutability (JSON_QUERY(js, '$.a[0]'));
 CREATE INDEX ON test_jsonb_mutability (JSON_QUERY(js, '$.datetime()'));
@@ -1251,7 +1256,9 @@ EXPLAIN (COSTS OFF, VERBOSE) SELECT * FROM jsonb_table_view;
  Table Function Scan on "json_table"
    Output: "json_table".id, "json_table".id2, "json_table"."int", "json_table".text, "json_table"."char(4)", "json_table".bool, "json_table"."numeric", "json_table".domain, "json_table".js, "json_table".jb, "json_table".jst, "json_table".jsc, "json_table".jsv, "json_table".jsb, "json_table".jsbq, "json_table".aaa, "json_table".aaa1, "json_table".exists1, "json_table".exists2, "json_table".exists3, "json_table".js2, "json_table".jsb2w, "json_table".jsb2q, "json_table".ia, "json_table".ta, "json_table".jba, "json_table".a1, "json_table".b1, "json_table".a11, "json_table".a21, "json_table".a22
    Table Function Call: JSON_TABLE('null'::jsonb, '$[*]' AS json_table_path_1 PASSING 3 AS a, '"foo"'::jsonb AS "b c" COLUMNS (id FOR ORDINALITY, id2 FOR ORDINALITY, "int" integer PATH '$', text text PATH '$', "char(4)" character(4) PATH '$', bool boolean PATH '$', "numeric" numeric PATH '$', domain jsonb_test_domain PATH '$', js json PATH '$', jb jsonb PATH '$', jst text FORMAT JSON PATH '$', jsc character(4) FORMAT JSON PATH '$', jsv character varying(4) FORMAT JSON PATH '$', jsb jsonb PATH '$', jsbq jsonb PATH '$' OMIT QUOTES, aaa integer PATH '$."aaa"', aaa1 integer PATH '$."aaa"', exists1 boolean EXISTS PATH '$."aaa"', exists2 integer EXISTS PATH '$."aaa"' TRUE ON ERROR, exists3 text EXISTS PATH 'strict $."aaa"' UNKNOWN ON ERROR, js2 json PATH '$', jsb2w jsonb PATH '$' WITH UNCONDITIONAL WRAPPER, jsb2q jsonb PATH '$' OMIT QUOTES, ia integer[] PATH '$', ta text[] PATH '$', jba jsonb[] PATH '$', NESTED PATH '$[1]' AS p1 COLUMNS (a1 integer PATH '$."a1"', b1 text PATH '$."b1"', NESTED PATH '$[*]' AS "p1 1" COLUMNS (a11 text PATH '$."a11"')), NESTED PATH '$[2]' AS p2 COLUMNS ( NESTED PATH '$[*]' AS "p2:1" COLUMNS (a21 text PATH '$."a21"'), NESTED PATH '$[*]' AS p22 COLUMNS (a22 text PATH '$."a22"'))) PLAN (json_table_path_1 OUTER ((p1 OUTER "p1 1") UNION (p2 OUTER ("p2:1" UNION p22)))))
-(3 rows)
+ Optimizer: Postgres query optimizer
+ Settings: optimizer = 'off'
+(5 rows)
 
 DROP VIEW jsonb_table_view;
 DROP DOMAIN jsonb_test_domain;
@@ -1609,6 +1616,8 @@ LINE 2:  jsonb 'null', 'strict $[*]' -- without root path name
 DETAIL:  JSON_TABLE columns must contain explicit AS pathname specification if explicit PLAN clause is used
 -- JSON_TABLE: plan execution
 CREATE TEMP TABLE jsonb_table_test (js jsonb);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'js' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 INSERT INTO jsonb_table_test
 VALUES (
 	'[
@@ -2100,11 +2109,14 @@ set parallel_leader_participation = off;
 -- Should be non-parallel due to subtransactions
 EXPLAIN (COSTS OFF)
 SELECT sum(JSON_VALUE(js, '$' RETURNING numeric)) FROM test_parallel_jsonb_value;
-                 QUERY PLAN                  
----------------------------------------------
- Aggregate
-   ->  Seq Scan on test_parallel_jsonb_value
-(2 rows)
+                       QUERY PLAN                        
+---------------------------------------------------------
+ Finalize Aggregate
+   ->  Gather Motion 3:1  (slice1; segments: 3)
+         ->  Partial Aggregate
+               ->  Seq Scan on test_parallel_jsonb_value
+ Optimizer: Postgres query optimizer
+(5 rows)
 
 SELECT sum(JSON_VALUE(js, '$' RETURNING numeric)) FROM test_parallel_jsonb_value;
     sum     
@@ -2115,13 +2127,14 @@ SELECT sum(JSON_VALUE(js, '$' RETURNING numeric)) FROM test_parallel_jsonb_value
 -- Should be parallel
 EXPLAIN (COSTS OFF)
 SELECT sum(JSON_VALUE(js, '$' RETURNING numeric ERROR ON ERROR)) FROM test_parallel_jsonb_value;
-                            QUERY PLAN                            
-------------------------------------------------------------------
+                       QUERY PLAN                        
+---------------------------------------------------------
  Finalize Aggregate
    ->  Gather
          Workers Planned: 4
          ->  Partial Aggregate
-               ->  Parallel Seq Scan on test_parallel_jsonb_value
+               ->  Seq Scan on test_parallel_jsonb_value
+ Optimizer: Postgres query optimizer
 (5 rows)
 
 SELECT sum(JSON_VALUE(js, '$' RETURNING numeric ERROR ON ERROR)) FROM test_parallel_jsonb_value;

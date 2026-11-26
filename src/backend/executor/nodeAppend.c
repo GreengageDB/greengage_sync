@@ -586,17 +586,12 @@ choose_next_subplan_locally(AppendState *node)
 			Append	   *plan = (Append *) node->ps.plan;
 
 			node->as_valid_subplans =
-<<<<<<< HEAD
 				ExecFindMatchingSubPlans(node->as_prune_state,
 										 node->ps.state,
 										 list_length(plan->appendplans),
-										 plan->join_prune_paramids);
+										 plan->join_prune_paramids,
+										 false);
 		}
-||||||| c4cc2850f4d
-				ExecFindMatchingSubPlans(node->as_prune_state);
-=======
-				ExecFindMatchingSubPlans(node->as_prune_state, false);
->>>>>>> 2c7ea57e56c
 
 		whichplan = -1;
 	}
@@ -663,16 +658,11 @@ choose_next_subplan_for_leader(AppendState *node)
 			Append	   *plan = (Append *) node->ps.plan;
 
 			node->as_valid_subplans =
-<<<<<<< HEAD
 				ExecFindMatchingSubPlans(node->as_prune_state,
 										 node->ps.state,
 										 list_length(plan->appendplans),
-										 plan->join_prune_paramids);
-||||||| c4cc2850f4d
-				ExecFindMatchingSubPlans(node->as_prune_state);
-=======
-				ExecFindMatchingSubPlans(node->as_prune_state, false);
->>>>>>> 2c7ea57e56c
+										 plan->join_prune_paramids,
+										 false);
 
 			/*
 			 * Mark each invalid plan as finished to allow the loop below to
@@ -749,16 +739,11 @@ choose_next_subplan_for_worker(AppendState *node)
 		Append	   *plan = (Append *) node->ps.plan;
 
 		node->as_valid_subplans =
-<<<<<<< HEAD
 			ExecFindMatchingSubPlans(node->as_prune_state,
 									 node->ps.state,
 									 list_length(plan->appendplans),
-									 plan->join_prune_paramids);
-||||||| c4cc2850f4d
-			ExecFindMatchingSubPlans(node->as_prune_state);
-=======
-			ExecFindMatchingSubPlans(node->as_prune_state, false);
->>>>>>> 2c7ea57e56c
+									 plan->join_prune_paramids,
+									 false);
 		mark_invalid_subplans_as_finished(node);
 	}
 
@@ -911,16 +896,11 @@ ExecAppendAsyncBegin(AppendState *node)
 		Append	   *plan = (Append *) node->ps.plan;
 
 		node->as_valid_subplans =
-<<<<<<< HEAD
 			ExecFindMatchingSubPlans(node->as_prune_state,
 									 node->ps.state,
 									 list_length(plan->appendplans),
-									 plan->join_prune_paramids);
-||||||| c4cc2850f4d
-			ExecFindMatchingSubPlans(node->as_prune_state);
-=======
-			ExecFindMatchingSubPlans(node->as_prune_state, false);
->>>>>>> 2c7ea57e56c
+									 plan->join_prune_paramids,
+									 false);
 
 		classify_matching_subplans(node);
 	}
