@@ -67,6 +67,7 @@ test: filter gpctas gpdist gpdist_opclasses gpdist_legacy_opclasses matrix subli
 # below test(s) inject faults so each of them need to be in a separate group
 test: explain_analyze
 test: guc_gp
+test: parameter_acl_gp
 test: toast
 test: misc_jiras
 test: statement_mem_for_windowagg
