@@ -289,7 +289,6 @@ TwoPhaseShmemInit(void)
 	{
 		GlobalTransaction gxacts;
 		int			i;
-		int			max_backends = GetMaxBackends();
 
 		Assert(!found);
 		TwoPhaseState->freeGXacts = NULL;
