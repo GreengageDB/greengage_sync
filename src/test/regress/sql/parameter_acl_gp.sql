@@ -95,6 +95,27 @@ SET log_planner_stats = on;
 RESET log_duration;
 RESET SESSION AUTHORIZATION;
 
+-- A role that logs in for real, so that the segments see an ordinary user
+-- too.  The session has no gangs yet when the parameter is set; the ones the
+-- join brings up have to learn the value from their startup options.
+\! echo "local all regress_paracl_login trust" >> $COORDINATOR_DATA_DIRECTORY/pg_hba.conf
+SELECT pg_reload_conf();
+CREATE ROLE regress_paracl_login LOGIN;
+GRANT SET ON PARAMETER log_duration TO regress_paracl_login;
+\set paracl_superuser :USER
+\c - regress_paracl_login
+SET log_duration = on;
+SELECT count(*) AS rows_joined_with_it_on
+FROM (SELECT b FROM parameter_acl_gp_t
+      WHERE parameter_acl_gp_setting('log_duration') = 'on') x
+     JOIN parameter_acl_gp_t y ON x.b = y.a
+WHERE parameter_acl_gp_setting('log_duration') = 'on';
+\c - :paracl_superuser
+\! sed -i '/regress_paracl_login/d' $COORDINATOR_DATA_DIRECTORY/pg_hba.conf
+SELECT pg_reload_conf();
+DROP OWNED BY regress_paracl_login;
+DROP ROLE regress_paracl_login;
+
 -- Revoking the last privilege removes the row everywhere
 REVOKE SET ON PARAMETER log_statement_stats FROM regress_paracl_u2;
 -- Revoking what was never granted does not create one
