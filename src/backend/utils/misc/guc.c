@@ -1254,34 +1254,10 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	{
-<<<<<<< HEAD
 		{"geqo", PGC_USERSET, DEFUNCT_OPTIONS,
 			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
             NULL,
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-||||||| c4cc2850f4d
-		{"geqo", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("Enables genetic query optimization."),
-			gettext_noop("This algorithm attempts to do planning without "
-						 "exhaustive searching."),
-			GUC_EXPLAIN
-=======
-		{"enable_group_by_reordering", PGC_USERSET, QUERY_TUNING_METHOD,
-			gettext_noop("enable reordering of GROUP BY key"),
-			NULL,
-			GUC_EXPLAIN
-		},
-		&enable_group_by_reordering,
-		true,
-		NULL, NULL, NULL
-	},
-	{
-		{"geqo", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("Enables genetic query optimization."),
-			gettext_noop("This algorithm attempts to do planning without "
-						 "exhaustive searching."),
-			GUC_EXPLAIN
->>>>>>> 2c7ea57e56c
 		},
 		&defunct_bool,
 		false,
@@ -3862,13 +3838,6 @@ static struct config_real ConfigureNamesReal[] =
 	},
 
 	{
-<<<<<<< HEAD
-		{"geqo_selection_bias", PGC_USERSET, DEFUNCT_OPTIONS,
-			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
-||||||| c4cc2850f4d
-		{"geqo_selection_bias", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("GEQO: selective pressure within the population."),
-=======
 		{"recursive_worktable_factor", PGC_USERSET, QUERY_TUNING_OTHER,
 			gettext_noop("Sets the planner's estimate of the average size "
 						 "of a recursive query's working table."),
@@ -3881,9 +3850,8 @@ static struct config_real ConfigureNamesReal[] =
 	},
 
 	{
-		{"geqo_selection_bias", PGC_USERSET, QUERY_TUNING_GEQO,
-			gettext_noop("GEQO: selective pressure within the population."),
->>>>>>> 2c7ea57e56c
+		{"geqo_selection_bias", PGC_USERSET, DEFUNCT_OPTIONS,
+			gettext_noop("Unused. Syntax check only for PostgreSQL compatibility."),
 			NULL,
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
@@ -10154,28 +10122,17 @@ MarkGUCPrefixReserved(const char *className)
 			strncmp(className, var->name, classLen) == 0 &&
 			var->name[classLen] == GUC_QUALIFIER_SEPARATOR)
 		{
-<<<<<<< HEAD
 			if (Gp_role != GP_ROLE_EXECUTE)
 				ereport(WARNING,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 errmsg("unrecognized configuration parameter \"%s\"",
-							var->name)));
-||||||| c4cc2850f4d
-			ereport(WARNING,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 errmsg("unrecognized configuration parameter \"%s\"",
-							var->name)));
-=======
-			ereport(WARNING,
-					(errcode(ERRCODE_INVALID_NAME),
-					 errmsg("invalid configuration parameter name \"%s\", removing it",
-							var->name),
-					 errdetail("\"%s\" is now a reserved prefix.",
-							   className)));
+						(errcode(ERRCODE_INVALID_NAME),
+						 errmsg("invalid configuration parameter name \"%s\", removing it",
+								var->name),
+						 errdetail("\"%s\" is now a reserved prefix.",
+								   className)));
 			num_guc_variables--;
 			memmove(&guc_variables[i], &guc_variables[i + 1],
 					(num_guc_variables - i) * sizeof(struct config_generic *));
->>>>>>> 2c7ea57e56c
+			i--;
 		}
 	}
 
