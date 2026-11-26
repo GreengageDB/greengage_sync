@@ -7709,6 +7709,8 @@ XLogPutNextOid(Oid nextOid)
 	 */
 }
 
+/* New functions added for WAL replication */
+
 /*
  * Write a NEXTRELFILENODE log record similar to XLogPutNextOid
  */
