@@ -391,7 +391,6 @@ ExecRefreshMatView(RefreshMatViewStmt *stmt, const char *queryString,
 		 * details.  Then comment out the below codes on the dispatcher side
 		 * and leave the current comment to avoid futher upstream merge issues.
 		 * The pgstat is updated in function transientrel_shutdown on QE side.
-		 * This related to issue: https://github.com/greenplum-db/gpdb/issues/11375
 		 */
 		// pgstat_count_truncate(matviewRel);
 		// if (!stmt->skipData)
@@ -688,9 +687,8 @@ transientrel_shutdown(DestReceiver *self)
 		/*
 		 * In GPDB, we should count the pgstat on segments and union them on
 		 * QD, so both the segments and coordinator will have pgstat for this
-		 * relation. See pgstat_combine_from_qe(pgstat.c) for more details.
+		 * relation. See pgstat_combine_from_qe(pgstat_relation.c) for more details.
 		 * Here each QE will count it's pgstat and report to QD if needed.
-		 * This related to issue: https://github.com/greenplum-db/gpdb/issues/11375
 		 */
 		pgstat_count_truncate(matviewRel);
 		if (!myState->skipData)
