@@ -10,9 +10,6 @@
 
 #define ERROR_MESSAGE_MAX_LEN 255
 
-#undef DLSUFFIX
-#define DLSUFFIX "To compile dfmgr.c we need to define this"
-
 /* Redefine errdetail and errmsg to capture the error detail for later comparison */
 #define errdetail errdetail_internal_impl
 #define errdetail_internal errdetail_internal_impl
