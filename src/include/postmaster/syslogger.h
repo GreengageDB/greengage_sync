@@ -87,7 +87,6 @@ typedef struct
 
 #define PIPE_HEADER_SIZE offsetof(PipeProtoChunk, data)
 
-<<<<<<< HEAD
 typedef struct CSVChunkStr
 {
     const PipeProtoChunk *chunk;
@@ -163,20 +162,6 @@ typedef struct
 	/* The depth of stack frame addresses that are stored after this structure */
 	int32 frame_depth;
 } GpSegvErrorData;
-||||||| c4cc2850f4d
-/* flag bits for PipeProtoHeader->flags */
-#define PIPE_PROTO_IS_LAST	0x01	/* last chunk of message? */
-/* log destinations */
-#define PIPE_PROTO_DEST_STDERR	0x10
-#define PIPE_PROTO_DEST_CSVLOG	0x20
-=======
-/* flag bits for PipeProtoHeader->flags */
-#define PIPE_PROTO_IS_LAST	0x01	/* last chunk of message? */
-/* log destinations */
-#define PIPE_PROTO_DEST_STDERR	0x10
-#define PIPE_PROTO_DEST_CSVLOG	0x20
-#define PIPE_PROTO_DEST_JSONLOG	0x40
->>>>>>> 2c7ea57e56c
 
 /* GUC options */
 extern bool Logging_collector;
