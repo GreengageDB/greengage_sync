@@ -1385,7 +1385,6 @@ select distinct q1 from
    union all
    select distinct * from int8_tbl i82) ss
 where q2 = q2;
-<<<<<<< HEAD
                            QUERY PLAN                           
 ----------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
@@ -1410,43 +1409,6 @@ where q2 = q2;
                                        Filter: (q2 IS NOT NULL)
  Optimizer: Postgres query optimizer
 (21 rows)
-||||||| c4cc2850f4d
-                        QUERY PLAN                        
-----------------------------------------------------------
- Unique
-   ->  Merge Append
-         Sort Key: "*SELECT* 1".q1
-         ->  Subquery Scan on "*SELECT* 1"
-               ->  Unique
-                     ->  Sort
-                           Sort Key: i81.q1, i81.q2
-                           ->  Seq Scan on int8_tbl i81
-                                 Filter: (q2 IS NOT NULL)
-         ->  Subquery Scan on "*SELECT* 2"
-               ->  Unique
-                     ->  Sort
-                           Sort Key: i82.q1, i82.q2
-                           ->  Seq Scan on int8_tbl i82
-                                 Filter: (q2 IS NOT NULL)
-(15 rows)
-=======
-                     QUERY PLAN                     
-----------------------------------------------------
- HashAggregate
-   Group Key: "*SELECT* 1".q1
-   ->  Append
-         ->  Subquery Scan on "*SELECT* 1"
-               ->  HashAggregate
-                     Group Key: i81.q1, i81.q2
-                     ->  Seq Scan on int8_tbl i81
-                           Filter: (q2 IS NOT NULL)
-         ->  Subquery Scan on "*SELECT* 2"
-               ->  HashAggregate
-                     Group Key: i82.q1, i82.q2
-                     ->  Seq Scan on int8_tbl i82
-                           Filter: (q2 IS NOT NULL)
-(13 rows)
->>>>>>> 2c7ea57e56c
 
 select distinct q1 from
   (select distinct * from int8_tbl i81
@@ -1465,7 +1427,6 @@ select distinct q1 from
    union all
    select distinct * from int8_tbl i82) ss
 where -q1 = q2;
-<<<<<<< HEAD
                           QUERY PLAN                          
 --------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
@@ -1490,43 +1451,6 @@ where -q1 = q2;
                                        Filter: ((- q1) = q2)
  Optimizer: Postgres query optimizer
 (21 rows)
-||||||| c4cc2850f4d
-                       QUERY PLAN                       
---------------------------------------------------------
- Unique
-   ->  Merge Append
-         Sort Key: "*SELECT* 1".q1
-         ->  Subquery Scan on "*SELECT* 1"
-               ->  Unique
-                     ->  Sort
-                           Sort Key: i81.q1, i81.q2
-                           ->  Seq Scan on int8_tbl i81
-                                 Filter: ((- q1) = q2)
-         ->  Subquery Scan on "*SELECT* 2"
-               ->  Unique
-                     ->  Sort
-                           Sort Key: i82.q1, i82.q2
-                           ->  Seq Scan on int8_tbl i82
-                                 Filter: ((- q1) = q2)
-(15 rows)
-=======
-                    QUERY PLAN                    
---------------------------------------------------
- HashAggregate
-   Group Key: "*SELECT* 1".q1
-   ->  Append
-         ->  Subquery Scan on "*SELECT* 1"
-               ->  HashAggregate
-                     Group Key: i81.q1, i81.q2
-                     ->  Seq Scan on int8_tbl i81
-                           Filter: ((- q1) = q2)
-         ->  Subquery Scan on "*SELECT* 2"
-               ->  HashAggregate
-                     Group Key: i82.q1, i82.q2
-                     ->  Seq Scan on int8_tbl i82
-                           Filter: ((- q1) = q2)
-(13 rows)
->>>>>>> 2c7ea57e56c
 
 select distinct q1 from
   (select distinct * from int8_tbl i81
