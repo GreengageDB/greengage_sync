@@ -252,15 +252,9 @@ static void ProcessStandbyMessage(void);
 static void ProcessStandbyReplyMessage(void);
 static void ProcessStandbyHSFeedbackMessage(void);
 static void ProcessRepliesIfAny(void);
-<<<<<<< HEAD
 static const char *WalSndGetStateString(WalSndState state);
-static void WalSndKeepalive(bool requestReply);
-||||||| c4cc2850f4d
-static void WalSndKeepalive(bool requestReply);
-=======
 static void ProcessPendingWrites(void);
 static void WalSndKeepalive(bool requestReply, XLogRecPtr writePtr);
->>>>>>> 2c7ea57e56c
 static void WalSndKeepaliveIfNecessary(void);
 static void WalSndCheckTimeOut(void);
 static long WalSndComputeSleeptime(TimestampTz now);
