@@ -55,6 +55,7 @@ DEPENDENCY_EXCLUSION = [
     'pg_default_acl',
     'pg_enum',
     'pg_namespace',
+    'pg_parameter_acl',
     'pg_resgroup',
     'pg_resgroupcapability',
     'pg_resourcetype',
