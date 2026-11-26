@@ -27,6 +27,7 @@
 #include "access/multixact.h"
 #include "access/nbtree.h"
 #include "access/xact.h"
+#include "access/xloginsert.h"
 #include "access/transam.h"
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
