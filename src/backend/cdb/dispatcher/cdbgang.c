@@ -43,6 +43,7 @@
 #include "cdb/cdbconn.h"		/* cdbconn_* */
 #include "libpq/libpq-be.h"
 
+#include "utils/acl.h"
 #include "utils/guc_tables.h"
 
 #include "funcapi.h"
@@ -394,6 +395,37 @@ addOneOption(StringInfo option, StringInfo diff, struct config_generic *guc)
 }
 
 /*
+ * GGDB: Is this a superuser-only parameter that the session of an ordinary
+ * user has a value of its own for, by a privilege granted on the parameter?
+ *
+ * A role granted SET on such a parameter can change it on the QD, and then
+ * the QEs have to get it in their startup options like any other synchronized
+ * parameter.  A QE applies the options as the authenticated user and makes
+ * the very same check in set_config_option(), refusing the connection if it
+ * does not pass.  Hence the parameter is sent only if that user, whoever the
+ * current one is, holds the privilege, and only if there is something to
+ * send: a value that comes from the configuration files or from ALTER ROLE or
+ * DATABASE the QE arrives at by itself.
+ *
+ * The check reads the catalog, which is not possible when a gang is
+ * re-created outside a transaction, e.g. while the second phase of a commit
+ * is retried.
+ */
+static bool
+isGrantedSusetOption(struct config_generic *guc)
+{
+	if (guc->context != PGC_SUSET)
+		return false;
+
+	if (guc->source < PGC_S_CLIENT && guc->reset_source < PGC_S_CLIENT)
+		return false;
+
+	return IsTransactionState() &&
+		pg_parameter_aclcheck(guc->name, GetAuthenticatedUserId(),
+							  ACL_SET) == ACLCHECK_OK;
+}
+
+/*
  * Add GUCs to option/diff_options string.
  *
  * `options` is a list of reset_val of the GUCs, not the GUC's current value.
@@ -442,7 +474,8 @@ makeOptions(char **options, char **diff_options)
 		if ((guc->flags & GUC_GPDB_NEED_SYNC) &&
 			(guc->context == PGC_USERSET ||
 			 guc->context == PGC_BACKEND ||
-			 IsAuthenticatedUserSuperUser()))
+			 IsAuthenticatedUserSuperUser() ||
+			 isGrantedSusetOption(guc)))
 			addOneOption(&optionsStr, &diffStr, guc);
 	}
 

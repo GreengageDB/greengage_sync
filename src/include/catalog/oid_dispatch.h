@@ -109,6 +109,8 @@ extern Oid GetNewOidForPublicationRel(Relation relation, Oid indexId, AttrNumber
 									  Oid prrelid, Oid prpubid);
 extern Oid GetNewOidForPublicationNamespace(Relation relation, Oid indexId, AttrNumber oidcolumn,
 											Oid pnnspid, Oid pnpubid);
+extern Oid GetNewOidForParameterAcl(Relation relation, Oid indexId, AttrNumber oidcolumn,
+									char *parname);
 
 extern char *GetPreassignedIndexNameForChildIndex(Oid parentIdxOid, Oid childRelId);
 extern void RememberPreassignedIndexNameForChildIndex(Oid parentIdxOid, Oid childRelId,

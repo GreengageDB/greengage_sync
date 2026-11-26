@@ -2931,15 +2931,12 @@ getObjectClass(const ObjectAddress *object)
 		case EventTriggerRelationId:
 			return OCLASS_EVENT_TRIGGER;
 
-<<<<<<< HEAD
+		case ParameterAclRelationId:
+			return OCLASS_PARAMETER_ACL;
+
 		case ExtprotocolRelationId:
 			Assert(object->objectSubId == 0);
 			return OCLASS_EXTPROTOCOL;
-||||||| c4cc2850f4d
-=======
-		case ParameterAclRelationId:
-			return OCLASS_PARAMETER_ACL;
->>>>>>> 2c7ea57e56c
 
 		case PolicyRelationId:
 			return OCLASS_POLICY;

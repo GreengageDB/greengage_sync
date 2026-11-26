@@ -3,6 +3,10 @@ m/ \(plperl\.c:\d+\)/
 s/ \(plperl\.c:\d+\)//
 -- end_matchsubs
 
+# Both patterns are copied from src/test/regress/init_file, which this suite does
+# not read.  The first covers the NOTICE and HINT around table distribution, the
+# second the NOTICE CREATE ROLE emits when no resource queue was named.
 -- start_matchignore
 m/^(?:HINT|NOTICE):\s+.+\'DISTRIBUTED BY\' clause.*/
+m/^NOTICE:.*resource queue required -- using default resource queue ".*"/
 -- end_matchignore

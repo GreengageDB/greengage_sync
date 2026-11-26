@@ -103,6 +103,7 @@
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_opfamily.h"
+#include "catalog/pg_parameter_acl.h"
 #include "catalog/pg_policy.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_publication.h"
@@ -1252,6 +1253,22 @@ GetNewOidForPublicationNamespace(Relation relation, Oid indexId, AttrNumber oidc
 	key.type = T_OidAssignment;
 	key.keyOid1 = pnnspid;
 	key.keyOid2 = pnpubid;
+	return GetNewOrPreassignedOid(relation, indexId, oidcolumn, &key);
+}
+
+Oid
+GetNewOidForParameterAcl(Relation relation, Oid indexId, AttrNumber oidcolumn,
+						 char *parname)
+{
+	OidAssignment key;
+
+	Assert(RelationGetRelid(relation) == ParameterAclRelationId);
+	Assert(indexId == ParameterAclOidIndexId);
+	Assert(oidcolumn == Anum_pg_parameter_acl_oid);
+
+	memset(&key, 0, sizeof(OidAssignment));
+	key.type = T_OidAssignment;
+	key.objname = parname;
 	return GetNewOrPreassignedOid(relation, indexId, oidcolumn, &key);
 }
 
