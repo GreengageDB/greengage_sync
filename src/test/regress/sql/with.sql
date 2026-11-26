@@ -1338,7 +1338,13 @@ RETURNING k, v;
 DROP TABLE withz;
 
 -- WITH referenced by MERGE statement
-CREATE TABLE m AS SELECT i AS k, (i || ' v')::text v FROM generate_series(1, 16, 3) i;
+-- GG: pin the distribution key.  Upstream lets CTAS pick it, and the two
+-- optimizers pick differently for a function-scan source: under ORCA "m" ends
+-- up DISTRIBUTED RANDOMLY, the UNIQUE below then fails, and the MERGEs plan an
+-- Explicit Redistribute Motion that MERGE cannot use for a row matching no
+-- target row.  "k" is what the planner picks anyway, so this keeps the upstream
+-- assertions under both optimizers.
+CREATE TABLE m AS SELECT i AS k, (i || ' v')::text v FROM generate_series(1, 16, 3) i DISTRIBUTED BY (k);
 ALTER TABLE m ADD UNIQUE (k);
 
 WITH RECURSIVE cte_basic AS (SELECT 1 a, 'cte_basic val' b)
