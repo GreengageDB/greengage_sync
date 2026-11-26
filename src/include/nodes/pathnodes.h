@@ -1273,6 +1273,7 @@ typedef struct PathKey
 } PathKey;
 
 /*
+<<<<<<< HEAD
  * DistributionKeys
  *
  * Like PathKey, but is used to represent data distribution by hash across
@@ -1296,6 +1297,17 @@ typedef struct DistributionKey
  */
 #define CdbEquivClassIsConstant(eclass)						\
 	((eclass)->ec_has_const && !(eclass)->ec_below_outer_join)
+||||||| c4cc2850f4d
+=======
+ * Combines information about pathkeys and the associated clauses.
+ */
+typedef struct PathKeyInfo
+{
+	NodeTag		type;
+	List	   *pathkeys;
+	List	   *clauses;
+} PathKeyInfo;
+>>>>>>> 2c7ea57e56c
 
 /*
  * VolatileFunctionStatus -- allows nodes to cache their
