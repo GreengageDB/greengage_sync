@@ -137,7 +137,13 @@ SET ROLE regress_rol_lock1;
 BEGIN;
 LOCK TABLE lock_view1 IN ACCESS EXCLUSIVE MODE;
 -- lock_view1 and lock_tbl1 (plus children lock_tbl2 and lock_tbl3) are locked.
-select relname from pg_locks l, pg_class c
+-- Greengage: pg_locks spans the whole cluster, so each relation appears once per
+-- segment plus once for the coordinator.  What this block asserts is which
+-- relations the view pulled into the lock set, not where the locks live, so
+-- select distinct -- that keeps the assertion and keeps it independent of the
+-- number of segments.  Lock propagation to the segments is already covered by
+-- the gp_segment_id queries earlier in this file.
+select distinct relname from pg_locks l, pg_class c
  where l.relation = c.oid and relname like '%lock_%' and mode = 'AccessExclusiveLock'
  order by relname;
 ROLLBACK;
@@ -164,7 +170,8 @@ GRANT UPDATE ON TABLE lock_tbl1 TO regress_rol_lock1;
 BEGIN;
 LOCK TABLE lock_view8 IN ACCESS EXCLUSIVE MODE;
 -- lock_view8 and lock_tbl1 (plus children lock_tbl2 and lock_tbl3) are locked.
-select relname from pg_locks l, pg_class c
+-- Greengage: select distinct, for the reason given above.
+select distinct relname from pg_locks l, pg_class c
  where l.relation = c.oid and relname like '%lock_%' and mode = 'AccessExclusiveLock'
  order by relname;
 ROLLBACK;

@@ -3,7 +3,9 @@
 --
 CREATE ROLE regress_subscription_user LOGIN SUPERUSER;
 CREATE ROLE regress_subscription_user2;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 CREATE ROLE regress_subscription_user_dummy LOGIN NOSUPERUSER;
+NOTICE:  resource queue required -- using default resource queue "pg_default"
 SET SESSION AUTHORIZATION 'regress_subscription_user';
 -- fail - no publications
 CREATE SUBSCRIPTION regress_testsub CONNECTION 'foo';
@@ -29,6 +31,9 @@ ERROR:  publication name "foo" used more than once
 -- ok
 CREATE SUBSCRIPTION regress_testsub CONNECTION 'dbname=regress_doesnotexist' PUBLICATION testpub WITH (connect = false);
 WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg1 172.17.0.4:7003 pid=1387576)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg0 172.17.0.4:7002 pid=1387574)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg2 172.17.0.4:7004 pid=1387575)
 COMMENT ON SUBSCRIPTION regress_testsub IS 'test subscription';
 SELECT obj_description(s.oid, 'pg_subscription') FROM pg_subscription s;
   obj_description  
@@ -64,6 +69,9 @@ ERROR:  subscription with slot_name = NONE must also set enabled = false
 -- ok - with slot_name = NONE
 CREATE SUBSCRIPTION regress_testsub3 CONNECTION 'dbname=regress_doesnotexist' PUBLICATION testpub WITH (slot_name = NONE, connect = false);
 WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg0 172.17.0.4:7002 pid=1387574)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg2 172.17.0.4:7004 pid=1387575)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg1 172.17.0.4:7003 pid=1387576)
 -- fail
 ALTER SUBSCRIPTION regress_testsub3 ENABLE;
 ERROR:  cannot enable subscription that does not have a slot name
@@ -163,10 +171,10 @@ ERROR:  DROP SUBSCRIPTION cannot run inside a transaction block
 COMMIT;
 ALTER SUBSCRIPTION regress_testsub SET (slot_name = NONE);
 \dRs+
-                                                                          List of subscriptions
-      Name       |           Owner            | Enabled |     Publication     | Binary | Streaming | Two phase commit | Synchronous commit |           Conninfo           
------------------+----------------------------+---------+---------------------+--------+-----------+------------------+--------------------+------------------------------
- regress_testsub | regress_subscription_user2 | f       | {testpub2,testpub3} | f      | f         | d                | local              | dbname=regress_doesnotexist2
+                                                                                         List of subscriptions
+      Name       |           Owner            | Enabled |     Publication     | Binary | Streaming | Two phase commit | Disable on error | Synchronous commit |           Conninfo           | Skip LSN 
+-----------------+----------------------------+---------+---------------------+--------+-----------+------------------+------------------+--------------------+------------------------------+----------
+ regress_testsub | regress_subscription_user2 | f       | {testpub2,testpub3} | f      | f         | d                | f                | local              | dbname=regress_doesnotexist2 | 0/0
 (1 row)
 
 -- now it works
@@ -183,6 +191,9 @@ ERROR:  binary requires a Boolean value
 -- now it works
 CREATE SUBSCRIPTION regress_testsub CONNECTION 'dbname=regress_doesnotexist' PUBLICATION testpub WITH (connect = false, binary = true);
 WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg1 172.17.0.4:7003 pid=1387576)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg0 172.17.0.4:7002 pid=1387574)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg2 172.17.0.4:7004 pid=1387575)
 \dRs+
                                                                                     List of subscriptions
       Name       |           Owner           | Enabled | Publication | Binary | Streaming | Two phase commit | Disable on error | Synchronous commit |          Conninfo           | Skip LSN 
@@ -206,6 +217,9 @@ ERROR:  streaming requires a Boolean value
 -- now it works
 CREATE SUBSCRIPTION regress_testsub CONNECTION 'dbname=regress_doesnotexist' PUBLICATION testpub WITH (connect = false, streaming = true);
 WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg1 172.17.0.4:7003 pid=1387576)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg2 172.17.0.4:7004 pid=1387575)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg0 172.17.0.4:7002 pid=1387574)
 \dRs+
                                                                                     List of subscriptions
       Name       |           Owner           | Enabled | Publication | Binary | Streaming | Two phase commit | Disable on error | Synchronous commit |          Conninfo           | Skip LSN 
@@ -262,6 +276,9 @@ DROP SUBSCRIPTION regress_testsub;
 CREATE SUBSCRIPTION regress_testsub CONNECTION 'dbname=regress_doesnotexist' PUBLICATION mypub
        WITH (connect = false, create_slot = false, copy_data = false);
 WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg0 172.17.0.4:7002 pid=1387574)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg2 172.17.0.4:7004 pid=1387575)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg1 172.17.0.4:7003 pid=1387576)
 ALTER SUBSCRIPTION regress_testsub ENABLE;
 -- fail - ALTER SUBSCRIPTION with refresh is not allowed in a transaction
 -- block or function
@@ -288,9 +305,9 @@ ERROR:  two_phase requires a Boolean value
 -- now it works
 CREATE SUBSCRIPTION regress_testsub CONNECTION 'dbname=regress_doesnotexist' PUBLICATION testpub WITH (connect = false, two_phase = true);
 WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
-WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
-WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
-WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg2 172.17.0.4:7004 pid=1387575)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg0 172.17.0.4:7002 pid=1387574)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg1 172.17.0.4:7003 pid=1387576)
 \dRs+
                                                                                     List of subscriptions
       Name       |           Owner           | Enabled | Publication | Binary | Streaming | Two phase commit | Disable on error | Synchronous commit |          Conninfo           | Skip LSN 
@@ -315,9 +332,9 @@ DROP SUBSCRIPTION regress_testsub;
 -- two_phase and streaming are compatible.
 CREATE SUBSCRIPTION regress_testsub CONNECTION 'dbname=regress_doesnotexist' PUBLICATION testpub WITH (connect = false, streaming = true, two_phase = true);
 WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
-WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
-WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
-WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg2 172.17.0.4:7004 pid=1387575)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg0 172.17.0.4:7002 pid=1387574)
+WARNING:  tables were not subscribed, you will have to run ALTER SUBSCRIPTION ... REFRESH PUBLICATION to subscribe the tables  (seg1 172.17.0.4:7003 pid=1387576)
 \dRs+
                                                                                     List of subscriptions
       Name       |           Owner           | Enabled | Publication | Binary | Streaming | Two phase commit | Disable on error | Synchronous commit |          Conninfo           | Skip LSN 
