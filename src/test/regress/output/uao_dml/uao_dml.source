@@ -146,10 +146,15 @@ select count(*)  from ao2_@amname@;
 (1 row)
 
 delete from ao2_@amname@ where i < 27;
--- make sure the pgstat msg sends out at least PGSTAT_STAT_INTERVAL msec since last one
-select pg_sleep(0.6);
- pg_sleep 
-----------
+-- PostgreSQL 15 keeps cumulative statistics in shared memory and rate-limits
+-- the implicit flush to PGSTAT_MIN_INTERVAL, retrying no sooner than
+-- PGSTAT_IDLE_INTERVAL, so a sleep no longer guarantees the pending delta is
+-- flushed before the analyze below.  pgstat_report_analyze() writes the live
+-- and dead counts absolutely, so a delta that lands after it is added on top
+-- and the counters read back doubled.  Force the flush instead.
+select pg_stat_force_next_flush();
+ pg_stat_force_next_flush 
+--------------------------
  
 (1 row)
 
@@ -160,10 +165,10 @@ select count(*)  from ao2_@amname@;
     12
 (1 row)
 
--- make sure the pgstat msg sends out at least PGSTAT_STAT_INTERVAL msec since last one
-select pg_sleep(0.6);
- pg_sleep 
-----------
+-- Likewise, flush what is still pending before reading the counters back.
+select pg_stat_force_next_flush();
+ pg_stat_force_next_flush 
+--------------------------
  
 (1 row)
 

@@ -177,19 +177,14 @@ static const char *const BuiltinTrancheNames[] = {
 	"ParallelAppend",
 	/* LWTRANCHE_PER_XACT_PREDICATE_LIST: */
 	"PerXactPredicateList",
-<<<<<<< HEAD
 	/* LWTRANCHE_DISTRIBUTEDLOG_BUFFERS: */
-	"DistributedBuffers"
-||||||| c4cc2850f4d
-	"PerXactPredicateList"
-=======
+	"DistributedBuffers",
 	/* LWTRANCHE_PGSTATS_DSA: */
 	"PgStatsDSA",
 	/* LWTRANCHE_PGSTATS_HASH: */
 	"PgStatsHash",
 	/* LWTRANCHE_PGSTATS_DATA: */
 	"PgStatsData",
->>>>>>> 2c7ea57e56c
 };
 
 StaticAssertDecl(lengthof(BuiltinTrancheNames) ==

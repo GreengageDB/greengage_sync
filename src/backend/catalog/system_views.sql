@@ -1685,25 +1685,11 @@ CREATE VIEW pg_stat_subscription_stats AS
     SELECT
         ss.subid,
         s.subname,
-<<<<<<< HEAD
-        w.subrelid,
-        w.last_error_relid,
-        w.last_error_command,
-        w.last_error_xid,
-        w.last_error_count,
-        w.last_error_message,
-        w.last_error_time
-    FROM (SELECT
-              oid as subid,
-              NULL as relid
-          FROM pg_subscription
-          UNION ALL
-          SELECT
-              srsubid as subid,
-              srrelid as relid
-          FROM pg_subscription_rel) sr,
-          LATERAL pg_stat_get_subscription_worker(sr.subid, sr.relid) w
-          JOIN pg_subscription s ON (w.subid = s.oid);
+        ss.apply_error_count,
+        ss.sync_error_count,
+        ss.stats_reset
+    FROM pg_subscription as s,
+         pg_stat_get_subscription_stats(s.oid) as ss;
 
 --
 -- We have a few function definitions in here, too.
@@ -2070,29 +2056,3 @@ CREATE VIEW gp_suboverflowed_backend(segid, pids) AS
   SELECT -1, gp_get_suboverflowed_backends()
 UNION ALL
   SELECT gp_segment_id, gp_get_suboverflowed_backends() FROM gp_dist_random('gp_id') order by 1;
-||||||| c4cc2850f4d
-        w.subrelid,
-        w.last_error_relid,
-        w.last_error_command,
-        w.last_error_xid,
-        w.last_error_count,
-        w.last_error_message,
-        w.last_error_time
-    FROM (SELECT
-              oid as subid,
-              NULL as relid
-          FROM pg_subscription
-          UNION ALL
-          SELECT
-              srsubid as subid,
-              srrelid as relid
-          FROM pg_subscription_rel) sr,
-          LATERAL pg_stat_get_subscription_worker(sr.subid, sr.relid) w
-          JOIN pg_subscription s ON (w.subid = s.oid);
-=======
-        ss.apply_error_count,
-        ss.sync_error_count,
-        ss.stats_reset
-    FROM pg_subscription as s,
-         pg_stat_get_subscription_stats(s.oid) as ss;
->>>>>>> 2c7ea57e56c

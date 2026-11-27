@@ -746,7 +746,7 @@ CreateSubscription(ParseState *pstate, CreateSubscriptionStmt *stmt,
 
 	table_close(rel, RowExclusiveLock);
 
-<<<<<<< HEAD
+	pgstat_create_subscription(subid);
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
 		CdbDispatchUtilityStatement((Node *) stmt,
@@ -762,10 +762,6 @@ CreateSubscription(ParseState *pstate, CreateSubscriptionStmt *stmt,
 						   GetUserId(),
 						   "CREATE", "SUBSCRIPTION");
 	}
-||||||| c4cc2850f4d
-=======
-	pgstat_create_subscription(subid);
->>>>>>> 2c7ea57e56c
 
 	if (opts.enabled)
 		ApplyLauncherWakeupAtCommit();

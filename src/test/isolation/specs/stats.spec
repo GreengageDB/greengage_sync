@@ -37,9 +37,16 @@ step s1_clear_snapshot { SELECT pg_stat_clear_snapshot(); }
 step s1_begin { BEGIN; }
 step s1_commit { COMMIT; }
 step s1_rollback { ROLLBACK; }
-step s1_prepare_a { PREPARE TRANSACTION 'a'; }
-step s1_commit_prepared_a { COMMIT PREPARED 'a'; }
-step s1_rollback_prepared_a { ROLLBACK PREPARED 'a'; }
+# GPDB: the s1_prepare_a, s1_commit_prepared_a and s1_rollback_prepared_a steps
+# and the fourteen 2PC permutations that used them are removed -- this suite runs
+# in utility mode (see the comment on the installcheck target in the Makefile),
+# and PREPARE TRANSACTION is rejected there, with "PREPARE TRANSACTION is not
+# supported in utility mode" from tcop/postgres.c.  The same reason keeps
+# prepared-transactions commented out of isolation_schedule.  Leaving them in
+# does not merely lose those fourteen permutations: the failed PREPARE strands
+# session s1 inside its transaction block, COMMIT PREPARED cannot end it either,
+# and every later permutation dies in setup with "current transaction is
+# aborted" -- 44 of them, when this was first run.
 
 # Function stats steps
 step s1_ff { SELECT pg_stat_force_next_flush(); RESET debug_discard_caches; }
@@ -79,10 +86,11 @@ step s1_table_select { SELECT * FROM test_stat_tab ORDER BY key, value; }
 step s1_table_insert { INSERT INTO test_stat_tab(key, value) VALUES('k1', 1), ('k2', 1), ('k3', 1);}
 step s1_table_insert_k1 { INSERT INTO test_stat_tab(key, value) VALUES('k1', 1);}
 step s1_table_update_k1 { UPDATE test_stat_tab SET value = value + 1 WHERE key = 'k1';}
-step s1_table_update_k2 { UPDATE test_stat_tab SET value = value + 1 WHERE key = 'k2';}
 step s1_table_delete_k1 { DELETE FROM test_stat_tab WHERE key = 'k1';}
-step s1_table_truncate { TRUNCATE test_stat_tab; }
 step s1_table_drop { DROP TABLE test_stat_tab; }
+# GPDB: s1_table_update_k2 and s1_table_truncate are removed with them -- the
+# fourteen 2PC permutations were the only users of either, and isolationtester
+# prints "unused step name: ..." for a step no permutation reaches.
 
 step s1_table_stats {
     SELECT
@@ -105,7 +113,7 @@ step s1_slru_save_stats {
 }
 step s1_listen { LISTEN stats_test_nothing; }
 step s1_big_notify { SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
                 }
 
 step s1_slru_check_stats {
@@ -122,8 +130,8 @@ setup { SET stats_fetch_consistency = 'none'; RESET debug_discard_caches; }
 step s2_begin { BEGIN; }
 step s2_disable_debug_discard { SET debug_discard_caches = 0; }
 step s2_commit { COMMIT; }
-step s2_commit_prepared_a { COMMIT PREPARED 'a'; }
-step s2_rollback_prepared_a { ROLLBACK PREPARED 'a'; }
+# GPDB: s2_commit_prepared_a and s2_rollback_prepared_a removed with the 2PC
+# permutations, see session s1 above.
 step s2_ff { SELECT pg_stat_force_next_flush(); }
 
 # Function stats steps
@@ -147,7 +155,7 @@ step s2_table_update_k1 { UPDATE test_stat_tab SET value = value + 1 WHERE key =
 
 # SLRU stats steps
 step s2_big_notify { SELECT pg_notify('stats_test_use',
-                repeat('0', current_setting('block_size')::int / 2)) FROM generate_series(1, 3);
+                repeat(i::text, current_setting('block_size')::int / 2)) FROM generate_series(1, 3) g(i);
                 }
 
 
@@ -317,77 +325,9 @@ permutation
 
 ### Check 2PC handling of stat drops
 
-# S1 prepared, S1 commits prepared
-permutation
-  s1_track_funcs_all s2_track_funcs_all
-  s1_begin
-  s1_func_call
-  s2_func_call
-  s1_func_drop
-  s2_func_call
-  s2_ff
-  s1_prepare_a
-  s2_func_call
-  s2_ff
-  s1_func_call
-  s1_ff
-  s1_func_stats
-  s1_commit_prepared_a
-  s1_func_stats
-
-# S1 prepared, S1 aborts prepared
-permutation
-  s1_track_funcs_all s2_track_funcs_all
-  s1_begin
-  s1_func_call
-  s2_func_call
-  s1_func_drop
-  s2_func_call
-  s2_ff
-  s1_prepare_a
-  s2_func_call
-  s2_ff
-  s1_func_call
-  s1_ff
-  s1_func_stats
-  s1_rollback_prepared_a
-  s1_func_stats
-
-# S1 prepares, S2 commits prepared
-permutation
-  s1_track_funcs_all s2_track_funcs_all
-  s1_begin
-  s1_func_call
-  s2_func_call
-  s1_func_drop
-  s2_func_call
-  s2_ff
-  s1_prepare_a
-  s2_func_call
-  s2_ff
-  s1_func_call
-  s1_ff
-  s1_func_stats
-  s2_commit_prepared_a
-  s1_func_stats
-
-# S1 prepared, S2 aborts prepared
-permutation
-  s1_track_funcs_all s2_track_funcs_all
-  s1_begin
-  s1_func_call
-  s2_func_call
-  s1_func_drop
-  s2_func_call
-  s2_ff
-  s1_prepare_a
-  s2_func_call
-  s2_ff
-  s1_func_call
-  s1_ff
-  s1_func_stats
-  s2_rollback_prepared_a
-  s1_func_stats
+# GPDB: the four permutations of this section are removed; PREPARE
+# TRANSACTION cannot run in the utility mode this suite uses.  See the
+# s1_prepare_a step in session s1 above for the whole story.
 
 
 ######################
@@ -480,148 +420,11 @@ permutation
 
 
 ### 2PC: transactional and non-transactional counters work correctly
-
-# S1 prepares, S2 commits prepared
-permutation
-  s1_begin
-  s1_table_insert s1_table_update_k1 s1_table_update_k1 s1_table_update_k2 s1_table_update_k2 s1_table_update_k2 s1_table_delete_k1
-  s1_table_select
-  s1_prepare_a
-  s1_table_select
-  s1_commit_prepared_a
-  s1_table_select
-  s1_ff
-  s1_table_stats
-
-# S1 prepares, S2 commits prepared
-permutation
-  s1_begin
-  s1_table_insert s1_table_update_k1 s1_table_update_k1 s1_table_update_k2 s1_table_update_k2 s1_table_update_k2 s1_table_delete_k1
-  s1_table_select
-  s1_prepare_a
-  s1_table_select
-  s2_commit_prepared_a
-  s1_table_select
-  s1_ff s2_ff
-  s1_table_stats
-
-# S1 prepares, S2 commits prepared
-permutation
-  s1_begin
-  s1_table_insert s1_table_update_k1 s1_table_update_k1 s1_table_update_k2 s1_table_update_k2 s1_table_update_k2 s1_table_delete_k1
-  s1_table_select
-  s1_prepare_a
-  s1_table_select
-  s1_rollback_prepared_a
-  s1_table_select
-  s1_ff
-  s1_table_stats
-
-# S1 prepares, S1 aborts prepared
-permutation
-  s1_begin
-  s1_table_insert s1_table_update_k1 s1_table_update_k1 s1_table_update_k2 s1_table_update_k2 s1_table_update_k2 s1_table_delete_k1
-  s1_table_select
-  s1_prepare_a
-  s1_table_select
-  s2_rollback_prepared_a
-  s1_table_select
-  s1_ff s2_ff
-  s1_table_stats
-
-
 ### 2PC: truncate handling
-
-# S1 prepares, S1 commits prepared
-permutation
-  s1_table_insert
-  s1_begin
-  s1_table_update_k1 # should *not* be counted, different rel
-  s1_table_update_k1 # dito
-  s1_table_truncate
-  s1_table_insert_k1 # should be counted
-  s1_table_update_k1 # dito
-  s1_prepare_a
-  s1_commit_prepared_a
-  s1_ff
-  s1_table_stats
-
-# S1 prepares, S2 commits prepared
-permutation
-  s1_table_insert
-  s1_begin
-  s1_table_update_k1 # should *not* be counted, different rel
-  s1_table_update_k1 # dito
-  s1_table_truncate
-  s1_table_insert_k1 # should be counted
-  s1_table_update_k1 # dito
-  s1_prepare_a
-  s2_commit_prepared_a
-  s1_ff s2_ff
-  s1_table_stats
-
-# S1 prepares, S1 aborts prepared
-permutation
-  s1_table_insert
-  s1_begin
-  s1_table_update_k1 # should be counted
-  s1_table_update_k1 # dito
-  s1_table_truncate
-  s1_table_insert_k1 # should *not* be counted, different rel
-  s1_table_update_k1 # dito
-  s1_prepare_a
-  s1_rollback_prepared_a
-  s1_ff
-  s1_table_stats
-
-# S1 prepares, S2 aborts prepared
-permutation
-  s1_table_insert
-  s1_begin
-  s1_table_update_k1 # should be counted
-  s1_table_update_k1 # dito
-  s1_table_truncate
-  s1_table_insert_k1 # should *not* be counted, different rel
-  s1_table_update_k1 # dito
-  s1_prepare_a
-  s2_rollback_prepared_a
-  s1_ff s2_ff
-  s1_table_stats
-
-
 ### 2PC: rolled back drop maintains live / dead counters
 
-# S1 prepares, S1 aborts prepared
-permutation
-  s1_table_insert
-  s1_table_update_k1
-  s1_begin
-  # should all be counted
-  s1_table_delete_k1
-  s1_table_insert_k1
-  s1_table_update_k1
-  s1_table_update_k1
-  s1_table_drop
-  s1_prepare_a
-  s1_rollback_prepared_a
-  s1_ff
-  s1_table_stats
-
-# S1 prepares, S1 aborts prepared
-permutation
-  s1_table_insert
-  s1_table_update_k1
-  s1_begin
-  # should all be counted
-  s1_table_delete_k1
-  s1_table_insert_k1
-  s1_table_update_k1
-  s1_table_update_k1
-  s1_table_drop
-  s1_prepare_a
-  s2_rollback_prepared_a
-  s1_ff s2_ff
-  s1_table_stats
+# GPDB: the ten permutations of these three sections are removed too, for
+# the same reason as the 2PC section of the function-stats tests above.
 
 
 ######################
