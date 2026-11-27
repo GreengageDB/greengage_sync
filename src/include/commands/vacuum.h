@@ -192,7 +192,7 @@ typedef struct VacAttrStats
 /* flag bits for VacuumParams->options */
 #define VACOPT_VACUUM 0x01		/* do VACUUM */
 #define VACOPT_ANALYZE 0x02		/* do ANALYZE */
-#define VACOPT_VERBOSE 0x04		/* print progress info */
+#define VACOPT_VERBOSE 0x04		/* output INFO instrumentation messages */
 #define VACOPT_FREEZE 0x08		/* FREEZE option */
 #define VACOPT_FULL 0x10		/* FULL (non-concurrent) vacuum */
 #define VACOPT_SKIP_LOCKED 0x20 /* skip if cannot get lock */
@@ -282,8 +282,8 @@ typedef struct VacuumParams
 											 * whole table */
 	bool		is_wraparound;	/* force a for-wraparound vacuum */
 	int			log_min_duration;	/* minimum execution threshold in ms at
-									 * which  verbose logs are activated, -1
-									 * to use default */
+									 * which autovacuum is logged, -1 to use
+									 * default */
 	VacOptValue index_cleanup;	/* Do index vacuum and cleanup */
 	VacOptValue truncate;		/* Truncate empty pages at the end */
 
@@ -377,17 +377,26 @@ extern void vac_update_relstats(Relation relation,
 								bool hasindex,
 								TransactionId frozenxid,
 								MultiXactId minmulti,
+<<<<<<< HEAD
 								bool in_outer_xact,
 								bool isvacuum);
 extern void vacuum_set_xid_limits(Relation rel,
+||||||| c4cc2850f4d
+								bool in_outer_xact);
+extern void vacuum_set_xid_limits(Relation rel,
+=======
+								bool *frozenxid_updated,
+								bool *minmulti_updated,
+								bool in_outer_xact);
+extern bool vacuum_set_xid_limits(Relation rel,
+>>>>>>> 2c7ea57e56c
 								  int freeze_min_age, int freeze_table_age,
 								  int multixact_freeze_min_age,
 								  int multixact_freeze_table_age,
 								  TransactionId *oldestXmin,
+								  MultiXactId *oldestMxact,
 								  TransactionId *freezeLimit,
-								  TransactionId *xidFullScanLimit,
-								  MultiXactId *multiXactCutoff,
-								  MultiXactId *mxactFullScanLimit);
+								  MultiXactId *multiXactCutoff);
 extern bool vacuum_xid_failsafe_check(TransactionId relfrozenxid,
 									  MultiXactId relminmxid);
 extern void vac_update_datfrozenxid(void);

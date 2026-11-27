@@ -7,6 +7,7 @@ use warnings;
 
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
+<<<<<<< HEAD
 
 # GPDB: Effectively disable this TAP test. We cannot run PREPARE
 # TRANSACTION in utility-mode. We need at least 1 test so create a
@@ -15,6 +16,11 @@ use PostgreSQL::Test::Utils;
 use Test::More tests => 1;
 is(-1, -1, "Disable this TAP test");
 exit;
+||||||| c4cc2850f4d
+use Test::More tests => 24;
+=======
+use Test::More;
+>>>>>>> 2c7ea57e56c
 
 my $psql_out = '';
 my $psql_rc  = '';
@@ -487,3 +493,5 @@ $cur_standby->psql(
 is( $psql_out,
 	qq{27|issued to paris},
 	"Check expected t_009_tbl2 data on standby");
+
+done_testing();

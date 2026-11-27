@@ -1208,8 +1208,24 @@ doSendTuple(Motion *motion, MotionState *node, TupleTableSlot *outerTupleSlot)
 		bool		is_null = false;
 
 		segidColIdxDatum = slot_getattr(outerTupleSlot, motion->segidColIdx, &is_null);
+
+		/*
+		 * An Explicit Redistribute sends each row back to the segment its
+		 * target tuple was read from, so a row with no target tuple has
+		 * nowhere to go.  Only MERGE can produce one: its subplan is an outer
+		 * join of the source to the target, and a WHEN NOT MATCHED row has
+		 * NULL for every target column, gp_segment_id included.  Reject it --
+		 * taking the NULL at face value would route the whole WHEN NOT MATCHED
+		 * half of the statement to segment 0.
+		 */
+		if (is_null)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("MERGE cannot redistribute a row that matched no row of the target"),
+					 errdetail("A WHEN NOT MATCHED row has no target row to take a segment from, and this plan moves the target's rows between segments."),
+					 errhint("Join the target on its distribution key columns, so that MERGE runs on the segments the target rows already live on.")));
+
 		targetRoute = Int32GetDatum(segidColIdxDatum);
-		Assert(!is_null);
 	}
 	else
 		elog(ERROR, "unknown motion type %d", motion->motionType);

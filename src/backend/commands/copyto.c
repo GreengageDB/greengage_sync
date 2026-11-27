@@ -75,11 +75,21 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 /* non-export function prototypes */
 static void EndCopy(CopyToState cstate);
 static void ClosePipeToProgram(CopyToState cstate);
+<<<<<<< HEAD
 static uint64 CopyTo(CopyToState cstate);
 static uint64 CopyToDispatch(CopyToState cstate);
 static void CopyToDispatchFlush(CopyToState cstate);
 static void CopyAttributeOutText(CopyToState cstate, char *string);
 static void CopyAttributeOutCSV(CopyToState cstate, char *string,
+||||||| c4cc2850f4d
+static void CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot);
+static void CopyAttributeOutText(CopyToState cstate, char *string);
+static void CopyAttributeOutCSV(CopyToState cstate, char *string,
+=======
+static void CopyOneRowTo(CopyToState cstate, TupleTableSlot *slot);
+static void CopyAttributeOutText(CopyToState cstate, const char *string);
+static void CopyAttributeOutCSV(CopyToState cstate, const char *string,
+>>>>>>> 2c7ea57e56c
 								bool use_quote, bool single_attr);
 
 /* Low-level communications functions */
@@ -454,7 +464,7 @@ BeginCopyToCommon(ParseState *pstate,
 		 * Run parse analysis and rewrite.  Note this also acquires sufficient
 		 * locks on the source table(s).
 		 */
-		rewritten = pg_analyze_and_rewrite(raw_query,
+		rewritten = pg_analyze_and_rewrite_fixedparams(raw_query,
 										   pstate->p_sourcetext, NULL, 0,
 										   NULL);
 
@@ -721,6 +731,7 @@ BeginCopyToCommon(ParseState *pstate,
 
 	cstate->copy_dest = COPY_FILE;	/* default */
 
+<<<<<<< HEAD
 	MemoryContextSwitchTo(oldcontext);
 
 	return cstate;
@@ -984,6 +995,13 @@ BeginCopyTo(ParseState *pstate,
 					 errmsg("STDOUT is not supported by 'COPY ON SEGMENT'")));
 	}
 	else if (pipe)
+||||||| c4cc2850f4d
+	MemoryContextSwitchTo(oldcontext);
+
+	if (pipe)
+=======
+	if (pipe)
+>>>>>>> 2c7ea57e56c
 	{
 		progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
 		Assert(!is_program || Gp_role == GP_ROLE_EXECUTE);	/* the grammar does not allow this */
@@ -1487,8 +1505,11 @@ CopyTo(CopyToState cstate)
 
 				colname = NameStr(TupleDescAttr(tupDesc, attnum - 1)->attname);
 
-				CopyAttributeOutCSV(cstate, colname, false,
+				if (cstate->opts.csv_mode)
+					CopyAttributeOutCSV(cstate, colname, false,
 									list_length(cstate->attnumlist) == 1);
+				else
+					CopyAttributeOutText(cstate, colname);
 			}
 
 			CopySendEndOfRow(cstate);
@@ -1704,10 +1725,10 @@ CopyOneCustomRowTo(CopyToState cstate, bytea *value)
 	} while (0)
 
 static void
-CopyAttributeOutText(CopyToState cstate, char *string)
+CopyAttributeOutText(CopyToState cstate, const char *string)
 {
-	char	   *ptr;
-	char	   *start;
+	const char *ptr;
+	const char *start;
 	char		c;
 	char		delimc = cstate->opts.delim[0];
 	char		escapec = cstate->opts.escape[0];
@@ -1868,11 +1889,11 @@ CopyAttributeOutText(CopyToState cstate, char *string)
  * CSV-style escaping
  */
 static void
-CopyAttributeOutCSV(CopyToState cstate, char *string,
+CopyAttributeOutCSV(CopyToState cstate, const char *string,
 					bool use_quote, bool single_attr)
 {
-	char	   *ptr;
-	char	   *start;
+	const char *ptr;
+	const char *start;
 	char		c;
 	char		delimc = cstate->opts.delim[0];
 	char		quotec;
@@ -1915,7 +1936,7 @@ CopyAttributeOutCSV(CopyToState cstate, char *string,
 			use_quote = true;
 		else
 		{
-			char	   *tptr = ptr;
+			const char *tptr = ptr;
 
 			while ((c = *tptr) != '\0')
 			{

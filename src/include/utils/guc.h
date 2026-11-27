@@ -368,7 +368,7 @@ extern int	temp_file_limit;
 
 extern int	num_temp_buffers;
 
-extern char *cluster_name;
+extern PGDLLIMPORT char *cluster_name;
 extern PGDLLIMPORT char *ConfigFileName;
 extern char *HbaFileName;
 extern char *IdentFileName;
@@ -707,14 +707,20 @@ extern void DefineCustomEnumVariable(const char *name,
 									 GucEnumAssignHook assign_hook,
 									 GucShowHook show_hook);
 
-extern void EmitWarningsOnPlaceholders(const char *className);
+extern void MarkGUCPrefixReserved(const char *className);
+
+/* old name for MarkGUCPrefixReserved, for backwards compatibility: */
+#define EmitWarningsOnPlaceholders(className) MarkGUCPrefixReserved(className)
 
 extern const char *GetConfigOption(const char *name, bool missing_ok,
 								   bool restrict_privileged);
 extern const char *GetConfigOptionResetString(const char *name);
 extern int	GetConfigOptionFlags(const char *name, bool missing_ok);
 extern void ProcessConfigFile(GucContext context);
+extern char *convert_GUC_name_for_parameter_acl(const char *name);
+extern bool check_GUC_name_for_parameter_acl(const char *name);
 extern void InitializeGUCOptions(void);
+extern void InitializeWalConsistencyChecking(void);
 extern bool SelectConfigFiles(const char *userDoption, const char *progname);
 extern void ResetAllOptions(void);
 extern void AtStart_GUC(void);
@@ -808,6 +814,7 @@ extern void assign_search_path(const char *newval, void *extra);
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
 
+<<<<<<< HEAD
 /* in cdb/cdbvars.c */
 extern bool check_gp_role(char **newval, void **extra, GucSource source);
 extern void assign_gp_role(const char *newval, void *extra);
@@ -821,5 +828,11 @@ extern const char *gpvars_show_gp_resqueue_memory_policy(void);
 extern bool gpvars_check_statement_mem(int *newval, void **extra, GucSource source);
 extern int guc_name_compare(const char *namea, const char *nameb);
 extern void DispatchSyncPGVariable(struct config_generic * gconfig);
+||||||| c4cc2850f4d
+=======
+/* in access/transam/xlogprefetcher.c */
+extern bool check_recovery_prefetch(int *new_value, void **extra, GucSource source);
+extern void assign_recovery_prefetch(int new_value, void *extra);
+>>>>>>> 2c7ea57e56c
 
 #endif							/* GUC_H */

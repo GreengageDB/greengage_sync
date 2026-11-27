@@ -207,6 +207,7 @@ plan_tree_mutator(Node *node,
 				MUTATE(newmt->onConflictWhere, mt->onConflictWhere , Node *);
 				MUTATE(newmt->withCheckOptionLists, mt->withCheckOptionLists, List *);
 				MUTATE(newmt->returningLists, mt->returningLists, List *);
+				MUTATE(newmt->mergeActionLists, mt->mergeActionLists, List *);
 				return (Node *) newmt;
 			}
 			break;

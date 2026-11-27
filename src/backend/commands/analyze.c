@@ -961,6 +961,7 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 							thisdata->attr_cnt, thisdata->vacattrstats);
 		}
 
+<<<<<<< HEAD
 		/*
 		 * Should we build extended statistics for this relation?
 		 *
@@ -985,6 +986,21 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		if (build_ext_stats)
 			BuildRelationExtStatistics(onerel, totalrows, numrows, rows,
 									   attr_cnt, vacattrstats);
+||||||| c4cc2850f4d
+		/*
+		 * Build extended statistics (if there are any).
+		 *
+		 * For now we only build extended statistics on individual relations,
+		 * not for relations representing inheritance trees.
+		 */
+		if (!inh)
+			BuildRelationExtStatistics(onerel, totalrows, numrows, rows,
+									   attr_cnt, vacattrstats);
+=======
+		/* Build extended statistics (if there are any). */
+		BuildRelationExtStatistics(onerel, inh, totalrows, numrows, rows,
+								   attr_cnt, vacattrstats);
+>>>>>>> 2c7ea57e56c
 	}
 
 	pgstat_progress_update_param(PROGRESS_ANALYZE_PHASE,
@@ -1024,8 +1040,15 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 							hasindex,
 							InvalidTransactionId,
 							InvalidMultiXactId,
+<<<<<<< HEAD
 							in_outer_xact,
 							false /* isVacuum */);
+||||||| c4cc2850f4d
+							in_outer_xact);
+=======
+							NULL, NULL,
+							in_outer_xact);
+>>>>>>> 2c7ea57e56c
 
 		/* Same for indexes */
 		for (ind = 0; ind < nindexes; ind++)
@@ -1065,8 +1088,15 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 								false,
 								InvalidTransactionId,
 								InvalidMultiXactId,
+<<<<<<< HEAD
 								in_outer_xact,
 								false /* isVacuum */);
+||||||| c4cc2850f4d
+								in_outer_xact);
+=======
+								NULL, NULL,
+								in_outer_xact);
+>>>>>>> 2c7ea57e56c
 		}
 	}
 	else if (onerel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
@@ -1078,11 +1108,18 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		vac_update_relstats(onerel, -1, totalrows,
 							0, hasindex, InvalidTransactionId,
 							InvalidMultiXactId,
+<<<<<<< HEAD
 							in_outer_xact, false);
+||||||| c4cc2850f4d
+							in_outer_xact);
+=======
+							NULL, NULL,
+							in_outer_xact);
+>>>>>>> 2c7ea57e56c
 	}
 
 	/*
-	 * Now report ANALYZE to the stats collector.  For regular tables, we do
+	 * Now report ANALYZE to the cumulative stats system.  For regular tables, we do
 	 * it only if not doing inherited stats.  For partitioned tables, we only
 	 * do it for inherited stats. (We're never called for not-inherited stats
 	 * on partitioned tables anyway.)

@@ -79,7 +79,7 @@ relation_open(Oid relationId, LOCKMODE lockmode)
 		MyXactFlags |= XACT_FLAGS_ACCESSEDTEMPNAMESPACE;
 #endif
 
-	pgstat_initstats(r);
+	pgstat_init_relation(r);
 
 	return r;
 }
@@ -151,7 +151,7 @@ try_relation_open(Oid relationId, LOCKMODE lockmode, bool noWait)
 		MyXactFlags |= XACT_FLAGS_ACCESSEDTEMPNAMESPACE;
 #endif
 
-	pgstat_initstats(r);
+	pgstat_init_relation(r);
 
 	return r;
 }

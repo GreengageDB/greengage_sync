@@ -91,12 +91,31 @@ test: detach-partition-concurrently-1
 #test: lock-update-delete
 #test: lock-update-traversal
 test: inherit-temp
+<<<<<<< HEAD
 #test: insert-conflict-do-nothing
 #test: insert-conflict-do-nothing-2
 #test: insert-conflict-do-update
 #test: insert-conflict-do-update-2
 #test: insert-conflict-do-update-3
+||||||| c4cc2850f4d
+test: insert-conflict-do-nothing
+test: insert-conflict-do-nothing-2
+test: insert-conflict-do-update
+test: insert-conflict-do-update-2
+test: insert-conflict-do-update-3
+=======
+test: temp-schema-cleanup
+test: insert-conflict-do-nothing
+test: insert-conflict-do-nothing-2
+test: insert-conflict-do-update
+test: insert-conflict-do-update-2
+test: insert-conflict-do-update-3
+>>>>>>> 2c7ea57e56c
 test: insert-conflict-specconflict
+test: merge-insert-update
+test: merge-delete
+test: merge-update
+test: merge-match-recheck
 test: delete-abort-savept
 #test: delete-abort-savept-2
 #test: aborted-keyrevoke
@@ -132,14 +151,22 @@ test: alter-table-1
 #test: create-trigger
 test: sequence-ddl
 test: async-notify
+<<<<<<< HEAD
 # vacuum-reltuples uses a cursor to keep page pinned, but in GPDB that doesn't
 # keep it pinned.
 #test: vacuum-reltuples
+||||||| c4cc2850f4d
+test: vacuum-reltuples
+=======
+test: vacuum-no-cleanup-lock
+>>>>>>> 2c7ea57e56c
 test: timeouts
 test: vacuum-concurrent-drop
 test: vacuum-conflict
 test: vacuum-skip-locked
+test: stats
 test: horizons
+<<<<<<< HEAD
 #test: predicate-hash
 #test: predicate-gist
 #test: predicate-gin
@@ -151,6 +178,20 @@ test: partition-drop-index-locking
 # because it fails when test errors from ExecLockRows. The reason is that
 # GPDB disabled triggers for foreign keys.
 #test: partition-key-update-1
+||||||| c4cc2850f4d
+test: predicate-hash
+test: predicate-gist
+test: predicate-gin
+test: partition-concurrent-attach
+test: partition-key-update-1
+=======
+test: predicate-hash
+test: predicate-gist
+test: predicate-gin
+test: partition-concurrent-attach
+test: partition-drop-index-locking
+test: partition-key-update-1
+>>>>>>> 2c7ea57e56c
 test: partition-key-update-2
 test: partition-key-update-3
 test: partition-key-update-4

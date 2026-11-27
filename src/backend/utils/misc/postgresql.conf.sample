@@ -145,8 +145,16 @@ max_prepared_transactions = 250		# can be 0 or more
 					# (change requires restart)
 # Caution: it is not advisable to set max_prepared_transactions nonzero unless
 # you actively intend to use prepared transactions.
+<<<<<<< HEAD
 #work_mem = 32MB				# min 64kB
 #hash_mem_multiplier = 1.0		# 1-1000.0 multiplier on hash table work_mem
+||||||| c4cc2850f4d
+#work_mem = 4MB				# min 64kB
+#hash_mem_multiplier = 1.0		# 1-1000.0 multiplier on hash table work_mem
+=======
+#work_mem = 4MB				# min 64kB
+#hash_mem_multiplier = 2.0		# 1-1000.0 multiplier on hash table work_mem
+>>>>>>> 2c7ea57e56c
 #maintenance_work_mem = 64MB		# min 1MB
 #autovacuum_work_mem = -1		# min 1MB, or -1 to use maintenance_work_mem
 #logical_decoding_work_mem = 64MB	# min 64kB
@@ -223,7 +231,7 @@ max_prepared_transactions = 250		# can be 0 or more
 #wal_log_hints = off			# also do full page writes of non-critical updates
 					# (change requires restart)
 #wal_compression = off			# enables compression of full-page writes;
-					# off, pglz, lz4, or on
+					# off, pglz, lz4, zstd, or on
 #wal_init_zero = on			# zero-fill new WAL files
 #wal_recycle = on			# recycle WAL files
 #wal_buffers = -1			# min 32kB, -1 sets based on shared_buffers
@@ -244,10 +252,19 @@ max_prepared_transactions = 250		# can be 0 or more
 #max_wal_size = 1GB
 #min_wal_size = 320MB
 
+# - Prefetching during recovery -
+
+#recovery_prefetch = try		# prefetch pages referenced in the WAL?
+#wal_decode_buffer_size = 512kB		# lookahead window used for prefetching
+					# (change requires restart)
+
 # - Archiving -
 
 #archive_mode = off		# enables archiving; off, on, or always
 				# (change requires restart)
+#archive_library = ''		# library to use to archive a logfile segment
+				# (empty string indicates archive_command should
+				# be used)
 #archive_command = ''		# command to use to archive a logfile segment
 				# placeholders: %p = path of file to archive
 				#               %f = file name only
@@ -382,6 +399,7 @@ max_prepared_transactions = 250		# can be 0 or more
 #enable_seqscan = on
 #enable_sort = on
 #enable_tidscan = on
+#enable_group_by_reordering = on
 
 #gp_enable_multiphase_agg = on
 #gp_enable_preunique = on
@@ -439,6 +457,7 @@ max_prepared_transactions = 250		# can be 0 or more
 					# JOIN clauses
 #plan_cache_mode = auto			# auto, force_generic_plan or
 					# force_custom_plan
+#recursive_worktable_factor = 10.0	# range 0.001-1000000
 
 #gp_segments_for_planner = 0     # if 0, actual number of segments is used
 
@@ -456,6 +475,43 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 
 # - Where to Log -
 
+<<<<<<< HEAD
+||||||| c4cc2850f4d
+#log_destination = 'stderr'		# Valid values are combinations of
+					# stderr, csvlog, syslog, and eventlog,
+					# depending on platform.  csvlog
+					# requires logging_collector to be on.
+
+# This is used when logging to stderr:
+#logging_collector = off		# Enable capturing of stderr and csvlog
+					# into log files. Required to be on for
+					# csvlogs.
+					# (change requires restart)
+
+# These are only used if logging_collector is on:
+#log_directory = 'log'			# directory where log files are written,
+					# can be absolute or relative to PGDATA
+#log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'	# log file name pattern,
+					# can include strftime() escapes
+=======
+#log_destination = 'stderr'		# Valid values are combinations of
+					# stderr, csvlog, jsonlog, syslog, and
+					# eventlog, depending on platform.
+					# csvlog and jsonlog require
+					# logging_collector to be on.
+
+# This is used when logging to stderr:
+#logging_collector = off		# Enable capturing of stderr, jsonlog
+					# and csvlog into log files. Required
+					# to be on for csvlogs and jsonlogs.
+					# (change requires restart)
+
+# These are only used if logging_collector is on:
+#log_directory = 'log'			# directory where log files are written,
+					# can be absolute or relative to PGDATA
+#log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'	# log file name pattern,
+					# can include strftime() escapes
+>>>>>>> 2c7ea57e56c
 #log_file_mode = 0600			# creation mode for log files,
 					# begin with 0 to use octal notation
 #log_rotation_age = 1d			# Automatic rotation of logfiles will
@@ -609,12 +665,18 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 # STATISTICS
 #------------------------------------------------------------------------------
 
+<<<<<<< HEAD
 # - ANALYZE Statistics on Database Contents -
 
 #default_statistics_target = 100	# range 1 - 10000 (target # of
 					# histogram bins)
 
 # - Query and Index Statistics Collector -
+||||||| c4cc2850f4d
+# - Query and Index Statistics Collector -
+=======
+# - Cumulative Query and Index Statistics -
+>>>>>>> 2c7ea57e56c
 
 #track_activities = on
 #track_activity_query_size = 1024	# (change requires restart)
@@ -622,7 +684,7 @@ optimizer_analyze_root_partition = on # stats collection on root partitions
 #track_io_timing = off
 #track_wal_io_timing = off
 #track_functions = none			# none, pl, all
-#stats_temp_directory = 'pg_stat_tmp'
+#stats_fetch_consistency = none
 
 #stats_queue_level = off
 

@@ -22,6 +22,7 @@
 #include "common/restricted_token.h"
 #include "common/string.h"
 #include "fe_utils/recovery_gen.h"
+#include "fe_utils/string_utils.h"
 #include "file_ops.h"
 #include "filemap.h"
 #include "getopt_long.h"
@@ -62,6 +63,7 @@ char	   *datadir_target = NULL;
 char	   *datadir_source = NULL;
 char	   *connstr_source = NULL;
 char	   *restore_command = NULL;
+char	   *config_file = NULL;
 
 static bool debug = false;
 bool		showprogress = false;
@@ -88,6 +90,8 @@ usage(const char *progname)
 	printf(_("Options:\n"));
 	printf(_("  -c, --restore-target-wal       use restore_command in target configuration to\n"
 			 "                                 retrieve WAL files from archives\n"));
+	printf(_("      --config-file=FILENAME     use specified main server configuration\n"));
+	printf(_("                                 file when running target cluster\n"));
 	printf(_("  -D, --target-pgdata=DIRECTORY  existing data directory to modify\n"));
 	printf(_("      --source-pgdata=DIRECTORY  source data directory to synchronize with\n"));
 	printf(_("      --source-server=CONNSTR    source server to synchronize with\n"));
@@ -118,6 +122,7 @@ main(int argc, char **argv)
 		{"source-pgdata", required_argument, NULL, 1},
 		{"source-server", required_argument, NULL, 2},
 		{"no-ensure-shutdown", no_argument, NULL, 4},
+		{"config-file", required_argument, NULL, 5},
 		{"version", no_argument, NULL, 'V'},
 		{"restore-target-wal", no_argument, NULL, 'c'},
 		{"dry-run", no_argument, NULL, 'n'},
@@ -212,6 +217,10 @@ main(int argc, char **argv)
 
 			case 4:
 				no_ensure_shutdown = true;
+				break;
+
+			case 5:
+				config_file = pg_strdup(optarg);
 				break;
 		}
 	}
@@ -566,10 +575,7 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 				break;
 
 			case FILE_ACTION_COPY:
-				/* Truncate the old file out of the way, if any */
-				open_target_file(entry->path, true);
-				source->queue_fetch_range(source, entry->path,
-										  0, entry->source_size);
+				source->queue_fetch_file(source, entry->path, entry->source_size);
 				break;
 
 			case FILE_ACTION_TRUNCATE:
@@ -1104,8 +1110,8 @@ getRestoreCommand(const char *argv0)
 {
 	int			rc;
 	char		postgres_exec_path[MAXPGPATH],
-				postgres_cmd[MAXPGPATH],
 				cmd_output[MAXPGPATH];
+	PQExpBuffer postgres_cmd;
 
 	if (!restore_wal)
 		return;
@@ -1139,11 +1145,26 @@ getRestoreCommand(const char *argv0)
 	 * Build a command able to retrieve the value of GUC parameter
 	 * restore_command, if set.
 	 */
-	snprintf(postgres_cmd, sizeof(postgres_cmd),
-			 "\"%s\" -D \"%s\" -C restore_command",
-			 postgres_exec_path, datadir_target);
+	postgres_cmd = createPQExpBuffer();
 
-	if (!pipe_read_line(postgres_cmd, cmd_output, sizeof(cmd_output)))
+	/* path to postgres, properly quoted */
+	appendShellString(postgres_cmd, postgres_exec_path);
+
+	/* add -D switch, with properly quoted data directory */
+	appendPQExpBufferStr(postgres_cmd, " -D ");
+	appendShellString(postgres_cmd, datadir_target);
+
+	/* add custom configuration file only if requested */
+	if (config_file != NULL)
+	{
+		appendPQExpBufferStr(postgres_cmd, " -c config_file=");
+		appendShellString(postgres_cmd, config_file);
+	}
+
+	/* add -C switch, for restore_command */
+	appendPQExpBufferStr(postgres_cmd, " -C restore_command");
+
+	if (!pipe_read_line(postgres_cmd->data, cmd_output, sizeof(cmd_output)))
 		exit(1);
 
 	(void) pg_strip_crlf(cmd_output);
@@ -1155,6 +1176,8 @@ getRestoreCommand(const char *argv0)
 
 	pg_log_debug("using for rewind restore_command = \'%s\'",
 				 restore_command);
+
+	destroyPQExpBuffer(postgres_cmd);
 }
 
 
@@ -1168,7 +1191,7 @@ ensureCleanShutdown(const char *argv0)
 	int			ret;
 #define MAXCMDLEN (2 * MAXPGPATH)
 	char		exec_path[MAXPGPATH];
-	char		cmd[MAXCMDLEN];
+	PQExpBuffer postgres_cmd;
 
 	/* locate postgres binary */
 	if ((ret = find_other_exec(argv0, "postgres",
@@ -1207,6 +1230,7 @@ ensureCleanShutdown(const char *argv0)
 	 * fsync here.  This makes the recovery faster, and the target data folder
 	 * is synced at the end anyway.
 	 */
+<<<<<<< HEAD
 	/*
 	 * gpdb: use postgres instead of template1, else the below postgres
 	 * instance might hang in the below scenario:
@@ -1229,12 +1253,38 @@ ensureCleanShutdown(const char *argv0)
 	 */
 	snprintf(cmd, MAXCMDLEN, "\"%s\" --single -D \"%s\" %s < %s",
 			 exec_path, datadir_target, DB_FOR_COMMON_ACCESS, DEVNULL);
+||||||| c4cc2850f4d
+	snprintf(cmd, MAXCMDLEN, "\"%s\" --single -F -D \"%s\" template1 < \"%s\"",
+			 exec_path, datadir_target, DEVNULL);
+=======
+	postgres_cmd = createPQExpBuffer();
+>>>>>>> 2c7ea57e56c
 
-	if (system(cmd) != 0)
+	/* path to postgres, properly quoted */
+	appendShellString(postgres_cmd, exec_path);
+
+	/* add set of options with properly quoted data directory */
+	appendPQExpBufferStr(postgres_cmd, " --single -F -D ");
+	appendShellString(postgres_cmd, datadir_target);
+
+	/* add custom configuration file only if requested */
+	if (config_file != NULL)
+	{
+		appendPQExpBufferStr(postgres_cmd, " -c config_file=");
+		appendShellString(postgres_cmd, config_file);
+	}
+
+	/* finish with the database name, and a properly quoted redirection */
+	appendPQExpBufferStr(postgres_cmd, " template1 < ");
+	appendShellString(postgres_cmd, DEVNULL);
+
+	if (system(postgres_cmd->data) != 0)
 	{
 		pg_log_error("postgres single-user mode in target cluster failed");
-		pg_fatal("Command was: %s", cmd);
+		pg_fatal("Command was: %s", postgres_cmd->data);
 	}
+
+	destroyPQExpBuffer(postgres_cmd);
 }
 
 static void
