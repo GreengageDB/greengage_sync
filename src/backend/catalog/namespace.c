@@ -4352,17 +4352,6 @@ ResetTempNamespace(void)
 
 	result = myTempNamespace;
 
-	/*
-	 * MPP-19973: The shmem exit callback to remove a temp
-	 * namespace may be registered. We need to remove it here as the
-	 * namespace has already been reseted. 
-	 */
-	if (before_shmem_exit_callback_registered)
-	{
-		before_shmem_exit_callback_registered = false;
-		cancel_before_shmem_exit(RemoveTempRelationsCallback, 0);
-	}
-
 	myTempNamespace = InvalidOid;
 	myTempToastNamespace = InvalidOid;
 	myTempNamespaceSubID = InvalidSubTransactionId;
