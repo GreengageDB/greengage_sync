@@ -994,8 +994,9 @@ USING (SELECT 9 AS sid, 57 AS delta) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-ERROR:  MERGE cannot redistribute a row that matched no row of the target
-DETAIL:  A WHEN NOT MATCHED row has no target row to take a segment from, and this plan moves the target's rows between segments.
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
 SELECT * FROM target ORDER BY tid;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
@@ -1503,8 +1504,9 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
-ERROR:  MERGE cannot redistribute a row that matched no row of the target
-DETAIL:  A WHEN NOT MATCHED row has no target row to take a segment from, and this plan moves the target's rows between segments.
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
 SELECT * FROM pa_target ORDER BY tid;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
@@ -1675,20 +1677,11 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (slogts::timestamp, sid, delta, 'inserted by merge');
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
 SELECT * FROM pa_target ORDER BY tid;
-          logts           | tid | balance |           val            
---------------------------+-----+---------+--------------------------
- Tue Jan 31 00:00:00 2017 |   1 |     110 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   2 |     220 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   3 |      30 | inserted by merge
- Tue Jan 31 00:00:00 2017 |   4 |     440 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   5 |     550 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   6 |      60 | inserted by merge
- Tue Jan 31 00:00:00 2017 |   7 |     770 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   8 |     880 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   9 |      90 | inserted by merge
-(9 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
@@ -1866,8 +1859,9 @@ WHEN MATCHED THEN UPDATE
 WHEN NOT MATCHED THEN INSERT
      (city_id, logdate, peaktemp, unitsales)
    VALUES (city_id, logdate, peaktemp, unitsales);
-ERROR:  MERGE cannot redistribute a row that matched no row of the target
-DETAIL:  A WHEN NOT MATCHED row has no target row to take a segment from, and this plan moves the target's rows between segments.
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
  tableoid | city_id | logdate | peaktemp | unitsales 
 ----------+---------+---------+----------+-----------
@@ -1879,6 +1873,23 @@ DETAIL:  drop cascades to table measurement_y2006m02
 drop cascades to table measurement_y2006m03
 drop cascades to table measurement_y2007m01
 DROP FUNCTION measurement_insert_trigger();
+-- A single-row source the planner flattens into the target scan leaves
+-- no join clause, and a WHEN NOT MATCHED row has no target row to take
+-- its segment from: the statement is rejected.  OFFSET 0 keeps the
+-- source separate, and the upsert works.
+MERGE INTO target t USING (SELECT 42 AS sid, 4242 AS v) s
+  ON t.tid = s.sid
+  WHEN MATCHED THEN UPDATE SET balance = s.v
+  WHEN NOT MATCHED THEN INSERT VALUES (s.sid, s.v);
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
+MERGE INTO target t USING (SELECT 42 AS sid, 4242 AS v OFFSET 0) s
+  ON t.tid = s.sid
+  WHEN MATCHED THEN UPDATE SET balance = s.v
+  WHEN NOT MATCHED THEN INSERT VALUES (s.sid, s.v);
+NOTICE:  BEFORE INSERT ROW trigger row: (42,4242)  (seg0 172.18.0.4:8002 pid=263070)
+NOTICE:  AFTER INSERT ROW trigger row: (42,4242)  (seg0 172.18.0.4:8002 pid=263070)
 -- prepare
 RESET SESSION AUTHORIZATION;
 DROP TABLE target, target2;

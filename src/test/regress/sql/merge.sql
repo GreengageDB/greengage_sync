@@ -1321,6 +1321,19 @@ SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
 DROP TABLE measurement, new_measurement CASCADE;
 DROP FUNCTION measurement_insert_trigger();
 
+-- A single-row source the planner flattens into the target scan leaves
+-- no join clause, and a WHEN NOT MATCHED row has no target row to take
+-- its segment from: the statement is rejected.  OFFSET 0 keeps the
+-- source separate, and the upsert works.
+MERGE INTO target t USING (SELECT 42 AS sid, 4242 AS v) s
+  ON t.tid = s.sid
+  WHEN MATCHED THEN UPDATE SET balance = s.v
+  WHEN NOT MATCHED THEN INSERT VALUES (s.sid, s.v);
+MERGE INTO target t USING (SELECT 42 AS sid, 4242 AS v OFFSET 0) s
+  ON t.tid = s.sid
+  WHEN MATCHED THEN UPDATE SET balance = s.v
+  WHEN NOT MATCHED THEN INSERT VALUES (s.sid, s.v);
+
 -- prepare
 
 RESET SESSION AUTHORIZATION;
