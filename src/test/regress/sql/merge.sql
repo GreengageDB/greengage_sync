@@ -7,6 +7,28 @@
 --set debug_print_parse = true;
 --set debug_print_pretty = true;
 
+-- GGDB: the two "try updating the partition key column" statements below move
+-- rows between segments, and every segment that holds such a row raises the
+-- error.  Which one wins the race decides both the leaf partition named in the
+-- message and the two segment numbers in its DETAIL -- observed as part1/0/1
+-- and part4/1/2 across six runs of the same build.  Mask all three, the way
+-- atmsort already masks the "(segN ... pid=N)" suffix, so the statements still
+-- assert that MERGE refuses to write a row belonging to another segment.
+--
+-- start_matchsubs
+-- m/MERGE cannot write a row of "[^"]+" that belongs to another segment/
+-- s/of "[^"]+" that belongs/of "XXX" that belongs/
+--
+-- m/The new row's distribution key belongs to segment \d+, but the MERGE action runs on segment \d+/
+-- s/segment \d+, but the MERGE action runs on segment \d+/segment XXX, but the MERGE action runs on segment XXX/
+-- end_matchsubs
+
+-- GGDB: enable_mergejoin is boot_val off here, so this file's EXPLAIN
+-- blocks would show Hash Joins where upstream, with the GUC at its
+-- default on, shows Merge Joins.  Turn it on for the whole file, the
+-- way upstream sees it.  The three index-plan blocks below still come
+-- out as Hash Joins, matching upstream's own choice there.
+SET enable_mergejoin = on;
 
 CREATE USER regress_merge_privs;
 CREATE USER regress_merge_no_privs;
@@ -855,8 +877,12 @@ RETURNING *;
 ROLLBACK;
 
 -- EXPLAIN
-CREATE TABLE ex_mtarget (a int, b int);
-CREATE TABLE ex_msource (a int, b int);
+-- GGDB: upstream's tables are single-node, so its EXPLAIN ANALYZE shows
+-- all 50/100 rows; here the rows would split across the three segments
+-- and the per-segment numbers would not match.  Replicate the tables so
+-- every segment sees the full copy, like upstream's one segment does.
+CREATE TABLE ex_mtarget (a int, b int) DISTRIBUTED REPLICATED;
+CREATE TABLE ex_msource (a int, b int) DISTRIBUTED REPLICATED;
 INSERT INTO ex_mtarget SELECT i, i*10 FROM generate_series(1,100,2) i;
 INSERT INTO ex_msource SELECT i, i*10 FROM generate_series(1,100,1) i;
 
@@ -870,6 +896,12 @@ BEGIN
 		  query
     LOOP
         ln := regexp_replace(ln, 'Memory: \S*',  'Memory: xxx');
+        -- GGDB: Greengage appends a per-slice "Executor Memory: ...
+        -- Segments: N  Max: ... (segment M)" line with no upstream
+        -- counterpart.  It is wider than any plan line, so keeping it
+        -- would widen the whole table's header against upstream's;
+        -- drop the line instead of masking it.
+        CONTINUE WHEN ln ~ 'Executor Memory';
         RETURN NEXT ln;
     END LOOP;
 END;
@@ -1001,10 +1033,23 @@ DROP TABLE pa_target CASCADE;
 CREATE TABLE pa_target (tid integer, balance float, val text)
 	PARTITION BY LIST (tid);
 
-CREATE TABLE part1 (tid integer, balance float, val text);
-CREATE TABLE part2 (balance float, tid integer, val text);
-CREATE TABLE part3 (tid integer, balance float, val text);
-CREATE TABLE part4 (extraid text, tid integer, balance float, val text);
+-- Greengage: ATTACH PARTITION requires the partition's distribution policy to
+-- match the parent's, and with no DISTRIBUTED BY each table takes its first
+-- column as the key -- 'balance' for part2, 'extraid' for part4, against the
+-- parent's 'tid'.  Name the key so the attaches below still succeed and the
+-- block keeps testing what upstream wrote it for: partitions whose columns are
+-- in a different order or have been dropped.  It also has to be named because
+-- a failed ATTACH leaves the table standalone, so DROP TABLE pa_target CASCADE
+-- below does not reach it and it leaks into every later test sharing this
+-- database -- which is how alter_table came to fail on "part2 already exists".
+CREATE TABLE part1 (tid integer, balance float, val text)
+  DISTRIBUTED BY (tid);
+CREATE TABLE part2 (balance float, tid integer, val text)
+  DISTRIBUTED BY (tid);
+CREATE TABLE part3 (tid integer, balance float, val text)
+  DISTRIBUTED BY (tid);
+CREATE TABLE part4 (extraid text, tid integer, balance float, val text)
+  DISTRIBUTED BY (tid);
 ALTER TABLE part4 DROP COLUMN extraid;
 
 ALTER TABLE pa_target ATTACH PARTITION part1 FOR VALUES IN (1,4);
@@ -1037,7 +1082,13 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
-SELECT * FROM pa_target ORDER BY tid;
+-- GGDB: the tid IN (1, 5) qual leaves most source rows NOT MATCHED, so this
+-- result has two rows for several tids and ORDER BY tid alone does not
+-- determine the order between them.  Add val as a tiebreaker: upstream gets
+-- away with the partial sort because one backend reads one heap in one order,
+-- but here the rows arrive from three segments.  atmsort cannot help -- it
+-- only sorts a result whose query has no ORDER BY at all.
+SELECT * FROM pa_target ORDER BY tid, val;
 ROLLBACK;
 
 -- try updating the partition key column
@@ -1056,8 +1107,15 @@ DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
 
 -- Sub-partitioning
+--
+-- GGDB: with no DISTRIBUTED BY this table would be distributed on logts, its
+-- first column, while the MERGE below joins on tid -- so the rows would have to
+-- be redistributed, and an Explicit Redistribute Motion has no segment to send
+-- a WHEN NOT MATCHED row to.  Distribute on tid, which is what the statement
+-- joins on, and the MERGE runs on the segments the target rows already live on.
+-- pa_source is already distributed on sid by default, so the join is co-located.
 CREATE TABLE pa_target (logts timestamp, tid integer, balance float, val text)
-	PARTITION BY RANGE (logts);
+	PARTITION BY RANGE (logts) DISTRIBUTED BY (tid);
 
 CREATE TABLE part_m01 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-01-01') TO ('2017-02-01')
@@ -1262,6 +1320,19 @@ WHEN NOT MATCHED THEN INSERT
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
 DROP TABLE measurement, new_measurement CASCADE;
 DROP FUNCTION measurement_insert_trigger();
+
+-- A single-row source the planner flattens into the target scan leaves
+-- no join clause, and a WHEN NOT MATCHED row has no target row to take
+-- its segment from: the statement is rejected.  OFFSET 0 keeps the
+-- source separate, and the upsert works.
+MERGE INTO target t USING (SELECT 42 AS sid, 4242 AS v) s
+  ON t.tid = s.sid
+  WHEN MATCHED THEN UPDATE SET balance = s.v
+  WHEN NOT MATCHED THEN INSERT VALUES (s.sid, s.v);
+MERGE INTO target t USING (SELECT 42 AS sid, 4242 AS v OFFSET 0) s
+  ON t.tid = s.sid
+  WHEN MATCHED THEN UPDATE SET balance = s.v
+  WHEN NOT MATCHED THEN INSERT VALUES (s.sid, s.v);
 
 -- prepare
 

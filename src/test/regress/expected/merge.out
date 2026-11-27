@@ -5,6 +5,27 @@
 --set debug_print_rewritten = true;
 --set debug_print_parse = true;
 --set debug_print_pretty = true;
+-- GGDB: the two "try updating the partition key column" statements below move
+-- rows between segments, and every segment that holds such a row raises the
+-- error.  Which one wins the race decides both the leaf partition named in the
+-- message and the two segment numbers in its DETAIL -- observed as part1/0/1
+-- and part4/1/2 across six runs of the same build.  Mask all three, the way
+-- atmsort already masks the "(segN ... pid=N)" suffix, so the statements still
+-- assert that MERGE refuses to write a row belonging to another segment.
+--
+-- start_matchsubs
+-- m/MERGE cannot write a row of "[^"]+" that belongs to another segment/
+-- s/of "[^"]+" that belongs/of "XXX" that belongs/
+--
+-- m/The new row's distribution key belongs to segment \d+, but the MERGE action runs on segment \d+/
+-- s/segment \d+, but the MERGE action runs on segment \d+/segment XXX, but the MERGE action runs on segment XXX/
+-- end_matchsubs
+-- GGDB: enable_mergejoin is boot_val off here, so this file's EXPLAIN
+-- blocks would show Hash Joins where upstream, with the GUC at its
+-- default on, shows Merge Joins.  Turn it on for the whole file, the
+-- way upstream sees it.  The three index-plan blocks below still come
+-- out as Hash Joins, matching upstream's own choice there.
+SET enable_mergejoin = on;
 CREATE USER regress_merge_privs;
 CREATE USER regress_merge_no_privs;
 DROP TABLE IF EXISTS target;
@@ -828,6 +849,8 @@ MERGE INTO wq_target t
 USING wq_source s ON t.tid = s.sid
 WHEN MATCHED AND (merge_when_and_write()) THEN
 	UPDATE SET balance = t.balance + s.balance;
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement
+PL/pgSQL function merge_when_and_write() line 3 at SQL statement
 ROLLBACK;
 drop function merge_when_and_write();
 DROP TABLE wq_target, wq_source;
@@ -861,11 +884,17 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER merge_bsi BEFORE INSERT ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_bsu BEFORE UPDATE ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_bsd BEFORE DELETE ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_asi AFTER INSERT ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_asu AFTER UPDATE ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_asd AFTER DELETE ON target FOR EACH STATEMENT EXECUTE PROCEDURE merge_trigfunc ();
+ERROR:  Triggers for statements are not yet supported
 CREATE TRIGGER merge_bri BEFORE INSERT ON target FOR EACH ROW EXECUTE PROCEDURE merge_trigfunc ();
 CREATE TRIGGER merge_bru BEFORE UPDATE ON target FOR EACH ROW EXECUTE PROCEDURE merge_trigfunc ();
 CREATE TRIGGER merge_brd BEFORE DELETE ON target FOR EACH ROW EXECUTE PROCEDURE merge_trigfunc ();
@@ -875,10 +904,8 @@ CREATE TRIGGER merge_ard AFTER DELETE ON target FOR EACH ROW EXECUTE PROCEDURE m
 -- now the classic UPSERT, with a DELETE
 BEGIN;
 UPDATE target SET balance = 0 WHERE tid = 3;
-NOTICE:  BEFORE UPDATE STATEMENT trigger
 NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,0)
 NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,0)
-NOTICE:  AFTER UPDATE STATEMENT trigger
 --EXPLAIN (ANALYZE ON, COSTS OFF, SUMMARY OFF, TIMING OFF)
 MERGE INTO target t
 USING source AS s
@@ -889,18 +916,12 @@ WHEN MATCHED THEN
 	DELETE
 WHEN NOT MATCHED THEN
 	INSERT VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE DELETE STATEMENT trigger
 NOTICE:  BEFORE DELETE ROW trigger row: (3,0)
 NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,15)
 NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
 NOTICE:  AFTER DELETE ROW trigger row: (3,0)
 NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,15)
 NOTICE:  AFTER INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER DELETE STATEMENT trigger
-NOTICE:  AFTER UPDATE STATEMENT trigger
-NOTICE:  AFTER INSERT STATEMENT trigger
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -935,15 +956,9 @@ ON t.tid = s.sid
 WHEN MATCHED AND s.sid = 3 THEN UPDATE SET balance = t.balance + s.delta
 WHEN MATCHED THEN DELETE
 WHEN NOT MATCHED THEN INSERT VALUES (sid, delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE DELETE STATEMENT trigger
 NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,50)
 NOTICE:  BEFORE DELETE ROW trigger row: (2,20)
 NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER DELETE STATEMENT trigger
-NOTICE:  AFTER UPDATE STATEMENT trigger
-NOTICE:  AFTER INSERT STATEMENT trigger
 SELECT * FROM target FULL OUTER JOIN source ON (sid = tid);
  tid | balance | sid | delta 
 -----+---------+-----+-------
@@ -967,12 +982,10 @@ WHEN MATCHED AND t.balance > s.delta THEN
 	UPDATE SET balance = t.balance - s.delta;
 END;
 $$;
-NOTICE:  BEFORE UPDATE STATEMENT trigger
 NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,10)
 NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,15)
 NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,10)
 NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,15)
-NOTICE:  AFTER UPDATE STATEMENT trigger
 ROLLBACK;
 --source constants
 BEGIN;
@@ -981,19 +994,11 @@ USING (SELECT 9 AS sid, 57 AS delta) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE INSERT ROW trigger row: (9,57)
-NOTICE:  AFTER INSERT ROW trigger row: (9,57)
-NOTICE:  AFTER INSERT STATEMENT trigger
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
 SELECT * FROM target ORDER BY tid;
- tid | balance 
------+---------
-   1 |      10
-   2 |      20
-   3 |      30
-   9 |      57
-(4 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 --source query
 BEGIN;
@@ -1002,10 +1007,8 @@ USING (SELECT sid, delta FROM source WHERE delta > 0) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
 NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
 NOTICE:  AFTER INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT STATEMENT trigger
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1022,10 +1025,8 @@ USING (SELECT sid, delta as newname FROM source WHERE delta > 0) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.newname);
-NOTICE:  BEFORE INSERT STATEMENT trigger
 NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
 NOTICE:  AFTER INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT STATEMENT trigger
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1045,16 +1046,12 @@ WHEN MATCHED THEN
 	UPDATE SET balance = t1.balance + t2.balance
 WHEN NOT MATCHED THEN
 	INSERT VALUES (t2.tid, t2.balance);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  BEFORE UPDATE STATEMENT trigger
-NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,20)
 NOTICE:  BEFORE UPDATE ROW trigger row: (2,20) -> (2,40)
 NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,60)
-NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,20)
 NOTICE:  AFTER UPDATE ROW trigger row: (2,20) -> (2,40)
 NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,60)
-NOTICE:  AFTER UPDATE STATEMENT trigger
-NOTICE:  AFTER INSERT STATEMENT trigger
+NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,20)
+NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,20)
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1070,8 +1067,6 @@ USING (SELECT tid as sid, balance as delta FROM target WHERE balance > 0) AS s
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
-NOTICE:  AFTER INSERT STATEMENT trigger
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1092,10 +1087,8 @@ USING
 ON t.tid = s.sid
 WHEN NOT MATCHED THEN
 	INSERT (tid, balance) VALUES (s.sid, s.delta);
-NOTICE:  BEFORE INSERT STATEMENT trigger
 NOTICE:  BEFORE INSERT ROW trigger row: (4,40)
 NOTICE:  AFTER INSERT ROW trigger row: (4,40)
-NOTICE:  AFTER INSERT STATEMENT trigger
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1127,10 +1120,8 @@ RETURN result;
 END;
 $$;
 SELECT merge_func(3, 4);
-NOTICE:  BEFORE UPDATE STATEMENT trigger
 NOTICE:  BEFORE UPDATE ROW trigger row: (3,30) -> (3,26)
 NOTICE:  AFTER UPDATE ROW trigger row: (3,30) -> (3,26)
-NOTICE:  AFTER UPDATE STATEMENT trigger
  merge_func 
 ------------
           1
@@ -1149,10 +1140,8 @@ ROLLBACK;
 BEGIN;
 prepare foom as merge into target t using (select 1 as sid) s on (t.tid = s.sid) when matched then update set balance = 1;
 execute foom;
-NOTICE:  BEFORE UPDATE STATEMENT trigger
 NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,1)
 NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,1)
-NOTICE:  AFTER UPDATE STATEMENT trigger
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1171,10 +1160,8 @@ WHEN MATCHED THEN
 UPDATE SET balance = $2;
 --EXPLAIN (ANALYZE ON, COSTS OFF, SUMMARY OFF, TIMING OFF)
 execute foom2 (1, 1);
-NOTICE:  BEFORE UPDATE STATEMENT trigger
 NOTICE:  BEFORE UPDATE ROW trigger row: (1,10) -> (1,1)
 NOTICE:  AFTER UPDATE ROW trigger row: (1,10) -> (1,1)
-NOTICE:  AFTER UPDATE STATEMENT trigger
 SELECT * FROM target ORDER BY tid;
  tid | balance 
 -----+---------
@@ -1290,8 +1277,12 @@ LINE 10: RETURNING *;
          ^
 ROLLBACK;
 -- EXPLAIN
-CREATE TABLE ex_mtarget (a int, b int);
-CREATE TABLE ex_msource (a int, b int);
+-- GGDB: upstream's tables are single-node, so its EXPLAIN ANALYZE shows
+-- all 50/100 rows; here the rows would split across the three segments
+-- and the per-segment numbers would not match.  Replicate the tables so
+-- every segment sees the full copy, like upstream's one segment does.
+CREATE TABLE ex_mtarget (a int, b int) DISTRIBUTED REPLICATED;
+CREATE TABLE ex_msource (a int, b int) DISTRIBUTED REPLICATED;
 INSERT INTO ex_mtarget SELECT i, i*10 FROM generate_series(1,100,2) i;
 INSERT INTO ex_msource SELECT i, i*10 FROM generate_series(1,100,1) i;
 CREATE FUNCTION explain_merge(query text) RETURNS SETOF text
@@ -1304,6 +1295,12 @@ BEGIN
 		  query
     LOOP
         ln := regexp_replace(ln, 'Memory: \S*',  'Memory: xxx');
+        -- GGDB: Greengage appends a per-slice "Executor Memory: ...
+        -- Segments: N  Max: ... (segment M)" line with no upstream
+        -- counterpart.  It is wider than any plan line, so keeping it
+        -- would widen the whole table's header against upstream's;
+        -- drop the line instead of masking it.
+        CONTINUE WHEN ln ~ 'Executor Memory';
         RETURN NEXT ln;
     END LOOP;
 END;
@@ -1316,21 +1313,17 @@ WHEN MATCHED THEN
                             explain_merge                             
 ----------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples Inserted: 0
-   Tuples Updated: 50
-   Tuples Deleted: 0
-   Tuples Skipped: 0
    ->  Merge Join (actual rows=50 loops=1)
          Merge Cond: (t.a = s.a)
          ->  Sort (actual rows=50 loops=1)
                Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_mtarget t (actual rows=50 loops=1)
          ->  Sort (actual rows=100 loops=1)
                Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
-(15 rows)
+(12 rows)
 
 -- only updates to selected tuples
 SELECT explain_merge('
@@ -1340,21 +1333,17 @@ WHEN MATCHED AND t.a < 10 THEN
                             explain_merge                             
 ----------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples Inserted: 0
-   Tuples Updated: 5
-   Tuples Deleted: 0
-   Tuples Skipped: 45
    ->  Merge Join (actual rows=50 loops=1)
          Merge Cond: (t.a = s.a)
          ->  Sort (actual rows=50 loops=1)
                Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_mtarget t (actual rows=50 loops=1)
          ->  Sort (actual rows=100 loops=1)
                Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
-(15 rows)
+(12 rows)
 
 -- updates + deletes
 SELECT explain_merge('
@@ -1366,21 +1355,17 @@ WHEN MATCHED AND t.a >= 10 AND t.a <= 20 THEN
                             explain_merge                             
 ----------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples Inserted: 0
-   Tuples Updated: 5
-   Tuples Deleted: 5
-   Tuples Skipped: 40
    ->  Merge Join (actual rows=50 loops=1)
          Merge Cond: (t.a = s.a)
          ->  Sort (actual rows=50 loops=1)
                Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_mtarget t (actual rows=50 loops=1)
          ->  Sort (actual rows=100 loops=1)
                Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
-(15 rows)
+(12 rows)
 
 -- only inserts
 SELECT explain_merge('
@@ -1390,21 +1375,17 @@ WHEN NOT MATCHED AND s.a < 10 THEN
                             explain_merge                             
 ----------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples Inserted: 4
-   Tuples Updated: 0
-   Tuples Deleted: 0
-   Tuples Skipped: 96
    ->  Merge Left Join (actual rows=100 loops=1)
          Merge Cond: (s.a = t.a)
          ->  Sort (actual rows=100 loops=1)
                Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
          ->  Sort (actual rows=45 loops=1)
                Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_mtarget t (actual rows=45 loops=1)
-(15 rows)
+(12 rows)
 
 -- all three
 SELECT explain_merge('
@@ -1418,21 +1399,17 @@ WHEN NOT MATCHED AND s.a < 20 THEN
                             explain_merge                             
 ----------------------------------------------------------------------
  Merge on ex_mtarget t (actual rows=0 loops=1)
-   Tuples Inserted: 10
-   Tuples Updated: 9
-   Tuples Deleted: 5
-   Tuples Skipped: 76
    ->  Merge Left Join (actual rows=100 loops=1)
          Merge Cond: (s.a = t.a)
          ->  Sort (actual rows=100 loops=1)
                Sort Key: s.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_msource s (actual rows=100 loops=1)
          ->  Sort (actual rows=49 loops=1)
                Sort Key: t.a
-               Sort Method: quicksort  Memory: xxx
+               Sort Method:  quicksort  Memory: xxx
                ->  Seq Scan on ex_mtarget t (actual rows=49 loops=1)
-(15 rows)
+(12 rows)
 
 DROP TABLE ex_msource, ex_mtarget;
 DROP FUNCTION explain_merge(text);
@@ -1527,31 +1504,11 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
 SELECT * FROM pa_target ORDER BY tid;
- tid | balance |           val            
------+---------+--------------------------
-   1 |     110 | initial updated by merge
-   2 |      20 | inserted by merge
-   3 |      30 | inserted by merge
-   3 |     300 | initial
-   4 |      40 | inserted by merge
-   5 |     500 | initial
-   5 |      50 | inserted by merge
-   6 |      60 | inserted by merge
-   7 |     700 | initial
-   7 |      70 | inserted by merge
-   8 |      80 | inserted by merge
-   9 |      90 | inserted by merge
-   9 |     900 | initial
-  10 |     100 | inserted by merge
-  11 |    1100 | initial
-  11 |     110 | inserted by merge
-  12 |     120 | inserted by merge
-  13 |    1300 | initial
-  13 |     130 | inserted by merge
-  14 |     140 | inserted by merge
-(20 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 -- try updating the partition key column
 BEGIN;
@@ -1562,35 +1519,33 @@ MERGE INTO pa_target t
     UPDATE SET tid = tid + 1, balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
+ERROR:  MERGE cannot write a row of "part1" that belongs to another segment
+DETAIL:  The new row's distribution key belongs to segment 0, but the MERGE action runs on segment 1.
 SELECT * FROM pa_target ORDER BY tid;
- tid | balance |           val            
------+---------+--------------------------
-   2 |     110 | initial updated by merge
-   2 |      20 | inserted by merge
-   4 |      40 | inserted by merge
-   4 |     330 | initial updated by merge
-   6 |     550 | initial updated by merge
-   6 |      60 | inserted by merge
-   8 |      80 | inserted by merge
-   8 |     770 | initial updated by merge
-  10 |     990 | initial updated by merge
-  10 |     100 | inserted by merge
-  12 |    1210 | initial updated by merge
-  12 |     120 | inserted by merge
-  14 |    1430 | initial updated by merge
-  14 |     140 | inserted by merge
-(14 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE pa_target CASCADE;
 -- The target table is partitioned in the same way, but this time by attaching
 -- partitions which have columns in different order, dropped columns etc.
 CREATE TABLE pa_target (tid integer, balance float, val text)
 	PARTITION BY LIST (tid);
-CREATE TABLE part1 (tid integer, balance float, val text);
-CREATE TABLE part2 (balance float, tid integer, val text);
-CREATE TABLE part3 (tid integer, balance float, val text);
-CREATE TABLE part4 (extraid text, tid integer, balance float, val text);
+-- Greengage: ATTACH PARTITION requires the partition's distribution policy to
+-- match the parent's, and with no DISTRIBUTED BY each table takes its first
+-- column as the key -- 'balance' for part2, 'extraid' for part4, against the
+-- parent's 'tid'.  Name the key so the attaches below still succeed and the
+-- block keeps testing what upstream wrote it for: partitions whose columns are
+-- in a different order or have been dropped.  It also has to be named because
+-- a failed ATTACH leaves the table standalone, so DROP TABLE pa_target CASCADE
+-- below does not reach it and it leaks into every later test sharing this
+-- database -- which is how alter_table came to fail on "part2 already exists".
+CREATE TABLE part1 (tid integer, balance float, val text)
+  DISTRIBUTED BY (tid);
+CREATE TABLE part2 (balance float, tid integer, val text)
+  DISTRIBUTED BY (tid);
+CREATE TABLE part3 (tid integer, balance float, val text)
+  DISTRIBUTED BY (tid);
+CREATE TABLE part4 (extraid text, tid integer, balance float, val text)
+  DISTRIBUTED BY (tid);
 ALTER TABLE part4 DROP COLUMN extraid;
 ALTER TABLE pa_target ATTACH PARTITION part1 FOR VALUES IN (1,4);
 ALTER TABLE pa_target ATTACH PARTITION part2 FOR VALUES IN (2,5,6);
@@ -1637,13 +1592,19 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
-SELECT * FROM pa_target ORDER BY tid;
+-- GGDB: the tid IN (1, 5) qual leaves most source rows NOT MATCHED, so this
+-- result has two rows for several tids and ORDER BY tid alone does not
+-- determine the order between them.  Add val as a tiebreaker: upstream gets
+-- away with the partial sort because one backend reads one heap in one order,
+-- but here the rows arrive from three segments.  atmsort cannot help -- it
+-- only sorts a result whose query has no ORDER BY at all.
+SELECT * FROM pa_target ORDER BY tid, val;
  tid | balance |           val            
 -----+---------+--------------------------
    1 |     110 | initial updated by merge
    2 |      20 | inserted by merge
-   3 |      30 | inserted by merge
    3 |     300 | initial
+   3 |      30 | inserted by merge
    4 |      40 | inserted by merge
    6 |      60 | inserted by merge
    7 |     700 | initial
@@ -1652,8 +1613,8 @@ SELECT * FROM pa_target ORDER BY tid;
    9 |     900 | initial
    9 |      90 | inserted by merge
   10 |     100 | inserted by merge
-  11 |     110 | inserted by merge
   11 |    1100 | initial
+  11 |     110 | inserted by merge
   12 |     120 | inserted by merge
   13 |    1300 | initial
   13 |     130 | inserted by merge
@@ -1670,31 +1631,23 @@ MERGE INTO pa_target t
     UPDATE SET tid = tid + 1, balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (sid, delta, 'inserted by merge');
+ERROR:  MERGE cannot write a row of "part1" that belongs to another segment
+DETAIL:  The new row's distribution key belongs to segment 0, but the MERGE action runs on segment 1.
 SELECT * FROM pa_target ORDER BY tid;
- tid | balance |           val            
------+---------+--------------------------
-   2 |     110 | initial updated by merge
-   2 |      20 | inserted by merge
-   4 |      40 | inserted by merge
-   4 |     330 | initial updated by merge
-   6 |     550 | initial updated by merge
-   6 |      60 | inserted by merge
-   8 |      80 | inserted by merge
-   8 |     770 | initial updated by merge
-  10 |     990 | initial updated by merge
-  10 |     100 | inserted by merge
-  12 |    1210 | initial updated by merge
-  12 |     120 | inserted by merge
-  14 |    1430 | initial updated by merge
-  14 |     140 | inserted by merge
-(14 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
 -- Sub-partitioning
+--
+-- GGDB: with no DISTRIBUTED BY this table would be distributed on logts, its
+-- first column, while the MERGE below joins on tid -- so the rows would have to
+-- be redistributed, and an Explicit Redistribute Motion has no segment to send
+-- a WHEN NOT MATCHED row to.  Distribute on tid, which is what the statement
+-- joins on, and the MERGE runs on the segments the target rows already live on.
+-- pa_source is already distributed on sid by default, so the join is co-located.
 CREATE TABLE pa_target (logts timestamp, tid integer, balance float, val text)
-	PARTITION BY RANGE (logts);
+	PARTITION BY RANGE (logts) DISTRIBUTED BY (tid);
 CREATE TABLE part_m01 PARTITION OF pa_target
 	FOR VALUES FROM ('2017-01-01') TO ('2017-02-01')
 	PARTITION BY LIST (tid);
@@ -1724,20 +1677,11 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (slogts::timestamp, sid, delta, 'inserted by merge');
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
 SELECT * FROM pa_target ORDER BY tid;
-          logts           | tid | balance |           val            
---------------------------+-----+---------+--------------------------
- Tue Jan 31 00:00:00 2017 |   1 |     110 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   2 |     220 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   3 |      30 | inserted by merge
- Tue Jan 31 00:00:00 2017 |   4 |     440 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   5 |     550 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   6 |      60 | inserted by merge
- Tue Jan 31 00:00:00 2017 |   7 |     770 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   8 |     880 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   9 |      90 | inserted by merge
-(9 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
@@ -1873,21 +1817,29 @@ CREATE TRIGGER insert_measurement_trigger
     BEFORE INSERT ON measurement
     FOR EACH ROW EXECUTE PROCEDURE measurement_insert_trigger();
 INSERT INTO measurement VALUES (1, '2006-02-10', 35, 10);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement
+PL/pgSQL function measurement_insert_trigger() line 5 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-02-16', 45, 20);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement
+PL/pgSQL function measurement_insert_trigger() line 5 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-03-17', 25, 10);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement
+PL/pgSQL function measurement_insert_trigger() line 8 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-03-27', 15, 40);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement
+PL/pgSQL function measurement_insert_trigger() line 8 at SQL statement
 INSERT INTO measurement VALUES (1, '2007-01-15', 10, 10);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement
+            VALUES (NEW.*)"
+PL/pgSQL function measurement_insert_trigger() line 11 at SQL statement
 INSERT INTO measurement VALUES (1, '2007-01-17', 10, 10);
+ERROR:  function cannot execute on a QE slice because it issues a non-SELECT statement
+            VALUES (NEW.*)"
+PL/pgSQL function measurement_insert_trigger() line 11 at SQL statement
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
-       tableoid       | city_id |  logdate   | peaktemp | unitsales 
-----------------------+---------+------------+----------+-----------
- measurement_y2006m02 |       1 | 02-10-2006 |       35 |        10
- measurement_y2006m02 |       1 | 02-16-2006 |       45 |        20
- measurement_y2006m03 |       1 | 03-17-2006 |       25 |        10
- measurement_y2006m03 |       1 | 03-27-2006 |       15 |        40
- measurement_y2007m01 |       1 | 01-15-2007 |       10 |        10
- measurement_y2007m01 |       1 | 01-17-2007 |       10 |        10
-(6 rows)
+ tableoid | city_id | logdate | peaktemp | unitsales 
+----------+---------+---------+----------+-----------
+(0 rows)
 
 CREATE TABLE new_measurement (LIKE measurement);
 INSERT INTO new_measurement VALUES (1, '2006-03-01', 20, 10);
@@ -1907,17 +1859,13 @@ WHEN MATCHED THEN UPDATE
 WHEN NOT MATCHED THEN INSERT
      (city_id, logdate, peaktemp, unitsales)
    VALUES (city_id, logdate, peaktemp, unitsales);
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
-       tableoid       | city_id |  logdate   | peaktemp | unitsales 
-----------------------+---------+------------+----------+-----------
- measurement_y2006m02 |       1 | 02-10-2006 |       35 |        10
- measurement_y2006m02 |       1 | 02-16-2006 |       50 |        30
- measurement_y2006m03 |       1 | 03-01-2006 |       20 |        10
- measurement_y2006m03 |       1 | 03-17-2006 |       25 |        10
- measurement_y2007m01 |       1 | 01-15-2007 |       10 |        10
- measurement_y2007m01 |       1 | 01-16-2007 |       10 |        10
- measurement_y2006m02 |       2 | 02-10-2006 |       20 |        20
-(7 rows)
+ tableoid | city_id | logdate | peaktemp | unitsales 
+----------+---------+---------+----------+-----------
+(0 rows)
 
 DROP TABLE measurement, new_measurement CASCADE;
 NOTICE:  drop cascades to 3 other objects
@@ -1925,6 +1873,23 @@ DETAIL:  drop cascades to table measurement_y2006m02
 drop cascades to table measurement_y2006m03
 drop cascades to table measurement_y2007m01
 DROP FUNCTION measurement_insert_trigger();
+-- A single-row source the planner flattens into the target scan leaves
+-- no join clause, and a WHEN NOT MATCHED row has no target row to take
+-- its segment from: the statement is rejected.  OFFSET 0 keeps the
+-- source separate, and the upsert works.
+MERGE INTO target t USING (SELECT 42 AS sid, 4242 AS v) s
+  ON t.tid = s.sid
+  WHEN MATCHED THEN UPDATE SET balance = s.v
+  WHEN NOT MATCHED THEN INSERT VALUES (s.sid, s.v);
+ERROR:  MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target
+DETAIL:  The plan runs the statement on every segment, and each segment would insert the whole source.
+HINT:  Distribute the source on the target's distribution keys, so that the join is co-located.
+MERGE INTO target t USING (SELECT 42 AS sid, 4242 AS v OFFSET 0) s
+  ON t.tid = s.sid
+  WHEN MATCHED THEN UPDATE SET balance = s.v
+  WHEN NOT MATCHED THEN INSERT VALUES (s.sid, s.v);
+NOTICE:  BEFORE INSERT ROW trigger row: (42,4242)  (seg0 172.18.0.4:8002 pid=263070)
+NOTICE:  AFTER INSERT ROW trigger row: (42,4242)  (seg0 172.18.0.4:8002 pid=263070)
 -- prepare
 RESET SESSION AUTHORIZATION;
 DROP TABLE target, target2;
