@@ -20,6 +20,7 @@ data/wet_csv?.tbl
 data/wet_text?.tbl
 data/wet_syntax?.tbl
 data/wet_execute.tbl
+data/part_ext.tbl
 
 data/gpsd-without-hll.sql
 data/gpsd-with-hll.sql

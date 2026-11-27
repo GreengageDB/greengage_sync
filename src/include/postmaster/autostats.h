@@ -31,6 +31,7 @@ typedef enum AutoStatsCmdType
 	AUTOSTATS_CMDTYPE_INSERT,
 	AUTOSTATS_CMDTYPE_DELETE,
 	AUTOSTATS_CMDTYPE_COPY,
+	AUTOSTATS_CMDTYPE_MERGE,
 
 	/*
 	 * This should always be the last entry. add new statement types before

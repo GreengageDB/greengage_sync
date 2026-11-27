@@ -16,8 +16,15 @@ $node->append_conf(
 # Start the PostgreSQL server
 $node->start;
 
-# Take a backup of a running server
-$node->backup_fs_hot('testbackup');
+# Take a backup.  This used to be a backup_fs_hot() of the running server;
+# 39969e2a1e4 removed that method along with exclusive backup mode, so stop
+# around the filesystem copy, the way the same commit converted
+# 010_logical_decoding_timelines.pl.  A clean shutdown switches the WAL segment
+# and archives it (ShutdownXLOG()), so everything written below still reaches
+# the archive for the restored node to replay.
+$node->stop;
+$node->backup_fs_cold('testbackup');
+$node->start;
 
 # Create a couple of tables: heap, append-optimized, columnar append-optimized
 # Restored cluster should replay these actions later

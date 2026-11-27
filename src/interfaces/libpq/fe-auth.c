@@ -1244,7 +1244,7 @@ PQencryptPasswordConn(PGconn *conn, const char *passwd, const char *user,
 	if (!conn)
 		return NULL;
 
-	resetPQExpBuffer(&conn->errorMessage);
+	pqClearConnErrorState(conn);
 
 	/* If no algorithm was given, ask the server. */
 	if (algorithm == NULL)

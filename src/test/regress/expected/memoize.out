@@ -105,6 +105,7 @@ WHERE t1.unique1 < 1000;
 -- only check the plan shape here, not the Hits/Misses/Evictions line.
 SET work_mem TO '64kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+SET hash_mem_multiplier TO 1.0;
 SET enable_mergejoin TO off;
 -- GPDB: also disable sort, otherwise a distributed Merge Join is chosen over the
 -- Nested Loop + Memoize plan this test needs.
@@ -273,6 +274,7 @@ RESET enable_seqscan;
 RESET enable_mergejoin;
 RESET work_mem;
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+RESET hash_mem_multiplier;
 -- Test Memoize plans.  GPDB has no intra-segment parallel workers, so
 -- upstream's "parallel plan" is just the ordinary distributed plan here.  We
 -- keep enable_hashjoin/enable_bitmapscan off (see above) so the planner sticks

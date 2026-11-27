@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 3;
+use Test::More;
 
 use FindBin;
 use lib $FindBin::RealBin;
@@ -29,5 +29,7 @@ sub run_test
 # Run the test in both modes
 run_test('local');
 run_test('remote');
+
+done_testing();
 
 exit(0);

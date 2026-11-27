@@ -154,6 +154,10 @@ FullTransactionIdAdvance(FullTransactionId *dest)
 	(AssertMacro(TransactionIdIsNormal(id1) && TransactionIdIsNormal(id2)), \
 	(int32) ((id1) - (id2)) > 0)
 
+/* OIDs of Template0 and Postgres database are fixed */
+#define Template0ObjectId		4
+#define PostgresObjectId		5
+
 /*
  * VariableCache is a data structure in shared memory that is used to track
  * OID and XID assignment state.  For largely historical reasons, there is

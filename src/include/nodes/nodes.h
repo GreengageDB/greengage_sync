@@ -37,6 +37,7 @@ typedef enum NodeTag
 	T_ProjectionInfo,
 	T_JunkFilter,
 	T_OnConflictSetState,
+	T_MergeActionState,
 	T_ResultRelInfo,
 	T_EState,
 	T_TupleTableSlot,
@@ -256,6 +257,18 @@ typedef enum NodeTag
 	T_FromExpr,
 	T_OnConflictExpr,
 	T_IntoClause,
+	T_JsonFormat,
+	T_JsonReturning,
+	T_JsonValueExpr,
+	T_JsonParseExpr,
+	T_JsonScalarExpr,
+	T_JsonSerializeExpr,
+	T_JsonConstructorExpr,
+	T_JsonExpr,
+	T_JsonCoercion,
+	T_JsonItemCoercions,
+	T_JsonTableParent,
+	T_JsonTableSibling,
 	T_CopyIntoClause,
 	T_RefreshClause,
 	T_Flow,
@@ -338,6 +351,7 @@ typedef enum NodeTag
 	T_EquivalenceClass,
 	T_EquivalenceMember,
 	T_PathKey,
+	T_PathKeyInfo,
 	T_PathTarget,
 	T_RestrictInfo,
 	T_IndexClause,
@@ -352,6 +366,7 @@ typedef enum NodeTag
 	T_RollupData,
 	T_GroupingSetData,
 	T_StatisticExtInfo,
+	T_MergeAction,
 
     /* Tags for MPP planner nodes (relation.h) */
     T_CdbMotionPath = 580,
@@ -373,6 +388,7 @@ typedef enum NodeTag
 	 */
 	T_Integer,
 	T_Float,
+	T_Boolean,
 	T_String,
 	T_BitString,
 
@@ -397,6 +413,7 @@ typedef enum NodeTag
 	T_InsertStmt,
 	T_DeleteStmt,
 	T_UpdateStmt,
+	T_MergeStmt,
 	T_SelectStmt,
 	T_ReturnStmt,
 	T_PLAssignStmt,
@@ -459,6 +476,7 @@ typedef enum NodeTag
 	T_CheckPointStmt,
 	T_CreateSchemaStmt,
 	T_AlterDatabaseStmt,
+	T_AlterDatabaseRefreshCollStmt,
 	T_AlterDatabaseSetStmt,
 	T_AlterRoleSetStmt,
 	T_CreateConversionStmt,
@@ -593,6 +611,7 @@ typedef enum NodeTag
 	T_CTESearchClause,
 	T_CTECycleClause,
 	T_CommonTableExpr,
+	T_MergeWhenClause,
 	T_ColumnReferenceStorageDirective,
 	T_DistributionKeyElem,
 	T_RoleSpec,
@@ -605,6 +624,22 @@ typedef enum NodeTag
 	T_VacuumRelation,
 	T_PublicationObjSpec,
 	T_PublicationTable,
+	T_JsonObjectConstructor,
+	T_JsonArrayConstructor,
+	T_JsonArrayQueryConstructor,
+	T_JsonAggConstructor,
+	T_JsonObjectAgg,
+	T_JsonArrayAgg,
+	T_JsonFuncExpr,
+	T_JsonIsPredicate,
+	T_JsonTable,
+	T_JsonTableColumn,
+	T_JsonTablePlan,
+	T_JsonCommon,
+	T_JsonArgument,
+	T_JsonKeyValue,
+	T_JsonBehavior,
+	T_JsonOutput,
 
 	/*
 	 * TAGS FOR REPLICATION GRAMMAR PARSE NODES (replnodes.h)
@@ -616,7 +651,6 @@ typedef enum NodeTag
 	T_ReadReplicationSlotCmd,
 	T_StartReplicationCmd,
 	T_TimeLineHistoryCmd,
-	T_SQLCmd,
 
 	/*
 	 * TAGS FOR RANDOM OTHER STUFF
@@ -825,7 +859,8 @@ typedef enum CmdType
 	CMD_SELECT,					/* select stmt */
 	CMD_UPDATE,					/* update stmt */
 	CMD_INSERT,					/* insert stmt */
-	CMD_DELETE,
+	CMD_DELETE,					/* delete stmt */
+	CMD_MERGE,					/* merge stmt */
 	CMD_UTILITY,				/* cmds like create, destroy, copy, vacuum,
 								 * etc. */
 	CMD_NOTHING					/* dummy command for instead nothing rules

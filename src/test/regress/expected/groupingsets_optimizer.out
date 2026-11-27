@@ -1963,6 +1963,7 @@ DETAIL:  Feature not supported: ROW EXPRESSION
 
 -- test the knapsack
 set enable_indexscan = false;
+set hash_mem_multiplier = 1.0;
 set work_mem = '64kB';
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
 set hash_mem_multiplier = 2;
@@ -2552,6 +2553,7 @@ NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entr
 set enable_sort = true;
 set work_mem to default;
 WARNING:  "work_mem": setting is deprecated, and may be removed in a future release.
+set hash_mem_multiplier to default;
 -- GPDB_12_MERGE_FIXME: the following comparison query has an ORCA plan that
 -- relies on "IS NOT DISTINCT FROM" Hash Join, a variant that we likely have
 -- lost during the merge with upstream Postgres 12. Disable ORCA for this query
@@ -2724,6 +2726,59 @@ order by a, b, c;
  7 |   |  
    |   |  
 (11 rows)
+
+-- test handling of outer GroupingFunc within subqueries
+explain (costs off)
+select (select grouping(v1)) from (values ((select 1))) v(v1) group by cube(v1);
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Grouping function with outer references
+             QUERY PLAN              
+-------------------------------------
+ MixedAggregate
+   Hash Key: $2
+   Group Key: ()
+   InitPlan 3 (returns $2)
+     ->  Result
+   ->  Result
+   SubPlan 2
+     ->  Result
+ Optimizer: Postgres query optimizer
+(9 rows)
+
+select (select grouping(v1)) from (values ((select 1))) v(v1) group by cube(v1);
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Grouping function with outer references
+ grouping 
+----------
+        1
+        0
+(2 rows)
+
+explain (costs off)
+select (select grouping(v1)) from (values ((select 1))) v(v1) group by v1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Grouping function with outer references
+             QUERY PLAN              
+-------------------------------------
+ GroupAggregate
+   Group Key: $2
+   InitPlan 1 (returns $1)
+     ->  Result
+   InitPlan 3 (returns $2)
+     ->  Result
+   ->  Result
+   SubPlan 2
+     ->  Result
+ Optimizer: Postgres query optimizer
+(10 rows)
+
+select (select grouping(v1)) from (values ((select 1))) v(v1) group by v1;
+INFO:  GPORCA failed to produce a plan, falling back to planner
+DETAIL:  Feature not supported: Grouping function with outer references
+ grouping 
+----------
+        0
+(1 row)
 
 -- end
 reset optimizer_trace_fallback;

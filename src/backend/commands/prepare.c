@@ -22,6 +22,7 @@
 #include "catalog/pg_type.h"
 #include "commands/createas.h"
 #include "commands/prepare.h"
+#include "funcapi.h"
 #include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
 #include "parser/analyze.h"
@@ -62,10 +63,8 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 	CachedPlanSource *plansource;
 	Oid		   *argtypes = NULL;
 	int			nargs;
-	Query	   *query;
 	List	   *query_list;
-	int			i;
-	NodeTag		srctag;  /* GPDB */
+	NodeTag		srctag;			/* GG */
 
 	/*
 	 * Disallow empty-string statement name (conflicts with protocol-level
@@ -97,6 +96,7 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 
 	if (nargs)
 	{
+		int			i;
 		ListCell   *l;
 
 		argtypes = (Oid *) palloc(nargs * sizeof(Oid));
@@ -115,51 +115,19 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 	 * Analyze the statement using these parameter types (any parameters
 	 * passed in from above us will not be visible to it), allowing
 	 * information about unknown parameters to be deduced from context.
+	 * Rewrite the query. The result could be 0, 1, or many queries.
 	 */
-	query = parse_analyze_varparams(rawstmt, pstate->p_sourcetext,
-									&argtypes, &nargs);
+	query_list = pg_analyze_and_rewrite_varparams(rawstmt, pstate->p_sourcetext,
+												  &argtypes, &nargs, NULL);
 
 	/*
-	 * Check that all parameter types were determined.
+	 * GG: the plan cache, and through it the portal, keeps the node tag of the
+	 * statement being prepared, so that the resource scheduler and
+	 * gp_select_invisible can later tell a prepared SELECT from a prepared
+	 * INSERT/UPDATE/DELETE/MERGE.  The raw statement's own tag is that tag;
+	 * exec_parse_message() takes it the same way.
 	 */
-	for (i = 0; i < nargs; i++)
-	{
-		Oid			argtype = argtypes[i];
-
-		if (argtype == InvalidOid || argtype == UNKNOWNOID)
-			ereport(ERROR,
-					(errcode(ERRCODE_INDETERMINATE_DATATYPE),
-					 errmsg("could not determine data type of parameter $%d",
-							i + 1)));
-	}
-
-	/*
-	 * grammar only allows PreparableStmt, so this check should be redundant
-	 */
-	switch (query->commandType)
-	{
-		case CMD_SELECT:
-			srctag = T_SelectStmt;
-			break;
-		case CMD_INSERT:
-			srctag = T_InsertStmt;
-			break;
-		case CMD_UPDATE:
-			srctag = T_UpdateStmt;
-			break;
-		case CMD_DELETE:
-			srctag = T_DeleteStmt;
-			break;
-		default:
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PSTATEMENT_DEFINITION),
-					 errmsg("utility statements cannot be prepared")));
-			srctag = T_Query;	/* keep compiler quiet */
-			break;
-	}
-
-	/* Rewrite the query. The result could be 0, 1, or many queries. */
-	query_list = QueryRewrite(query);
+	srctag = nodeTag(stmt->query);
 
 	/* Finish filling in the CachedPlanSource */
 	CompleteCachedPlan(plansource,
@@ -775,55 +743,12 @@ Datum
 pg_prepared_statement(PG_FUNCTION_ARGS)
 {
 	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
-	TupleDesc	tupdesc;
-	Tuplestorestate *tupstore;
-	MemoryContext per_query_ctx;
-	MemoryContext oldcontext;
-
-	/* check to see if caller supports us returning a tuplestore */
-	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("set-valued function called in context that cannot accept a set")));
-	if (!(rsinfo->allowedModes & SFRM_Materialize))
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("materialize mode required, but it is not allowed in this context")));
-
-	/* need to build tuplestore in query context */
-	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
-	oldcontext = MemoryContextSwitchTo(per_query_ctx);
-
-	/*
-	 * build tupdesc for result tuples. This must match the definition of the
-	 * pg_prepared_statements view in system_views.sql
-	 */
-	tupdesc = CreateTemplateTupleDesc(7);
-	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "name",
-					   TEXTOID, -1, 0);
-	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "statement",
-					   TEXTOID, -1, 0);
-	TupleDescInitEntry(tupdesc, (AttrNumber) 3, "prepare_time",
-					   TIMESTAMPTZOID, -1, 0);
-	TupleDescInitEntry(tupdesc, (AttrNumber) 4, "parameter_types",
-					   REGTYPEARRAYOID, -1, 0);
-	TupleDescInitEntry(tupdesc, (AttrNumber) 5, "from_sql",
-					   BOOLOID, -1, 0);
-	TupleDescInitEntry(tupdesc, (AttrNumber) 6, "generic_plans",
-					   INT8OID, -1, 0);
-	TupleDescInitEntry(tupdesc, (AttrNumber) 7, "custom_plans",
-					   INT8OID, -1, 0);
 
 	/*
 	 * We put all the tuples into a tuplestore in one scan of the hashtable.
 	 * This avoids any issue of the hashtable possibly changing between calls.
 	 */
-	tupstore =
-		tuplestore_begin_heap(rsinfo->allowedModes & SFRM_Materialize_Random,
-							  false, work_mem);
-
-	/* generate junk in short-term context */
-	MemoryContextSwitchTo(oldcontext);
+	SetSingleFuncCall(fcinfo, 0);
 
 	/* hash table might be uninitialized */
 	if (prepared_queries)
@@ -848,16 +773,10 @@ pg_prepared_statement(PG_FUNCTION_ARGS)
 			values[5] = Int64GetDatumFast(prep_stmt->plansource->num_generic_plans);
 			values[6] = Int64GetDatumFast(prep_stmt->plansource->num_custom_plans);
 
-			tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+			tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc,
+								 values, nulls);
 		}
 	}
-
-	/* clean up and return the tuplestore */
-	tuplestore_donestoring(tupstore);
-
-	rsinfo->returnMode = SFRM_Materialize;
-	rsinfo->setResult = tupstore;
-	rsinfo->setDesc = tupdesc;
 
 	return (Datum) 0;
 }

@@ -216,7 +216,8 @@ Boot_CreateStmt:
 												   mapped_relation,
 												   true,
 												   &relfrozenxid,
-												   &relminmxid);
+												   &relminmxid,
+												   true);
 						elog(DEBUG4, "bootstrap relation created");
 					}
 					else

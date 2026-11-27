@@ -597,6 +597,7 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	WRITE_NODE_FIELD(exclRelTlist);
 	WRITE_BOOL_FIELD(isSplitUpdate);
 	WRITE_BOOL_FIELD(forceTupleRouting);
+	WRITE_NODE_FIELD(mergeActionLists);
 }
 
 static void
@@ -890,6 +891,7 @@ _outSubqueryScan(StringInfo str, const SubqueryScan *node)
 	_outScanInfo(str, (const Scan *) node);
 
 	WRITE_NODE_FIELD(subplan);
+	WRITE_ENUM_FIELD(scanstatus, SubqueryScanStatus);
 }
 
 static void
@@ -1481,6 +1483,7 @@ _outTableFunc(StringInfo str, const TableFunc *node)
 {
 	WRITE_NODE_TYPE("TABLEFUNC");
 
+	WRITE_ENUM_FIELD(functype, TableFuncType);
 	WRITE_NODE_FIELD(ns_uris);
 	WRITE_NODE_FIELD(ns_names);
 	WRITE_NODE_FIELD(docexpr);
@@ -1491,7 +1494,9 @@ _outTableFunc(StringInfo str, const TableFunc *node)
 	WRITE_NODE_FIELD(colcollations);
 	WRITE_NODE_FIELD(colexprs);
 	WRITE_NODE_FIELD(coldefexprs);
+	WRITE_NODE_FIELD(colvalexprs);
 	WRITE_BITMAPSET_FIELD(notnulls);
+	WRITE_NODE_FIELD(plan);
 	WRITE_INT_FIELD(ordinalitycol);
 	WRITE_LOCATION_FIELD(location);
 }
@@ -2229,6 +2234,353 @@ _outCdbPathLocus(StringInfo str, const CdbPathLocus *node)
 	WRITE_INT_FIELD(numsegments);
 }                               /* _outCdbPathLocus */
 #endif /* COMPILING_BINARY_FUNCS */
+static void
+_outJsonFormat(StringInfo str, const JsonFormat *node)
+{
+	WRITE_NODE_TYPE("JSONFORMAT");
+
+	WRITE_ENUM_FIELD(format_type, JsonFormatType);
+	WRITE_ENUM_FIELD(encoding, JsonEncoding);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonReturning(StringInfo str, const JsonReturning *node)
+{
+	WRITE_NODE_TYPE("JSONRETURNING");
+
+	WRITE_NODE_FIELD(format);
+	WRITE_OID_FIELD(typid);
+	WRITE_INT_FIELD(typmod);
+}
+
+static void
+_outJsonValueExpr(StringInfo str, const JsonValueExpr *node)
+{
+	WRITE_NODE_TYPE("JSONVALUEEXPR");
+
+	WRITE_NODE_FIELD(raw_expr);
+	WRITE_NODE_FIELD(formatted_expr);
+	WRITE_NODE_FIELD(format);
+}
+
+static void
+_outJsonConstructorExpr(StringInfo str, const JsonConstructorExpr *node)
+{
+	WRITE_NODE_TYPE("JSONCTOREXPR");
+
+	WRITE_NODE_FIELD(args);
+	WRITE_NODE_FIELD(func);
+	WRITE_NODE_FIELD(coercion);
+	WRITE_INT_FIELD(type);
+	WRITE_NODE_FIELD(returning);
+	WRITE_BOOL_FIELD(unique);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonIsPredicate(StringInfo str, const JsonIsPredicate *node)
+{
+	WRITE_NODE_TYPE("JSONISPREDICATE");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_ENUM_FIELD(value_type, JsonValueType);
+	WRITE_BOOL_FIELD(unique_keys);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonBehavior(StringInfo str, const JsonBehavior *node)
+{
+	WRITE_NODE_TYPE("JSONBEHAVIOR");
+
+	WRITE_ENUM_FIELD(btype, JsonBehaviorType);
+	WRITE_NODE_FIELD(default_expr);
+}
+
+static void
+_outJsonExpr(StringInfo str, const JsonExpr *node)
+{
+	WRITE_NODE_TYPE("JSONEXPR");
+
+	WRITE_ENUM_FIELD(op, JsonExprOp);
+	WRITE_NODE_FIELD(formatted_expr);
+	WRITE_NODE_FIELD(result_coercion);
+	WRITE_NODE_FIELD(format);
+	WRITE_NODE_FIELD(path_spec);
+	WRITE_NODE_FIELD(passing_values);
+	WRITE_NODE_FIELD(passing_names);
+	WRITE_NODE_FIELD(returning);
+	WRITE_NODE_FIELD(on_error);
+	WRITE_NODE_FIELD(on_empty);
+	WRITE_NODE_FIELD(coercions);
+	WRITE_ENUM_FIELD(wrapper, JsonWrapper);
+	WRITE_BOOL_FIELD(omit_quotes);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonCoercion(StringInfo str, const JsonCoercion *node)
+{
+	WRITE_NODE_TYPE("JSONCOERCION");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_BOOL_FIELD(via_populate);
+	WRITE_BOOL_FIELD(via_io);
+	WRITE_OID_FIELD(collation);
+}
+
+static void
+_outJsonItemCoercions(StringInfo str, const JsonItemCoercions *node)
+{
+	WRITE_NODE_TYPE("JSONITEMCOERCIONS");
+
+	WRITE_NODE_FIELD(null);
+	WRITE_NODE_FIELD(string);
+	WRITE_NODE_FIELD(numeric);
+	WRITE_NODE_FIELD(boolean);
+	WRITE_NODE_FIELD(date);
+	WRITE_NODE_FIELD(time);
+	WRITE_NODE_FIELD(timetz);
+	WRITE_NODE_FIELD(timestamp);
+	WRITE_NODE_FIELD(timestamptz);
+	WRITE_NODE_FIELD(composite);
+}
+
+static void
+_outJsonTableParent(StringInfo str, const JsonTableParent *node)
+{
+	WRITE_NODE_TYPE("JSONTABPNODE");
+
+	WRITE_NODE_FIELD(path);
+	WRITE_STRING_FIELD(name);
+	WRITE_NODE_FIELD(child);
+	WRITE_BOOL_FIELD(outerJoin);
+	WRITE_INT_FIELD(colMin);
+	WRITE_INT_FIELD(colMax);
+}
+
+static void
+_outJsonTableSibling(StringInfo str, const JsonTableSibling *node)
+{
+	WRITE_NODE_TYPE("JSONTABSNODE");
+
+	WRITE_NODE_FIELD(larg);
+	WRITE_NODE_FIELD(rarg);
+	WRITE_BOOL_FIELD(cross);
+}
+
+/*
+ * Greengage: the untransformed SQL/JSON nodes below have no upstream output
+ * function, because upstream never serializes a raw parse tree.  Greengage
+ * does: a utility statement is dispatched to the segments as its parse tree,
+ * so a CHECK constraint or a DEFAULT spelled with JSON_EXISTS(), JSON_OBJECT()
+ * or JSON_TABLE() reaches serializeNode() still untransformed.  Without these
+ * the segments never see the statement and DDL fails with "could not
+ * serialize unrecognized node type".
+ *
+ * There *MUST* be a matching reader in readfuncs.c for each one.
+ */
+static void
+_outJsonOutput(StringInfo str, const JsonOutput *node)
+{
+	WRITE_NODE_TYPE("JSONOUTPUT");
+
+	WRITE_NODE_FIELD(typeName);
+	WRITE_NODE_FIELD(returning);
+}
+
+static void
+_outJsonArgument(StringInfo str, const JsonArgument *node)
+{
+	WRITE_NODE_TYPE("JSONARGUMENT");
+
+	WRITE_NODE_FIELD(val);
+	WRITE_STRING_FIELD(name);
+}
+
+static void
+_outJsonCommon(StringInfo str, const JsonCommon *node)
+{
+	WRITE_NODE_TYPE("JSONCOMMON");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(pathspec);
+	WRITE_STRING_FIELD(pathname);
+	WRITE_NODE_FIELD(passing);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonFuncExpr(StringInfo str, const JsonFuncExpr *node)
+{
+	WRITE_NODE_TYPE("JSONFUNCEXPR");
+
+	WRITE_ENUM_FIELD(op, JsonExprOp);
+	WRITE_NODE_FIELD(common);
+	WRITE_NODE_FIELD(output);
+	WRITE_NODE_FIELD(on_empty);
+	WRITE_NODE_FIELD(on_error);
+	WRITE_ENUM_FIELD(wrapper, JsonWrapper);
+	WRITE_BOOL_FIELD(omit_quotes);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonTableColumn(StringInfo str, const JsonTableColumn *node)
+{
+	WRITE_NODE_TYPE("JSONTABLECOLUMN");
+
+	WRITE_ENUM_FIELD(coltype, JsonTableColumnType);
+	WRITE_STRING_FIELD(name);
+	WRITE_NODE_FIELD(typeName);
+	WRITE_STRING_FIELD(pathspec);
+	WRITE_STRING_FIELD(pathname);
+	WRITE_NODE_FIELD(format);
+	WRITE_ENUM_FIELD(wrapper, JsonWrapper);
+	WRITE_BOOL_FIELD(omit_quotes);
+	WRITE_NODE_FIELD(columns);
+	WRITE_NODE_FIELD(on_empty);
+	WRITE_NODE_FIELD(on_error);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonTablePlan(StringInfo str, const JsonTablePlan *node)
+{
+	WRITE_NODE_TYPE("JSONTABLEPLAN");
+
+	WRITE_ENUM_FIELD(plan_type, JsonTablePlanType);
+	WRITE_ENUM_FIELD(join_type, JsonTablePlanJoinType);
+	WRITE_NODE_FIELD(plan1);
+	WRITE_NODE_FIELD(plan2);
+	WRITE_STRING_FIELD(pathname);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonTable(StringInfo str, const JsonTable *node)
+{
+	WRITE_NODE_TYPE("JSONTABLE");
+
+	WRITE_NODE_FIELD(common);
+	WRITE_NODE_FIELD(columns);
+	WRITE_NODE_FIELD(plan);
+	WRITE_NODE_FIELD(on_error);
+	WRITE_NODE_FIELD(alias);
+	WRITE_BOOL_FIELD(lateral);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonKeyValue(StringInfo str, const JsonKeyValue *node)
+{
+	WRITE_NODE_TYPE("JSONKEYVALUE");
+
+	WRITE_NODE_FIELD(key);
+	WRITE_NODE_FIELD(value);
+}
+
+static void
+_outJsonParseExpr(StringInfo str, const JsonParseExpr *node)
+{
+	WRITE_NODE_TYPE("JSONPARSEEXPR");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(output);
+	WRITE_BOOL_FIELD(unique_keys);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonScalarExpr(StringInfo str, const JsonScalarExpr *node)
+{
+	WRITE_NODE_TYPE("JSONSCALAREXPR");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(output);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonSerializeExpr(StringInfo str, const JsonSerializeExpr *node)
+{
+	WRITE_NODE_TYPE("JSONSERIALIZEEXPR");
+
+	WRITE_NODE_FIELD(expr);
+	WRITE_NODE_FIELD(output);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonObjectConstructor(StringInfo str, const JsonObjectConstructor *node)
+{
+	WRITE_NODE_TYPE("JSONOBJECTCTOR");
+
+	WRITE_NODE_FIELD(exprs);
+	WRITE_NODE_FIELD(output);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_BOOL_FIELD(unique);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonArrayConstructor(StringInfo str, const JsonArrayConstructor *node)
+{
+	WRITE_NODE_TYPE("JSONARRAYCTOR");
+
+	WRITE_NODE_FIELD(exprs);
+	WRITE_NODE_FIELD(output);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonArrayQueryConstructor(StringInfo str,
+							  const JsonArrayQueryConstructor *node)
+{
+	WRITE_NODE_TYPE("JSONARRAYQUERYCTOR");
+
+	WRITE_NODE_FIELD(query);
+	WRITE_NODE_FIELD(output);
+	WRITE_NODE_FIELD(format);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonAggConstructor(StringInfo str, const JsonAggConstructor *node)
+{
+	WRITE_NODE_TYPE("JSONAGGCTOR");
+
+	WRITE_NODE_FIELD(output);
+	WRITE_NODE_FIELD(agg_filter);
+	WRITE_NODE_FIELD(agg_order);
+	WRITE_NODE_FIELD(over);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outJsonObjectAgg(StringInfo str, const JsonObjectAgg *node)
+{
+	WRITE_NODE_TYPE("JSONOBJECTAGG");
+
+	WRITE_NODE_FIELD(constructor);
+	WRITE_NODE_FIELD(arg);
+	WRITE_BOOL_FIELD(absent_on_null);
+	WRITE_BOOL_FIELD(unique);
+}
+
+static void
+_outJsonArrayAgg(StringInfo str, const JsonArrayAgg *node)
+{
+	WRITE_NODE_TYPE("JSONARRAYAGG");
+
+	WRITE_NODE_FIELD(constructor);
+	WRITE_NODE_FIELD(arg);
+	WRITE_BOOL_FIELD(absent_on_null);
+}
 
 /*****************************************************************************
  *
@@ -2721,6 +3073,7 @@ _outModifyTablePath(StringInfo str, const ModifyTablePath *node)
 	WRITE_NODE_FIELD(rowMarks);
 	WRITE_NODE_FIELD(onconflict);
 	WRITE_INT_FIELD(epqParam);
+	WRITE_NODE_FIELD(mergeActionLists);
 }
 
 static void
@@ -3366,6 +3719,25 @@ _outCreateExternalStmt(StringInfo str, const CreateExternalStmt *node)
 	WRITE_NODE_FIELD(distributedBy);
 }
 
+#ifndef COMPILING_BINARY_FUNCS
+/*
+ * GpPolicy is reachable from a PlannedStmt (intoPolicy) and from an
+ * AlterTableCmd, so Debug_print_plan and friends can be asked to print one.
+ * outfast.c has its own binary version of this function.
+ */
+static void
+_outGpPolicy(StringInfo str, const GpPolicy *node)
+{
+	WRITE_NODE_TYPE("GPPOLICY");
+
+	WRITE_ENUM_FIELD(ptype, GpPolicyType);
+	WRITE_INT_FIELD(numsegments);
+	WRITE_INT_FIELD(nattrs);
+	WRITE_ATTRNUMBER_ARRAY(attrs, node->nattrs);
+	WRITE_OID_ARRAY(opclasses, node->nattrs);
+}
+#endif /* COMPILING_BINARY_FUNCS */
+
 static void
 _outDistributedBy(StringInfo str, const DistributedBy *node)
 {
@@ -3412,6 +3784,7 @@ _outIndexStmt(StringInfo str, const IndexStmt *node)
 	WRITE_UINT_FIELD(oldCreateSubid);
 	WRITE_UINT_FIELD(oldFirstRelfilenodeSubid);
 	WRITE_BOOL_FIELD(unique);
+	WRITE_BOOL_FIELD(nulls_not_distinct);
 	WRITE_BOOL_FIELD(primary);
 	WRITE_BOOL_FIELD(isconstraint);
 	WRITE_BOOL_FIELD(deferrable);
@@ -4553,6 +4926,8 @@ _outQuery(StringInfo str, const Query *node)
 	WRITE_NODE_FIELD(setOperations);
 	WRITE_NODE_FIELD(constraintDeps);
 	WRITE_NODE_FIELD(withCheckOptions);
+	WRITE_NODE_FIELD(mergeActionList);
+	WRITE_BOOL_FIELD(mergeUseOuterJoin);
 	WRITE_LOCATION_FIELD(stmt_location);
 	WRITE_INT_FIELD(stmt_len);
 	WRITE_BOOL_FIELD(parentStmtType);
@@ -4683,6 +5058,32 @@ _outCommonTableExpr(StringInfo str, const CommonTableExpr *node)
 	WRITE_NODE_FIELD(ctecoltypes);
 	WRITE_NODE_FIELD(ctecoltypmods);
 	WRITE_NODE_FIELD(ctecolcollations);
+}
+
+static void
+_outMergeWhenClause(StringInfo str, const MergeWhenClause *node)
+{
+	WRITE_NODE_TYPE("MERGEWHENCLAUSE");
+
+	WRITE_BOOL_FIELD(matched);
+	WRITE_ENUM_FIELD(commandType, CmdType);
+	WRITE_ENUM_FIELD(override, OverridingKind);
+	WRITE_NODE_FIELD(condition);
+	WRITE_NODE_FIELD(targetList);
+	WRITE_NODE_FIELD(values);
+}
+
+static void
+_outMergeAction(StringInfo str, const MergeAction *node)
+{
+	WRITE_NODE_TYPE("MERGEACTION");
+
+	WRITE_BOOL_FIELD(matched);
+	WRITE_ENUM_FIELD(commandType, CmdType);
+	WRITE_ENUM_FIELD(override, OverridingKind);
+	WRITE_NODE_FIELD(qual);
+	WRITE_NODE_FIELD(targetList);
+	WRITE_NODE_FIELD(updateColnos);
 }
 
 static void
@@ -4908,6 +5309,12 @@ _outFloat(StringInfo str, const Float *node)
 	 * need quoting.
 	 */
 	appendStringInfoString(str, node->fval);
+}
+
+static void
+_outBoolean(StringInfo str, const Boolean *node)
+{
+	appendStringInfoString(str, node->boolval ? "true" : "false");
 }
 
 static void
@@ -5174,6 +5581,7 @@ _outConstraint(StringInfo str, const Constraint *node)
 	WRITE_STRING_FIELD(cooked_expr);
 	WRITE_CHAR_FIELD(generated_when);
 
+	WRITE_BOOL_FIELD(nulls_not_distinct);
 	WRITE_NODE_FIELD(keys);
 	WRITE_NODE_FIELD(including);
 
@@ -5741,6 +6149,8 @@ outNode(StringInfo str, const void *obj)
 		_outInteger(str, (Integer *) obj);
 	else if (IsA(obj, Float))
 		_outFloat(str, (Float *) obj);
+	else if (IsA(obj, Boolean))
+		_outBoolean(str, (Boolean *) obj);
 	else if (IsA(obj, String))
 		_outString(str, (String *) obj);
 	else if (IsA(obj, BitString))
@@ -6351,6 +6761,9 @@ outNode(StringInfo str, const void *obj)
 			case T_CreateExternalStmt:
 				_outCreateExternalStmt(str, obj);
 				break;
+			case T_GpPolicy:
+				_outGpPolicy(str, obj);
+				break;
 			case T_DistributedBy:
 				_outDistributedBy(str, obj);
 				break;
@@ -6583,6 +6996,12 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_CommonTableExpr:
 				_outCommonTableExpr(str, obj);
+				break;
+			case T_MergeWhenClause:
+				_outMergeWhenClause(str, obj);
+				break;
+			case T_MergeAction:
+				_outMergeAction(str, obj);
 				break;
 			case T_SetOperationStmt:
 				_outSetOperationStmt(str, obj);
@@ -6847,6 +7266,90 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_GpPartitionListSpec:
 				_outGpPartitionListSpec(str, obj);
+				break;
+			case T_JsonFormat:
+				_outJsonFormat(str, obj);
+				break;
+			case T_JsonReturning:
+				_outJsonReturning(str, obj);
+				break;
+			case T_JsonValueExpr:
+				_outJsonValueExpr(str, obj);
+				break;
+			case T_JsonConstructorExpr:
+				_outJsonConstructorExpr(str, obj);
+				break;
+			case T_JsonIsPredicate:
+				_outJsonIsPredicate(str, obj);
+				break;
+			case T_JsonBehavior:
+				_outJsonBehavior(str, obj);
+				break;
+			case T_JsonExpr:
+				_outJsonExpr(str, obj);
+				break;
+			case T_JsonCoercion:
+				_outJsonCoercion(str, obj);
+				break;
+			case T_JsonItemCoercions:
+				_outJsonItemCoercions(str, obj);
+				break;
+			case T_JsonTableParent:
+				_outJsonTableParent(str, obj);
+				break;
+			case T_JsonTableSibling:
+				_outJsonTableSibling(str, obj);
+				break;
+			case T_JsonOutput:
+				_outJsonOutput(str, obj);
+				break;
+			case T_JsonArgument:
+				_outJsonArgument(str, obj);
+				break;
+			case T_JsonCommon:
+				_outJsonCommon(str, obj);
+				break;
+			case T_JsonFuncExpr:
+				_outJsonFuncExpr(str, obj);
+				break;
+			case T_JsonTableColumn:
+				_outJsonTableColumn(str, obj);
+				break;
+			case T_JsonTablePlan:
+				_outJsonTablePlan(str, obj);
+				break;
+			case T_JsonTable:
+				_outJsonTable(str, obj);
+				break;
+			case T_JsonKeyValue:
+				_outJsonKeyValue(str, obj);
+				break;
+			case T_JsonParseExpr:
+				_outJsonParseExpr(str, obj);
+				break;
+			case T_JsonScalarExpr:
+				_outJsonScalarExpr(str, obj);
+				break;
+			case T_JsonSerializeExpr:
+				_outJsonSerializeExpr(str, obj);
+				break;
+			case T_JsonObjectConstructor:
+				_outJsonObjectConstructor(str, obj);
+				break;
+			case T_JsonArrayConstructor:
+				_outJsonArrayConstructor(str, obj);
+				break;
+			case T_JsonArrayQueryConstructor:
+				_outJsonArrayQueryConstructor(str, obj);
+				break;
+			case T_JsonAggConstructor:
+				_outJsonAggConstructor(str, obj);
+				break;
+			case T_JsonObjectAgg:
+				_outJsonObjectAgg(str, obj);
+				break;
+			case T_JsonArrayAgg:
+				_outJsonArrayAgg(str, obj);
 				break;
 
 			default:

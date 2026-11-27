@@ -74,6 +74,7 @@ extern Oid	select_common_type(ParseState *pstate, List *exprs,
 extern Node *coerce_to_common_type(ParseState *pstate, Node *node,
 								   Oid targetTypeId,
 								   const char *context);
+extern bool verify_common_type(Oid common_type, List *exprs);
 
 extern void fixup_unknown_vars_in_exprlist(ParseState *pstate, List *exprlist);
 extern void fixup_unknown_vars_in_targetlist(ParseState *pstate, 

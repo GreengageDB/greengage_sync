@@ -2799,7 +2799,7 @@ struct config_bool ConfigureNamesBool_gp[] =
 	},
 
 	{
-		{"stats_queue_level", PGC_SUSET, STATS_COLLECTOR,
+		{"stats_queue_level", PGC_SUSET, STATS_CUMULATIVE,
 			gettext_noop("Collects resource queue-level statistics on database activity."),
 			NULL
 		},

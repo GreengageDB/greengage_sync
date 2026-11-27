@@ -40,7 +40,6 @@
 #include "utils/faultinjector.h"
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
-#include "utils/int8.h"
 #include "utils/snapmgr.h"
 
 #define SEGFILE_CAPACITY_THRESHOLD	0.9

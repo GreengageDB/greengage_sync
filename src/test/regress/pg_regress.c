@@ -1351,10 +1351,16 @@ initialize_environment(void)
 		 */
 		pghost = getenv("PGHOST");
 		pgport = getenv("PGPORT");
-#ifndef HAVE_UNIX_SOCKETS
 		if (!pghost)
-			pghost = "localhost";
+		{
+			/* Keep this bit in sync with libpq's default host location: */
+#ifdef HAVE_UNIX_SOCKETS
+			if (DEFAULT_PGSOCKET_DIR[0])
+				 /* do nothing, we'll print "Unix socket" below */ ;
+			else
 #endif
+				pghost = "localhost";	/* DefaultHost in fe-connect.c */
+		}
 
 		if (pghost && pgport)
 			printf(_("(using postmaster on %s, port %s)\n"), pghost, pgport);
@@ -1380,7 +1386,7 @@ fmtHba(const char *raw)
 	const char *rp;
 	char	   *wp;
 
-	wp = ret = realloc(ret, 3 + strlen(raw) * 2);
+	wp = ret = pg_realloc(ret, 3 + strlen(raw) * 2);
 
 	*wp++ = '"';
 	for (rp = raw; *rp; rp++)

@@ -16,6 +16,17 @@
 -- but 'g' (the 2nd rule is needed to include the 'postgresql' FDW used in the
 -- test).
 \set NO_BUILTINS ([a-fh-z]?*)|(g[a-oq-z]?*)
+-- directory paths and dlsuffix are passed to us in environment variables
+\getenv libdir PG_LIBDIR
+\getenv dlsuffix PG_DLSUFFIX
+
+\set regresslib :libdir '/regress' :dlsuffix
+
+CREATE FUNCTION test_fdw_handler()
+    RETURNS fdw_handler
+    AS :'regresslib', 'test_fdw_handler'
+    LANGUAGE C;
+
 -- Clean up in case a prior regression run failed
 
 -- Suppress NOTICE messages when roles don't exist

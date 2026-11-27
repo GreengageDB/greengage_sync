@@ -59,6 +59,8 @@ defGetString(DefElem *def)
 			return psprintf("%ld", (long) intVal(def->arg));
 		case T_Float:
 			return castNode(Float, def->arg)->fval;
+		case T_Boolean:
+			return boolVal(def->arg) ? "true" : "false";
 		case T_String:
 			return strVal(def->arg);
 		case T_TypeName:
@@ -202,6 +204,39 @@ defGetInt64(DefElem *def)
 			 */
 			return DatumGetInt64(DirectFunctionCall1(int8in,
 													 CStringGetDatum(castNode(Float, def->arg)->fval)));
+		default:
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("%s requires a numeric value",
+							def->defname)));
+	}
+	return 0;					/* keep compiler quiet */
+}
+
+/*
+ * Extract an OID value from a DefElem.
+ */
+Oid
+defGetObjectId(DefElem *def)
+{
+	if (def->arg == NULL)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("%s requires a numeric value",
+						def->defname)));
+	switch (nodeTag(def->arg))
+	{
+		case T_Integer:
+			return (Oid) intVal(def->arg);
+		case T_Float:
+
+			/*
+			 * Values too large for int4 will be represented as Float
+			 * constants by the lexer.  Accept these if they are valid OID
+			 * strings.
+			 */
+			return DatumGetObjectId(DirectFunctionCall1(oidin,
+														CStringGetDatum(castNode(Float, def->arg)->fval)));
 		default:
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),

@@ -104,6 +104,7 @@ autostats_on_change_check(AutoStatsCmdType cmdType, uint64 ntuples)
 		case AUTOSTATS_CMDTYPE_DELETE:
 		case AUTOSTATS_CMDTYPE_UPDATE:
 		case AUTOSTATS_CMDTYPE_COPY:
+		case AUTOSTATS_CMDTYPE_MERGE:
 			result = true;
 			break;
 		default:
@@ -205,6 +206,8 @@ autostats_cmdtype_to_string(AutoStatsCmdType cmdType)
 			return "UPDATE";
 		case AUTOSTATS_CMDTYPE_COPY:
 			return "COPY";
+		case AUTOSTATS_CMDTYPE_MERGE:
+			return "MERGE";
 		default:
 
 			/*
@@ -245,6 +248,7 @@ autostats_get_cmdtype(QueryDesc *queryDesc, AutoStatsCmdType * pcmdType, Oid *pr
 		case CMD_INSERT:
 		case CMD_UPDATE:
 		case CMD_DELETE:
+		case CMD_MERGE:
 			{
 				RangeTblEntry *rte;
 
@@ -258,6 +262,8 @@ autostats_get_cmdtype(QueryDesc *queryDesc, AutoStatsCmdType * pcmdType, Oid *pr
 					cmdType = AUTOSTATS_CMDTYPE_INSERT;
 				else if (stmt->commandType == CMD_UPDATE)
 					cmdType = AUTOSTATS_CMDTYPE_UPDATE;
+				else if (stmt->commandType == CMD_MERGE)
+					cmdType = AUTOSTATS_CMDTYPE_MERGE;
 				else
 					cmdType = AUTOSTATS_CMDTYPE_DELETE;
 			}

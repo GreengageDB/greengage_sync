@@ -1149,13 +1149,10 @@ brin_summarize_range_internal(PG_FUNCTION_ARGS)
 				 errhint("BRIN control functions cannot be executed during recovery.")));
 
 	if (heapBlk64 > BRIN_ALL_BLOCKRANGES || heapBlk64 < 0)
-	{
-		char	   *blk = psprintf(INT64_FORMAT, heapBlk64);
-
 		ereport(ERROR,
 				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				 errmsg("block number out of range: %s", blk)));
-	}
+				 errmsg("block number out of range: %lld",
+						(long long) heapBlk64)));
 	if (heapBlk64 != BRIN_ALL_BLOCKRANGES)
 	{
 		ereport(ERROR,
@@ -1232,13 +1229,10 @@ brin_desummarize_range(PG_FUNCTION_ARGS)
 				 errhint("BRIN control functions cannot be executed during recovery.")));
 
 	if (heapBlk64 > MaxBlockNumber || heapBlk64 < 0)
-	{
-		char	   *blk = psprintf(INT64_FORMAT, heapBlk64);
-
 		ereport(ERROR,
 				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				 errmsg("block number out of range: %s", blk)));
-	}
+				 errmsg("block number out of range: %lld",
+						(long long) heapBlk64)));
 	heapBlk = (BlockNumber) heapBlk64;
 
 	/*

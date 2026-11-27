@@ -1005,15 +1005,15 @@ compute_function_attributes(ParseState *pstate,
 	if (transform_item)
 		*transform = transform_item->arg;
 	if (windowfunc_item)
-		*windowfunc_p = intVal(windowfunc_item->arg);
+		*windowfunc_p = boolVal(windowfunc_item->arg);
 	if (volatility_item)
 		*volatility_p = interpret_func_volatility(volatility_item);
 	if (strict_item)
-		*strict_p = intVal(strict_item->arg);
+		*strict_p = boolVal(strict_item->arg);
 	if (security_item)
-		*security_definer = intVal(security_item->arg);
+		*security_definer = boolVal(security_item->arg);
 	if (leakproof_item)
-		*leakproof_p = intVal(leakproof_item->arg);
+		*leakproof_p = boolVal(leakproof_item->arg);
 	if (set_items)
 		*proconfig = update_proconfig_value(NULL, set_items);
 	if (cost_item)
@@ -1720,6 +1720,7 @@ RemoveFunctionById(Oid funcOid)
 
 	/* Remove anything in pg_proc_callback for this function */
 	deleteProcCallbacks(funcOid);
+	pgstat_drop_function(funcOid);
 
 	/*
 	 * If there's a pg_aggregate tuple, delete that too.
@@ -1825,12 +1826,12 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 	if (volatility_item)
 		procForm->provolatile = interpret_func_volatility(volatility_item);
 	if (strict_item)
-		procForm->proisstrict = intVal(strict_item->arg);
+		procForm->proisstrict = boolVal(strict_item->arg);
 	if (security_def_item)
-		procForm->prosecdef = intVal(security_def_item->arg);
+		procForm->prosecdef = boolVal(security_def_item->arg);
 	if (leakproof_item)
 	{
-		procForm->proleakproof = intVal(leakproof_item->arg);
+		procForm->proleakproof = boolVal(leakproof_item->arg);
 		if (procForm->proleakproof && !superuser())
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),

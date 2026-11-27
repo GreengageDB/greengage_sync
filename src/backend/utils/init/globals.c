@@ -40,6 +40,7 @@ volatile sig_atomic_t IdleSessionTimeoutPending = false;
 volatile sig_atomic_t ProcSignalBarrierPending = false;
 volatile sig_atomic_t IdleGangTimeoutPending = false;
 volatile sig_atomic_t LogMemoryContextPending = false;
+volatile sig_atomic_t IdleStatsUpdateTimeoutPending = false;
 /*
  * GPDB: Make these signed integers (instead of uint32) to detect garbage
  * negative values.
@@ -145,7 +146,7 @@ int			max_statement_mem = 2048000;
  * do not enforce per-query memory limit
  */
 int			gp_vmem_limit_per_query = 0;
-double		hash_mem_multiplier = 1.0;
+double		hash_mem_multiplier = 2.0;
 int			maintenance_work_mem = 65536;
 int			max_parallel_maintenance_workers = 2;
 

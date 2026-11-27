@@ -24,7 +24,7 @@ clean:
 all: clean
 	@$(CHECK_CONF)
 	@$(MKDIR) results
-	@$(CREATELANG) plpythonu | echo "Loading plpythonu"
+	@$(CREATELANG) plpython3u | echo "Loading plpython3u"
 	@$(ECHO) "Creating External Tables"
 	@$(PSQL) $(SQLFLAGS) -f ../sql/setup.sql > $(RESULTDIR)/setup.out
 	@$(LAUNCH_RD)

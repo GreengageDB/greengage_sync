@@ -3,6 +3,18 @@
 -- m/HINT:  To uniquely identify a row within a distributed table, use the "gp_segment_id" column together with the "ctid" column./
 -- end_matchignore
 
+-- basic tests for the TID data type
+
+SELECT
+  '(0,0)'::tid as tid00,
+  '(0,1)'::tid as tid01,
+  '(-1,0)'::tid as tidm10,
+  '(4294967295,65535)'::tid as tidmax;
+
+SELECT '(4294967296,1)'::tid;  -- error
+SELECT '(1,65536)'::tid;  -- error
+
+
 -- tests for functions related to TID handling
 
 CREATE TABLE tid_tab (a int, b int default 0) distributed by (b);

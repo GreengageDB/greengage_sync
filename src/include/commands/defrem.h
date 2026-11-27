@@ -94,6 +94,7 @@ extern ObjectAddress AlterOperator(AlterOperatorStmt *stmt);
 extern ObjectAddress CreateStatistics(CreateStatsStmt *stmt);
 extern ObjectAddress AlterStatistics(AlterStatsStmt *stmt);
 extern void RemoveStatisticsById(Oid statsOid);
+extern void RemoveStatisticsDataById(Oid statsOid, bool inh);
 extern Oid	StatisticsGetRelation(Oid statId, bool missing_ok);
 
 /* commands/aggregatecmds.c */
@@ -160,6 +161,7 @@ extern double defGetNumeric(DefElem *def);
 extern bool defGetBoolean(DefElem *def);
 extern int32 defGetInt32(DefElem *def);
 extern int64 defGetInt64(DefElem *def);
+extern Oid	defGetObjectId(DefElem *def);
 extern List *defGetQualifiedName(DefElem *def);
 extern TypeName *defGetTypeName(DefElem *def);
 extern int	defGetTypeLength(DefElem *def);

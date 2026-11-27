@@ -138,30 +138,17 @@ ExecInitAppend(Append *node, EState *estate, int eflags)
 	{
 		PartitionPruneState *prunestate;
 
-		/* We may need an expression context to evaluate partition exprs */
-		ExecAssignExprContext(estate, &appendstate->ps);
-
-		/* Create the working data structure for pruning. */
-		prunestate = ExecCreatePartitionPruneState(&appendstate->ps,
-												   node->part_prune_info);
+		/*
+		 * Set up pruning data structure.  This also initializes the set of
+		 * subplans to initialize (validsubplans) by taking into account the
+		 * result of performing initial pruning if any.
+		 */
+		prunestate = ExecInitPartitionPruning(&appendstate->ps,
+											  list_length(node->appendplans),
+											  node->part_prune_info,
+											  &validsubplans);
 		appendstate->as_prune_state = prunestate;
-
-		/* Perform an initial partition prune, if required. */
-		if (prunestate->do_initial_prune)
-		{
-			/* Determine which subplans survive initial pruning */
-			validsubplans = ExecFindInitialMatchingSubPlans(prunestate,
-															list_length(node->appendplans));
-
-			nplans = bms_num_members(validsubplans);
-		}
-		else
-		{
-			/* We'll need to initialize all subplans */
-			nplans = list_length(node->appendplans);
-			Assert(nplans > 0);
-			validsubplans = bms_add_range(NULL, 0, nplans - 1);
-		}
+		nplans = bms_num_members(validsubplans);
 
 		/*
 		 * When no run-time pruning is required and there's at least one
@@ -602,7 +589,8 @@ choose_next_subplan_locally(AppendState *node)
 				ExecFindMatchingSubPlans(node->as_prune_state,
 										 node->ps.state,
 										 list_length(plan->appendplans),
-										 plan->join_prune_paramids);
+										 plan->join_prune_paramids,
+										 false);
 		}
 
 		whichplan = -1;
@@ -673,7 +661,8 @@ choose_next_subplan_for_leader(AppendState *node)
 				ExecFindMatchingSubPlans(node->as_prune_state,
 										 node->ps.state,
 										 list_length(plan->appendplans),
-										 plan->join_prune_paramids);
+										 plan->join_prune_paramids,
+										 false);
 
 			/*
 			 * Mark each invalid plan as finished to allow the loop below to
@@ -753,7 +742,8 @@ choose_next_subplan_for_worker(AppendState *node)
 			ExecFindMatchingSubPlans(node->as_prune_state,
 									 node->ps.state,
 									 list_length(plan->appendplans),
-									 plan->join_prune_paramids);
+									 plan->join_prune_paramids,
+									 false);
 		mark_invalid_subplans_as_finished(node);
 	}
 
@@ -909,7 +899,8 @@ ExecAppendAsyncBegin(AppendState *node)
 			ExecFindMatchingSubPlans(node->as_prune_state,
 									 node->ps.state,
 									 list_length(plan->appendplans),
-									 plan->join_prune_paramids);
+									 plan->join_prune_paramids,
+									 false);
 
 		classify_matching_subplans(node);
 	}

@@ -143,6 +143,7 @@ extern Oid	LookupExplicitNamespace(const char *nspname, bool missing_ok);
 extern Oid	get_namespace_oid(const char *nspname, bool missing_ok);
 
 extern void DropTempTableNamespaceForResetSession(Oid namespaceOid);
+extern void DropTempTableNamespaceEntryForResetSession(Oid namespaceOid, Oid toastNamespaceOid);
 extern void SetTempNamespace(Oid namespaceOid, Oid toastNamespaceOid);
 extern Oid  ResetTempNamespace(void);
 extern bool TempNamespaceOidIsValid(void);  /* GPDB only:  used by cdbgang.c */
@@ -170,6 +171,7 @@ extern void SetTempNamespaceState(Oid tempNamespaceId,
 extern void SetTempNamespaceStateAfterBoot(Oid tempNamespaceId,
 								  Oid tempToastNamespaceId); /* GPDB only */
 extern void ResetTempTableNamespace(void);
+extern void CancelRemoveTempRelationsCallback(void);
 
 extern OverrideSearchPath *GetOverrideSearchPath(MemoryContext context);
 extern OverrideSearchPath *CopyOverrideSearchPath(OverrideSearchPath *path);

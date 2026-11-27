@@ -95,6 +95,7 @@ typedef struct f_smgr
 {
 	void		(*smgr_init) (void);	/* may be NULL */
 	void		(*smgr_shutdown) (void);	/* may be NULL */
+	void		(*smgr_release) (void); /* may be NULL */
 	void		(*smgr_open) (SMgrRelation reln);
 	void		(*smgr_close) (SMgrRelation reln, ForkNumber forknum);
 	void		(*smgr_create) (SMgrRelation reln, ForkNumber forknum,
@@ -164,6 +165,7 @@ extern void smgrtruncate(SMgrRelation reln, ForkNumber *forknum,
 						 int nforks, BlockNumber *nblocks);
 extern void smgrimmedsync(SMgrRelation reln, ForkNumber forknum);
 extern void AtEOXact_SMgr(void);
+extern bool ProcessBarrierSmgrRelease(void);
 
 
 /*

@@ -2410,6 +2410,7 @@ create_motion_path_for_upddel(PlannerInfo *root, GpPolicy *policy,
 {
 	GpPolicyType	policyType = policy->ptype;
 	CdbPathLocus	targetLocus;
+	ListCell	   *cell;
 
 	if (policyType == POLICYTYPE_PARTITIONED)
 	{
@@ -2417,6 +2418,33 @@ create_motion_path_for_upddel(PlannerInfo *root, GpPolicy *policy,
 			return subpath;
 		else
 		{
+			/*
+			 * GGDB: a MERGE with WHEN NOT MATCHED actions cannot be routed by
+			 * an explicit motion: the motion delivers the source rows to the
+			 * segments, and each segment then runs the whole statement
+			 * against its copy of the source, inserting rows the target does
+			 * not hold.  A target that is not replicated takes one copy of
+			 * each row per segment.  Refuse the shape; routing matched rows
+			 * to their segments while hashing unmatched ones needs executor
+			 * support.
+			 */
+			if (root->parse->commandType == CMD_MERGE)
+			{
+				foreach(cell, root->parse->mergeActionList)
+				{
+					MergeAction *action = lfirst_node(MergeAction, cell);
+
+					/* a WHEN NOT MATCHED DO NOTHING action writes nothing:
+					 * per-segment execution of it is harmless */
+					if (!action->matched && action->commandType != CMD_NOTHING)
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("MERGE with WHEN NOT MATCHED cannot be planned when the join is not co-located with the target"),
+								 errdetail("The plan runs the statement on every segment, and each segment would insert the whole source."),
+								 errhint("Distribute the source on the target's distribution keys, so that the join is co-located.")));
+				}
+			}
+
 			/* GPDB_96_MERGE_FIXME: avoid creating the Explicit Motion in
 			 * simple cases, where all the input data is already on the
 			 * same segment.
@@ -2444,6 +2472,35 @@ create_motion_path_for_upddel(PlannerInfo *root, GpPolicy *policy,
 		 */
 		if (contain_volatile_functions((Node *) (subpath->pathtarget->exprs)))
 			elog(ERROR, "could not devise a plan.");
+
+		/*
+		 * GGDB: a MERGE's new values are not in that targetlist.  Each WHEN
+		 * clause carries its own, and ExecMerge() evaluates them per row on
+		 * every segment this ModifyTable runs on, so one volatile expression
+		 * there writes a different value into each copy of the table and the
+		 * replicas silently diverge.  A column declared GENERATED AS IDENTITY
+		 * is enough: the rewriter puts a nextval() in every INSERT action.
+		 *
+		 * Reject that here, where the same restriction is already stated for
+		 * UPDATE and DELETE.  A plain INSERT is safe because its row is
+		 * computed below a Broadcast Motion, once, and copied to the segments
+		 * from there; this plan has nothing between the segments to broadcast
+		 * from.
+		 */
+		foreach(cell, root->parse->mergeActionList)
+		{
+			MergeAction *action = lfirst_node(MergeAction, cell);
+
+			if (contain_volatile_functions((Node *) action->targetList) ||
+				contain_volatile_functions(action->qual))
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("MERGE cannot use a volatile expression on replicated table \"%s\"",
+								get_rel_name(planner_rt_fetch(linitial_int(resultRelations),
+															  root)->relid)),
+						 errdetail("Every segment runs the MERGE actions on its own copy of the table, so a volatile expression would store a different value in each copy."),
+						 errhint("Compute the value before the statement, or make the target hash-distributed.")));
+		}
 	}
 	else
 		elog(ERROR, "unrecognized policy type %u", policyType);
@@ -2678,6 +2735,103 @@ make_splitupdate_path(PlannerInfo *root, Path *subpath, Index rti,
 	return splitupdatepath;
 }
 
+/*
+ * GGDB: does the subplan contain a scan of every result relation?  A MERGE
+ * with WHEN NOT MATCHED actions must read its target rows to find matches;
+ * a subplan with no scan of the target (a provably-false join pruned down
+ * to a one-time-filtered Result) would run on every segment and have every
+ * segment insert the whole source.
+ */
+static Bitmapset *
+cdbpath_scans_all_resultrels_walker(const Path *path, List *resultRelations,
+									Bitmapset *scanned, int depth)
+{
+	ListCell   *lc;
+
+	if (depth > 25)
+		return scanned;
+
+	switch (nodeTag(path))
+	{
+		case T_NestPath:
+		case T_MergePath:
+		case T_HashPath:
+			{
+				JoinPath *jp = (JoinPath *) path;
+
+				scanned = cdbpath_scans_all_resultrels_walker(jp->outerjoinpath,
+															  resultRelations,
+															  scanned, depth + 1);
+				scanned = cdbpath_scans_all_resultrels_walker(jp->innerjoinpath,
+															  resultRelations,
+															  scanned, depth + 1);
+			}
+			break;
+
+		case T_AppendPath:
+		case T_MergeAppendPath:
+			{
+				List	   *children;
+
+				children = ((AppendPath *) path)->subpaths;
+
+				foreach(lc, children)
+				{
+					Path	   *child = lfirst(lc);
+
+					scanned = cdbpath_scans_all_resultrels_walker(child,
+																  resultRelations,
+																  scanned,
+																  depth + 1);
+				}
+			}
+			break;
+
+		default:
+			/*
+			 * Leaf: a plain scan of a base relation registers it.  Non-scan
+			 * leaves (Result, Values, CTE scan, ...) register nothing.
+			 */
+			if (path->parent != NULL && path->parent->relid > 0 &&
+				(path->pathtype == T_SeqScan ||
+				 path->pathtype == T_IndexScan ||
+				 path->pathtype == T_IndexOnlyScan ||
+				 path->pathtype == T_BitmapHeapScan ||
+				 path->pathtype == T_SampleScan ||
+				 path->pathtype == T_TidScan ||
+				 path->pathtype == T_TidRangeScan))
+			{
+				RelOptInfo *rel = path->parent;
+
+				scanned = bms_add_member(scanned, rel->relid);
+			}
+			break;
+	}
+
+	return scanned;
+}
+
+static bool
+cdbpath_scans_all_resultrels(const Path *path, List *resultRelations)
+{
+	Bitmapset  *scanned = NULL;
+	ListCell   *lc;
+	bool		result = true;
+
+	scanned = cdbpath_scans_all_resultrels_walker(path, resultRelations, NULL, 0);
+	foreach(lc, resultRelations)
+	{
+		if (!bms_is_member(lfirst_int(lc), scanned))
+		{
+			result = false;
+			break;
+		}
+	}
+
+	bms_free(scanned);
+	return result;
+}
+
 static bool
 can_elide_explicit_motion(PlannerInfo *root, Path *subpath,
 						  List *resultRelations, GpPolicy **policies)
@@ -2686,6 +2840,17 @@ can_elide_explicit_motion(PlannerInfo *root, Path *subpath,
 	int			relno;
 
 	Assert(resultRelations != NIL);
+
+	/*
+	 * GGDB: a MERGE with WHEN NOT MATCHED actions must read its target rows
+	 * to find matches.  A plan whose join is provably empty prunes the
+	 * target scans entirely and runs on every segment -- each segment would
+	 * then insert the whole source into a target that is not replicated.
+	 * Refuse to elide for such plans.
+	 */
+	if (root->parse->commandType == CMD_MERGE &&
+		!cdbpath_scans_all_resultrels(subpath, resultRelations))
+		return false;
 
 	/*
 	 * If there are no Motions between the scan of a target relation and here,

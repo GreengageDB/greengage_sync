@@ -54,7 +54,6 @@
 #define TransactionIdToPage(xid) ((xid) / (uint32) SUBTRANS_XACTS_PER_PAGE)
 #define TransactionIdToEntry(xid) ((xid) % (uint32) SUBTRANS_XACTS_PER_PAGE)
 
-
 /*
  * Link to shared-memory data structures for SUBTRANS control
  */

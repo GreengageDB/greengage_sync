@@ -303,17 +303,17 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	if (dpassword && dpassword->arg)
 		password = strVal(dpassword->arg);
 	if (dissuper)
-		issuper = intVal(dissuper->arg) != 0;
+		issuper = boolVal(dissuper->arg);
 	if (dinherit)
-		inherit = intVal(dinherit->arg) != 0;
+		inherit = boolVal(dinherit->arg);
 	if (dcreaterole)
-		createrole = intVal(dcreaterole->arg) != 0;
+		createrole = boolVal(dcreaterole->arg);
 	if (dcreatedb)
-		createdb = intVal(dcreatedb->arg) != 0;
+		createdb = boolVal(dcreatedb->arg);
 	if (dcanlogin)
-		canlogin = intVal(dcanlogin->arg) != 0;
+		canlogin = boolVal(dcanlogin->arg);
 	if (disreplication)
-		isreplication = intVal(disreplication->arg) != 0;
+		isreplication = boolVal(disreplication->arg);
 	if (dconnlimit)
 	{
 		connlimit = intVal(dconnlimit->arg);
@@ -335,7 +335,7 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	if (dresgroup)
 		resgroup = strVal(linitial((List *) dresgroup->arg));
 	if (dbypassRLS)
-		bypassrls = intVal(dbypassRLS->arg) != 0;
+		bypassrls = boolVal(dbypassRLS->arg);
 
 	/* Check some permissions first */
 	if (issuper)
@@ -1015,9 +1015,9 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	{
 		bool isNull;
 		Oid roleResgroup;
-		int			issuper = intVal(dissuper->arg);
+		bool		issuper = boolVal(dissuper->arg);
 
-		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(intVal(dissuper->arg));
+		new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(boolVal(dissuper->arg));
 		new_record_repl[Anum_pg_authid_rolsuper - 1] = true;
 
 		roleResgroup = heap_getattr(tuple, Anum_pg_authid_rolresgroup,
@@ -1028,12 +1028,12 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 			 * change the default resource group accordingly: admin_group
 			 * for superuser and default_group for non-superuser
 			 */
-			if (issuper == 0 && roleResgroup == ADMINRESGROUP_OID)
+			if (!issuper && roleResgroup == ADMINRESGROUP_OID)
 			{
 				new_record[Anum_pg_authid_rolresgroup - 1] = ObjectIdGetDatum(DEFAULTRESGROUP_OID);
 				new_record_repl[Anum_pg_authid_rolresgroup - 1] = true;
 			}
-			else if (issuper > 0 && roleResgroup == DEFAULTRESGROUP_OID)
+			else if (issuper && roleResgroup == DEFAULTRESGROUP_OID)
 			{
 				new_record[Anum_pg_authid_rolresgroup - 1] = ObjectIdGetDatum(ADMINRESGROUP_OID);
 				new_record_repl[Anum_pg_authid_rolresgroup - 1] = true;
@@ -1041,36 +1041,36 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 		}
 
 		/* get current superuser status */
-		bWas_super = (issuper > 0);
+		bWas_super = issuper;
 	}
 
 	if (dinherit)
 	{
-		new_record[Anum_pg_authid_rolinherit - 1] = BoolGetDatum(intVal(dinherit->arg));
+		new_record[Anum_pg_authid_rolinherit - 1] = BoolGetDatum(boolVal(dinherit->arg));
 		new_record_repl[Anum_pg_authid_rolinherit - 1] = true;
 	}
 
 	if (dcreaterole)
 	{
-		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(intVal(dcreaterole->arg));
+		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(boolVal(dcreaterole->arg));
 		new_record_repl[Anum_pg_authid_rolcreaterole - 1] = true;
 	}
 
 	if (dcreatedb)
 	{
-		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(intVal(dcreatedb->arg));
+		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(boolVal(dcreatedb->arg));
 		new_record_repl[Anum_pg_authid_rolcreatedb - 1] = true;
 	}
 
 	if (dcanlogin)
 	{
-		new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(intVal(dcanlogin->arg));
+		new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(boolVal(dcanlogin->arg));
 		new_record_repl[Anum_pg_authid_rolcanlogin - 1] = true;
 	}
 
 	if (disreplication)
 	{
-		new_record[Anum_pg_authid_rolreplication - 1] = BoolGetDatum(intVal(disreplication->arg));
+		new_record[Anum_pg_authid_rolreplication - 1] = BoolGetDatum(boolVal(disreplication->arg));
 		new_record_repl[Anum_pg_authid_rolreplication - 1] = true;
 	}
 
@@ -1229,7 +1229,7 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 
 	if (dbypassRLS)
 	{
-		new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(intVal(dbypassRLS->arg));
+		new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(boolVal(dbypassRLS->arg));
 		new_record_repl[Anum_pg_authid_rolbypassrls - 1] = true;
 	}
 
@@ -2007,11 +2007,6 @@ AddRoleMems(const char *rolename, Oid roleid,
 	 * The role membership grantor of record has little significance at
 	 * present.  Nonetheless, inasmuch as users might look to it for a crude
 	 * audit trail, let only superusers impute the grant to a third party.
-	 *
-	 * Before lifting this restriction, give the member == role case of
-	 * is_admin_of_role() a fresh look.  Ensure that the current role cannot
-	 * use an explicit grantor specification to take advantage of the session
-	 * user's self-admin right.
 	 */
 	if (grantorId != GetUserId() && !superuser())
 		ereport(ERROR,

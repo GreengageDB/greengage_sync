@@ -21,11 +21,7 @@ use PostgreSQL::Test::Cluster;
 use Test::More;
 use Time::HiRes qw(usleep);
 
-if ($ENV{with_gssapi} eq 'yes')
-{
-	plan tests => 45;
-}
-else
+if ($ENV{with_gssapi} ne 'yes')
 {
 	plan skip_all => 'GSSAPI/Kerberos not supported by this build';
 }
@@ -429,3 +425,5 @@ test_access(
 	'',
 	'fails with wrong krb_realm, but still authenticates',
 	"connection authenticated: identity=\"test1\@$realm\" method=gss");
+
+done_testing();

@@ -7,6 +7,10 @@
 -- start_matchignore
 -- m/^LOG: .*Feature not supported: Queries on master-only tables./
 -- m/^LOG:.*ERROR,"PG exception raised"/
+-- # Queued by elog_exception_statement() after EmitErrorReport() has already
+-- # queued the ERROR, so whether psql prints it before or after the error
+-- # depends on how the two messages are packetized.
+-- m/^LOG:  An exception was encountered during the execution of statement: /
 -- end_matchignore
 set gp_autostats_mode=on_change;
 set gp_autostats_on_change_threshold=9;

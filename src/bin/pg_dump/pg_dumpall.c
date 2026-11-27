@@ -20,6 +20,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "catalog/pg_authid_d.h"
 #include "common/connect.h"
 #include "common/file_utils.h"
 #include "common/logging.h"
@@ -42,6 +43,7 @@ static void dumpRoleConstraints(PGconn *conn);
 static void dropRoles(PGconn *conn);
 static void dumpRoles(PGconn *conn);
 static void dumpRoleMembership(PGconn *conn);
+static void dumpRoleGUCPrivs(PGconn *conn);
 static void dropTablespaces(PGconn *conn);
 static void dumpTablespaces(PGconn *conn);
 static void dropDBs(PGconn *conn);
@@ -79,6 +81,7 @@ static int	disable_dollar_quoting = 0;
 static int	disable_triggers = 0;
 static int	if_exists = 0;
 static int	inserts = 0;
+static int	no_table_access_method = 0;
 static int	no_tablespaces = 0;
 static int	use_setsessauth = 0;
 static int	no_comments = 0;
@@ -144,6 +147,7 @@ main(int argc, char *argv[])
 		{"resource-groups", no_argument, &resource_groups, 1},
 		{"roles-only", no_argument, NULL, 999},
 		{"lock-wait-timeout", required_argument, NULL, 2},
+		{"no-table-access-method", no_argument, &no_table_access_method, 1},
 		{"no-tablespaces", no_argument, &no_tablespaces, 1},
 		{"quote-all-identifiers", no_argument, &quote_all_identifiers, 1},
 		{"load-via-partition-root", no_argument, &load_via_partition_root, 1},
@@ -465,6 +469,8 @@ main(int argc, char *argv[])
 		appendPQExpBufferStr(pgdumpopts, " --disable-triggers");
 	if (inserts)
 		appendPQExpBufferStr(pgdumpopts, " --inserts");
+	if (no_table_access_method)
+		appendPQExpBufferStr(pgdumpopts, " --no-table-access-method");
 	if (no_tablespaces)
 		appendPQExpBufferStr(pgdumpopts, " --no-tablespaces");
 	if (quote_all_identifiers)
@@ -654,6 +660,10 @@ main(int argc, char *argv[])
 			/* Dump role memberships */
 			dumpRoleMembership(conn);
 
+			/* Dump role GUC privileges */
+			if (server_version >= 150000 && !skip_acls)
+				dumpRoleGUCPrivs(conn);
+
 			/* Dump role constraints */
 			dumpRoleConstraints(conn);
 		}
@@ -727,6 +737,7 @@ help(void)
 	printf(_("  --no-security-labels         do not dump security label assignments\n"));
 	printf(_("  --no-subscriptions           do not dump subscriptions\n"));
 	printf(_("  --no-sync                    do not wait for changes to be written safely to disk\n"));
+	printf(_("  --no-table-access-method     do not dump table access methods\n"));
 	printf(_("  --no-tablespaces             do not dump tablespace assignments\n"));
 	printf(_("  --no-toast-compression       do not dump TOAST compression methods\n"));
 	printf(_("  --no-unlogged-table-data     do not dump unlogged table data\n"));
@@ -1533,6 +1544,65 @@ dumpRoleConstraints(PGconn *conn)
 
 
 /*
+ * Dump role configuration parameter privileges.  This code is used for 15.0
+ * and later servers.
+ *
+ * Note: we expect dumpRoles already created all the roles, but there are
+ * no per-role configuration parameter privileges yet.
+ */
+static void
+dumpRoleGUCPrivs(PGconn *conn)
+{
+	PGresult   *res;
+	int			i;
+
+	/*
+	 * Get all parameters that have non-default acls defined.
+	 */
+	res = executeQuery(conn, "SELECT parname, "
+					   "pg_catalog.pg_get_userbyid(" CppAsString2(BOOTSTRAP_SUPERUSERID) ") AS parowner, "
+					   "paracl, "
+					   "pg_catalog.acldefault('p', " CppAsString2(BOOTSTRAP_SUPERUSERID) ") AS acldefault "
+					   "FROM pg_catalog.pg_parameter_acl "
+					   "ORDER BY 1");
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Role privileges on configuration parameters\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		PQExpBuffer buf = createPQExpBuffer();
+		char	   *parname = PQgetvalue(res, i, 0);
+		char	   *parowner = PQgetvalue(res, i, 1);
+		char	   *paracl = PQgetvalue(res, i, 2);
+		char	   *acldefault = PQgetvalue(res, i, 3);
+		char	   *fparname;
+
+		/* needed for buildACLCommands() */
+		fparname = pg_strdup(fmtId(parname));
+
+		if (!buildACLCommands(fparname, NULL, NULL, "PARAMETER",
+							  paracl, acldefault,
+							  parowner, "", server_version, buf))
+		{
+			pg_log_error("could not parse ACL list (%s) for parameter \"%s\"",
+						 paracl, parname);
+			PQfinish(conn);
+			exit_nicely(1);
+		}
+
+		fprintf(OPF, "%s", buf->data);
+
+		free(fparname);
+		destroyPQExpBuffer(buf);
+	}
+
+	PQclear(res);
+	fprintf(OPF, "\n\n");
+}
+
+
+/*
  * Drop tablespaces.
  */
 static void
@@ -1614,6 +1684,14 @@ dumpTablespaces(PGconn *conn)
 
 		/* needed for buildACLCommands() */
 		fspcname = pg_strdup(fmtId(spcname));
+
+		if (binary_upgrade)
+		{
+			appendPQExpBufferStr(buf, "\n-- For binary upgrade, must preserve pg_tablespace oid\n");
+			appendPQExpBuffer(buf,
+							  "SELECT pg_catalog.binary_upgrade_set_next_pg_tablespace_oid('%u'::pg_catalog.oid, '%s'::text);\n\n",
+							  spcoid, spcname);
+		}
 
 		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", spcname);
 		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));

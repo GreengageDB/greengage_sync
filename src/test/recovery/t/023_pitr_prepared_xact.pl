@@ -6,13 +6,14 @@ use strict;
 use warnings;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-use Test::More tests => 1;
+use Test::More;
 use File::Compare;
 
 # GPDB: Effectively disable this TAP test. We cannot run PREPARE
 # TRANSACTION in utility-mode. We need at least 1 test so create a
 # dummy one.
 is(-1, -1, "Disable this TAP test");
+done_testing();
 exit;
 
 # Initialize and start primary node with WAL archiving
@@ -93,3 +94,5 @@ CHECKPOINT;
 # still be found.
 $node_pitr->stop('immediate');
 $node_pitr->start;
+
+done_testing();

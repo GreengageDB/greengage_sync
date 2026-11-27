@@ -24,7 +24,6 @@
 #include "nodes/supportnodes.h"
 #include "optimizer/optimizer.h"
 #include "utils/builtins.h"
-#include "utils/int8.h"
 
 
 typedef struct
@@ -35,18 +34,13 @@ typedef struct
 } generate_series_fctx;
 
 
-/***********************************************************************
- **
- **		Routines for 64-bit integers.
- **
- ***********************************************************************/
-
-/*----------------------------------------------------------
- * Formatting and conversion routines.
- *---------------------------------------------------------*/
-
 /*
  * scanint8 --- try to parse a string into an int8.
+ *
+ * GG: upstream's cfc7191dfea moved scanint8() to numutils.c as
+ * pg_strtoint64() and dropped the errorOK case.  Greengage keeps scanint8()
+ * here because several MPP call sites parse values that are allowed to be
+ * malformed and must not raise an error.
  *
  * If errorOK is false, ereport a useful error message if the string is bad.
  * If errorOK is true, just return "false" for bad input.
@@ -128,16 +122,25 @@ invalid_syntax:
 	return false;
 }
 
+
+/***********************************************************************
+ **
+ **		Routines for 64-bit integers.
+ **
+ ***********************************************************************/
+
+/*----------------------------------------------------------
+ * Formatting and conversion routines.
+ *---------------------------------------------------------*/
+
 /* int8in()
  */
 Datum
 int8in(PG_FUNCTION_ARGS)
 {
-	char	   *str = PG_GETARG_CSTRING(0);
-	int64		result;
+	char	   *num = PG_GETARG_CSTRING(0);
 
-	(void) scanint8(str, false, &result);
-	PG_RETURN_INT64(result);
+	PG_RETURN_INT64(pg_strtoint64(num));
 }
 
 

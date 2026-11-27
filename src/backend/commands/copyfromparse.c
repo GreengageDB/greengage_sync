@@ -72,6 +72,7 @@
 #include "miscadmin.h"
 #include "pgstat.h"
 #include "port/pg_bswap.h"
+#include "utils/builtins.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
@@ -1187,12 +1188,62 @@ NextCopyFromRawFieldsX(CopyFromState cstate, char ***fields, int *nfields,
 	/* only available for text or csv input */
 	Assert(!cstate->opts.binary);
 
-	/* on input just throw the header line away */
+	/* on input check that the header line is correct if needed */
 	if (cstate->cur_lineno == 0 && cstate->opts.header_line)
 	{
+		ListCell   *cur;
+		TupleDesc	tupDesc;
+
+		tupDesc = RelationGetDescr(cstate->rel);
+
 		cstate->cur_lineno++;
-		if (CopyReadLine(cstate))
-			return false;		/* done */
+		done = CopyReadLine(cstate);
+
+		if (cstate->opts.header_line == COPY_HEADER_MATCH)
+		{
+			int			fldnum;
+
+			/*
+			 * GG: the header line has to be parsed in full, so pass -1 for
+			 * Greengage's stop_processing_at_field.
+			 */
+			if (cstate->opts.csv_mode)
+				fldct = CopyReadAttributesCSV(cstate, -1);
+			else
+				fldct = CopyReadAttributesText(cstate, -1);
+
+			if (fldct != list_length(cstate->attnumlist))
+				ereport(ERROR,
+						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+						 errmsg("wrong number of fields in header line: got %d, expected %d",
+								fldct, list_length(cstate->attnumlist))));
+
+			fldnum = 0;
+			foreach(cur, cstate->attnumlist)
+			{
+				int			attnum = lfirst_int(cur);
+				char	   *colName = cstate->raw_fields[attnum - 1];
+				Form_pg_attribute attr = TupleDescAttr(tupDesc, attnum - 1);
+
+				fldnum++;
+
+				if (colName == NULL)
+					ereport(ERROR,
+							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+							 errmsg("column name mismatch in header line field %d: got null value (\"%s\"), expected \"%s\"",
+									fldnum, cstate->opts.null_print, NameStr(attr->attname))));
+
+				if (namestrcmp(&attr->attname, colName) != 0) {
+					ereport(ERROR,
+							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+							 errmsg("column name mismatch in header line field %d: got \"%s\", expected \"%s\"",
+									fldnum, colName, NameStr(attr->attname))));
+				}
+			}
+		}
+
+		if (done)
+			return false;
 	}
 
 	cstate->cur_lineno++;

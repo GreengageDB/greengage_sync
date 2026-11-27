@@ -571,6 +571,7 @@ ResLockPortal(Portal portal, QueryDesc *qDesc)
 			case T_InsertStmt:
 			case T_DeleteStmt:
 			case T_UpdateStmt:
+			case T_MergeStmt:
 			{
 				if (ResourceSelectOnly)
 				{

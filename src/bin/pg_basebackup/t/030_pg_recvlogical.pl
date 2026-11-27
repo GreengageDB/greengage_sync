@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use PostgreSQL::Test::Utils;
 use PostgreSQL::Test::Cluster;
-use Test::More tests => 20;
+use Test::More;
 
 program_help_ok('pg_recvlogical');
 program_version_ok('pg_recvlogical');
@@ -113,3 +113,5 @@ $node->command_ok(
 	],
 	'replayed a two-phase transaction');
 }
+
+done_testing();
